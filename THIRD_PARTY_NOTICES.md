@@ -120,14 +120,26 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+## Second Life's viewer
+
+The 2011 AOs (tools/import-ao.js, tools/avatar/sl-anim.js) are read in the `.anim` format as the
+Second Life viewer reads it (Firestorm's `indra/llcharacter/llkeyframemotion.cpp`, LGPL 2.1), and
+retargeted from the 2011 ("base") joints' offsets of its `avatar_skeleton.xml`. No code of the viewer
+is in OVGrid. The animations themselves are their creators': imported on this machine only, never
+published.
+
 ## Assets with their own notices
 
-- `assets/avatar/` — Decentraland's two base bodies, today's outfit and the clips: Apache License 2.0,
-  with its LICENSE and NOTICE.
+- `assets/avatar/` — Decentraland's two base bodies, today's outfit, the locomotion clips and the
+  common emotes it keeps (sitting): Apache License 2.0, with its LICENSE and NOTICE.
+- `assets/avatar/clips/mixamo/` — fourteen animations from Mixamo (Adobe), retargeted onto our
+  skeleton (tools/build-avatar-animations.js): used inside OVGrid as game assets under Adobe's
+  Mixamo terms, never offered as files to download nor redistributed on their own.
 - The avatar library — `assets/avatar/library/` (out of git, made by tools/build-avatar-library.js),
   published at assets.ovgrid.com/avatar/v1/ — Decentraland's bodies, wearables, face features and
   thumbnails from decentraland/avatar-assets, their meshes fitted and quantised and their maps in
-  KTX2: Apache License 2.0, © 2019 Metaverse Holdings Ltd., with its LICENSE and NOTICE beside it. No
+  KTX2, and the common emotes of decentraland/unity-explorer (`animations/dcl/`): Apache License 2.0,
+  © 2019 Metaverse Holdings Ltd., with its LICENSE and NOTICE beside it. No
   trademark rights are granted (§6): what bears a brand or a mark is left out, and artwork licensed
   from its artists to a collection rather than to Decentraland (docs/avatar-system.md).
 - `assets/wasm/` — Binomial's Basis Universal transcoder: Apache License 2.0, with its LICENSE and

@@ -2,7 +2,7 @@
 
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
 materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
-name it may use — shapes, kinds and their parameters, behaviours, particles, the 2,812 materials,
+name it may use — shapes, kinds and their parameters, behaviours, particles, the 3,091 materials,
 the 31 tree species — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json

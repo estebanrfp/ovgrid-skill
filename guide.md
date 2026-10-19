@@ -4,7 +4,7 @@
 
 OVGrid is a planet in the browser, shared peer to peer, where people build as they did in
 Second Life — out of prims (boxes, cylinders, wedges…), *kinds* (doors, windows, roofs, stairs,
-fences, rocks…) and trees, dressed in a bank of 2,812 real-size materials, with lights, particles
+fences, rocks…) and trees, dressed in a bank of 3,091 real-size materials, with lights, particles
 (smoke, fire, steam…), things that move and scripts. A build is one JSON document. This guide is for
 an AI asked to write one — a house, a square, a village, a bridge, a room — from a description, and
 it walks through the eight steps of doing it well:
@@ -214,7 +214,7 @@ The terrain is a function; what you build is not.
 
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
 materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
-name it may use — shapes, kinds and their parameters, behaviours, particles, the 2,812 materials,
+name it may use — shapes, kinds and their parameters, behaviours, particles, the 3,091 materials,
 the 31 tree species — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json
@@ -1629,7 +1629,7 @@ Presets: `fire`, `smoke`, `sparks`, `steam`, `fog`, `fountain`, `snow`. Kits: `c
 
 ### Starter materials
 
-Up to three of each subcategory of the bank (2812 in all in the catalog):
+Up to three of each subcategory of the bank (3091 in all in the catalog):
 
 - `masonry/brick/red-brick` — Red Brick, 1.4 × 1.4 m a tile, #8f6852
 - `masonry/brick/red-brick-03` — Red Brick 03, 1 × 1 m a tile, #6b564e
@@ -1670,6 +1670,8 @@ Up to three of each subcategory of the bank (2812 in all in the catalog):
 - `wood/logs/bark-brown-02` — Bark Brown 02, 1 × 1 m a tile, #615844
 - `wood/logs/bark-brown-01` — Bark Brown 01, 1 × 1 m a tile, #75603a
 - `wood/logs/bark-willow` — Bark Willow, 1 × 1 m a tile, #42372b
+- `wood/stylized/wood-floor-010-3dtextures` — Wood Floor 010 (3DTextures.me), 2.24 × 2.24 m a tile, #cda363
+- `wood/stylized/wood-herringbone-tiles-004` — Wood Herringbone Tiles 004, 1.6 × 1.6 m a tile, #562b07
 - `metal/bare/container-side` — Container Side, 1.94 × 1.94 m a tile, #5c8950
 - `metal/bare/worn-shutter` — Worn Shutter, 1.37 × 1.37 m a tile, #423d37
 - `metal/bare/metal-049a` — Metal 049 A, 1 × 1 m a tile, #fcfbf6
@@ -1749,6 +1751,18 @@ Up to three of each subcategory of the bank (2812 in all in the catalog):
 - `fabric/leather/brown-leather` — Brown Leather, 0.4 × 0.4 m a tile, #512e10
 - `fabric/leather/leather-white` — Leather White, 0.3 × 0.3 m a tile, #959380
 - `fabric/wicker/wicker-013` — Bamboo weave, 0.5 × 0.5 m a tile, #b07d3f
+- `fabric/wicker/bamboo-weave-001` — Bamboo Weave 001, 0.6 × 0.6 m a tile, #e5b678
+- `fabric/wicker/wood-wicker-002` — Wood Wicker 002, 0.6 × 0.6 m a tile, #80563c
+- `fabric/patterned/fabric-0001` — Camouflage Pattern Vinyl Fabric, 0.5 × 0.5 m a tile, #5e5842
+- `fabric/patterned/fabric-0003` — Scottish Checkered Pattern Fabric Texture, 0.5 × 0.5 m a tile, #a65356
+- `fabric/patterned/fabric-005-3dtextures` — Fabric 005 (3DTextures.me), 0.5 × 0.5 m a tile, #433a3a
+- `fabric/upholstery/fabric-0015` — Red Tufted Leather Texture for Sofas and Chairs, 0.5 × 0.5 m a tile, #b22612
+- `fabric/upholstery/fabric-0017` — Red Worn Sofa Leather Texture with Nails, 0.5 × 0.5 m a tile, #51211f
+- `fabric/upholstery/fabric-0020` — Padded Coat and Jacket Texture, 0.5 × 0.5 m a tile, #f1f2f2
+- `fabric/lace/fabric-lace-004` — Fabric Lace 004, 0.3 × 0.3 m a tile, #2f2f2f, cut-out
+- `fabric/lace/fabric-lace-005` — Fabric Lace 005, 0.3 × 0.3 m a tile, #941200, cut-out
+- `fabric/lace/fabric-lace-007` — Fabric Lace 007, 0.3 × 0.3 m a tile, #000000, cut-out
+- `fabric/stylized/fabric-quilt-002` — Fabric Quilt 002, 0.5 × 0.5 m a tile, #a7a7a7
 - `openwork/fence/fence-007a` — Metal grate fence, 0.95 × 0.95 m a tile, #a1a3a5, cut-out
 - `openwork/fence/fence-008a` — Large metal grate fence, 1.9 × 1.9 m a tile, #000000, cut-out
 - `openwork/fence/fence-003` — Wire mesh fence, 2 × 2 m a tile, #000000, cut-out
@@ -1761,6 +1775,9 @@ Up to three of each subcategory of the bank (2812 in all in the catalog):
 - `facade/facade/facade-006` — Facade 006, 8 × 8 m a tile, #828989
 - `facade/facade/facade-005` — Facade 005, 8 × 8 m a tile, #465353
 - `facade/facade/facade-001` — Facade 001, 8 × 8 m a tile, #484e55
+- `facade/stylized/others-0021` — Office Building Facade Texture, 24 × 24 m a tile, #7f828d
+- `facade/stylized/others-0022` — Office Building Facade Texture, 33 × 33 m a tile, #91877d
+- `facade/stylized/others-0025` — Old Office Building Facade, 19.2 × 19.2 m a tile, #a2a29d
 - `synthetic/plastic/plastic-013a` — Plastic 013 A, 1 × 1 m a tile, #edeae9
 - `synthetic/plastic/plastic-010` — Plastic 010, 1 × 1 m a tile, #a3a7ac
 - `synthetic/plastic/plastic-006` — Plastic 006, 1 × 1 m a tile, #07070a
@@ -1790,6 +1807,9 @@ Up to three of each subcategory of the bank (2812 in all in the catalog):
 - `glass/leaded/diamond-quarries` — Leaded diamond panes, 0.3 × 0.42 m a tile, #c4d5c4, see-through
 - `glass/leaded/square-quarries` — Leaded square panes, 0.6 × 0.6 m a tile, #c7d6c9, see-through
 - `glass/leaded/stained` — Stained glass, 0.6 × 0.6 m a tile, #9c776a, see-through
+- `glass/glazing/glass-window-002` — Glass Window 002, 1.5 × 1.5 m a tile, #93a5ab, see-through
+- `glass/glazing/glass-window-005` — Glass Window 005, 2 × 2 m a tile, #4f5056, see-through
+- `glass/blocks/glass-blocks-001a` — Glass Blocks 001a, 1.6 × 1.6 m a tile, #b9c5bb
 - `effects/water/calm` — Calm water, 4 × 4 m a tile, #183e46, see-through, moves
 - `effects/water/rippled` — Rippled water, 4 × 4 m a tile, #183e46, see-through, moves
 - `effects/lava/lava-001` — Lava crust, 3 × 3 m a tile, #54393c, cut-out, glows, moves

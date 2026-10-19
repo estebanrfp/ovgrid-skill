@@ -8,7 +8,7 @@ description: Build whole environments in OVGrid, a planet shared peer to peer in
 OVGrid is a planet in the browser, shared peer to peer, where people build as they did in
 Second Life. What is built there is a **recipe**, never a mesh: objects of parts, each a prim shape
 or a *kind* (door, roof, stairs, rock…) with a few named parameters in metres and degrees, its faces
-dressed from a bank of 2,812 real-size materials, and what it does — its light, its particles
+dressed from a bank of 3,091 real-size materials, and what it does — its light, its particles
 (smoke, fire, steam…), its behaviour (a door that opens, sails that turn), its script; linked clones
 of objects; trees as a species and a seed. Every peer meshes the same thing from the same recipe.
 You write that recipe as one JSON document, anchored at the coordinate the person gives you and
