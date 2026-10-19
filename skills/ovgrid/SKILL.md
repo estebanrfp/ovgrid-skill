@@ -8,7 +8,7 @@ description: Build whole environments in OVGrid, a planet shared peer to peer in
 OVGrid is a planet in the browser, shared peer to peer, where people build as they did in
 Second Life. What is built there is a **recipe**, never a mesh: objects of parts, each a prim shape
 or a *kind* (door, roof, stairs, rock…) with a few named parameters in metres and degrees, its faces
-dressed from a bank of 2,772 real-size materials, and what it does — its light, its particles
+dressed from a bank of 2,812 real-size materials, and what it does — its light, its particles
 (smoke, fire, steam…), its behaviour (a door that opens, sails that turn), its script; linked clones
 of objects; trees as a species and a seed. Every peer meshes the same thing from the same recipe.
 You write that recipe as one JSON document, anchored at the coordinate the person gives you and
@@ -27,7 +27,10 @@ it will stand, confirms it with a click, and can export it again for the next ro
    (SVG and PNG) to look at, and the anchor to build on. → [site.md](reference/site.md)
 3. **Resources.** The build file, and the official pieces: prim shapes, kinds and their
    parameters, materials by use, species, particles, lights, behaviours — every name in
-   `catalog.json`, one entry a line: grep it. → [format.md](reference/format.md)
+   `catalog.json`, one entry a line: grep it. → [format.md](reference/format.md). What is curved or
+   organic — a vase, a cushion, a sofa, a handle, a hull, a statue — is described in a few numbers
+   (a lathe, a box, a loft, a sweep, or a model) and made a sculpted prim by
+   `node scripts/sculpt.mjs build.json`. → [sculpt.md](reference/sculpt.md)
 4. **Quality.** Real proportions, walls cut round their openings, materials at their size;
    composition — the square, the ways, the gardens, the woods, the rooms, the night, the palette.
    If you can run code, write the build with a short program: parts from loops and functions,
@@ -46,7 +49,8 @@ it will stand, confirms it with a click, and can export it again for the next ro
    is wrong. → [verify.md](reference/verify.md)
 
 The scripts run with Node 18+ or Bun, nothing to install: `scripts/survey.mjs` carries the planet's
-own terrain function; `scripts/check.mjs` the world's own checks and this skill's `catalog.json`.
+own terrain function; `scripts/check.mjs` the world's own checks and this skill's `catalog.json`;
+`scripts/sculpt.mjs` the world's own sculpted prims.
 
 ## Rules that always hold
 
@@ -83,6 +87,7 @@ sound, plain build; a page of detail gets that detail, within the budget.
 | [reference/plan.md](reference/plan.md) | 1 — from a request to a plan; fitting it to the budget; saying what was simplified |
 | [reference/site.md](reference/site.md) | 2 — URLs and coordinates, the survey and its map, reading the ground, standing on it, terraces, ways, bridges, views, what is there |
 | [reference/format.md](reference/format.md) | 3 — the build file: anchor, prims, shapes, kinds, materials by use, surface, light, collisions, behaviours, objects, clones, trees, ids |
+| [reference/sculpt.md](reference/sculpt.md) | 3 — curved and organic shapes as sculpted prims: lathes, boxes, lofts, sweeps, models; bends, twists, noise; examples |
 | [reference/method.md](reference/method.md) | 4 — the frame, scale and proportions, walls with openings, a cottage as JSON |
 | [reference/composition.md](reference/composition.md) | 4 — villages, squares, ways, fences, forests and clearings, interiors, night, palettes, mistakes |
 | [reference/budget.md](reference/budget.md) | 5 — what one build and one place may bring (fair, most), what costs what, what was measured |
@@ -93,3 +98,4 @@ sound, plain build; a page of detail gets that detail, within the budget.
 | `catalog.json` | Prim presets (faces, size axes, triangles); every kind's, behaviour's and particle preset's parameters; the bank, one material a line (id, name, uses, size, colour, metal, look, tags); 31 tree species with their six variants |
 | `scripts/survey.mjs` | The ground round a place, from a URL, coordinates or a survey: JSON, SVG, PNG; `--profile` along lines |
 | `scripts/check.mjs` | A build checked as the world checks it, against the budget; `--survey` with what stands round it |
+| `scripts/sculpt.mjs` | A build's `sculpt` descriptions made sculpted prims (`build.sculpted.json`); a glTF model resampled into them, or told why it does not fit |

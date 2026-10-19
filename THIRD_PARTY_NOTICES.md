@@ -89,8 +89,8 @@ its author's permission is pending.
 Sculpted prims (`src/build/prim/sculpt.js`) lay their grid's points and triangles in the order and
 winding of OpenSim's `OpenSim/Region/Physics/Meshing/SculptMesh.cs`; the importer of OpenSim regions
 (`src/build/opensim/`, `tools/opensim/`) reads the formats OpenSim's code writes (texture entries,
-extra parameters, particle systems, texture animations, OARs, its MySQL tables) as that code reads
-them. OpenSim's name endorses nothing of OVGrid's.
+extra parameters, particle systems, texture animations, OARs, coalesced objects, its MySQL tables)
+as that code reads them. OpenSim's name endorses nothing of OVGrid's.
 
 ```
 Copyright (c) Contributors, http://opensimulator.org/
@@ -122,6 +122,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Assets with their own notices
 
-- `assets/avatar/` — Decentraland's base avatar: Apache License 2.0, with its LICENSE and NOTICE.
+- `assets/avatar/` — Decentraland's two base bodies, today's outfit and the clips: Apache License 2.0,
+  with its LICENSE and NOTICE.
+- The avatar library — `assets/avatar/library/` (out of git, made by tools/build-avatar-library.js),
+  published at assets.ovgrid.com/avatar/v1/ — Decentraland's bodies, wearables, face features and
+  thumbnails from decentraland/avatar-assets, their meshes fitted and quantised and their maps in
+  KTX2: Apache License 2.0, © 2019 Metaverse Holdings Ltd., with its LICENSE and NOTICE beside it. No
+  trademark rights are granted (§6): what bears a brand or a mark is left out, and artwork licensed
+  from its artists to a collection rather than to Decentraland (docs/avatar-system.md).
 - `assets/wasm/` — Binomial's Basis Universal transcoder: Apache License 2.0, with its LICENSE and
   NOTICE.

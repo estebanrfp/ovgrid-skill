@@ -31,13 +31,14 @@ in the world, open the editor (Ctrl+B), then *Builds as JSON* → *Survey here*,
 | | |
 |---|---|
 | `guide.md` | The whole guide on one page: plan, place, resources, quality, budget, interactivity, delivery, verification; a cottage as JSON; the catalog in brief |
-| `catalog.json` | Every shape, kind, behaviour, particle preset, material (2,772) and tree species (31), one entry a line |
+| `catalog.json` | Every shape, kind, behaviour, particle preset, material (2,812) and tree species (31), one entry a line |
 | `skills/ovgrid/SKILL.md` | The skill: its walkthrough and rules |
 | `skills/ovgrid/reference/` | One page a step |
 | `skills/ovgrid/scripts/survey.mjs` | The ground round a place, from a URL or coordinates: JSON, SVG and PNG maps, profiles |
 | `skills/ovgrid/scripts/check.mjs` | A build checked as the world checks it, against its budget |
+| `skills/ovgrid/scripts/sculpt.mjs` | Curved and organic shapes — a lathe, a box, a loft, a sweep, a glTF model — made sculpted prims |
 
-`scripts/` holds the **AI's own tools** — the survey of a place and the check of a build — not the
+`scripts/` holds the **AI's own tools** — the survey of a place, the check of a build and its sculpted shapes — not the
 scripts objects run in the world. Those are a part's `script` field, written in JavaScript against
 the world's API (`on`, `every`, `after`, `set`, `keep`, `get`, `touch`, `print`), and they are
 explained, with their limits and examples, in `skills/ovgrid/reference/effects.md` (*Scripts*).
@@ -47,6 +48,7 @@ The tools run with Node 18+ or Bun and need nothing installed:
 ```bash
 node skills/ovgrid/scripts/survey.mjs "https://…/?walk=…" --radius 80 --name cove
 node skills/ovgrid/scripts/check.mjs village.json --survey cove.json
+node skills/ovgrid/scripts/sculpt.mjs parlour.json
 ```
 
 ## How it is made

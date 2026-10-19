@@ -2307,7 +2307,7 @@ var yesNo = ["no", "yes"];
 var sculpt = Object.freeze({
   name: "sculpt",
   label: "Sculpted prim",
-  description: "A sculpted prim, as Second Life and OpenSim have them: its surface a map of points (its sculpt map), stitched as a sphere, a torus, a plane or a cylinder. It comes with what brings its map — an OpenSim import —, its stitching, mirror and invert set on its card.",
+  description: 'A sculpted prim, as Second Life and OpenSim have them: its surface a map of points (its sculpt map), stitched as a sphere, a torus, a plane or a cylinder. Never written by hand: a part written with "sculpt" — a lathe, a box, a loft, a sweep or a model — is made one by the sculpt tool, and an OpenSim import brings its own; its stitching, mirror and invert set on its card.',
   faces: ["surface"],
   shape: "sphere",
   size: [1, 1, 1],
@@ -2755,6 +2755,8 @@ var shapeOf = (shape, name, warnings) => {
 var partsOf = (prims, { name, objectId, materials, warnings, object, groundRadius }) => prims.map((prim, index) => {
   const kind = prim.kind === undefined ? null : kindPart(prim, name, index);
   const preset2 = kind ? null : shapeOf(prim.shape, prim.name ?? `part ${index}`, warnings);
+  if (!kind && !preset2 && prim.sculpt !== undefined)
+    throw new Error(`${name}: ${prim.name ?? `part ${index}`} is a description ("sculpt"): make it a sculpted prim first (the sculpt tool)`);
   if (!kind && !preset2)
     throw new Error(`${name}: no shape ${typeof prim.shape === "string" ? prim.shape : JSON.stringify(prim.shape)}`);
   if (kind)

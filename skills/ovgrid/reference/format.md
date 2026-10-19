@@ -2,7 +2,7 @@
 
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
 materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
-name it may use — shapes, kinds and their parameters, behaviours, particles, the 2,772 materials,
+name it may use — shapes, kinds and their parameters, behaviours, particles, the 2,812 materials,
 the 31 tree species — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json
@@ -107,6 +107,10 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `arch` | width, wall depth, height | 0 its two faces, 1 the opening, 2 outside, 3 feet | wall in x–z, opening through y |
 | `bevel` | its own | box: as a cube; cylinder: as a cylinder | `base` box or cylinder; `edge` round or chamfer, `radius` m |
 | `rock` | width (y) and height (z); length (x) from `elongation` | 0 surface | flat `base` down; sink it a tenth of its height |
+
+What is curved or organic — a vase, a column's swell, a cushion, a sofa, a handle, a hull — is not a
+kind you write out: describe it with `"sculpt": { … }` (a lathe, a box, a loft, a sweep, or a model)
+and the sculpt tool makes it a part of the `sculpt` kind, its map never typed by hand. → sculpt.md
 
 **A fence along the land, in one part**: `points` in the part's own frame, written `[x, y]` without
 heights, lie on the ground once placed — the fence follows it, a post on each point:
