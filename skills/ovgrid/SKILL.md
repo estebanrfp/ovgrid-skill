@@ -1,6 +1,6 @@
 ---
 name: ovgrid
-description: Build whole environments in OVGrid, a planet shared peer to peer in the browser, from a description — houses, villages, squares, bridges, paths and fences, forests and clearings, furnished interiors, lights, smoke and fire, doors that open, ferries — as one JSON build the person pastes into the world's editor. Use whenever asked to build, place, furnish, light or animate anything in OVGrid, to survey a place there before building, or to write, fix or change a OVGrid build.
+description: Build whole environments in OVGrid, a planet shared peer to peer in the browser, from a description — houses, villages, squares, bridges, paths and fences, forests and clearings, furnished interiors, lights, smoke and fire, doors that open, ferries — as one JSON build the person pastes into the world's editor. Use whenever asked to build, place, furnish, light or animate anything in OVGrid, to survey a place there before building, or to write, fix or change an OVGrid build.
 ---
 
 # Building environments in OVGrid
