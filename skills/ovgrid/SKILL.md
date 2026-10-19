@@ -11,8 +11,10 @@ or a *kind* (door, roof, stairs, rock…) with a few named parameters in metres 
 dressed from a bank of 2,772 real-size materials, and what it does — its light, its particles
 (smoke, fire, steam…), its behaviour (a door that opens, sails that turn), its script; linked clones
 of objects; trees as a species and a seed. Every peer meshes the same thing from the same recipe.
-You write that recipe as one JSON document; the person brings it into the world, sees it as a
-ghost, and places it.
+You write that recipe as one JSON document, anchored at the coordinate the person gives you and
+fitted to a survey of the place; the person brings it into the world — pasted or dropped into the
+editor's *Builds as JSON*, or opened with `?import=` and its address — sees it as a ghost where
+it will stand, confirms it with a click, and can export it again for the next round.
 
 ## The walkthrough
 
@@ -37,8 +39,9 @@ ghost, and places it.
    ferries), scripts for what no property can say, games to come; vehicles people drive — cars,
    motorbikes, boats, trains. The panel first, code last. → [effects.md](reference/effects.md),
    [vehicles.md](reference/vehicles.md)
-7. **Delivery.** The survey's anchor, the JSON the person pastes, drops or fetches by its address
-   (a gist), a ghost to confirm, an export to change it by. → [deliver.md](reference/deliver.md)
+7. **Delivery.** The survey's anchor, the JSON the person pastes, drops or opens by its address
+   (`?import=https://…` on the world's URL: a raw GitHub file or a gist), a ghost to confirm, an
+   export to change it by. → [deliver.md](reference/deliver.md)
 8. **Verification.** Have it looked at — from where people arrive, inside, at night — and fix what
    is wrong. → [verify.md](reference/verify.md)
 
@@ -47,7 +50,8 @@ own terrain function; `scripts/check.mjs` the world's own checks and this skill'
 
 ## Rules that always hold
 
-- **Metres and degrees.** The build's frame: x right, y ahead (the anchor's `heading`), z up, z = 0
+- **Metres and degrees.** The build's frame: x right, y ahead (the anchor's `heading`), z up
+  (right as seen from in front, looking back at it from +y; for whoever faces +y — a driver, someone walking in — +x is on the left), z = 0
   the ground under the anchor. A turn `[x, y, z]` is degrees about x, then y, then z;
   z is counter-clockwise from above (90 turns +y to −x).
 - **A building's front is its +y**; doors' and windows' own fronts are their **−y**: turn them

@@ -6,7 +6,7 @@ ground: site.md.)
 
 ## The frame
 
-x right, y ahead, z up, metres; z = 0 the ground under the anchor. A turn is degrees about x, then
+x right, y ahead, z up (right as seen from in front, looking back at it from +y; for whoever faces +y — a driver, someone walking in — +x is on the left), metres; z = 0 the ground under the anchor. A turn is degrees about x, then
 y, then z; z counter-clockwise from above: the z turn that points a part's +y from (x₀, y₀) towards
 (x₁, y₁) is atan2(−(x₁ − x₀), y₁ − y₀) in degrees.
 

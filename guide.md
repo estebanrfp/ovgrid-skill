@@ -52,7 +52,7 @@ Ask only what changes the plan; take sensible defaults for the rest and say whic
 
 ### Write the plan
 
-In the build's frame — x right, y ahead, z up, metres; the anchor's ground at z = 0 — list:
+In the build's frame — x right, y ahead, z up (right as seen from in front, looking back at it from +y; for whoever faces +y — a driver, someone walking in — +x is on the left), metres; the anchor's ground at z = 0 — list:
 
 1. **The pieces**: each building, the square, the ways, the fences, the groves, the lights and what
    moves, each with its size, where it stands and which way it faces.
@@ -108,7 +108,9 @@ A person gives you a place as the URL of their view, or as coordinates:
 - **A frame at a point** (what an anchor makes): up = the point's direction; north = [0, 1, 0]
   made level there (minus its part along up, normalised); east = north × up; for a heading h, ahead
   = north · cos h + east · sin h and right = ahead × up. A point (x, y, z) of the frame is
-  origin + right · x + ahead · y + up · z.
+  origin + right · x + ahead · y + up · z. So +x is the right of someone in front of the build
+  looking back at it from +y, and the left of someone facing +y, as a driver or a walker coming in
+  along +y does.
 - **An anchor** is a point and a heading: `{ "at": [x, y, z], "heading": h }` — its +y faces h.
   With `"exact": true` its `at` is the frame's origin itself; without, the frame stands on the
   ground under `at`. The survey gives you one, exact, on the ground where the person looked, its +y
@@ -232,7 +234,11 @@ the 31 tree species — is in **catalog.json**, made from the world's own code, 
   (° from north, east positive) the build's +y faces. `"exact": true` makes `at` the frame's origin
   itself rather than a point over the ground — a survey's anchor, an export's. Without an anchor the
   person places the build where they point (deliver.md). Where anchors come from: site.md.
-- **The frame**: on the ground under the anchor (or at it, exact). x right, y ahead, z up; z = 0 is
+- **The frame**: on the ground under the anchor (or at it, exact). x right, y ahead, z up — right as seen from in front of the build, looking back
+  at it from +y; for whoever faces +y, as a driver does or someone walking in along +y, +x is on the
+  left. So a shop on the right of a square, as you face the square's front, stands at x > 0; and
+  a car whose nose points to +y and keeps to the right of the road, as in Spain, has its driver at
+  x > 0, on the driver's own left. z = 0 is
   that ground. Everything else in the file is in this frame, in metres.
 - **A place** (`at` of an object, a clone, a tree): `[x, y]` is on the ground there — the import
   finds it — and `[x, y, z]` is z above the ground under the anchor. A prim's `at` is always
@@ -491,7 +497,7 @@ ground: site.md.)
 
 ### The frame
 
-x right, y ahead, z up, metres; z = 0 the ground under the anchor. A turn is degrees about x, then
+x right, y ahead, z up (right as seen from in front, looking back at it from +y; for whoever faces +y — a driver, someone walking in — +x is on the left), metres; z = 0 the ground under the anchor. A turn is degrees about x, then
 y, then z; z counter-clockwise from above: the z turn that points a part's +y from (x₀, y₀) towards
 (x₁, y₁) is atan2(−(x₁ − x₀), y₁ − y₀) in degrees.
 
@@ -1004,7 +1010,9 @@ then 0.07 ms of physics a frame on its driver's peer alone.
   `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg); a bike's the same; a boat's
   `power`, `speed`, `steer` (its rudder) and `mass`; a train's `speed` and `accel`.
 - **A seat**: a part with `"seat": true`, sat on by a click — on its top, facing its +y. The
-  driver's where the driver sits; more for passengers.
+  driver's where the driver sits; more for passengers. The driver faces +y, so the driver's left is
+  +x: a car that keeps to the right of the road, as in Spain, has its driver's seat and steering
+  wheel at +x (the roadster's at x = 0.36); one that keeps to the left, at −x.
 - **Its frame**: its +y its front, z = 0 the ground under its wheels; its parts in that frame.
 - **Its body**: its other parts — the solid ones make the shape it drives as, its centre of mass
   lowered 0.3 m.
@@ -1068,11 +1076,11 @@ roadster, 3.9 m long:
   { "name": "windscreen frame", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.02, "segments": 2, "at": [0, 0.56, 1.31], "size": [1.36, 0.045, 0.045], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "turn": [-20, 0, 0] },
   { "name": "windscreen post", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.02, "segments": 2, "at": [-0.67, 0.5, 1.15], "size": [0.045, 0.045, 0.36], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "turn": [-20, 0, 0] },
   { "name": "windscreen post", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.02, "segments": 2, "at": [0.67, 0.5, 1.15], "size": [0.045, 0.045, 0.36], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "turn": [-20, 0, 0] },
-  { "name": "steering wheel", "shape": "torus", "at": [-0.36, 0.26, 1.02], "size": [0.34, 0.34, 0.05], "turn": [70, 0, 0], "material": "synthetic/plastic/plastic-006" },
-  { "name": "driver's seat", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [-0.36, -0.3, 0.75], "size": [0.52, 0.5, 0.14], "material": "fabric/leather/fabric-leather-01", "seat": true },
-  { "name": "driver's seat back", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [-0.36, -0.6, 1], "size": [0.52, 0.12, 0.5], "material": "fabric/leather/fabric-leather-01", "turn": [-12, 0, 0] },
-  { "name": "passenger's seat", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0.36, -0.3, 0.75], "size": [0.52, 0.5, 0.14], "material": "fabric/leather/fabric-leather-01", "seat": true },
-  { "name": "passenger's seat back", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0.36, -0.6, 1], "size": [0.52, 0.12, 0.5], "material": "fabric/leather/fabric-leather-01", "turn": [-12, 0, 0] },
+  { "name": "steering wheel", "shape": "torus", "at": [0.36, 0.26, 1.02], "size": [0.34, 0.34, 0.05], "turn": [70, 0, 0], "material": "synthetic/plastic/plastic-006" },
+  { "name": "driver's seat", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0.36, -0.3, 0.75], "size": [0.52, 0.5, 0.14], "material": "fabric/leather/fabric-leather-01", "seat": true },
+  { "name": "driver's seat back", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0.36, -0.6, 1], "size": [0.52, 0.12, 0.5], "material": "fabric/leather/fabric-leather-01", "turn": [-12, 0, 0] },
+  { "name": "passenger's seat", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [-0.36, -0.3, 0.75], "size": [0.52, 0.5, 0.14], "material": "fabric/leather/fabric-leather-01", "seat": true },
+  { "name": "passenger's seat back", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [-0.36, -0.6, 1], "size": [0.52, 0.12, 0.5], "material": "fabric/leather/fabric-leather-01", "turn": [-12, 0, 0] },
   { "name": "grille", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.02, "segments": 2, "at": [0, 1.92, 0.62], "size": [0.56, 0.05, 0.22], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
   { "name": "bumper", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.045, "segments": 2, "at": [0, 2, 0.4], "size": [1.5, 0.1, 0.1], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
   { "name": "bumper", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.045, "segments": 2, "at": [0, -2, 0.4], "size": [1.5, 0.1, 0.1], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },

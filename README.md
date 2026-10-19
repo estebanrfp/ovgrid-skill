@@ -37,7 +37,12 @@ in the world, open the editor (Ctrl+B), then *Builds as JSON* → *Survey here*,
 | `skills/ovgrid/scripts/survey.mjs` | The ground round a place, from a URL or coordinates: JSON, SVG and PNG maps, profiles |
 | `skills/ovgrid/scripts/check.mjs` | A build checked as the world checks it, against its budget |
 
-The scripts run with Node 18+ or Bun and need nothing installed:
+`scripts/` holds the **AI's own tools** — the survey of a place and the check of a build — not the
+scripts objects run in the world. Those are a part's `script` field, written in JavaScript against
+the world's API (`on`, `every`, `after`, `set`, `keep`, `get`, `touch`, `print`), and they are
+explained, with their limits and examples, in `skills/ovgrid/reference/effects.md` (*Scripts*).
+
+The tools run with Node 18+ or Bun and need nothing installed:
 
 ```bash
 node skills/ovgrid/scripts/survey.mjs "https://…/?walk=…" --radius 80 --name cove
@@ -49,6 +54,13 @@ node skills/ovgrid/scripts/check.mjs village.json --survey cove.json
 Generated from OVGrid's own code — its shapes, kinds, behaviours, particles, the texture
 bank, the tree species, the budget the editor enforces — by `tools/build-skill-repo.js` in the
 OVGrid repository. Change it there, not here.
+
+## Notices
+
+The survey and check tools carry the planet's elevation function, ported from the WGSL of the
+nvTerrainView8 web demo of the NervLand engine, by The Lone Engineer (<https://wiki.nervtech.org>).
+That demo states no licence, and its author's permission is pending. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+says so, and lists the BSD-licensed works the planet's rendering derives from.
 
 ## Author
 

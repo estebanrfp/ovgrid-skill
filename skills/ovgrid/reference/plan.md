@@ -17,7 +17,7 @@ Ask only what changes the plan; take sensible defaults for the rest and say whic
 
 ## Write the plan
 
-In the build's frame — x right, y ahead, z up, metres; the anchor's ground at z = 0 — list:
+In the build's frame — x right, y ahead, z up (right as seen from in front, looking back at it from +y; for whoever faces +y — a driver, someone walking in — +x is on the left), metres; the anchor's ground at z = 0 — list:
 
 1. **The pieces**: each building, the square, the ways, the fences, the groves, the lights and what
    moves, each with its size, where it stands and which way it faces.

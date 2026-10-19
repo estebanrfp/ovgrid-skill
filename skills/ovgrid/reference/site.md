@@ -19,7 +19,9 @@ A person gives you a place as the URL of their view, or as coordinates:
 - **A frame at a point** (what an anchor makes): up = the point's direction; north = [0, 1, 0]
   made level there (minus its part along up, normalised); east = north × up; for a heading h, ahead
   = north · cos h + east · sin h and right = ahead × up. A point (x, y, z) of the frame is
-  origin + right · x + ahead · y + up · z.
+  origin + right · x + ahead · y + up · z. So +x is the right of someone in front of the build
+  looking back at it from +y, and the left of someone facing +y, as a driver or a walker coming in
+  along +y does.
 - **An anchor** is a point and a heading: `{ "at": [x, y, z], "heading": h }` — its +y faces h.
   With `"exact": true` its `at` is the frame's origin itself; without, the frame stands on the
   ground under `at`. The survey gives you one, exact, on the ground where the person looked, its +y

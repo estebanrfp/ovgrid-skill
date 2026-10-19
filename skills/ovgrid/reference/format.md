@@ -24,7 +24,11 @@ the 31 tree species — is in **catalog.json**, made from the world's own code, 
   (° from north, east positive) the build's +y faces. `"exact": true` makes `at` the frame's origin
   itself rather than a point over the ground — a survey's anchor, an export's. Without an anchor the
   person places the build where they point (deliver.md). Where anchors come from: site.md.
-- **The frame**: on the ground under the anchor (or at it, exact). x right, y ahead, z up; z = 0 is
+- **The frame**: on the ground under the anchor (or at it, exact). x right, y ahead, z up — right as seen from in front of the build, looking back
+  at it from +y; for whoever faces +y, as a driver does or someone walking in along +y, +x is on the
+  left. So a shop on the right of a square, as you face the square's front, stands at x > 0; and
+  a car whose nose points to +y and keeps to the right of the road, as in Spain, has its driver at
+  x > 0, on the driver's own left. z = 0 is
   that ground. Everything else in the file is in this frame, in metres.
 - **A place** (`at` of an object, a clone, a tree): `[x, y]` is on the ground there — the import
   finds it — and `[x, y, z]` is z above the ground under the anchor. A prim's `at` is always
