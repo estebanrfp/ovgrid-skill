@@ -16,6 +16,17 @@ fitted to a survey of the place; the person brings it into the world — pasted 
 editor's *Builds as JSON*, or opened with `?import=` and its address — sees it as a ghost where
 it will stand, confirms it with a click, and can export it again for the next round.
 
+## The avatar is your ruler
+
+Everything in OVGrid is built to the size of the person who walks it. The avatar is **1.8 m tall and 0.6 m
+wide**, steps up **0.3 m**, walks slopes to **50°**, touches or clicks what is within **5 m**, makes a `door`
+open when it comes within **2.5 m**, and its camera follows **4 m behind and 1.4 m up**. Before you write any
+size — a door, a bridge, a bench, a lamp, a fence, a stair, a room, a boat's deck, a tree's first branch — hold
+it against the avatar: can this person walk through it, stand under it, step on it, reach it, sit on it, see it
+from where the camera is? What is walked, climbed or used is sized for them, at real size outdoors and a third
+larger where the camera must get in; what is only looked at can be any size.
+→ [method.md](reference/method.md), Scale and proportions
+
 ## The walkthrough
 
 1. **Plan.** From the request to a plan: what stands where, how big, the palette, the lights, what

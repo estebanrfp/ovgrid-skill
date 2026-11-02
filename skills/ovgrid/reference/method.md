@@ -28,6 +28,18 @@ outside and 0.9 × 2.1 m inside — never smaller; a doorway cut in a wall, or a
 passage is at least 1.0 m wide (a corridor 1.5 m), headroom 2.1 m under a beam, a loft or a stair landing, and a
 step up over 0.3 m is a stair (risers 0.2 m at most), not a ledge.
 
+The same ruler for everything else you build, by how the avatar meets it:
+
+| The avatar… | Size it for it |
+|---|---|
+| walks through | a door box ≥ 1.0 × 2.2 m outside, 0.9 × 2.1 m inside; a doorway, an arch or a gate ≥ 0.8 × 1.9 m clear (a gate 1.0 × 2.2 m); a passage ≥ 1.0 m, a path ≥ 1.5 m, a bridge, a pier or a pontoon ≥ 2 m, stairs ≥ 1.0 m wide |
+| stands under | a beam, a loft, a landing, a sign, a tree's lowest branch ≥ 2.1 m clear; a ceiling ≥ 2.8 m |
+| steps on | a step ≤ 0.3 m, a stair riser ≤ 0.2 m (tread 0.28–0.32 m); a deck, a dais or a doorstep over 0.3 m takes stairs; a slope ≤ 50° |
+| reaches, clicks, uses | within 5 m for a click; a door opens by itself within 2.5 m; handles, switches and levers at 1.0–1.2 m, a counter 0.9 m, a bar 1.1 m |
+| sits, rests on | a seat 0.45 m, a table 0.75 m, a bench 0.45 m, a bed 0.5 m; a railing 1.0–1.1 m, a garden wall 0.9–1.2 m |
+| sees, from the camera 4 m behind and 1.4 m up | a room under 4 m across, or a ceiling under 2.8 m, is seen through its walls (composition.md, Room for the camera): open it up; a sign read from 10 m wants letters 0.2 m high or more |
+| only looks at | a mountain, a distant tower, a sky: any size, since nothing walks there |
+
 | Thing | Size |
 |---|---|
 | Door (outside / inside) | 1.0–1.2 × 2.2–2.4 m / 0.9–1.0 × 2.1–2.2 m |
