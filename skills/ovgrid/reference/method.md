@@ -20,6 +20,14 @@ The avatar is 1.8 m tall and 0.6 m wide; it steps up 0.3 m and walks slopes to 5
 follows 4 m behind and 1.4 m up (zoom out to 10 m). Build real sizes outside; open up what the
 camera must get into — Second Life's builders' rule: rooms a third larger than life.
 
+**The least a person fits through — an opening the avatar cannot pass is the commonest mistake.** Take these
+as minimums, not as a range to land on, a cabin's included. A `door` part's `size` is its frame's outer box and
+its clear opening is smaller (width − 2 × `frame`, 0.08 m by default; height − `frame`): a box of 1.0 × 2.2 m
+leaves 0.83 × 2.1 m. A person needs 0.8 m wide and 1.9 m high clear, so a door box is at least 1.0 × 2.2 m
+outside and 0.9 × 2.1 m inside — never smaller; a doorway cut in a wall, or an arch, the same clear size. A
+passage is at least 1.0 m wide (a corridor 1.5 m), headroom 2.1 m under a beam, a loft or a stair landing, and a
+step up over 0.3 m is a stair (risers 0.2 m at most), not a ledge.
+
 | Thing | Size |
 |---|---|
 | Door (outside / inside) | 1.0–1.2 × 2.2–2.4 m / 0.9–1.0 × 2.1–2.2 m |

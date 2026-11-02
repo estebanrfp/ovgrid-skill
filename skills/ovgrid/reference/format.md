@@ -101,7 +101,7 @@ its parameters (range, default, step, what each does), its faces and its triangl
 
 | Kind | Box (`size`) | Faces | Orientation |
 |---|---|---|---|
-| `door` | frame: width, wall thickness, height | 0 frame, 1 leaf, 2 glass, 3 handles | front −y; `hinge` seen from the front; `open` 0–110° swings out to the front |
+| `door` | frame: width, wall thickness, height — the box is the frame's, its clear opening smaller: width − 2 × `frame` (0.08 by default) wide, height − `frame` high, so a box of 1.0 × 2.2 m leaves 0.83 × 2.1 m; a person (1.8 × 0.6 m) needs 0.8 × 1.9 m clear, never a box under 0.9 × 2.1 m | 0 frame, 1 leaf, 2 glass, 3 handles | front −y; `hinge` seen from the front; `open` 0–110° swings out to the front |
 | `window` | frame: width, ≤ wall thickness, height | 0 frame, 1 bars, 2 glass, 3 sill | front −y; the sill stands out of the box to the front |
 | `roof` | all of it: width (along the ridge), depth, eaves to ridge | 0 roof, 1 ends (gables), 2 underside, 3 eaves | ridge along x; `shed` low at −y |
 | `stairs` | made by `steps`, `height`, `tread`, `width` | 0 treads, 1 risers, 2 sides, 3 underside, 4 railing | rises towards +y; the railing stands above the box |

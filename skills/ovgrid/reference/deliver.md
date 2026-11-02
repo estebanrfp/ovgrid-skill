@@ -36,6 +36,20 @@ In the world, in build mode (Ctrl+B), the **Builds as JSON** panel (the `{ }` ic
 3. Pasted back, it says **Change N where they stand**: each object it names gets its parts as you
    wrote them, in one step of undo.
 
+## Before you give it, when you cannot run the scripts
+
+`check.mjs` and `plan.mjs` are not in your hands: walk the build in your head as the avatar (1.8 m tall, 0.6 m
+wide, a step up of 0.3 m at most), from outside into every room, and fix what stops you before you give it.
+
+1. **Every door and doorway** is at least 0.8 × 1.9 m clear — a `door` box of 1.0 × 2.2 m outside, 0.9 × 2.1 m
+   inside, its box being the frame and the opening smaller (method.md, Scale) — and the wall is cut round it
+   (method.md, Walls with openings): a door set before an uncut wall blocks the way.
+2. **Every threshold, step or ledge** is 0.3 m at most, or stairs with risers of 0.2 m at most.
+3. **Headroom** 2.1 m under beams, lofts and stair landings; rooms at least 4 × 4 m with ceilings of 2.8 m.
+4. **A clear way** of 1 m from the door through each room: furniture against the walls.
+5. **Every name** — kind, parameter, material, species — is in the guide or `catalog.json`, and no object has
+   more than 256 parts.
+
 ## Sharing it
 
 A build at an address can be brought in by anyone: with an exact anchor it lands where it was

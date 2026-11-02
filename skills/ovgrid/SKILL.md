@@ -35,7 +35,9 @@ it will stand, confirms it with a click, and can export it again for the next ro
    where prims pieced round an opening took many, and exact where a sculpt is not. What only a model holds —
    a statue — is described in a few numbers (a lathe, a box, a loft, a sweep, or a model) and made a
    sculpted prim by `node scripts/sculpt.mjs build.json`. → [sculpt.md](reference/sculpt.md)
-4. **Quality.** Real proportions, walls cut round their openings, materials at their size;
+4. **Quality.** Real proportions, walls cut round their openings, materials at their size; the avatar is 1.8 m
+   tall and 0.6 m wide, so no door box under 0.9 × 2.1 m (a door's `size` is its frame; its clear opening is
+   smaller: method.md, Scale);
    composition — the square, the ways, the gardens, the woods, the rooms, the night, the palette.
    If you can run code, write the build with a short program: parts from loops and functions,
    never typed by hundreds. → [method.md](reference/method.md), [composition.md](reference/composition.md)
