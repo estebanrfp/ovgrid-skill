@@ -89,6 +89,44 @@ everywhere — keep its spirit and make it fit, in this order:
 keep the square within its 8 lights; the forest is 60 trees round the clearing — paint the rest
 with the brush". The person decides what to trade; you never hide it.
 
+### A model as the plan
+
+A person may hand you a model to build from — a GLB of a mansion found online — instead of a
+description. Read it as an architect reads drawings, then build it again in the world's own pieces.
+Never bring in its mesh or its textures.
+
+1. **Read it**: always a GLB — Sketchfab's own download carries its pieces' names (they say much:
+   `Window.012`, `Stairs`), its materials and colours, and who made it under what licence. CC0 or
+   CC-BY only — never NoDerivatives, as your build adapts it — and the author, licence and source go
+   in every object's `origin`.
+2. **Measure it**: `node skills/ovgrid/scripts/plan.mjs <model.glb>` says it all in a second, as text: its units
+   (read from its storeys), size, materials with the bank's nearest, what repeats and where, what its
+   pieces' names say (doors, lamps, furniture, plants), the lights it carries, its levels, its walls
+   with their doors and windows (cut through them, or laid on them as most models have them), its
+   stairs, each roof slope's pitch and corners, the outlines of its flat areas, the profiles of what
+   is turned; `--json` gives every number. Its doors and windows, materials' roles and units are
+   guesses: check each against its names and the rest — exporters misname materials.
+3. **Rethink it, then build it again** from those numbers, each element by its tool (format.md,
+   «Choosing a recipe») — never its pieces gathered as they were: each wall and its openings one
+   `extrude` with its holes, its floors round their stairwells, its roofs faceted; the kinds for windows,
+   doors, stairs, columns, fences, roofs and roads; what is turned or curved a solid of its profile,
+   faceted (a fountain, an urn: a `revolve`), a large smooth curve a coarse cage smoothed near, and a
+   sculpt only where the person asks for one; species for its trees, clones for what repeats; the bank's materials
+   by role, matched to its colours. What the bank has nothing as good as — a clean modern wood
+   cladding, say — is looked for among CC0 sources at the bank's quality and taken into it: every
+   house grows the bank.
+4. **Bring it to life — always**, with what a model cannot carry: lamps in its rooms and at its
+   doors, doors and gates that open as someone comes near, a fire in its hearth and smoke from its
+   chimney, water and a jet in its fountain, furniture wherever rooms are seen or walked through.
+   Most models are shells: give it walls with their thickness, floors and a stair to each storey.
+5. **Fit it** to the avatar first: the tool's *The avatar* says at what scale to build it. A house
+   whose rooms are under 2.8 m clear or whose doors are under 2.2 m is built larger, all of it, just
+   enough (never smaller, at most ×1.5). Furniture, lamps and rails keep their size, set where their
+   floors stand grown. Stairs are laid again with risers of 0.2 m at most, wherever their run fits.
+   Then fit the whole to the ground and the budget, and say what you simplified: a flat roof made a
+   ridge, arches made straight, a railing raised to a real one's height.
+
+
 ## 2. The place: where it goes, and what is there
 
 The planet is real ground: hills, valleys, coasts, other people's builds. A build that ignores it
@@ -215,7 +253,7 @@ The terrain is a function; what you build is not.
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
 materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
 name it may use — shapes, kinds and their parameters, behaviours, particles, the 3,091 materials,
-the 31 tree species — is in **catalog.json**, made from the world's own code, one entry a line.
+the 62 species of trees and plants — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json
 {
@@ -234,8 +272,10 @@ the 31 tree species — is in **catalog.json**, made from the world's own code, 
 
 - `anchor.at`: a planet-centred point (m) on or near the ground; `anchor.heading`: the azimuth
   (° from north, east positive) the build's +y faces. `"exact": true` makes `at` the frame's origin
-  itself rather than a point over the ground — a survey's anchor, an export's. Without an anchor the
-  person places the build where they point (deliver.md). Where anchors come from: site.md.
+  itself rather than a point over the ground — a survey's anchor, an export's. `"bare": true` stands
+  the frame on the planet's own ground under the anchor, not on land edited there — a build that stands
+  on another's land, in its frame (below, Land). Without an anchor the person places the build where
+  they point (deliver.md). Where anchors come from: site.md.
 - **The frame**: on the ground under the anchor (or at it, exact). x right, y ahead, z up — right as seen from in front of the build, looking back
   at it from +y; for whoever faces +y, as a driver does or someone walking in along +y, +x is on the
   left. So a shop on the right of a square, as you face the square's front, stands at x > 0; and
@@ -265,9 +305,11 @@ each of `objects` has its own (below).
 | `light` | Its light (below) |
 | `particles` | What it throws from its top: `"chimney"`, `"campfire"`, `"torch"`, `{ "preset": "steam" }`… (effects.md) |
 | `phantom` / `collisionOnly` | `true`: walked through / not drawn (below) |
-| `behaviour` | What it does by itself: opens on a click, turns, goes and comes back (below) |
+| `climbable` / `bouncy` | `true`: climbed when walked into, as a rock face is / throws back up whoever lands on it — or how (below) |
+| `live` | a live module, people's own media for whoever is near: a voice zone, a screen, a file drop (below, Live media) |
+| `behaviour` | What it does by itself: opens on a click, turns, bounces, goes and comes back (below) |
 | `script` | Its script, JavaScript as a string, for what no property can say (effects.md) |
-| `seat` | `true`: sat on by a click, on its top, facing its +y — a bench, a chair, a vehicle's seat (vehicles.md) |
+| `seat` | `true`: sat on by a click, on its top, facing its +y — a bench, a chair, a vehicle's seat (vehicles.md); or `{ "at": [x, y, z], "turn": 90 }`, its sit target: the hips there in the part's own frame (m, from its centre) and the body turned that many degrees from its +y about the vertical, as a part turns about z — a ring-shaped puf (on its rim, not over its hole), a sofa's places, a stool sat on facing the bar; and `"pose"`, how one sits there (catalog.json → `poses`: a clip, a chair's resting the hips on the top, the rest the feet — a cushion on the floor cross-legged, a pew kneeling, a stage dancing, a car's wheel), with a target or without one |
 | `seed` | A rock's: whole number, one seed one rock (else one from the build's name and the part's place, the same at every import) |
 
 #### Shapes
@@ -318,11 +360,209 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `column` | plinth width, depth, height | 0 shaft, 1 base, 2 capital | upright |
 | `arch` | width, wall depth, height | 0 its two faces, 1 the opening, 2 outside, 3 feet | wall in x–z, opening through y |
 | `bevel` | its own | box: as a cube; cylinder: as a cylinder | `base` box or cylinder; `edge` round or chamfer, `radius` m |
-| `rock` | width (y) and height (z); length (x) from `elongation` | 0 surface | flat `base` down; sink it a tenth of its height |
+| `blocks` | its own: its grid's | one a colour, up to 8 | never written by hand: a model's square-cornered solids, made by the tool that rebuilds it — a staircase, a figure of voxels, in one part |
+| `outline` | its own: its rings' across x and y, drawn out bottom to top along z | one a colour, up to 8: its edges' and its two ends' | never written by hand: a model's solids drawn out along a way, made by the tool that rebuilds it — a gateway's arch, a wall with round windows, a letter, in one part |
+| `solid` | its own: what its `base` fills (box, cylinder, cone, ball or wedge; round ones of `sides`) | 0 its box's; a body's `colour` (1–7) for what it leaves | its `bodies` — prims, hulls, revolves, extrudes, lofts, sweeps and smoothing steps — in metres about its middle, each turned ° about x, then y, then z — see Solids below |
+| `rock` | width (y) and height (z); length (x) from `elongation` | 0 surface, 1 cover (crystals: 0 crystals, 1 stone) | `form` boulder, crag (a rock of metres), layered (`layers`), pile (`stones`), crystals (`crystals`, quartz), passage (`stones`: two pillars, a lintel, blocks — a way through) or outcrop (`stones`), these two large, 7–8 m; flat `base` down; sink it a tenth of its height; `cover` puts face 1 on what faces up — dress it in moss or snow; crystals see-through by face 0's `opacity`, glowing by its `glow`; the catalog's `families` are ready recipes |
 
-What is curved or organic — a vase, a column's swell, a cushion, a sofa, a handle, a hull — is not a
-kind you write out: describe it with `"sculpt": { … }` (a lathe, a box, a loft, a sweep, or a model)
-and the sculpt tool makes it a part of the `sculpt` kind, its map never typed by hand. → sculpt.md
+##### Solids
+
+A `solid` is one part where prims pieced round an opening took many: what its `base` fills its box with, then
+`bodies` one after another — each `add`ed to it, `cut` out of it or `keep`ing only where they meet — a `box`,
+`cylinder`, `cone`, `ball` or `wedge`, `at` and `size` in metres about the part's middle (a body's size along its own
+axes), `turn` in ° about x, then y, then z, and the `colour` (1–7) of the faces it leaves. At most 32 bodies. A wall
+4 m long with a door and a round window, their reveals dark:
+
+```json
+{ "kind": "solid", "at": [0, 0, 1.5], "size": [4, 0.3, 3], "colours": 1, "color": [0.86, 0.83, 0.76],
+  "surface": { "faces": { "1": { "color": [0.32, 0.22, 0.16] } } },
+  "bodies": [
+    { "cut": "box", "at": [-1, 0, -0.45], "size": [1, 1, 2.1], "colour": 1 },
+    { "cut": "cylinder", "at": [1, 0, 0.5], "size": [0.8, 0.8, 1], "turn": [90, 0, 0], "colour": 1 }
+  ] }
+```
+
+A cutting body reaches past the faces it cuts through (the door above: 1 m deep in a wall 0.3 m thick). Every peer
+works it out from these numbers (Manifold, off the page's thread; its object shown whole once it is, dissolving in): its record stays a
+few hundred bytes, one part, one draw. Change an opening by changing its numbers. The example build `solids` makes a wall,
+a gateway, a tower, a dome and a rounded block this way. In the editor, a box, cylinder, cone or ball's Shape tab adds
+its bodies (Cut, Join, Keep) and smoothing steps (Smooth), and changes each one's numbers, sides, mirror and copies. A hull's
+corners and a sweep's path, of the body chosen there, are handles on the part: dragged across, Alt-dragged up and down.
+
+**A face its own colour.** A box body may give each of its six faces a colour of its own, `"faces": [−x, +x, −y, +y,
+−z, +z]` (0–7 each, in the order blocks number their sides), and an extrude its two caps and its sides, `"faces": [its
+−z cap, its +z cap, its sides]`: a wall of two looks in one body — its inside on one cap, its outside on the other, its
+edges and its openings' reveals a third. What a cut body leaves is named from inside it: its −x face is the reveal at
+its −x end. Leave `faces` out where every face is its body's colour. Any other face of a body — a hull's facet, an
+extrude's side or the inside of its hole, a cylinder's round side — takes a colour of its own by a spot on it: `"spots":
+[[x, y, z, n], …]`, each a spot on the body's surface, in fractions of its box along its own axes (−0.5 to 0.5, to a
+ten-thousandth), and the colour (0–7) of the facet nearest it and of the surface smooth round it, as far as no crease
+parts them (30°, a round body's 70°): a round hole's 24 facets are one face, its intrados; a square hole's four sides
+four, each where it is — a door's jamb, not the wall's far side that faces the same way. A repeat's or a mirror's copies
+each wear it on their own face. At most 64 a body. `"flat": true` shades a body faceted, each facet alone, as a
+faceted model is drawn (the FFORMS are, every one): without it, facets meeting at less than 30° are shaded as one smooth
+surface, and a spot spreads across them; with it, each facet is a face of its own. In the editor's face mode every face
+that shows as one is picked and dressed alone: a box's side or an extrude's cap by its `faces`, any other by a spot left
+where it was clicked. In a solid joined into one surface the same goes for a body kept and for what a cut leaves (named
+from inside it, as its faces are), and for its base: the part's own `"faces": [−x, +x, −y, +y, −z, +z]` dress a box base
+side by side, its own `"spots"` any base — a block carved by its cuts dressed face by face. The bodies face mode picks
+are boxes, cylinders, cones, wedges, hulls neither round nor hollow, extrudes neither twisted nor tapered, and revolves
+(a flat revolve's quads each their own: a UV sphere is one revolve of its meridian); a ball, a round or hollow hull, a
+twisted or tapered extrude, a loft and a sweep are dressed by their colour only.
+
+**Bodies of their own points.** Round, curved and organic shapes are bodies too, each its points packed in its box:
+every coordinate a 16-bit fraction of the box, `round((v / size + 0.5) × 65535)` for v in metres about its middle, two
+bytes little-endian, a point's coordinates in turn, the whole in base64 — 0.24 mm along 16 m, eight characters a point
+of three. Write them with a generator, never by hand.
+
+| Shape | Its own fields | Makes |
+|---|---|---|
+| `cylinder`, `cone`, `ball` | `sides` 3–64 (a ball's a multiple of 4); the `base` takes `sides` too | hexagonal posts and nuts, faceted columns and arches |
+| `hull` | `points` (x y z, 4–32; 1–32 with `round`), `round` (m: each point a ball), `hollow` (m) | shards, rocks, gems, chamfered blocks, roofs (a hip roof is 6 points); with `round` a capsule of two (legs, struts, rails), cushions, pebbles; `hollow` a cabin's or a dome's skin |
+| `revolve` | `profile` (x z, 3–64: x out from its axis, from 0 to its box's side), `sides` (a whole turn's), `angle` (°) | columns, balusters, vases, wheels, tyres and rims, domes, lamps, noses; part of a turn for an arch's band |
+| `extrude` | `profile` (x y, 3–64), `holes` (up to 8 profiles through it), `twist` (°), `scale` at its top (0 a point; one number or two) | frames with their openings, mouldings, tapered wings and blades, twisted columns, spires |
+| `loft` | `points` (x y z, every section's in turn), `count` (points a section, 3–64; 2–32 sections), `hollow` (m) | boat hulls with their flare (a section that bulges in, which a hull would fill), fuselages, car bodies, wings with their roots; a section of one point is a tip |
+| `sweep` | `path` (x y z, 2–32), `profile` (x y, 3–64, in its `across` [w, h] m), `scale` at its end, `twist` (°), `closed` | rails and handrails, pipes, cables, bent tubes, mouldings round a curve, horns and tails (tapered) |
+
+Any body may be `"mirror": "x" | "y" | "z"` — itself and its copy across the part's middle: a vehicle's two sides exact
+where they meet — and `"repeat": { "count": n, "step": [x, y, z] }` or `{ "count": n, "around": degrees }` (round the
+part's z, or round the upright through `"at": [x, y]`): a balustrade, a wheel's spokes, a row of windows in one body.
+Given both, each copy is turned, then moved on its step — a helix: a spiral stair's treads, one body round a newel at
+a corner `{ "count": 16, "around": -6, "step": [0, 0, 0.25], "at": [-1.5, -1.5] }`. A step `{ "smooth": 1 | 2 | 3 }` among the
+bodies smooths what came before it — edges sharper than 52.5° kept sharp — and leaves what comes after it crisp: write
+the shape, then the step, then its cuts (windows, a deck's opening). Smooth what is ordered — lofts, sweeps, revolves —,
+not a hull of points (its long thin faces bend wrong: give it `round`). Far away a smoothed solid is drawn as its cage;
+near, each viewer draws as much of its smoothing as their Quality panel's «Smooth shapes» says. A revolve's and a
+sweep's textures follow them, round and along, at their real size.
+
+`"join": "none"` draws its added bodies as they are, side by side — no base, no booleans, nothing cut, kept or smoothed —:
+a model's faces rebuilt as plates that meet on their edges, many to a part, in no more triangles than the prims were (a
+union would split each where another overlaps it). It collides as its hulls, one convex piece each, as the prims did.
+Bodies that are all plain — hulls, boxes, cylinders, cones and wedges, none `round` or `hollow` — are made on the page at
+once, without Manifold: such a solid shows as soon as the prims round it do. So is a flat extrude among them — not
+twisted or tapered, its holes inside its outline and apart: a wall and its windows, a floor round its openings, a gable.
+Each `repeat`ed and `mirror`ed copy of either is made there too. A round one is as coarse far as a prim (24 sides near:
+6, 9, 15 and 24 by level), so a wheel or a rail in one draws no more than its prim. What repeats round an axle is one
+body and its copies — a tyre's faces, a rim's, a wheel's spokes, the part turned so that its z is the axle —, a pair
+one body `mirror`ed across the part's middle: a few hundred characters where a body each took thousands.
+
+**Choosing a recipe** — what has made recipes lighter than the prims they replaced, and what has not, each measured:
+
+- *Rethink it; never gather it* — every build, and every rebuild of one, is designed from its form's own logic before
+  a part is written: a wall and its windows one `extrude` with its holes, a floor round its stairwell another, a roof a
+  faceted solid or two, what repeats one part and its clones, openings cut in their form. True to its look, not to
+  old pieces: a rebuild draws notably fewer parts, draws and triangles, near and far, weighs notably less than what it
+  replaces, and looks as well or better — or it is not done. Gathering old pieces as they were is the last resort,
+  for what no tool fits.
+- *Faceted, subdivided or sculpted* — decide first how the form is taken:
+  - *Facet*, the default: what is built — walls, floors, frames, beams, stairs, roofs, furniture, machines — and any
+    curve seen small or far. Few faces, placed where the form turns, unsmoothed: the same mesh near and far.
+  - *Subdivide* where a large form must read as one smooth curve up close — a hull, a fuselage, a dome, a vase: a coarse
+    cage, its control net, smoothed near; far, the cage alone is drawn. Few sections and few points, placed where the
+    form turns, never sampled densely from a model or a sculpt: a dense cage smoothed weighs more far than the sculpt it
+    replaces. Smoothed, a cage draws in from its corners: a ball's of twenty faces, smoothed a step, lies 12 mm inside a
+    head of 0.69 m at the middle — make it 3.5 % larger and it meets the ball (3 mm off at the middle, 9 at 95 %).
+  - *Sculpt* only when the person asks for a sculpt. An organic form, one that dents in too, is a solid faceted: a
+    waisted post a `revolve` of its profile, a curved bracket an `extrude` or a `sweep` of its outline.
+  - Never smooth what reads by its planes (a wall rounded is a cushion), nor facet a large form that must read smooth
+    up close.
+- *Plain faces* — plates, boxes, beams, posts, wheels, hubs: hulls of each plate's own corners and plain boxes,
+  cylinders, cones and wedges, side by side, many to a part. They are made on the page with the prims, exact, and
+  collide as convex pieces. A face with no thickness (a side under a millimetre) has no hull: leave it the prim it is.
+- *Plates that wear a texture* — walls, floors, ceilings, frames: where every face of a plate wears one look (its
+  material, tint, how its tiles lie and how it takes light), gather the plates by look, each look a colour of the solid
+  (eight to one, each written whole in its face), and those turned alike into one solid turned as they are, so that its
+  tiles run on its faces as they ran on the plates' — and on from plate to plate, with no seam where two meet. A box
+  square on its solid's axes is a `box` body, half the characters of its eight corners; a box hollowed square through, a
+  frame, is its four plates. A plate whose faces wear different looks, or a look seen through, stays a prim, and so does
+  a solid that would not be lighter than its prims: a few plates, each look written whole, can weigh more.
+- *A sculpt of a model*, rebuilt: where its map is convex, a hull of its points (32 at most) within its map's own
+  precision, a byte of its box along each axis. Where it dents in — a bracket's curve, a post's waist — a hull would
+  fill it in: a `revolve`, an `extrude` or a `sweep` of its profile, faceted. It stays a sculpt only where the person
+  asks for one.
+- *Per frame*: plain parts of one look gathered — a vehicle's — cost what their prims did, at 120 Hz in the same view the
+  GPU and the page's thread within a few hundredths of a millisecond, with a third of the draws. Textured plates gathered
+  are not yet that: prims of one shape share a mesh, many to a draw, where each solid is a mesh of its own, and a house
+  so gathered drew more and its page's thread did more (+0.13 to +0.19 ms a frame). Measure before replacing what
+  repeats. A prim box is drawn in 108 triangles near and 12 far; a box body, or a hull of a plate's corners, in 12 at
+  every distance.
+- *A plate with openings* — a floor round a stairwell, a wall with its windows: one `extrude` with its `holes`, exact. Pieces
+  round a gap would be a record each, with seams where they meet.
+- *A shell along an axis* — a hull, a fuselage, a dome, a deck: a `loft` through its sections; one loft from end to end
+  rather than pieces that butt, and a `cut` for what opens in it, after its smoothing. Its twisted quads fold outwards,
+  so a loft the same either side of its middle comes out so, never dented on one side. *A turned shape* — a pod, a vase, a
+  column: a `revolve` of its profile. *A rib, a rail or a band round something*: a `sweep` of its section along its path.
+- *A skin people are inside* — a cabin, a cockpit, a vehicle's or a vessel's body: one `loft` through the few sections
+  where its form turns, each the same points, `hollow` as thick as its skin, its ends walls. Each opening is a `cut`: a
+  hull of its outline on the skin, drawn out of it and in along its own way out (8 cm out, 30 cm in). A door that is
+  part of that skin is the same loft kept within the door's outline — the very hull that cuts it out of the body, taken
+  the other way — so that the two fit exactly. Never a strip lofted of its outside and its inside: where the skin twists,
+  its two faces cross.
+- *What sits on a skin* — a raised block on a roof, a hump, a fairing —: a hull with its foot 8 mm into the skin on the
+  skin's own lines, never on points worked out between them: where it steps down to the skin, a point of every section,
+  so that its foot runs along an edge of the loft; under it, the skin one plane — a point hidden under it placed so —, in
+  halves each on its own where the skin peaks under it. A hull on a skin twisted between its sections stands off it on
+  one side and through it, into what is inside, on the other: check it with rays down it, each crossing one skin.
+- *Its glass*: within the skin's thickness, never level with its faces — 5 mm in from its outside, under the frames
+  round its openings. A flat opening, or one folded once, a pane each: a plain body, walked on as it stands. Openings
+  across a curved or twisted skin, the skin's own loft drawn thin within it, kept within a box round them: seen only
+  through them, hidden in the skin elsewhere. A pane opened from inside — a door's window — in a part of its own.
+- *What a vehicle rests on* — its wheels, skids, runners —: plain bodies. Only convex pieces move with a vehicle's body;
+  a hollow one is left out of it, so what it stands on must be convex.
+- *Furniture faceted*: a cushion, a seat's back, a panel, a box with its edges chamfered — 24 corners, 44 triangles at
+  every distance —, where a box of the bevel kind draws 108 at every distance.
+- *Sample it where it bends*, and choose its points and its smoothing by measuring what it draws near against the shape it
+  must be. Of every combination within a solid's limits, keep the fewest points that hold its form, drawing no more, near
+  or far, than what it replaces — the lightest, its four levels' triangles together, that is shaded smooth (at most 1 %
+  of its surface beside an edge turning 30–52.5°: the light breaks only where its form creases), within its form (98 % of
+  it within a hundredth of its size and a tenth of its thinnest side, nowhere twice that, its volume within 2 %), and no
+  more open where it meets other parts than its form is there, by a centimetre. What is straight wants no smoothing, nor
+  does a form of flats and rounded edges: a smoothing step rounds a flat beside a curve into a bulge. A loft's points
+  cost eight characters each: some 370 to a part.
+- *What meets a smoothed shell* is made of the shell's own loft where it can be: what fills a room cut in it — a floor,
+  a wall across, a console — that room's loft and smoothing, moved in a few millimetres, kept within its slab; what lies
+  on it — a door, a hatch — a strip of the shell's loft moved out, kept within its outline (thinnest across, as a door's
+  way out wants). Each meets the shell as drawn at every level, faceted too. What only stands near it — a sofa's back, a
+  frame on it — is fitted to it as drawn near: a ray out from its middle at its height meets the shell as made. Fitted
+  to the description, what the smoothing moved leaves a gap or reaches into the skin; fitted by rays, it does so in the
+  cage, faceted. The check (skills/ovgrid/scripts/check.mjs) notes a solid smoothed over a cage of more than 400 triangles: few
+  sections and points where its form turns hold it.
+- *Openings in a smoothed shell, and their glass* — a windscreen, a hull's windows: `cut` from the shell after its
+  smoothing step, and the glass a part of glass with the shell's own bodies up to that step, in the same box, then a
+  `keep` of the same opening: the shell's own skin there, flush at every level, nothing to fit. A part keeps what is
+  within one body and its copies: a row of windows is one body `repeat`ed and `mirror`ed, and each body of openings its
+  own part of glass. A room people walk in, a cabin, is `cut` from the cage before its smoothing: a `loft` through
+  rings moved in from the shell's own by its skin, the same points round — rings of other points poke through the skin
+  between them.
+- *Far away a solid is its cage* — its points, unsmoothed: a coarse cage is light far, a dense one keeps its triangles
+  out to the distance. A part is drawn at its far levels only once it is small on screen, though: level 1 past some 100
+  times its radius, level 0 past 200, a few pixels across. A part metres across is drawn at its near levels wherever it
+  is seen at all, its shadows a level coarser: weigh those too. Round bodies side by side thin by level as prims do.
+- *Gather what meets nowhere* into one part, side by side: the same shape, no booleans. *Join* what must read as one
+  surface. *Do not gather* what is read by its box: a vessel's inside and its waterline are the box round its largest
+  parts. Ribs or pods gathered into one part would pass for its hull; leave them their own parts.
+- *To compare*, count records, bytes, triangles a level, how close it lies to its shape, its open edges (a solid has
+  none), and when it is drawn whole. Bodies that are not all plain are worked out after the page's first frame, in two
+  workers: a build of a dozen of them is drawn about a frame after its prims.
+
+Limits, a solid refused past them: 32 bodies and steps, 3,072 characters written out, 5,000 triangles before its
+smoothing (the check says so); a step's smoothing is held to 5,000. A vase:
+
+```json
+{ "kind": "solid", "at": [0, 0, 0.55], "size": [0.8, 0.8, 1.1], "colours": 0, "material": "paving/stone/travertine-009",
+  "bodies": [
+    { "keep": "revolve", "at": [0, 0, 0], "size": [0.8, 0.8, 1.1], "sides": 24, "profile": "AIAAAP+/AABmxqMLmekuOpn5XXT/3y66Zra+4TLD////t///M6sS5MzULrpl7l10Zt7WPjK78hQAgPIU" },
+    { "smooth": 1 }
+  ] }
+```
+
+The example build `solids` has a second row of them, one part each: a hexagonal column, a vase, a wheel and its spokes,
+a boat's hull lofted through flared sections and hollowed, a handrail swept along a curve, a crystal, a cushion, a
+twisted column, a spire, and a small plane whose wings are mirrored.
+
+What only a model holds — a statue — is described with `"sculpt": { … }` (a lathe, a box, a loft, a sweep, or a model)
+and the sculpt tool makes it a part of the `sculpt` kind, its map never typed by hand; a sculpt keeps each point in a
+byte of its box (6.5 cm along 16 m), so what must join exactly — a hull, a rail — is a solid's. → sculpt.md
 
 **A fence along the land, in one part**: `points` in the part's own frame, written `[x, y]` without
 heights, lie on the ground once placed — the fence follows it, a post on each point:
@@ -368,6 +608,8 @@ see-through, glows, moves); `categories` group them. Pick by role, then by colou
 | Metal | `metal/bare`, `metal/painted`, `metal/rusted`, `metal/sheet` (with `metal`): lamp posts, railings, hinges, a bell |
 | Glass | `glass/clear`, `glass/textured`, `glass/leaded` (`look`: see-through): small panes only |
 | Water, lava | `effects/water`, `effects/lava` (`look`: moves, glows): a pond's surface, a fountain's basin, a forge |
+| Portals | `effects/portal` (`look`: glows, moves): a gate's event horizon, one pool of light to a tile — its `scale` the disc's diameter |
+| Mirrors | `effects/mirror` (`look`: mirrors): `silvered`, `antique` (foxed, hazed) — a bathroom's or a hall's glass, a wardrobe's door, a dancing room's wall: on the one face that looks into the room (below, Mirrors) |
 | Fences, grates, nets | `openwork/fence`, `openwork/grate`, `openwork/net` (`look`: cut-out) |
 
 Grep the catalog — `grep '"uses":\["roof"' catalog.json`, `grep -i thatch catalog.json` — and keep
@@ -393,6 +635,10 @@ to one or two materials a role across a whole build.
 | `gloss` | 0–1: polished, 1 a mirror |
 | `metal` | 0–1: how metallic at least |
 | `reflect` | 0–1: how much it mirrors whatever its colour |
+| `matte` | 0–1: how much less it mirrors; 1 nothing at all — no sky, no sun's highlight, no lamp's glint, glass as clear edge-on as head-on |
+| `media` | A video, a GIF or a sticker across the face, by its address (below, Media) |
+| `page` | `{ "html": "…", "data": { … } }`: a page of its own on the face (below, Pages) |
+| `pattern` | `{ "name": "tesla", "scale": 2, "width": 0.06, "glow": 0.5, "power": 3, "speed": 1, "colors": ["#00e5ff", "#ff2bd6"], "multicolor": true, "crackle": 30 }`: lines, cells or glows worked out on the face, most moving — `name` one of forty: `grid`, `hex`, `circuit`, `pulse-grid`, `plasma`, `scan`, `matrix`, `glitch`, `dots`, `stripes`, `plaid`, `tesla`, `dna`, `reactor`, `fire`, `ember`, `fluid`, `vein`, `shockwave`, `heartbeat`, `stargate`, `firefly`, `rune`, `pcb-trace`, `warp`, `synapses`, `nano`, `radar`, `sonar`, `dot-wave`, `dot-orbit`, `ic-chip`, `bus-line`, `motherboard`, `led-grid`, `signal`, `particles`, `p2p-mesh`, `fluid-plus`, `lava-flow` (what each looks like, and its own numbers with their ranges: catalog.json, `patterns`); every pattern's `scale` cells a metre (0.25–20), `width` a line's share of its cell (0.01–0.3), `glow` how much its lines light themselves and `power` how bright (0–1, 0.5–10), `speed` (0–5), `background` how much of the face itself shows between its lines (0–1: 0 the pattern alone, what is behind seen through), its colours `#rrggbb`; its own numbers — up to three, by name, as tesla's `bolts`, `reach`, `crackle` — another pattern's dropped; each left out at its default. Its lines lie at their size on the face whatever the part's — a reactor, a radar, a stargate or a warp round the face's middle, fire rising from its foot —; over a face's colour, or on a textured face in its tiles |
 | `faces` | `{ "<face>": { …any of the above } }` by face number (0–8); a face's own wins |
 
 How a texture runs: a box's top and bottom run u along its x; its four sides run u level and v up;
@@ -402,7 +648,210 @@ from each face's centre: to run courses on across the boxes of one wall, slide e
 by its centre's place along the wall and up it, in tiles (`offset`).
 
 The bank's own effects come with the material: glass and water seen through, water rippling,
-lava glowing and flowing, fences and grates cut out (catalog `look`).
+lava glowing and flowing, a portal's pool of light rippling out from its middle, fences and grates
+cut out (catalog `look`).
+
+#### Mirrors
+
+A face of `effects/mirror` shows what stands before it as a mirror does: the avatars, and what is built 5 m before
+it. Put it on one flat face, the one looking into the room, the rest of the part a frame's or a wall's material (a
+box's face 1, −y, as below); a disc's top (a cylinder's face 0) does too, a curved face does not. Keep its face 1–2 cm
+proud of the wall behind it, never level with it, and a few millimetres of frame round it. The terrain, plants and
+water are not in it: past a window or a door it shows the sky and the ground's colour.
+
+```json
+{ "name": "hall mirror", "shape": "cube", "at": [0, 2.98, 1.45], "size": [1.2, 0.04, 1.8],
+  "material": "wood/planks/oak-veneer-03", "surface": { "faces": { "1": { "texture": "effects/mirror/silvered" } } } }
+```
+
+What it shows and when is its face's `mirror` (or the prim's surface's, for all its mirror faces), each optional:
+
+| Field | |
+|---|---|
+| `reflects` | `"near"` (default): the avatars and what is built within 5 m before it; `"avatars"`: the avatars alone, the room behind them the surroundings as metal shows them |
+| `on` | `"near"` (default): by itself while one stands within `radius` and it is in view; `"click"`: switched by a click on it; `"aim"`: aimed at within reach, as a vehicle is — the hint, then E or a click. Each viewer for themself |
+| `radius` | 2–30 m (default 6): how near one stands for it to come on by itself |
+
+Or the Media palette's own: a live mirror, `"live": { "type": "mirror", "face": 1, "look": "antique", "on": "aim" }`
+(below, Live media) — its face wears the bank's mirror of its `look` (`silvered`, `antique`) with those settings.
+However many mirrors there are, one at a time shows what stands before it: of those on, the one taking most of the
+screen; the others mirror the surroundings as metal does.
+
+#### Media: videos, GIFs and stickers on a face
+
+A face shows a video or an animated picture by its address — a screen, a sign, a sticker on a wall —
+with `media` in its surface. Only the address goes into the build: every browser that shows it fetches
+the file itself, so nothing of it travels between people.
+
+```json
+{ "name": "board", "shape": "cube", "at": [0, 0, 1.9], "size": [2, 0.03, 2], "material": "metal/painted/metal-029",
+  "surface": { "faces": { "3": { "media": { "url": "https://media4.giphy.com/media/…/giphy.webp", "autoplay": true, "loop": true, "since": 1793145600000 } } } } }
+```
+
+| Field | |
+|---|---|
+| `url` | An https address, 512 characters at most: a video (MP4, WebM) or an animated picture — told by its ending: `.webp`, `.gif`, `.png`, `.apng`, `.avif` |
+| `autoplay` | `true`: plays by itself where its host is trusted (GIPHY's) or for its owner; anyone else starts it once with a click (▶) |
+| `loop` | `true`: starts again at its end |
+| `since` | When it began, ms since 1970: every person sees the same frame at the same time |
+| `volume` | 0–1, a video's sound, heard from its face |
+| `playing` | `false`: stopped where it is |
+
+- **A GIF is its MP4**: the lightest file, played as a video. **A sticker is its animated WebP**: it
+  keeps its transparency and is cut out where it is clear; a sticker's MP4 has none and comes on
+  white. Never a GIF's `.gif`: heavier (one sticker: GIF 1.09 MB, WebP 615 KB, MP4 105 KB) and 256
+  colours.
+- **From GIPHY**: in the editor, Materials → GIPHY (GIFs or Stickers, searched, one click). For a
+  build file, GIPHY's search API — `https://api.giphy.com/v1/gifs/search` or
+  `https://api.giphy.com/v1/stickers/search`, with `api_key`, `q` and `rating=g` — and of each result
+  `images.original.mp4` for a GIF and `images.original.webp` for a sticker, with
+  `images.original.width` and `height` for its proportions. Use the address as GIPHY gives it:
+  never rewritten, copied or proxied.
+- **Give the face the file's proportions**: the frame covers the face whole, so 480 × 270 wants a
+  16:9 face and 480 × 480 a square one. It reads as it is seen from in front of the face: upright,
+  not mirrored. A box shows it on its front (+y) as face 3 and on its back (−y) as face 1.
+- **Only the faces that need it**: the 8 nearest faces with media are shown at once, 4 videos at
+  most among them. The rest show their own material (a video's face) or nothing (a picture's) until
+  they are among the nearest. `media` on a whole surface takes all six faces of a box.
+- **Light**: a video lights itself and a little round it. A picture is lit as its face is (dark at
+  night) and casts no shadow.
+- **Distance**: it plays within 30 m, when on screen at least 64 px tall.
+- **Safari**: it has no `ImageDecoder` yet, so a sticker shows its first frame there, still.
+
+#### Live media: a voice zone, a screen, a file drop, a mirror
+
+A prim may carry a live module, people's own media peer to peer for whoever comes near — `"live": { "type": "voice" }`
+(whoever stands within `radius` m hears the others on air), `{ "type": "screen", "face": 3 }` (that face shows a
+camera or a screen someone shares), `{ "type": "drop" }` (a file dropped on it reaches everyone near, or with
+`"to": "owner"` its owner alone). Each takes `"who": "anyone" | "owner"` (who goes on air), `radius` (m) and
+`quality` (voice kb/s, a screen's height in px, a drop's largest file in MB); a screen also `fps`. Values are held
+to their ranges. Put a screen on a thin panel facing where people stand; a received screen counts as a video
+(4 play at once). Nothing to stream is in the file: people bring it. And `{ "type": "mirror" }`: its `face` (3, +y, by
+default) a mirror of the bank's `look` — `reflects`, `on` and `radius` as above, Mirrors —, nothing on the wire.
+
+#### Pages: HTML on a face
+
+A sign, a menu, a board of scores, a vote, a guestbook: HTML and CSS of its own, 8,192 characters at
+most, drawn by each viewer's browser into the face's texture, lit as the face is and the same for
+everyone — in the editor, Materials → Page (its Example to start from); in a build file, `page` in its
+surface. Give it to one face (a board's front), not a whole box.
+
+- **Size**: it is laid out in its face's own shape — a 1.6 × 0.9 m face is a 1024 × 576 px page —,
+  so size what is in it in `cqw` and `cqh` (`vw` and `vh` become those). Its `body` is the page.
+- **Data**: `data` holds what its `{{name}}`s show, as text.
+- **Shown**: as far as builds are drawn. The eight nearest faces with a page or media, within 30 m and
+  at least 64 px tall on screen, are drawn as they change — a page's drawings 2 % of the GPU at most.
+  Every other page — farther, smaller, past those eight — shows still: its last drawing made smaller
+  once and mipmapped, drawn again when it changes at most once a second, 32 at once, the nearest. Media
+  past the eight shows nothing till nearer.
+- **Used as a page is**: a click lands on what is drawn under it. A field (text, search, number, a
+  `textarea`) takes the keyboard — nothing typed moves the avatar, Esc lets it go —, a box or a radio
+  is ticked, a slider slid, a `<details>` opened, a link to an `#id` of its own brings it into view;
+  the wheel scrolls what scrolls. All that is each viewer's own, as on a web page.
+- **Nothing runs, comes from elsewhere or is filled in**: its own `<script>`s never run, nor handlers;
+  no links to elsewhere, no `url()`, images only as `data:` URLs, no `@media`, `@font-face` or
+  `@import`, no CSS animations, nothing that blurs (`backdrop-filter`, a filter's `blur()` or
+  `drop-shadow()`). No password, file or submit field and no `select`; an `email`, `tel` or `url`
+  field is typed as text, and only a box or a radio keeps its `name` (it groups them).
+- **Charts**: `<chart type="bar" data='{"Mon":12,"Tue":8}' colors="#fca311 #3a86ff">` — `type`
+  bar, line, area, pie, gauge or graph; `data` a JSON object of labels and numbers, 32 at most (a gauge
+  takes `value`, `min` and `max`, 0–100 unless said; a graph `{"nodes":[{"id":"a","label":"Alice",
+  "group":"relay"}],"links":[{"source":"a","target":"b"}]}`, 200 nodes and 400 links at most, coloured by
+  group or a node's own `color`, laid out by OVGrid); `colors` hex, by space or comma. OVGrid draws it as SVG
+  in the page's colour and font, sized by the page's CSS — `chart { width: 90cqw; height: 60cqh }` — (16:9 of
+  its width unless said). Fill its
+  numbers from the page's `data` — `data='{"Yes": {{yes}}, "No": {{no}}}'` — and the script that keeps
+  them changes the chart for everyone. No chart library or script of its own: none would run.
+  New data eases in by itself, 0.3 s: each bar, point, slice and the gauge's needle from its old value to its
+  new by its label, a graph's nodes by their id to their new places, what comes in growing and what goes
+  shrinking. Keep the labels and ids the same from one change to the next, and data that changes every
+  second animates smoothly; new labels each time only come and go.
+- **Actions — counting, signing, voting with no script**: a few verbs in its attributes that OVGrid
+  does, each click the clicker's own entry, signed by them and theirs alone, the same for everyone.
+  `data-on-click` on what is clicked — or on what holds it: `add visits 1` (a sum), `set vote day` (a
+  choice), `toggle like` (on or off), `push book name` (a line: what is typed in the field whose `id` is
+  `name`), `remove book` (one's own entry gone). `data-show` on what shows it: `visits` (the total; a
+  choice's — how many chose —, a toggle's — how many have it on —, a list's — its lines), `vote.day` (how
+  many chose `day`), `book.last` (who was last: the name they go by and their address, shortened),
+  `book.when` (when, in each viewer's hours). A list of what was written, newest first, with who and when
+  — `<list data-show="book" data-limit="8"></list>`, styled by the page's CSS as `list` and `list p`.
+  One entry a name a person: a vote changed, not added; a person's last 20 lines. Names letters, digits,
+  `.`, `-`, `_`, 32 at most; a choice 64 characters, a line 256; 16 names a page. Only whoever is signed in
+  acts, a person's writes one a second at most — what they do between shows at once and goes with the
+  next: each entry is a node of the world's graph. A page may have both: its actions, and a script for
+  what they cannot say.
+- **Cards that move — a kanban, notes on a board**: `data-drag="report"` on what may be moved,
+  `data-zone="done"` on where it may go. Walking, one presses it within reach, holds it and moves the
+  pointer: let go over a zone, it goes into it, else it stays where it was let go — for everyone, the
+  latest move winning, as any action (`set report done`). Give each card a name of its own; style zones and
+  cards in the page's CSS.
+
+```html
+<div class="zone" data-zone="todo"><div class="card" data-drag="report">Write the report</div></div>
+<div class="zone" data-zone="doing"></div><div class="zone" data-zone="done"></div>
+```
+- **What people add — notes, cards, things to do**: the lines of a `<list>` are items anyone who writes
+  on the page adds (`push`). `<list data-show="cards" data-drag>` lets anyone move them — into a
+  `data-zone`, or anywhere on the page —; `<list data-show="todos" data-check>` lets anyone tick them done
+  and back with a click. Each line says where it is, `data-state="done"`, for the page's CSS:
+  `list p[data-state="done"] { text-decoration: line-through }`. A kanban:
+
+```html
+<input id="card" placeholder="A new card"><button data-on-click="push cards card">Add a card</button>
+<section data-zone="todo"><h2>To do</h2><list data-show="cards" data-drag></list></section>
+<section data-zone="doing"><h2>Doing</h2></section><section data-zone="done"><h2>Done</h2></section>
+```
+  In the editor, the Boards icon places a Notes board, a To-do list, a Kanban, a Vote or a Drawing board
+  in one click, ready to use.
+- **Drawing**: `<drawing data-show="ink"></drawing>` — OVGrid fills it with what everyone drew, pens of
+  four colours and an eraser at its top left, and a Clear for the board's owner; walking, one presses on it,
+  holds and moves the pointer. Size it in the page's CSS (`drawing { width: 96cqw; height: 92cqh; aspect-ratio:
+  auto }`), white unless its `background` says. `data-owner` on any element shows it to the page's owner alone.
+- **Who writes on it, and what stays — its owner's**: `"writers": "owner"` in the page (only its owner, a
+  notice board), or a list of addresses (a class: those and its owner), or none (everyone signed in) —
+  also set in the Page tab, which adds everyone near with one click. Its owner hides a line, shows the
+  hidden again or clears a name for everyone from the Page tab; `data-on-click="clear book"` in the page
+  does the same, for its owner alone.
+
+```html
+<button data-on-click="add visits 1">I was here · <b data-show="visits"></b></button>
+<input id="name" placeholder="Your name"><button data-on-click="push book name">Sign</button>
+<p>Last: <span data-show="book.last"></span> at <span data-show="book.when"></span></p>
+<list data-show="book" data-limit="8"></list>
+<button data-on-click="set vote day">Day · <b data-show="vote.day"></b></button><button data-on-click="set vote night">Night · <b data-show="vote.night"></b></button>
+<button data-on-click="clear book">Clear the book</button>
+```
+
+```json
+"page": { "html": "…", "writers": ["0x3546d4ba0ac3bfdea3f1511f82a078dddb3f4931", "0x8089c0480139d85d82c1e20eef08a77ef8cd7dec"] }
+```
+- **Drawn through an effect** — OVGrid's own, no shader code in the page: `"effect": { "name": "crt" }` in
+  the page, one of `liquid-glass` (a glass lens where the pointer is), `elastic-bulge` (the page bulging at
+  the pointer), `chromatic` (an RGB split round the pointer), `crt`, `glitch`, `vhs`, `halftone`, `ascii`;
+  `intensity` (0–3), `speed` (0–4), `size` (0.25–4) and `color` (`#rrggbb`, multiplying its own tint)
+  each 1, or white, as on html-in-canvas.dev — their cells, dots, scanlines and splits as large on screen at
+  any distance as on the site at full screen. Also in the editor's Page tab. For a sign that should stand
+  out — a CRT clock, a retro arcade board —, not on every page.
+- **By night**: give its face `emissive: 1` and it lights itself, white round it, as a sign does — the
+  editor's Page tab does so when it makes one; leave it off for a page lit only as its face is.
+- **What it does for everyone is the part's `script`** (effects.md): a click is heard with `target`,
+  the `id` of the element it fell on, and `values`, the page's fields as the clicker had them — by
+  `id`, a box's or a radio's by its `name`, 16 at most, text 256 characters at most. The script keeps
+  the page's `data` for everyone:
+
+```json
+{ "name": "vote", "shape": "cube", "at": [0, 0, 1.9], "size": [2.4, 0.04, 1.35], "material": "metal/painted/metal-029",
+  "surface": { "faces": { "3": { "page": { "data": { "yes": 0 },
+    "html": "<style>body { background: #14213d; color: #fff; font: 12cqh system-ui; text-align: center } button { font: inherit }</style><button id=\"yes\">Yes · {{yes}}</button>" } } } },
+  "script": "on('click', ({ target }) => { if (target === 'yes') keep({ surface: { faces: { 3: { page: { data: { yes: (get().surface.faces[3].page.data.yes ?? 0) + 1 } } } } } }) })" }
+```
+
+A guestbook's script reads what was typed — an `<input id="guest">` and a `<button id="sign">`, its
+`{{last}}` the last name signed:
+
+```js
+on('click', ({ target, values }) => { if (target === 'sign' && values?.guest) keep({ surface: { faces: { 3: { page: { data: { last: values.guest } } } } } }) })
+```
 
 ### Light
 
@@ -415,13 +864,21 @@ lava glowing and flowing, fences and grates cut out (catalog `look`).
 - `on`: `true` (default), `false` (off: its emission and glow off too — a lamp switched off), or
   `"night"` (on once the sun has set where it is, its emission with it).
 - `range`: m, 0–10 (held to 10). `0`: it lights nothing round it but still glows — a lantern for
-  looks, always lit, at no cost. (A light that reaches nothing is never switched: `"night"` needs a
-  range above 0.)
+  looks, a strip of light, at no light's cost. On at night (`"night"`) or in a `zone`, such a light
+  still comes on and goes off as the others do and follows its zone's switches: an LED strip on a
+  switch.
 - `color` linear RGB, `intensity` 0–1; `cone`: a spot down the part's own −z, `angle` half its
   width 1–90°, `softness` 0–1; `flicker` 0–1, a flame's.
+- `zone`: the name its object's light switches switch it by (lower case, up to 32 characters): a
+  room's (`"salon"`), a deck's. A light in no zone is never switched by hand: a navigation light, a
+  lantern for looks. See *Lights on switches, by zone* below.
 - Switched on with nothing emitting, a part is a lamp of its own: white, 1, 10 m unless it says.
 - **Walls stop a light when they are parts of its own object**: a lamp in a room is a part of the
   house's object. Glass lets it through. Keep a lamp outside short of other buildings' rooms.
+- **A lamp's own fixture lets its light through**: its own part, and any part no larger than a
+  metre that holds it — a lantern's globe, its cage. Keep a cage in its light's part or in one of
+  its own: gathered with the post into a larger part, it closes round the light as walls do, and a
+  light walled in stays lit by day, where one in the open fades out as the sun rises.
 
 ### Collisions and behaviours
 
@@ -432,6 +889,15 @@ prims collide as their mesh, its hull when convex.
 - `"phantom": true` — drawn, walked through: curtains, hanging leaves, light beams, water to wade in.
 - `"collisionOnly": true` — bumped into, not drawn (faintly, in build mode): an invisible wall, a
   smooth ramp over stairs, a rail round a roof. One or the other, never both.
+- `"climbable": true` — walked into, a wall of it as steep as a rock face (52° or more) is climbed
+  as one is: W up, S down, A and D along it and round its corners, over its top: a climbing wall, a
+  ladder's face, a cliff that is built. Everything else stops the avatar as a wall does.
+- `"bouncy": true` — whoever lands on it is thrown back up, 80 % as hard as they came down, 3 m high
+  at most: a trampoline, a bouncy castle's floor. Or how: `{ "trigger": "step", "height": 6, "give": 80,
+  "along": "own" }` — `trigger` `"landing"` (the default) or `"step"`, thrown as soon as stepped on (a
+  jump pad); `height` 0.5–30 m, stepped on, that high every time; `give` 0–100 % of a landing given back
+  (100: as high each time); `along` `"up"` or `"own"`, along its own up, so that tilted it throws one
+  across (a launch pad). Either goes with any of the above.
 - `"behaviour": { "type": …, …parameters }` — what it does by itself, the same for every peer
   whether its owner is there or not; on a prim, on an object (in `objects`) or on a clone. Every
   type, its parameters with their ranges and defaults: catalog.json → `behaviours`.
@@ -441,9 +907,14 @@ prims collide as their mesh, its hull when convex.
   | `door` | swings open and shuts by itself; a `door` kind opens its own leaf, up to 110° | `angle`, `hinge`, `trigger` — `"click"` (within 5 m), `"near"` (someone within `reach` m; it shuts once all have gone) or `"both"` — `reach` (m, 2.5), `time`, `stay` (s after a click; 0: until clicked again); prims only |
   | `slide` | slides aside and back by itself: a sliding door, a window, a hatch | `x`, `y`, `z` (m, its own axes), `trigger`, `reach`, `time`, `stay` |
   | `spin` | turns round its own z all the time: a sign, a windmill's sails, a carousel | `speed` (°/s) |
-  | `move` | goes to a point and back, waiting at either end: an elevator, a ferry, a platform | `x`, `y`, `z`, `speed`, `wait` |
+  | `bounce` | hops along its own z and falls back, over and over, as a ball does: a ball, a toy, a sign that jumps | `height` (m, 0.05–20) |
+  | `move` | goes to a point and back, waiting at either end: an elevator, a ferry, a platform | `x`, `y` (m, ±64), `z` (m, −64 to 100 km), `speed` (m/s), `ease` (`"smooth"`, the default: eased over its whole way, `speed` its average; `"accel"`: speeding up at `accel` and slowing down at `decel`, m/s² — over speed² / (2 × either) m — `speed` its fastest), `wait` (s) |
+  | `call` | on a click, brings what goes and comes back near it down where it is kept at once, to set off again from there: a call button by a platform; a `lift` near it, to its stop nearest the button | `reach` (m, 8: how near it what it calls is kept) |
+  | `lift` | goes from stop to stop up and down its frame on a click — on it, or on a call button by a stop — and waits there till it is called again: a platform lift, an elevator; the parts of an object whose lift has the same `group` go as one (a platform, its rails, its buttons) | `stops` (up to 8, m up its frame from where it is kept, below 0 down: a floor each), `speed` (m/s, 0.8), `group` (a name its parts share), `button` (`"none"`: a click on it does nothing — its floor, its rails —; `"next"`, the default: on to its next stop, back from either end — one button for down and up —; `"stop"`: to its `stop`, 0 where it is kept — a button a floor) |
+  | `switch` | switches its object's lights in its zones, for everyone: on a click on or off — a switch by a room's door, one for a floor, one for every light — or, `"near"`, a presence detector: on while someone stands under it on its floor, off once all have gone; prims only | `zones` (a list of zone names, or `"all"`: every light of its object in a zone), `trigger` (`"click"`, the default; `"near"`; `"both"`), `reach` (m, 4: how far across under it a presence detector senses), `stay` (s, 30: how long its lights stay on once all have gone) |
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
-  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea) |
+  | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
+  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each) |
 
 - **Doors the avatar walks through**: a door's leaf collides where it stands, so a shut door is a
   wall. Build it shut and give it `"behaviour": { "type": "door", "trigger": "both", "reach": 2.5,
@@ -465,7 +936,36 @@ prims collide as their mesh, its hull when convex.
   ```
 
   A behaviour moves its thing in its own frame: `spin` turns about its own z (stand sails up with a
-  turn), `move` and `slide` go along its own axes. Parameters left out take their defaults.
+  turn), `bounce` hops along it, `move` and `slide` go along its own axes. Parameters left out take
+  their defaults.
+
+- **Lights on switches, by zone**: give each light its room's `zone`, and put a switch by each of the
+  room's doors — any small prim with `"behaviour": { "type": "switch", "zones": ["salon"] }`, about
+  1.1 m over the floor and a little proud of the wall. Two switches with the same zones are a two-way
+  switch; one naming several zones switches a floor; one with `"zones": "all"` every light of its
+  object (by the front door, at a helm). Lights `"on": "night"` still come on at nightfall and go off
+  at daybreak by themselves; switched by hand, they stay as they were left till the next nightfall or
+  daybreak; whatever switched a light last, it wins. Every peer sees them alike, and the owner's
+  page keeps the last switching, so that whoever comes within 12 hours finds them so.
+  A **presence detector** (`"trigger": "near"`) goes on a ceiling: it senses who stands under it on
+  its own floor — up to 3.5 m below it and `reach` m across, nobody on the floor over it — and keeps
+  its zones off till someone comes, then on as far as each light's own `on` lets it (`true`: any time;
+  `"night"`: at night only), and off `stay` s after the last has gone. Give a switch a faint glow that
+  lights nothing round it, to be found in the dark.
+
+  ```json
+  "prims": [
+    { "name": "salon lamp", "shape": "cylinder", "at": [0, -1, 2.78], "size": [0.16, 0.16, 0.04],
+      "light": { "on": "night", "range": 10, "zone": "salon" } },
+    { "name": "salon switch", "shape": "cube", "at": [3.6, -4.07, 1.1], "size": [0.09, 0.015, 0.14], "color": [0.6, 0.62, 0.64],
+      "surface": { "emissive": 0.15 }, "light": { "on": true, "range": 0 }, "behaviour": { "type": "switch", "zones": ["salon"] } },
+    { "name": "every light", "shape": "cube", "at": [-3.6, -4.07, 1.1], "size": [0.09, 0.015, 0.14], "color": [0.6, 0.62, 0.64],
+      "behaviour": { "type": "switch", "zones": "all" } },
+    { "name": "hall detector", "shape": "hemiSphere", "at": [0, 4, 2.77], "size": [0.12, 0.12, 0.05], "turn": [180, 0, 0],
+      "behaviour": { "type": "switch", "trigger": "near", "reach": 6, "stay": 30, "zones": ["hall"] } }
+  ]
+  ```
+
 - Moving things carry whoever stands on them.
 
 ### Objects, clones, trees
@@ -479,13 +979,51 @@ prims collide as their mesh, its hull when convex.
   as if it stood at the origin facing +y, then place it. Names are unique in a build.
 - **A vehicle** is an object with `"vehicle": { "type": "car" | "bike" | "boat" | "train", … }` and
   a part with `"seat": true` to drive from: vehicles.md.
+- **Dry inside**: an object with `"dry": true` — a dome, a base, a room built under the sea — has its
+  inside, the box round its largest parts, kept from the sea's water: no fish through it, no water in its
+  air, no sun nor caustics in it, no surface seen from under it, whoever is in it dry, in what of it rises
+  over the sea's level too — and, the camera inside, all of it seen in that air, whatever its shape: a
+  tower, a lift's shaft, a tube rising from it; the camera zoomed out of it, what is inside still seen through
+  its glass in its air, the rest from the water as all is. Make its
+  shell and floor its largest parts. Without it, what is built under the water is flooded however closed
+  it is — a wreck, swum through —: give it to anything meant to be walked in under the sea. Its clones are dry too. A submarine is dry by its kind (vehicles.md); nothing
+  that is not under the water needs it.
 - **A clone** `{ "of": "<object's name>", "at": …, "turn": … }` draws that object's parts again in
   a frame of its own. Nothing is copied: change the object and every clone changes. Use it for
   whatever repeats unchanged: lamps, benches, fence sections, identical houses.
 - **A tree** `{ "species": "oak", "at": [x, y], "scale": 1, "seed": 3, "turn": 40 }`: a species of
   catalog.json → `species`; the variant drawn is `seed % 6` (each variant's height and crown are in the
   catalog); `scale` 0.25–4; `turn` ° about z (none: one its seed gives); `seed` defaults to one from
-  the build's name and the tree's place in the list.
+  the build's name and the tree's place in the list; `key`, optional, what the build knows it by
+  (letters, digits, dots, dashes): imported again, the tree is found by it, wherever the list now puts
+  it — give one to every tree of a build that will be patched. `params`, optional: that one plant shaped on its
+  own, as a species' parameters are — `"glow": 0.6` lights its leaves and flowers (a magic world's),
+  `"flower": [r, g, b]` its flowers' colour, `"leaf"`, `"bark"`, `"branches"` … (catalog.json's
+  species list what each has); its trunks: `"trunks"` (1–8), `"lean"` (0–85°), `"fan"` (20–360°:
+  less leans them to one side, its heading's), `"spread"` (0–3 m between feet), `"bend"` and
+  `"topBend"` (±120° along the lower half and the upper: one each way an S) — a palm leaning over a
+  beach `{ "lean": 60, "fan": 30, "bend": -50 }`, a clump `{ "trunks": 4, "lean": 30 }`. `script`,
+  optional: its script's source (a string), run by every peer near it — a plant's sets its look alone,
+  `tint` and `glow` (`on('night', () => set({ glow: 0.8 }))`); `tint` and `glow`, optional, that look
+  as its script keeps it.
+
+### Land
+
+The planet's ground itself can be shaped: a build may carry its own ground, which is placed with it as
+the planet's ground, edited, wherever it is imported — a hill a castle stands on, a flattened yard.
+
+```json
+"land": { "at": [-83, -83], "step": 1, "size": [167, 194], "heights": "<base64>" }
+```
+
+- A grid of heights in the build's frame: `at` the first sample's place (its lowest x and y), `step`
+  the metres between samples (0.25–8), `size` how many along x and along y (at most 512 × 512);
+  `heights` the samples row by row from the first, each an int16 of centimetres over the frame's
+  origin, little-endian, base64 — −32768 where the planet's own ground stays.
+- A build that carries land stands its frame on the planet's own ground under its anchor; its land is
+  counted from there. Its objects stand on the land as written: give them their z over the origin.
+- Only the parcel's owner may shape its land: imported by anyone else, the build is placed and its land
+  is not (said in the console). Within +32 m and −32 m of the planet's own ground.
 
 ### Ids and changing a build
 
@@ -505,7 +1043,9 @@ record, which every peer draws as it draws any prim, coarser as it gets farther.
 format's own: whatever you describe, a part never costs more.
 
 Boxes, walls, floors, beams, steps and anything flat stay prims and kinds (format.md): a box is 12
-triangles, a sculpt hundreds. Reach for a sculpt only where the shape is curved.
+triangles, a sculpt hundreds. **Make a sculpt only when the person asks for one**: a curved or
+organic shape is otherwise a solid, faceted — a revolve, an extrude, a loft or a sweep of its profile,
+a large smooth curve a coarse cage smoothed near (format.md, «Choosing a recipe»).
 
 ### The flow
 
@@ -854,11 +1394,18 @@ ways through it, what stands along them, what grows round them, what lights them
 
 ### Forests, groves, clearings
 
-- **Species by place**: conifers (`fir`, `pine`, `cypress`) on heights and slopes, broadleaf
-  (`oak`, `maple`, `birch`, `poplar`) in valleys and round villages, `willow` by water, `olive`,
-  `cypress` and `pine` in the south, palms (`coconut`, `date`, `fanPalm`) on hot coasts, `dead`
+- **Species by place**: conifers (`fir`, `pine`, `cypress`, `blackPine`, `sugi`) on heights and slopes,
+  `redwood` and `dawnRedwood` in damp valleys, broadleaf (`oak`, `maple`, `birch`, `poplar`, `beech`,
+  `chestnut`) in valleys and round villages, `plane`, `zelkova`, `camphor` and `hackberry` along streets
+  and squares, `willow` and `alder` by water, `feverTree` and `blueGum` where it is hot, `olive`,
+  `cypress` and `pine` in the south, palms (`coconut`, `date`, `fanPalm`, `curvedCoconut` leaning over a beach, `dateClump` in an oasis)
+  on hot coasts, `spindle` and `christmas` palms in gardens, `dead`
   ones sparingly. One dominant species 60–70 %, one or two others; bushes (`bush`, `oleander`,
   `fern`) at the edges and in gardens.
+- **Meadows, beds and borders**: a meadow is `meadowGrass` with `rudbeckia`, `daisy` or `poppy`
+  sown loose through it; beds hold `lily`, `gladiolus`, `columbine`, `heather` or `sunflower`, a few
+  of a kind together; `sedge` and `papyrus` grow by water, `hosta`, `monstera`, `strelitzia` and
+  `cordyline` under palms in a hot garden. These are 0.3–1.3 m tall: 0.4–0.8 m apart, never one alone.
 - **Spacing**: crowns may touch in a wood — 0.8–1.2 × the crown's width apart (twice its `reach`
   in catalog.json → `species`: an oak's ~7 m reach, 10–14 m apart in open woodland, 6–8 m in a dense
   wood); a row of poplars 5–6 m apart.
@@ -967,7 +1514,7 @@ refuses the build. Counted with every clone (a clone's parts draw again).
 
 | | fair | most | Why |
 |---|---|---|---|
-| parts | 1,500 | 4,000 | each an instance; the reference village is 593 |
+| parts | 1,500 | 4,000 | each an instance; the reference village is 65, rethought (535 as prims) |
 | triangles | 150,000 | 600,000 | at the finest level, near the camera; round shapes are the dear ones |
 | materials | 40 | 96 | each ~150 kB for every visitor to fetch, ~700 kB up close; past 16 within 10 m, the nearest blur |
 | lights | 12 | 32 | the renderer lights with the 32 strongest in view |
@@ -980,7 +1527,10 @@ refuses the build. Counted with every clone (a clone's parts draw again).
 
 Besides: **an object holds at most 256 parts** (split a village into objects: each house, the
 square, each run of fence), a part's `light` reaches **10 m** at most, a build is at most 2 MB of
-JSON.
+JSON. Parts are what a build weighs on every peer — each a record signed, kept and sent to whoever
+comes —, so a shape a `solid` makes in one part (a hull, a rail, a wheel and its spokes) beats a
+pile of prims. A solid comes to at most 5,000 triangles before its smoothing; each step of smoothing
+multiplies what came before it by 4, 9 or 16, held to 5,000 near, its cage alone far away.
 
 ### What a place may hold
 
@@ -1007,6 +1557,8 @@ A place past its *most* takes nothing more: build lighter, or somewhere else.
 | Clones | A transform each; the original's parts, meshes and far mesh shared | Clone what repeats unchanged |
 | See-through faces (glass, water, `opacity` < 1) | A pass of their own, sorted far to near, no hidden-surface removal: ~0.3 ms for a layer covering the screen | Small panes; no big translucent walls; no glass behind glass |
 | Cut-out materials (fences, grates) | Discard fragments, defeating the GPU's hidden-surface removal | Small things only |
+| Media (videos, GIFs, stickers on faces) | The 8 nearest faces with media get a screen each (18.9 MB of video memory once one is near). A video's new frame is copied in ~0.2 ms, a sticker's in ~0.3 ms (480 × 270). Nothing at all without a face with media near | On a board's front, not its whole surface; a few near one another (format.md, Media) |
+| Pages (HTML on a face) | The 8 nearest take the screens with media, drawn when they change — 0.3–0.5 ms a page where the browser has HTML-in-Canvas —, each page's drawings 2 % of the GPU at most and what blurs left out, a texture each (2.4 MB at most); the rest show still, 32 at once, 0.8 MB each, made smaller once and mipmapped; a page that lights itself is a light round it, counted with the lights; an effect it is drawn through costs only its face's pixels, nothing measurable at a board's size (a CRT, Liquid Glass); nothing at all without a face with a page near. An action — a stroke drawn too — is a write in the world's graph — a person's one a second, what they do between going with the next —, and today every write has every peer save the whole graph again (200 ms at 15,000 nodes) | On a board's front; changed by its script a few times a second at most; actions for what people do now and then — signing, voting, a visit —, never a stream (format.md, Pages) |
 | Lights | Per lit pixel within range. Up to 8 in view: every pixel tries all; more: clustered, dearer; the 32 strongest kept. Off by day outdoors; `'night'` ones cost nothing by day | Few, short (≤ 10 m, 5–8 typical), ≤ 8 within any 30 m |
 | Glow | A half-resolution pass when anything glows in view | Halos for a few lanterns, not for every window |
 | Particles | Symbolic: a flame 3–4 cards, smoke 3–5 puffs; one budget a frame for every system in view (1,500 particles, 0.6 of the screen covered), thinned alike past it; past 30 m a part throws its first layer only, past 200 m nothing. Blended ones (smoke, steam, fog) are the dearest where they fill the screen | A chimney for each burning hearth, a few fires, fog in one or two hollows (effects.md) |
@@ -1065,11 +1617,19 @@ every system in view (1,500 particles), each thinned alike past it.
 
 `particles` on a prim: a kit's name — `"campfire"`, `"torch"`, `"chimney"` — one layer —
 `{ "preset": "smoke", "scale": 1.5, "amount": 0.8, "tint": [0.8, 0.8, 0.8] }` — or up to four layers
-in a list. The presets: `fire`, `smoke`, `sparks`, `steam`, `fog`, `fountain`, `snow`. `amount`
-(0.1–4) is how many, `scale` (0.1–10) how large and how far they go, `tint` multiplies their
-colours; any of a preset's own parameters may be given over it. Every name, range and each
-preset's own values: catalog.json → `particles`. A string names a kit only: a preset is
+in a list. The presets: `fire`, `smoke`, `sparks`, `steam`, `fog`, `fountain`, `snow` (soft
+flecks), `snowflakes`, `rain`, `fireflies`, `magic` (magic dust), `bubbles`, `confetti`, `leaves`
+(falling), `exhaust` (a jet engine's or a rocket's flame, straight out of its part). `amount` (0.1–4) is how many, `scale` (0.1–10) how large and how far they go, `tint`
+multiplies their colours; any of a preset's own parameters may be given over it. Every name, range
+and each preset's own values: catalog.json → `particles`. A string names a kit only: a preset is
 `{ "preset": "steam" }`, never `"steam"`.
+
+- **Their shape**, drawn by the shader, no image, sharp however near: `"shape"` is `soft` (a soft
+  puff: fire, smoke, steam, fog — the default), `drop` (round end first along its motion: rain),
+  `flake`, `sparkle`, `bubble`, `leaf` (petals too, in their colour), `heart`, `confetti` or
+  `firefly` (a glow that comes and goes). Any preset takes any shape: `{ "preset": "snowflakes",
+  "shape": "heart", "color": [[1, 0.4, 0.6], [1, 0.8, 0.9]] }` rains hearts. `"variety"` (0–1): how
+  far each particle's hue strays from its colours — 1 every hue (confetti), 0.1–0.2 a little (leaves).
 
 - **Thrown from the top of the prim**, in a cone round its own +z, then carried by the world's up,
   east and north (`accel`, `drift`). Put the emitter where the effect starts — a chimney's cap,
@@ -1077,6 +1637,11 @@ preset's own values: catalog.json → `particles`. A string names a kit only: a 
   a `phantom` one does: emitters are phantom.
 - **Steady**: leave `since` out and they have always been going. `"on": false` keeps a layer
   switched off.
+- **While it runs**: `"running": true` on a layer of a vehicle's part — or of what runs a route —
+  throws it only while that runs: driven, here or by another, or on its Auto or its route. It comes up
+  over 3 s as it starts and dies away as it stops, as a helicopter's rotors do; still, none of it, at no
+  cost. An engine's flame, a car's exhaust smoke, a steamer's funnel. On anything else it never shows
+  (the check says so).
 - **Flames light only by their part's light**: without one they glow and light nothing. With it on
   (`true` or `"night"`), the part lights as its `light` says — glowing embers (`emissive` 1, warm)
   with `"light": { "range": 5, "flicker": 0.35 }` light a room or a square — and the two nearest
@@ -1094,7 +1659,14 @@ preset's own values: catalog.json → `particles`. A string names a kit only: a 
 | `{ "preset": "smoke" }` | a smouldering ruin, a kiln, a charcoal pile | | |
 | `{ "preset": "fog" }` | low ground: a valley floor, a shore, a marsh, a graveyard | a slab sunk a few cm under the ground (drawn, unseen) | slow and wide (a 4 m disc); see the costs |
 | `{ "preset": "fountain" }` | a fountain's jet | a nozzle at the water, upright | `floor`, negative: how far under the nozzle the drops stop (the basin's water) |
-| `{ "preset": "snow" }` | snow over a place | high over it | an 8 m disc by default |
+| `{ "preset": "snowflakes" }` | snow over a place | high over it | an 8 m disc by default; `snow` the same as soft flecks |
+| `{ "preset": "rain" }` | a shower under a cloud, a dripping eave, a waterfall's spray | the cloud's or the eave's underside | a 2.5 m disc, drops falling ~7 m; `radius` wider for a field |
+| `{ "preset": "fireflies" }` | a garden, a meadow or a pond at night | a slab in the grass (drawn, unseen) | a dozen in a 3 m round, wandering |
+| `{ "preset": "magic" }` | a wizard's table, a portal's rim, a wishing well | where the magic is | sparkles in colours, bursting and rising |
+| `{ "preset": "bubbles" }` | an aquarium, a cauldron, a bath | the water's floor or surface | rising and wobbling |
+| `{ "preset": "confetti" }` | a party, a stage, a wedding arch | at the floor, upright | thrown up in every colour, fluttering down |
+| `{ "preset": "leaves" }` | autumn under a tree, a windy lane | in the crown, 4–6 m up | falling, fluttering, drifting east |
+| `{ "preset": "exhaust", "running": true }` | a jet engine, a rocket, an afterburner — on a vehicle | the nozzle's face: the part turned so that its +z points the way it blows | whitish to blue and almost see-through, ~2 m long from a nozzle ~0.5 m across; `"scale": 2` for one 1.3 m across; `"alpha": [0.1, 0]` brighter, towards white-hot |
 
 ```json
 { "name": "chimney cap", "shape": "cube", "at": [3.3, -0.8, 7.1], "size": [0.84, 1.04, 0.1], "material": "paving/stone/granite-tile-04", "particles": "chimney" },
@@ -1124,12 +1696,15 @@ example; catalog.json → `behaviours` every range).
 | `door` | every door people use | the door kind shut, `{ "type": "door", "trigger": "both", "reach": 2.5, "stay": 8 }`: it opens as someone comes within 2.5 m or on a click, and shuts once they have gone; `"click"` for a door that waits to be knocked on |
 | `slide` | sliding doors, shutters, hatches, a shop's window | `{ "type": "slide", "x": -1.3, "trigger": "both", "reach": 2.5, "stay": 12 }`: along its own x as someone comes near or on a click, back by itself; a shutter on a click alone |
 | `spin` | windmill sails, a water wheel, a weathervane, a carousel, a sign | an object whose own z is the axle: sails `"turn": [90, 0, yaw]` (axle level), `{ "type": "spin", "speed": 12 }` °/s |
+| `bounce` | a ball, a toy, a sign that jumps | `{ "type": "bounce", "height": 0.6 }`: up along its own z and back as a ball falls, over and over; whoever stands on it goes with it |
 | `move` | an elevator, a lift bridge, a ferry, a moving platform | an object, `{ "type": "move", "z": 3.2, "speed": 1.5, "wait": 4 }` — its own axes, there and back |
+| `lift` | a lift between floors that waits to be called: in a house, a tower, a vessel | its platform, rails and buttons, parts of one object, each `{ "type": "lift", "stops": [-3.8, -7], "group": "lift", "button": "none" }` — a floor's button `"button": "stop", "stop": 1` —, a `call` button at each stop |
 | `belt` | a conveyor, an escalator, a moving walkway | `{ "type": "belt", "speed": 0.6 }` carries along its own y; stairs rise along their y |
+| `passage` | in and out of a vehicle — or anything closed — by a click, standing | its hull's parts `{ "type": "passage", "way": "in", "x": 0.6, "y": 3, "z": 1.6 }` (its floor inside, in its object's frame), its door's `"way": "both"` with the same place: a click on its door from inside puts one out past it |
 | `route` | a tour boat, a train, a cart on its round | an object, `{ "type": "route", "points": [[0, 40, 0], [30, 60, 0], [60, 20, 0]], "speed": 3, "stop": 10 }` — through its points and on again (`"mode": "back"`: there and back), turning to where it goes, stopping at each (`"at": "ends"`: only where it is kept) |
 
-- **What people ride moves whole**: a behaviour on an object carries the avatar standing on it. A
-  part moving inside its object is drawn moving, but its collider is made again only once it stops.
+- **What people ride carries them**: a behaviour on an object carries the avatar standing on it, and so
+  does a part moving inside its object — a lift's platform in a building or a vessel, as it goes.
 - Slow is believable: sails 6–15 °/s, a water wheel 20–40 °/s, an elevator 1–2 m/s.
 - Everything moves the same on every peer from the clock: no two players see a different ferry.
 
@@ -1172,7 +1747,7 @@ WebAssembly): no page, no network, no storage, nothing but its API.
 
 | | |
 |---|---|
-| `on(event, handler, options?)` | `'click'` `({ who, face })` — who clicked (an address, lower case; null if not signed in); `'near'`, `'away'` `({ who, count })` — someone within `options.radius` m (0.5–32, 5 unless said), and gone; `'day'`, `'night'` — the sun crossing the horizon where it stands, once at start as it is; `'change'` `(props)` — what is kept of it changed |
+| `on(event, handler, options?)` | `'click'` `({ who, face, target, uv, values })` — who clicked (an address, lower case; null if not signed in), on a page the `id` of the element it fell on, where on the page (across and down, 0–1) and its fields as the clicker had them (by `id`, a box's or a radio's by its `name`); `'near'`, `'away'` `({ who, count })` — someone within `options.radius` m (0.5–32, 5 unless said), and gone; `'day'`, `'night'` — the sun crossing the horizon where it stands, once at start as it is; `'change'` `(props)` — what is kept of it changed |
 | `every(seconds, handler)`, `after(seconds, handler)`, `cancel(id)` | timers on the shared clock (0.1 s at least) |
 | `set(props)` | what it shows, here and now, over what is kept: every peer running it shows the same; nothing written |
 | `keep(props)` | the same, kept: written by its owner's peer, signed, for everyone — at most once a second |
@@ -1225,7 +1800,7 @@ then, keep games to what scripts and behaviours can do: a gate that opens, a bel
 The check counts the lights (a fire's by its part's light), the particle systems — the blended ones apart —
 the particles in the air, what moves and the scripts, against the budget (budget.md).
 
-## 6. Interactivity: vehicles — a car, a motorbike, a boat, a train
+## 6. Interactivity: vehicles — a car, a motorbike, a bicycle, a boat, a ship or yacht, a submarine, a helicopter, a plane, a train
 
 An object one sits in and drives. Its owner, sitting on its seat, drives it — W and S throttle and
 brake, A and D steer, Space the hand brake, Escape out — and everyone sees it go, with whoever rides
@@ -1234,11 +1809,16 @@ then 0.07 ms of physics a frame on its driver's peer alone.
 
 ### What makes one
 
-- **The object** says what it is: `"vehicle": { "type": "car" }` — `car`, `bike`, `boat` or
-  `train` — and its parameters, each held to its range (catalog.json → `vehicles`): a car's
-  `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg); a bike's the same; a boat's
-  `power`, `speed`, `steer` (its rudder) and `mass`; a train's `speed` and `accel`.
-- **A seat**: a part with `"seat": true`, sat on by a click — on its top, facing its +y. The
+- **The object** says what it is: `"vehicle": { "type": "car" }` — `car`, `bike`, `bicycle`, `boat`, `ship`,
+  `submarine`, `helicopter`, `plane` or `train` — and its parameters, each held to its range (catalog.json →
+  `vehicles`): a car's `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg); a bike's the
+  same; a bicycle's those — `power` its rider's push, `mass` with its rider — and `gear` (how many turns
+  its back wheel makes for each of its pedals'); a boat's `power`, `speed`, `steer` (its rudder) and `mass`; a ship's `speed`, `accel` (m/s²),
+  `turn` and `thrusters` (°/s); a submarine's those and `dive` (m/s) and `depth` (m); a helicopter's
+  `speed`, `accel`, `turn`, `climb` (m/s) and `ceiling` (m over the ground); a plane's those and `lift`
+  (m/s, its take-off speed); a train's `speed` and `accel`.
+- **A seat**: a part with `"seat": true`, sat on by a click — on its top, facing its +y, or where
+  its sit target says (`"seat": { "at": [x, y, z], "turn": 0 }`: format.md). The
   driver's where the driver sits; more for passengers. The driver faces +y, so the driver's left is
   +x: a car that keeps to the right of the road, as in Spain, has its driver's seat and steering
   wheel at +x (the roadster's at x = 0.36); one that keeps to the left, at −x.
@@ -1357,6 +1937,53 @@ axle to the head, its handlebar a rounded box across it.
 ] }
 ```
 
+### A bicycle
+
+Ridden as a motorbike is, and pedalled. **What lies within a wheel turns with it** — within its width
+and its radius of its axle, a part centred on its axle as far as its size across — and is not its body:
+so a wheel is its volume, a plain cylinder lying across it with `"collisionOnly": true` (not drawn), and
+round its spokes a tyre (a torus) and a rim (a hollow cylinder), its hub (a sphere stretched along x)
+and its spokes (thin cylinders through the hub, two spokes each), all `"phantom": true`. **Its crank** is
+a cylinder lying across it between its wheels, collision only too, as wide as its pedals and reaching
+past them: its arms, its pedals (rods along x — a rounded box whose radius is its half thickness; a
+cylinder lying across it would be a wheel) and its chainring lie within it, phantom, and turn as its
+rider pedals — at their first turn the right pedal (−x) at the top. **Its saddle** is a seat in the pose
+`ovgrid/pedalling`, its sit target where that pose was made: the feet meet the pedals and the hands the
+grips only on that geometry, so build on this one's measurements (the hips 0.155 m over the saddle's
+top, 0.18 m behind the crank's axle; the grips 0.27 m either side, swept back). Up off it — or off a
+motorbike —, one steps off beside it on its left, past its bars. Its key parts — the
+build has five more spokes a wheel (each 30° on), a rim, a hub and a sprocket, its chainring, its stays
+and its fork's crown, a lamp:
+
+```json
+{ "name": "bicycle", "vehicle": { "type": "bicycle", "power": 45, "speed": 8, "steer": 30, "mass": 90, "gear": 2.8 }, "at": [0, 0], "prims": [
+  { "name": "front wheel", "shape": "cylinder", "at": [0, 0.636, 0.367], "size": [0.734, 0.734, 0.1], "turn": [0, 90, 0], "collisionOnly": true },
+  { "name": "front wheel's tyre", "shape": { "preset": "torus", "scaleY": 0.075 }, "at": [0, 0.636, 0.367], "size": [0.055, 0.734, 0.734], "turn": [0, 90, 0], "material": "synthetic/rubber/rubber-001", "phantom": true },
+  { "name": "front wheel's spokes", "shape": "cylinder", "at": [0, 0.636, 0.367], "size": [0.005, 0.005, 0.58], "turn": [-75, 0, 0], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "back wheel", "shape": "cylinder", "at": [0, -0.636, 0.367], "size": [0.734, 0.734, 0.1], "turn": [0, 90, 0], "collisionOnly": true },
+  { "name": "back wheel's tyre", "shape": { "preset": "torus", "scaleY": 0.075 }, "at": [0, -0.636, 0.367], "size": [0.055, 0.734, 0.734], "turn": [0, 90, 0], "material": "synthetic/rubber/rubber-001", "phantom": true },
+  { "name": "back wheel's spokes", "shape": "cylinder", "at": [0, -0.636, 0.367], "size": [0.005, 0.005, 0.58], "turn": [-75, 0, 0], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "crank", "shape": "cylinder", "at": [0, -0.107, 0.356], "size": [0.401, 0.401, 0.39], "turn": [0, 90, 0], "collisionOnly": true },
+  { "name": "crank arm", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.008, "segments": 2, "at": [-0.08, -0.107, 0.444], "size": [0.016, 0.034, 0.209], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "pedal", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.015, "segments": 2, "at": [-0.14, -0.107, 0.531], "size": [0.1, 0.03, 0.03], "material": "synthetic/plastic/plastic-006", "surface": { "gloss": 0.5 }, "phantom": true },
+  { "name": "crank arm", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.008, "segments": 2, "at": [0.08, -0.107, 0.268], "size": [0.016, 0.034, 0.209], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "pedal", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.015, "segments": 2, "at": [0.14, -0.107, 0.181], "size": [0.1, 0.03, 0.03], "material": "synthetic/plastic/plastic-006", "surface": { "gloss": 0.5 }, "phantom": true },
+  { "name": "seat tube", "shape": "cylinder", "at": [0, -0.153, 0.619], "size": [0.032, 0.032, 0.535], "turn": [10.008, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "top tube", "shape": "cylinder", "at": [0, 0.173, 0.802], "size": [0.03, 0.03, 0.701], "turn": [-84.102, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "down tube", "shape": "cylinder", "at": [0, 0.21, 0.581], "size": [0.038, 0.038, 0.776], "turn": [-54.651, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "head tube", "shape": "cylinder", "at": [0, 0.525, 0.82], "size": [0.042, 0.042, 0.15], "turn": [13.8, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "stem", "shape": "cylinder", "at": [0, 0.474, 1.022], "size": [0.025, 0.025, 0.268], "turn": [14.324, 0, 0], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "fork", "shape": "cylinder", "at": [-0.052, 0.59, 0.557], "size": [0.024, 0.024, 0.392], "turn": [13.762, 2.133, 0.522], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "fork", "shape": "cylinder", "at": [0.053, 0.59, 0.557], "size": [0.024, 0.024, 0.392], "turn": [13.762, -2.133, -0.522], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "saddle", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.025, "segments": 2, "at": [0, -0.294, 0.994], "size": [0.16, 0.16, 0.064], "material": "fabric/leather/brown-leather", "seat": { "at": [0, 0.01, 0.187], "turn": 0, "pose": "ovgrid/pedalling" } },
+  { "name": "handlebar", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.012, "segments": 2, "at": [0, 0.441, 1.152], "size": [0.2, 0.024, 0.024], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "handlebar", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.012, "segments": 2, "at": [-0.155, 0.381, 1.152], "size": [0.187, 0.024, 0.024], "turn": [0, 0, -132.51], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "grip", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.017, "segments": 2, "at": [-0.265, 0.321, 1.152], "size": [0.11, 0.034, 0.034], "material": "fabric/leather/brown-leather" },
+  { "name": "handlebar", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.012, "segments": 2, "at": [0.155, 0.381, 1.152], "size": [0.187, 0.024, 0.024], "turn": [0, 0, -47.49], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "grip", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.017, "segments": 2, "at": [0.265, 0.321, 1.152], "size": [0.11, 0.034, 0.034], "material": "fabric/leather/brown-leather" }
+] }
+```
+
 ### A boat
 
 No wheels: its parts are its hull, held at the sea's surface — it floats only **at sea**, and only
@@ -1398,6 +2025,192 @@ lamp, at its head. The boat beside the head, its bow out to sea.
 "clones": [ { "of": "pier", "at": [32.98, 43.28, 0], "turn": [0, 0, -50] }, { "of": "pier", "at": [48.3, 56.14, 0], "turn": [0, 0, -50] } ]
 ```
 
+### A ship or a yacht
+
+Anything afloat with decks and a deckhouse — a yacht, a ferry, a cargo ship — is a `ship`, not a
+`boat`: a boat floats with 40 % of its volume under the water, so a deckhouse sinks it, and its engine
+pushes against a drag that grows with its size. A ship floats **at its waterline: its frame's z = 0**,
+whatever stands on its decks — build its hull from z = 0 down to its keel and up to its decks, and it
+is borne there; it weighs the water under that line, so its mass is no parameter. It is steered as
+heavy ships are: `accel` (m/s², 0.5 a large yacht) up to `speed`, slow to stop, half the thrust
+astern; `turn` (°/s) on its rudder as it goes, nothing standing still, and `thrusters` (°/s) turning
+it on the spot to come off a quay; it never skids sideways.
+
+- **Its hull** is what floats it: a solid's `loft` along y (format.md, Solids) — closed, convex, its keel
+  and its waterline in its sections — or boxes, prisms and hulls, as many as a solid of hulls side by
+  side holds. A hull that is not convex (a hollow, an open sheet) does not float: the physics takes only
+  solid convex pieces — so a hollow shell is drawn only, and convex pieces under it float it.
+- **Deep water**: as much under it as its keel reaches under z = 0, and a hand more, all along its way
+  out (the survey's `depths`; the check says so). A yacht drawing 2.5 m wants 3 m: moor it at the head
+  of a pier long enough, its stern to the pier (a gangway from its swim platform), its bow to sea.
+- **Its helm** a seat high enough to see over its bow, open or under a hardtop; benches and sofas
+  seats for its passengers.
+- **Alive**: navigation lights at night — red to port (its +x, its helmsman's left), green to
+  starboard (−x), white at its masthead and stern —, deck lights, and doors that slide.
+- **Rooms to walk in**: a deckhouse built hollow, not a solid box. Give it floors, walls with their
+  windows' glass seen through (tinted dark, `"opacity": 0.3` on each face, `"matte": 1`), ceilings
+  2.8 m over its floors, and
+  sliding doors that open as one comes near (the `slide` behaviour, `"trigger": "near"`). Stairs go up
+  inside, each through a well in the floor above, railed round. Make a part that moves by itself all
+  the time (a radar turning) `phantom`: a body is made again only once what of it collides has settled,
+  and its doors let one through only then.
+- **Its Auto**: a ship or a submarine drives itself on its object's route. Give the object a
+  `"behaviour": { "type": "route", "mode": "back", "points": […], "speed": 6, "stop": 20, "at": "ends",
+  "face": "yes", "water": "yes", "held": true }` — out from its berth and back, held there till its Auto
+  is set on. Read its depth all along, as its berth's. Aimed at its helm, E is Manual and O its Auto, for
+  whoever may drive it: nobody sat down, whoever is aboard carried. Its Auto runs the route once, out and
+  back, and is off again in its berth. Driven off its route, it comes back onto it when its Auto is on
+  again.
+- **Room to stand up at its helm**: up from a seat, the avatar stands 0.6 m past its front edge, or, a
+  console there, beside it or behind it: leave a floor clear at one side of a helm seat or behind it.
+- **Matte, mirroring nothing** (`"matte": 1` on every part, no `reflect`, no metal): its gelcoat, its
+  glass, its teak, its fittings. Anything else mirrors the sky: faintly under a gloss of 0.3, low and
+  blurred, late as one moves; from 0.3 the world, and a metal at any gloss. On a hull's curves, its panes
+  and its chrome it shows in waves and distortions. Its fittings white, not chrome.
+
+```json
+{ "name": "launch", "at": [0, 0], "vehicle": { "type": "ship", "speed": 9, "accel": 0.7, "turn": 7, "thrusters": 3 }, "prims": [
+  { "name": "hull", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.25, "at": [0, -0.5, 0.4], "size": [3.4, 9, 2.8], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "bow", "shape": "prism", "at": [0.85, 5, 0.4], "size": [1.7, 2.8, 2], "turn": [-90, 0, 0], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "bow", "shape": "prism", "at": [-0.85, 5, 0.4], "size": [1.7, 2.8, 2], "turn": [-90, 180, 0], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "boot top", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0, -0.5, 0.05], "size": [3.44, 9.04, 0.12], "color": [0.03, 0.12, 0.4], "surface": { "matte": 1 } },
+  { "name": "deck", "shape": "cube", "at": [0, -0.5, 1.83], "size": [3.2, 8.8, 0.06], "material": "wood/planks/teak-veneer", "surface": { "rotation": 90 } },
+  { "name": "deckhouse", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.1, "at": [0, 0.3, 2.9], "size": [2.6, 4.2, 2.1], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "windows", "shape": "cube", "at": [0, 0.3, 3.3], "size": [2.64, 4.24, 0.7], "color": [0.02, 0.025, 0.03], "surface": { "matte": 1 } },
+  { "name": "helm seat", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0.5, -2.6, 2.1], "size": [0.6, 0.5, 0.14], "material": "fabric/leather/leather-white", "seat": true },
+  { "name": "stern bench", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0, -4.2, 2.1], "size": [2.4, 0.5, 0.14], "material": "fabric/leather/leather-white", "seat": true },
+  { "name": "port light", "shape": "cube", "at": [1.32, 2.2, 3.4], "size": [0.04, 0.16, 0.1], "color": [0.9, 0.05, 0.03], "surface": { "emissive": 1 }, "light": { "on": "night", "range": 0 } },
+  { "name": "starboard light", "shape": "cube", "at": [-1.32, 2.2, 3.4], "size": [0.04, 0.16, 0.1], "color": [0.05, 0.8, 0.2], "surface": { "emissive": 1 }, "light": { "on": "night", "range": 0 } }
+] }
+```
+
+### A submarine
+
+A `submarine` is a ship that dives, dry inside by its kind (`"dry": true` is in it: format.md): at the
+surface afloat with its hull's top level with the water — the top of the box round its largest parts, its
+hull and a dome over it, wherever its frame is: all of its inside under the water and dry —; C takes it down at `dive` m/s, to `depth` at most and never through the
+sea's floor (0.5 m over it), Space brings it up again; under the water it holds its depth, level. Chosen
+as one in the editor, over the sea, it is brought down to where it floats. Its hull a closed loft or
+lathe — or a hollow cylinder lying along it, its ends closed —, its conning tower a part over it, its
+seats inside a hatch or under a canopy of glass. Under the water the view goes under with whoever is in it, and its cabin, closed — walls
+round it on every side but one at most, a roof over it within 30 m —, is walked in dry: out of its
+hatch one swims on from where one is (docs/decisions.md, «Under the water»).
+
+**One to walk round inside**: its decks 3 m clear or more, each as high, all of them under its
+waterline afloat — its deck just out of the water —, so that the view inside is always under the water
+and its air is kept dry; in by a door in its sail over the water into a hall big enough for several,
+and down by a lift: its platform beside the hall, down through each deck in a hole flush with its floor,
+parts of one group with a `lift` behaviour (format.md), a button a floor on its post and a `call` button
+at each stop — dry from the first moment under the surface, no stairs needed. Its hull and its dome thin shells — a loft of sections each its outline
+and, back the other way, that outline a few cm inside it, its two ends `corners` — seen and walked into
+from inside, at least three of a sculpt's steps thick (its box over 255: 12–14 cm across 10 m), and
+opaque decks and walls inside them; its tour a `route` whose points' z is its depth, `"water": "no"`,
+its depth read all along it for its keel. Its inside is the box round its largest parts: make its hull
+and its dome the largest — nothing else a quarter of either as a box —, and the fish keep out of it and
+the air in it is all of it; close its top with its deck, but where its tower goes up through its sail:
+up out of its inside the air goes on, no sea's surface seen up its lift's shaft. Light it inside with
+lamps `"on": true`: no sun comes into the air under the sea, only the water's light round it, so its
+lamps are its light.
+
+### A helicopter
+
+A `helicopter` flies on its rotors, whatever it is built of: Space takes it up and C down at `climb`, and
+between them it holds its height, never into the ground nor over its `ceiling`; off the ground W and S fly
+it ahead and back (a third of its speed), its nose down as it goes, and A and D turn it — on the spot, or
+banking as it goes. Its pilot gets up only once it has landed: up from its controls in the air, it comes
+straight down first.
+
+- **Its feet**: what of it is lowest — skids, wheels, pods — within 0.2 m of its bottom, its frame's
+  z = 0 the ground under them. Its centre of mass is put over their middle, so it stands level on two
+  skids or on one line of wheels. Keep boarding steps higher than that (0.25 m and up) or they are feet.
+- **Where it lands**: on what is under its feet — the ground, a pad, a roof, the sea's surface. Give it a
+  pad where it is kept, level and clear of anything as tall as its rotor within its radius.
+- **Its rotors** are parts with `"behaviour": { "type": "spin", "speed": 300 }`, `phantom`: they turn
+  only while it runs — driven or on its Auto —, up to speed over 3 s and still again 3 s after it stops.
+  A part turns about its own z through its own middle, so a pair of blades is one part across the hub
+  (two crossing ones for four blades); a tail rotor turned `[0, 90, 0]` so that its z lies across the
+  helicopter.
+- **Its exhausts**: a turbine's breath, the jet's exhaust half as long —
+  `"particles": { "preset": "exhaust", "running": true, "life": 0.08 }`, some 1.3 m —, coming up with its
+  rotors and dying away with them; `"scale"` to its outlet (0.6 for one 0.27 m high). On a part whose +z
+  points the way it blows: an engine block made from its intake to its exhaust, a pod's or a drum's
+  cylinder turned `[90, 0, 0]` (its +z its back), or, where the outlet is a plate on a slanted face, a small
+  box hidden in the plate, turned the way it faces, `phantom`. An outlet wider than high, a slot: several such
+  boxes side by side across it, each stream as high as it.
+- **Inside**: a cabin to walk in wants 2.3 m and more over its floor; its pilot's seat
+  `"seat": { "pose": "quaternius/driving" }` with a stick and a panel low enough to see over. In and out by
+  a click (`passage`, format.md): its hull's parts `"way": "in"` with the place on its floor one is put,
+  its door's `"way": "both"` — a click on it from inside puts one out past it, across its box's thinnest side: a door
+  taken from a hull's skin, folded at its shoulder, may be as deep as it is long, so give its part a box longer along
+  the hull than it is deep. No steps up to a high sill.
+- **Its Auto**: a `route` whose points' z is its height over where it is kept (`"water": "no"`): up
+  steeply off its pad — a first point 15–20 m ahead and as high —, round, and back down onto it from
+  behind, so that it comes in facing as it was kept. Set it as it should fly over level ground: wherever
+  the land under it rises, it is lifted to keep as high over it as it was set over its pad's ground, 25 m
+  at most, eased over hills (set down anywhere, its tour never goes into one). Only the land is read: keep
+  it over what is built and tall trees on its way. On its Auto it tilts as its pilot's flying does — nose
+  down as it goes, banked into its turns —, so a tight turn reads as one: give it room. Its driver may
+  record more as they fly it (K at its controls, smoothed as it is kept), kept in `routes` beside it; a
+  build may give it several too — N at its helm goes through them.
+
+```json
+{ "name": "prim helicopter", "at": [0, 0], "vehicle": { "type": "helicopter", "speed": 25, "climb": 5, "ceiling": 500 }, "prims": [
+  { "name": "cabin", "shape": "cube", "at": [0, 0.5, 1.5], "size": [2.2, 5, 2], "color": [0.55, 0.6, 0.65] },
+  { "name": "boom", "shape": "cube", "at": [0, -4.5, 1.9], "size": [0.4, 5, 0.5], "color": [0.55, 0.6, 0.65] },
+  { "name": "skid", "shape": "cube", "at": [-1, 0.5, 0.075], "size": [0.15, 4.4, 0.15], "color": [0.55, 0.6, 0.65] },
+  { "name": "skid", "shape": "cube", "at": [1, 0.5, 0.075], "size": [0.15, 4.4, 0.15], "color": [0.55, 0.6, 0.65] },
+  { "name": "pilot seat", "shape": "cube", "at": [-0.5, 1.8, 0.8], "size": [0.6, 0.6, 0.2], "color": [0.55, 0.6, 0.65], "seat": { "pose": "quaternius/driving" } },
+  { "name": "blade", "shape": "cube", "at": [0, 0.5, 2.8], "size": [10, 0.3, 0.05], "color": [0.1, 0.1, 0.1], "phantom": true, "behaviour": { "type": "spin", "speed": 300 } },
+  { "name": "blade", "shape": "cube", "at": [0, 0.5, 2.8], "size": [10, 0.3, 0.05], "turn": [0, 0, 90], "color": [0.1, 0.1, 0.1], "phantom": true, "behaviour": { "type": "spin", "speed": 300 } },
+  { "name": "tail rotor", "shape": "cube", "at": [0.3, -7, 2], "size": [1.6, 0.15, 0.04], "turn": [0, 90, 0], "color": [0.1, 0.1, 0.1], "phantom": true, "behaviour": { "type": "spin", "speed": 360 } }
+] }
+```
+
+### A plane
+
+A `plane` flies on its wings. On its wheels W speeds it along its way at `accel`, S or C brake it, A and D
+steer its nose wheel; once as fast as its take-off speed (`lift`), Space lifts it off. In the air W and S
+speed it up to `speed` and down to `lift`, Space takes it up and C down at `climb`, and between them it
+holds its height, never into the ground nor over its `ceiling`; slower than `lift` it sinks. A and D turn
+it at `turn`, banking. Back on its wheels it rolls on. Up from its controls in the air, it comes down where
+it is, and its pilot gets up once it has stopped.
+
+On its **Auto** (O at its helm, as a helicopter's) it flies its object's route by itself, everyone aboard, tilted as
+a plane — nose up as it climbs, banked into its turns. Give its route `"accel"` (m/s², its Speeds up) as the plane's
+own, so that it sets off along its runway as it would by hand: from its stop where it is kept, its first points on the
+runway at z 0 (with a level handle on the last of them, `[x, y, 0, 0, 40, 0]`, so that its curve never dips into it)
+till it is past its take-off speed — lift² / (2 × accel) m on —, then up and round, and back lined up with its runway,
+down onto it as far before where it is kept as it needs to slow from its take-off speed, and `"stop"` there, `"at":
+"ends"`. A route goes 120 m/s at most.
+
+- **Its feet**: its wheels — what of it is lowest, within 0.2 m of its bottom, its frame's z = 0 the ground
+  under them —: one under its nose and two under its wings, so that it stands level on them.
+- **Where it is kept**: at one end of a runway long enough for its take-off — speeding up at `accel` to
+  `lift` takes lift² / (2 × accel) m: 45 m/s at 4 m/s² is 250 m —, level, nothing tall at its ends. A runway
+  is road parts (`"kind": "road"`, 12 m wide at most) side by side on the ground, its markings thin boxes
+  laid on them.
+- **Inside**: as a helicopter's — 2.3 m over its floor where people walk, its pilot's seat
+  `"seat": { "pose": "quaternius/driving" }`, in and out by a click (`passage`).
+- **Its exhausts**: `"particles": { "preset": "exhaust", "running": true }` on each engine — a cylinder
+  along it, `"turn": [90, 0, 0]`, so that its +z, the face it is thrown from, is its back — blow its flame
+  backwards while it runs, coming up as its pilot takes it and dying away as they leave it; `"scale"`
+  for a larger nozzle (2: 1.3 m across).
+
+```json
+{ "name": "prim plane", "at": [0, 0], "vehicle": { "type": "plane", "speed": 70, "accel": 4, "lift": 35, "turn": 15, "climb": 8, "ceiling": 2000 }, "prims": [
+  { "name": "fuselage", "shape": "cube", "at": [0, 0, 1.6], "size": [2, 10, 1.8], "color": [0.9, 0.9, 0.9] },
+  { "name": "wing", "shape": "cube", "at": [0, 0.5, 1.2], "size": [12, 2, 0.2], "color": [0.9, 0.9, 0.9] },
+  { "name": "tailplane", "shape": "cube", "at": [0, -4.5, 1.9], "size": [4, 1.2, 0.12], "color": [0.9, 0.9, 0.9] },
+  { "name": "fin", "shape": "cube", "at": [0, -4.6, 2.9], "size": [0.12, 1.4, 1.8], "color": [0.9, 0.9, 0.9] },
+  { "name": "engine", "shape": "cylinder", "at": [0, -5.3, 1.6], "size": [0.7, 0.7, 0.6], "turn": [90, 0, 0], "color": [0.2, 0.2, 0.22],
+    "particles": { "preset": "exhaust", "running": true } },
+  { "name": "nose wheel", "shape": "cylinder", "at": [0, 4, 0.3], "size": [0.6, 0.6, 0.2], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
+  { "name": "main wheel", "shape": "cylinder", "at": [-1.4, -0.5, 0.35], "size": [0.7, 0.7, 0.25], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
+  { "name": "main wheel", "shape": "cylinder", "at": [1.4, -0.5, 0.35], "size": [0.7, 0.7, 0.25], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
+  { "name": "pilot seat", "shape": "cube", "at": [0.4, 2.5, 1.1], "size": [0.6, 0.6, 0.2], "color": [0.3, 0.3, 0.32], "seat": { "pose": "quaternius/driving" } }
+] }
+```
+
 ### A boat that takes people round
 
 Not every boat is driven. A tour boat that takes people round and brings them back to its port is an
@@ -1436,7 +2249,9 @@ on; build its platform beside where it is kept. Its driver takes it from where t
 it, W faster, S slower and then back, no further than its ends; left again, its timetable goes on
 from there. One object makes the whole train — an engine and a carriage or two —
 so give its line curves of 10 m or more and keep it short (8–12 m). Lay the line's bed as a `road`
-through the same points (format.md), in the build's frame.
+through the same points (format.md), in the build's frame. Build it along its +y, its engine ahead, facing the way its
+route sets off: a route turns what follows it from how it stands at its start, so a train laid aslant of its way runs
+its whole line askew, and its rollers, lying along no axis of it, are no wheels.
 
 ```json
 { "name": "train", "at": [0, 0], "turn": [0, 0, -90],
@@ -1457,11 +2272,11 @@ Its route's points are in its own frame — turned with it: here its +y runs alo
 ### Within budget
 
 A car of 25–35 parts (this roadster: 7,100 triangles up close, 2,800 at the next level), a bike of
-15–20 (3,700), a boat of 10–15 (3,000), a train of 20–35 — each its object's share of the build's
+15–20 (3,700), a bicycle of about 50 (12,000: its tyres the most), a boat of 10–15 (3,000), a train of 20–35 — each its object's share of the build's
 parts and triangles (budget.md). Rounds cost triangles: two `segments` for a small one. Headlamps
 are lights of the build's, lit at night only; two for a car. A pier of eleven sections drawn as
 clones: 200 parts, 30,000 triangles. The check says why a vehicle could not be driven: no wheels for
-a car or a bike, no route for a train, no seat.
+a car or a bike, no route for a train, no seat; a bicycle with no crank, or a saddle nobody pedals.
 
 
 ## 7. Delivery: from your JSON to the world
@@ -1508,6 +2323,34 @@ A build at an address can be brought in by anyone: with an exact anchor it lands
 written for — share one without an anchor (or say so) when it is meant for anyone's place. A build
 can be placed by anyone who brings it in; what it becomes is theirs.
 
+### A whole parcel: a land
+
+A **land** is a parcel (~300 m, the status's `F5:11145,19300 Hinterland`) saved whole — Second Life's
+and OpenSim's region archive (OAR). It is a build file that names its parcel, so everything above holds
+for it, and it holds:
+
+- `"parcel": { "face", "x", "y" }`, and an exact `anchor` at that parcel's centre, its +y the parcel's
+  own;
+- everything that stands in the parcel by its root (an object's centre, a clone's, a tree's foot), with
+  an object's parts however far they reach, under their ids;
+- `"chunks"`: its ground where it was shaped (terraformed), each chunk as the world keeps it — never
+  write or change these by hand: they are the ground to the centimetre;
+- `"sky"`: the parcel's own sky, when it has one (time, clouds, rain).
+
+In *Builds as JSON*, **Save land** saves the parcel where the camera looks, and shows and downloads its
+file. A land pasted, dropped or opened by its address is checked as a whole parcel: counted, not held to
+one build's budget, but to what a newcomer is sent of the world at once (about 1.6 MB compressed, which
+the panel says). Its parcel's keeper then chooses:
+
+- **Load in its place**: the parcel becomes what the land holds, as it was saved: what it names is
+  changed where it stands, what it no longer holds is taken away, its ground and sky are put back.
+- **Load here**: the same, into the parcel where the camera looks — moved to that parcel's centre, under
+  new ids, its whole ground laid there. A smaller parcel that it would not fit refuses it.
+
+Either is one Ctrl+Z. To **rethink a land** (in recipes, say), keep its `parcel`, `anchor`, `chunks`,
+`sky` and every `id` as they are; change the objects as you would a build's export (Changing it, above).
+An object left out is taken away when it is loaded in its place.
+
 
 ## 8. Verification: look at it, fix it, measure it
 
@@ -1537,11 +2380,16 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
 
 ### Kinds
 
-- **`rock`** — A rock: a sculpted sphere, lumped and chipped by its seed and cut flat underneath to sit on the ground. Its length (x) is its width (y) drawn out by its elongation; a few hundred triangles at most, the detail left to its texture's relief. Faces: 0 surface. Size: its width (y) and height (z) its own; its length (x) its width drawn out by its elongation.
-  - `roughness` 0–1, default 0.5: How broken its surface is: 0 a smooth, lumpy pebble; 1 jagged, chipped all over.
+- **`rock`** — A rock of one of seven forms: a boulder (a sculpted sphere, lumped and chipped by its seed and cut flat underneath), a crag (the same cut into upright faces, for rocks of metres), layered (strata, ledges between them), a pile of stones heaped as they would rest, crystals (quartz prisms out of a stone of their own), a passage (two pillars either side of a way through, a lintel resting across them, blocks at their feet) or an outcrop (tall stones and blocks leaning together). Its length (x) is its width (y) drawn out by its elongation; a few hundred triangles to 1,500, a formation 200 a stone, the detail left to its texture's relief. Its second face is its cover — moss, snow or sand on what faces up, as far down as its cover says — or the stone its crystals grow out of. Passages and outcrops collide stone by stone: one walks under a lintel. Faces: boulder: 0 surface, 1 cover; crag: 0 surface, 1 cover; layered: 0 surface, 1 cover; pile: 0 surface, 1 cover; crystals: 0 crystals, 1 stone; passage: 0 surface, 1 cover; outcrop: 0 surface, 1 cover. Size: its width (y) and height (z) its own; its length (x) its width drawn out by its elongation.
+  - `form` `boulder` / `crag` / `layered` / `pile` / `crystals` / `passage` / `outcrop`, default `boulder`: Boulder: a lumpy, chipped stone. Crag: a rock of metres cut into upright faces and ribbed. Layered: strata, bands one on another with ledges between. Pile: stones heaped as they would rest. Crystals: quartz prisms ending in points, out of a stone of their own. Passage: two pillars either side of a way through, a lintel resting across them, blocks at their feet. Outcrop: tall stones and blocks leaning together.
+  - `roughness` 0–1, default 0.5: How broken its surface is: 0 a smooth, lumpy pebble; 1 jagged, chipped all over. Crystals: how far apart they lean.
   - `edges` 0–1, default 0: How its facets meet: 0 faceted, low-poly, each facet flat with hard edges; 1 rounded, shaded smoothly across them.
-  - `base` 0–1, default 0.3: How much of its underside is cut flat, to sit on the ground: 0 none, 1 up to half its height.
+  - `base` 0–1, default 0.3: How much of its underside is cut flat, to sit on the ground: 0 none, 1 up to half its height. A pile: how far its stones are sunk.
   - `elongation` 0–1, default 0.25: How long it is for its width: its length (x) is 1 + 2 × this times its width (y).
+  - `layers` 2–8, default 5: Its strata, bottom to top.
+  - `stones` 3–12, default 8: The stones of the pile, the passage (its two pillars and lintel among them) or the outcrop.
+  - `crystals` 3–24, default 16: Its crystals, the largest upright in the middle; at a distance the least are left out.
+  - `cover` 0–1, default 0: How far down its second face, its cover, reaches: the facets that face up, for moss, snow or sand — 0 none, 1 down past its sides.
 - **`bevel`** — A box or a cylinder with its edges rounded or chamfered by a radius in metres, whatever its size: real geometry, its faces numbered as the prim's, each running on over its half of the edges round it with its texture. Faces: box: 0 top, 1 -y, 2 +x, 3 +y, 4 -x, 5 bottom; cylinder: 0 top, 1 side, 2 bottom. Size: its own, in metres.
   - `base` `box` / `cylinder`, default `box`: What is bevelled: a box, its twelve edges; a cylinder, the rims of its top and bottom.
   - `edge` `round` / `chamfer`, default `round`: How its edges are cut: round, a quarter circle; chamfer, one flat cut at 45°.
@@ -1602,34 +2450,103 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
   - `columns` 1–128, default 1: The sides across its map, as its finest level samples it.
   - `rows` 1–128, default 1: The sides down its map, as its finest level samples it.
   - `map` 0–6400, default : Its sculpt map as its finest level samples it: (columns + 1) × (rows + 1) points, R, G, B each, row by row from the map's top, as base64 (its range is its length in characters).
+- **`blocks`** — A square-cornered solid in one part: boxes on a grid of its own, each of one of up to eight colours, meshed as one surface — only what shows from outside, nothing between two boxes. Never written by hand: what rebuilds a model makes one of its square-cornered solids (a staircase, a block with its steps cut, a figure of voxels), exact to its corners. Faces: 1 colour: 0 colour 1; 2 colours: 0 colour 1, 1 colour 2; 3 colours: 0 colour 1, 1 colour 2, 2 colour 3; 4 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4; 5 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5; 6 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6; 7 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6, 6 colour 7; 8 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6, 6 colour 7, 7 colour 8. Size: its own, in metres.
+  - `colours` `1 colour` / `2 colours` / `3 colours` / `4 colours` / `5 colours` / `6 colours` / `7 colours` / `8 colours`, default `1 colour`: How many colours its boxes take, each a face of the part: 0 one, 7 eight.
+  - `blocks` 0–32768, default : Its grid and its boxes, as base64: each axis's planes as fractions of its box, then each box between two planes along each axis, of a colour; at most 32,768 cells and 2,048 boxes.
+- **`outline`** — A flat shape drawn out through its box, bottom to top: rings of points round its outside and round holes right through it — whatever lies inside an odd number of rings solid —, each edge of one of up to eight colours, its two ends theirs. Never written by hand: what rebuilds a model makes one of its solids drawn out along a way (a gateway's arch, a wall with round windows, a letter, a beam of any section), exact to its corners. Faces: 1 colour: 0 colour 1; 2 colours: 0 colour 1, 1 colour 2; 3 colours: 0 colour 1, 1 colour 2, 2 colour 3; 4 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4; 5 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5; 6 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6; 7 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6, 6 colour 7; 8 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6, 6 colour 7, 7 colour 8. Size: its own, in metres.
+  - `colours` `1 colour` / `2 colours` / `3 colours` / `4 colours` / `5 colours` / `6 colours` / `7 colours` / `8 colours`, default `1 colour`: How many colours its edges and ends take, each a face of the part: 0 one, 7 eight.
+  - `outline` 0–4096, default : Its rings, as base64: each ring's points as fractions of its box across x and y, and each edge's colour; at most 64 rings and 512 points.
+- **`solid`** — A solid in one part: what fills its box (a box, a cylinder, a cone, a ball or a wedge), then bodies added to it, cut out of it or kept where they meet it, one after another — boxes, cylinders, cones, balls and wedges, hulls round points or balls, profiles revolved or extruded, lofts through sections and profiles swept along paths, each placed, sized and turned in metres about its middle, mirrored or repeated if asked —, with smoothing steps among them: a wall with its door and windows, an arch, a boat's hull with its flare, a rail, a vase, a wheel and its spokes. Each face of what is left takes the colour of the body it came from — or of its own face, a box body's six or an extrude's caps and sides, or of a spot on it: the facet there and the surface smooth round it, a hull's facet, an extrude's side, an arch's intrados —, up to eight. Faces: 1 colour: 0 colour 1; 2 colours: 0 colour 1, 1 colour 2; 3 colours: 0 colour 1, 1 colour 2, 2 colour 3; 4 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4; 5 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5; 6 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6; 7 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6, 6 colour 7; 8 colours: 0 colour 1, 1 colour 2, 2 colour 3, 3 colour 4, 4 colour 5, 5 colour 6, 6 colour 7, 7 colour 8. Size: its own, in metres.
+  - `base` `box` / `cylinder` / `cone` / `ball` / `wedge`, default `box`: What fills its box before any body is added or cut: a box, a cylinder, a cone, a ball or a wedge (upright at its front, −y, its slope from its top front edge down to its bottom back one).
+  - `sides` 3–64, default 32: Sides round its base where it is round: 6 a hexagon, 32 smooth; a ball's a multiple of four.
+  - `colours` `1 colour` / `2 colours` / `3 colours` / `4 colours` / `5 colours` / `6 colours` / `7 colours` / `8 colours`, default `1 colour`: How many colours its faces take, each a face of the part: 0 one, 7 eight.
+  - `join` `union` / `none`, default `union`: How its bodies come together: joined into one surface (union, its base and its ways as they say), or drawn as they are side by side (none: its added bodies alone, nothing cut, kept or smoothed) — a model's faces rebuilt as plates, exact where they meet, in the fewest triangles.
+  - `faces` 0–7, default : Its base box's faces each their own colour (−x +x −y +y −z +z, 0–7), as a box body's: what a union shows of its base, each side picked alone.
+  - `spots` 0–64, default : Its base's faces by a spot on each, as a body's spots: fractions of its box (−0.5 to 0.5) and a colour.
+  - `bodies` 0–32, default : Its bodies and smoothing steps, one after another, at most 32: each `{ "add" | "cut" | "keep": <shape>, "at": [x, y, z], "size": [x, y, z], "turn": [x, y, z], "colour": n, "faces": [n, …], "spots": [[x, y, z, n], …], "flat": true, "mirror": "x" | "y" | "z", "repeat": { "count": n, "step": [x, y, z] } or { "count": n, "around": degrees, "at": [x, y] } or both, a helix }` — in metres about the middle of its box, its turn ° about x, then y, then z, its colour 0 (its box's) to 7, a box's faces each their own (−x +x −y +y −z +z) or an extrude's (its −z cap, its +z cap, its sides), its spots each a spot on its surface (fractions of its box along its own axes, −0.5 to 0.5) and the colour of the facet nearest it and of the surface smooth round it (64 at most), flat to shade each facet alone and make it a face of its own (a faceted model's look) —, its shape box, cylinder, cone or ball (with "sides"), wedge, hull ("points", "round", "hollow"), revolve ("profile", "sides", "angle"), extrude ("profile", "holes", "twist", "scale"), loft ("points", "count", "hollow") or sweep ("path", "profile", "across", "scale", "twist", "closed"), its points packed (packPoints) as fractions of its box; or `{ "smooth": 1 | 2 | 3 }`, what came before it smoothed. At most 5,000 triangles before smoothing.
 
 ### Behaviours
 
 - **`spin`** — Turns round its own up (z) without stopping: a carousel, a fan, a sign. `speed` -360–360 °/s (default 30).
-- **`move`** — Goes from where it is to a point and back, waiting at either end: an elevator, a moving platform. `x` -64–64 m (default 0), `y` -64–64 m (default 0), `z` -64–64 m (default 3), `speed` 0.1–20 m/s (default 1), `wait` 0–60 s (default 2).
+- **`bounce`** — Hops up along its own up (z) and falls back without stopping, as a ball does: as high as it is asked, as fast as gravity brings it down. `height` 0.05–20 m (default 1).
+- **`move`** — Goes from where it is to a point and back, waiting at either end: an elevator, a moving platform. `x` -64–64 m (default 0), `y` -64–64 m (default 0), `z` -64–100000 m (default 3), `speed` 0.1–20 m/s (default 1), `ease` `smooth` / `accel` (default smooth), `accel` 0.01–20 m/s² (default 1), `decel` 0.01–20 m/s² (default 1), `wait` 0–60 s (default 2).
+- **`call`** — On a click, brings what goes and comes back near it — a platform, a lift — down to where it is kept at once, to set off again from there; a lift near it, to its stop nearest the button: a call button. `reach` 0.5–64 m (default 8).
+- **`lift`** — Goes from stop to stop up and down its frame — a part up and down its object's, a thing of its own its own — on a click on it or on a call button by a stop, and waits at each till it is called again: a platform lift, an elevator. The parts of an object whose lift has the same group go as one: a platform, its rails, its buttons. `speed` 0.1–6 m/s (default 0.8), `button` `none` / `next` / `stop` (default next), `stop` 0–8 (default 0).
+- **`switch`** — Switches its object's lights in its zones, for everyone: on a click, on or off — one by a room's door, one for a whole floor, one for every light of it — or, a presence detector, on while someone is near and off once all have gone. Lights on at night still come on and go off by themselves; switched by hand, they stay as they were left till the next nightfall or daybreak; by presence, each lights as far as its own light lets it (On, or At night only). Prims only. `trigger` `click` / `near` / `both` (default click), `reach` 0.5–10 m (default 4), `stay` 0–600 s (default 30).
 - **`door`** — Swings open on a click or as someone comes near, and shuts by itself, on its hinges along one of its sides; a door of the door kind opens its own leaf. Prims only. `angle` -170–170 ° (default 90), `hinge` `left` / `right` (default left), `trigger` `click` / `near` / `both` (default click), `reach` 0.5–10 m (default 2.5), `time` 0.2–5 s (default 1), `stay` 0–60 s (default 5).
 - **`slide`** — Slides aside on a click or as someone comes near, and back by itself: a sliding door, a window, a hatch. `x` -64–64 m (default 1), `y` -64–64 m (default 0), `z` -64–64 m (default 0), `trigger` `click` / `near` / `both` (default click), `reach` 0.5–10 m (default 2.5), `time` 0.2–5 s (default 1), `stay` 0–60 s (default 5).
 - **`belt`** — Carries whoever stands on it along its own y: an escalator (stairs rise along their y), a moving walkway. `speed` -5–5 m/s (default 0.5).
-- **`route`** — Goes from where it is through its points, round and on again or to the last and back, stopping a while if asked — at each point, or only at its ends: a boat on a tour that comes back to port, a train on its line with its station. `speed` 0.1–50 m/s (default 3), `stop` 0–120 s (default 0), `at` `each` / `ends` (default each), `mode` `round` / `back` (default round), `face` `no` / `yes` (default yes), `water` `no` / `yes` (default no).
+- **`passage`** — A click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside (x, y, z of its object) — into a vehicle by a click on its hull —, from inside out across its thinnest side, past it, onto what is there — out of it by its door. Inside its object is within the box round its solid parts' middles. `way` `both` / `in` / `out` (default both), `x` -64–64 m (default 0), `y` -64–64 m (default 0), `z` -64–64 m (default 1), `depth` 0.3–5 m (default 1).
+- **`route`** — Goes from where it is through its points, round and on again or to the last and back, stopping a while if asked — at each point, or only at its ends: a boat on a tour that comes back to port, a train on its line with its station, a ship on its autopilot. Held, it waits where it was left until it is run again, and then comes back onto it from there. Run once, it goes round or there and back once and stays where it is kept. `speed` 0.1–120 m/s (default 3), `accel` 0.1–10 m/s² (default 1), `stop` 0–120 s (default 0), `at` `each` / `ends` (default each), `mode` `round` / `back` (default round), `face` `no` / `yes` (default yes), `water` `no` / `yes` (default no).
 
 ### Vehicles
 
 - **`car`** — Driven on its wheels — its cylinders lying across it — the front ones steering: W and S throttle and brake, A and D steer, Space the hand brake. `power` 50–3000 N·m (default 500), `speed` 2–60 m/s (default 25), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 1000).
 - **`bike`** — Driven on its two wheels — its front and back cylinders lying across it — leaning into its turns: W and S throttle and brake, A and D steer. `power` 10–600 N·m (default 150), `speed` 2–70 m/s (default 30), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 250).
+- **`bicycle`** — Ridden on its two wheels as a motorbike is, leaning into its turns, and pedalled: W pedals, S brakes, A and D steer. A cylinder lying across it between its wheels is its crank: it turns, and what lies within it — its arms, its pedals —, as its rider pedals (the seat's pose Pedalling), Gear times slower than its back wheel. `power` 5–200 N·m (default 45), `speed` 1–20 m/s (default 8), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 90), `gear` 1–5 (default 2.8).
 - **`train`** — Along its route (Does: follows a route), its driver setting its speed: W faster, S slower and then back; left, it goes on with its timetable from there. `speed` 1–60 m/s (default 20), `accel` 0.1–3 m/s² (default 0.8).
 - **`boat`** — Afloat on the sea, its hull its parts: W and S ahead and astern, A and D its rudder. `power` 50–5000 (default 600), `speed` 1–30 m/s (default 8), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 800).
+- **`ship`** — Afloat at its waterline — its frame's z = 0, as it was built to float, whatever its decks carry — and as heavy as the water it moves: slow to get going and to stop, turning wide on its rudder as it goes and slowly on its bow thrusters when it does not, never skidding sideways. W and S ahead and astern, A and D the helm. `speed` 1–25 m/s (default 10), `accel` 0.05–3 m/s² (default 0.5), `turn` 1–30 °/s (default 6), `thrusters` 0–10 °/s (default 2).
+- **`submarine`** — A ship that dives: at the surface afloat with its hull's top level with the water — all that is inside it under the water and dry, wherever its frame is —, and under it down to the depth its driver takes it, held there and level, never through the sea's floor. W and S ahead and astern, A and D the helm, Space up and C down. `speed` 1–25 m/s (default 6), `accel` 0.05–3 m/s² (default 0.6), `turn` 1–30 °/s (default 8), `thrusters` 0–10 °/s (default 3), `dive` 0.2–5 m/s (default 1), `depth` 2–500 m (default 60).
+- **`helicopter`** — Flies on its rotors: Space takes it up and C down, and between them it holds its height, never into the ground nor over its ceiling; once off the ground W and S fly it ahead and back, its nose down as it goes, and A and D turn it, on the spot or banking as it goes. On the ground it rests on what it stands on — land, a roof, the sea. Its parts that turn (Does: turns) are its rotors: they turn while it runs, driven or on its Auto, and stand still once it is parked. Up from its controls in the air, it lands first. `speed` 2–80 m/s (default 25), `accel` 0.5–10 m/s² (default 3), `turn` 5–120 °/s (default 45), `climb` 0.5–20 m/s (default 5), `ceiling` 10–3000 m (default 500).
+- **`plane`** — Flies on its wings. On its wheels W speeds it up along its way, S or C brake it, A and D steer it; once as fast as its take-off speed, Space lifts it off. In the air W and S speed it up and slow it down, Space takes it up and C down, and between them it holds its height, never into the ground nor over its ceiling; slower than its take-off speed it sinks; A and D turn it, banking. Back on its wheels it rolls on. On its Auto it flies its route by itself: along its runway, off it, round and down again. `speed` 20–300 m/s (default 80), `accel` 0.5–15 m/s² (default 4), `lift` 10–120 m/s (default 40), `turn` 3–60 °/s (default 15), `climb` 1–50 m/s (default 10), `ceiling` 100–15000 m (default 3000).
 
 ### Particles
 
-Presets: `fire`, `smoke`, `sparks`, `steam`, `fog`, `fountain`, `snow`. Kits: `campfire` (fire, sparks, smoke), `torch` (fire, smoke), `chimney` (smoke). Modifiers: `amount` 0.1–4, `scale` 0.1–10, `tint` [r, g, b].
+Presets: `fire`, `smoke`, `sparks`, `steam`, `fog`, `fountain`, `snow`, `snowflakes`, `rain`, `fireflies`, `magic`, `bubbles`, `confetti`, `leaves`, `exhaust`. Kits: `campfire` (fire, sparks, smoke), `torch` (fire, smoke), `chimney` (smoke). Modifiers: `amount` 0.1–4, `scale` 0.1–10, `tint` [r, g, b].
+
+### Patterns on a face
+
+Every pattern takes `scale` 0.25–20 (default 2), `width` 0.01–0.3 (default 0.06), `glow` 0–1 (default 0.5), `power` 0.5–10 (default 3), `speed` 0–5 (default 1), `background` 0–1 (default 1), two `colors` and `multicolor`; and its own:
+
+- **`grid`** — Lines along and across, a square in every cell.
+- **`hex`** — A honeycomb of hexagons.
+- **`circuit`** — A grid with pads where its lines cross. `pads` 0–6 (default 3), `pad` 0–1 (default 0.5).
+- **`pulse-grid`** — A grid with pulses running along its lines. `every` 1–16 (default 4), `length` 0.01–0.4 (default 0.04), `base` 0–1 (default 0.4).
+- **`plasma`** — Bands of a glow flowing and shifting. `bands` 1–12 (default 4).
+- **`scan`** — Scan lines, a brighter band sweeping up them. `every` 0.5–20 (default 2), `sweep` 0–0.45 (default 0.05).
+- **`matrix`** — Columns of glyphs raining. `glyphs` 0–1 (default 0.7), `drop` 0.5–20 (default 2).
+- **`glitch`** — Scan lines torn by bands that jump and flicker. `bands` 0–1 (default 0.15), `shift` 0–2 (default 0.3), `flicker` 0–1 (default 0.3).
+- **`dots`** — A dot in every cell. `softness` 0–1 (default 1), `stagger` 0–0.5 (default 0).
+- **`stripes`** — Stripes at an angle, drifting if asked. `angle` 0–180 (default 45), `fill` 0.05–0.95 (default 0.5), `drift` -2–2 (default 0).
+- **`plaid`** — Bands along and across, as on a woven cloth. `band` 0.05–0.9 (default 0.4), `crossings` 0–1 (default 1).
+- **`tesla`** — Electric arcs crackling up the face. `bolts` 1–4 (default 2), `reach` 0–0.45 (default 0.25), `crackle` 0–40 (default 20).
+- **`dna`** — Double helices turning, rungs between their strands. `radius` 0.1–0.45 (default 0.3), `turn` 0.5–8 (default 2), `rungs` 0–12 (default 5).
+- **`reactor`** — Rings and spiral arms round a core pulsing at the face's middle. `arms` 0–8 (default 3), `twist` -1–1 (default 0.2), `core` 0–4 (default 1).
+- **`fire`** — Flames rising from the face's foot. `height` 0.5–20 (default 4), `tongues` 0.25–4 (default 1).
+- **`ember`** — Glowing cracks between plates, the plates flaring and fading. `cracks` 0–1 (default 0.7), `embers` 0–1 (default 0.6), `smoulder` 0–2 (default 0.2).
+- **`fluid`** — Lines of a flowing liquid. `flow` 0–2 (default 1), `foam` 0–1 (default 0.3).
+- **`vein`** — A network of veins, pulses running through it. `warp` 0–1 (default 0.3), `branches` 0–2 (default 1), `pulse` 0–1 (default 0.8).
+- **`shockwave`** — Rings bursting out from points here and there. `spread` 1–12 (default 4), `fade` 0.5–4 (default 2).
+- **`heartbeat`** — Heart traces running along every row, over a faint grid. `beat` 2–40 (default 6), `height` 0.05–0.5 (default 0.35), `grid` 0–1 (default 0.15).
+- **`stargate`** — Rings of symbols turning round the face's middle. `rings` 1–8 (default 5), `symbols` 0.05–0.9 (default 0.3), `spin` 0–3 (default 1).
+- **`firefly`** — Glowing specks drifting and blinking. `density` 0–1 (default 0.6), `wander` 0–1 (default 0.5), `blink` 0–6 (default 2).
+- **`rune`** — Glyphs in circles, glowing in turn. `ring` 0–1 (default 0.3), `pulse` 0–2 (default 0.3), `dim` 0–1 (default 0.15).
+- **`pcb-trace`** — Traces and pads of a circuit board, signals running along them. `pads` 0–1 (default 0.2), `signal` 0–1 (default 0.7), `traces` 0–1 (default 0.25).
+- **`warp`** — Streaks rushing out from the face's middle. `streaks` 4–64 (default 16), `dashes` 0.05–1 (default 0.3), `core` 0–4 (default 1).
+- **`synapses`** — Nerve cells with their branches, firing. `branches` 1–8 (default 3), `firing` 0–2 (default 0.5), `dendrites` 0–1 (default 0.25).
+- **`nano`** — A hexagonal lattice of discs, a cross spinning in each. `spin` 0–4 (default 1), `disc` 0–1 (default 0.3), `cross` 0–1 (default 0.5).
+- **`radar`** — A sweep turning round the face's middle, blips lit in its wake. `trail` 0.02–1 (default 0.25), `blips` 0–1 (default 0.15), `rings` 0–1 (default 0.15).
+- **`sonar`** — Pings spreading out in rings from points here and there. `spread` 1–12 (default 4), `echoes` 1–3 (default 3), `fade` 0.5–4 (default 2).
+- **`dot-wave`** — Dots swelling in waves. `swell` 0–6 (default 3), `wave` 0.1–2 (default 1), `calm` 0–1 (default 0.3).
+- **`dot-orbit`** — Dots circling the middle of every cell. `dots` 1–3 (default 3), `orbit` 0.05–0.4 (default 0.3), `centre` 0–1 (default 0.2).
+- **`ic-chip`** — Chips with their pins, blinking. `pins` 0–8 (default 4), `die` 2–16 (default 8), `blink` 0–10 (default 3).
+- **`bus-line`** — Lanes of bits running, a clock above them. `lanes` 1–12 (default 6), `bits` 0.5–8 (default 2), `clock` 0–1 (default 1).
+- **`motherboard`** — Traces, vias and signals of a board. `traces` 0–1 (default 0.55), `vias` 0–1 (default 0.3), `signal` 0–1 (default 0.7).
+- **`led-grid`** — A grid of LEDs lit in waves, in sparks or in a spiral. `show` 0 each / 1 waves / 2 sparks / 3 spiral (default 0), `size` 0.1–1 (default 0.6).
+- **`signal`** — Oscilloscope traces along every row, sine and square. `amplitude` 0.05–0.5 (default 0.27), `frequency` 0.25–4 (default 1), `grid` 0–1 (default 0).
+- **`particles`** — Specks swirling round two cores in every cell. `count` 1–8 (default 5), `swirl` 0.05–0.3 (default 0.15), `cores` 0–1 (default 0.5).
+- **`p2p-mesh`** — Nodes linked to their neighbours, packets running between them. `links` 0–1 (default 0.6), `packets` 0–1 (default 0.6), `jitter` 0–0.45 (default 0.3).
+- **`fluid-plus`** — A flowing liquid, shaded by its depth. `flow` 0–2 (default 1), `foam` 0–1 (default 0.3), `depth` 0–1 (default 0.15).
+- **`lava-flow`** — Plates of crust on glowing lava, flowing down. `flow` 0–1 (default 0.4), `heat` 0.02–0.5 (default 0.2), `crust` 0–1 (default 0.4).
 
 ### Tree species
 
-`bush` Bush (plant, 2–2.7 m tall, crown 1.6–2 m); `oleander` Oleander (plant, 3.2–4 m tall, crown 2.1–2.7 m); `fern` Fern (plant, 0.7–0.8 m tall, crown 1.1–1.2 m); `agave` Agave (plant, 1.1–1.2 m tall, crown 1.1–1.3 m); `saguaro` Saguaro (plant, 5.6–6.6 m tall, crown 0.8–1 m); `bamboo` Bamboo (plant, 7.5–8.9 m tall, crown 3.7–4.2 m); `banana` Banana (plant, 3.4–4.6 m tall, crown 2.1–2.3 m); `pampas` Pampas grass (plant, 3.2–3.7 m tall, crown 1.4–2 m); `sunflower` Sunflower (plant, 1.6–2 m tall, crown 1.2–1.5 m); `joshua` Joshua tree (plant, 5.7–8.2 m tall, crown 2–3.4 m); `coconut` Coconut palm (palm, 12.8–16.3 m tall, crown 6.9–7.8 m); `date` Date palm (palm, 11.8–14.5 m tall, crown 4.1–4.4 m); `fanPalm` Fan palm (palm, 14.2–18.1 m tall, crown 2.9–3.3 m); `royal` Royal palm (palm, 15.6–16.4 m tall, crown 4.2–4.6 m); `bottle` Bottle palm (palm, 4.1–5.3 m tall, crown 2.2–2.4 m); `areca` Areca palm (palm, 4.7–6.3 m tall, crown 3.9–4.5 m); `sago` Sago palm (palm, 2.1–2.5 m tall, crown 1.4–1.6 m); `fir` Fir (conifer, 12.4–15.9 m tall, crown 5.1–7 m); `pine` Stone pine (conifer, 14.9–19.3 m tall, crown 5.8–9.6 m); `cypress` Cypress (conifer, 12.1–15.9 m tall, crown 1.3–1.5 m); `oak` Oak (broadleaf, 13.5–17.9 m tall, crown 6.3–8.4 m); `birch` Birch (broadleaf, 15.6–18.2 m tall, crown 4.9–5.6 m); `poplar` Poplar (broadleaf, 15.5–18.9 m tall, crown 2.3–2.7 m); `acacia` Acacia (broadleaf, 11–15.3 m tall, crown 7.2–9.7 m); `maple` Maple (broadleaf, 12.4–15.1 m tall, crown 3.7–5.6 m); `cherry` Cherry blossom (broadleaf, 8–9.5 m tall, crown 6.4–7.6 m); `willow` Weeping willow (broadleaf, 10–12.4 m tall, crown 5.7–6.6 m); `olive` Olive (broadleaf, 8.6–9.6 m tall, crown 4.8–6.9 m); `baobab` Baobab (broadleaf, 14–19.3 m tall, crown 3.5–5.6 m); `eucalyptus` Eucalyptus (broadleaf, 19.7–26 m tall, crown 5.4–7.8 m); `dead` Dead tree (broadleaf, 9.1–13.6 m tall, crown 3.2–5.1 m).
+`bush` Bush (plant, 2–2.7 m tall, crown 1.6–2 m); `oleander` Oleander (plant, 3.2–4 m tall, crown 2.1–2.7 m); `fern` Fern (plant, 0.7–0.8 m tall, crown 1.1–1.2 m); `agave` Agave (plant, 1.1–1.2 m tall, crown 1.1–1.3 m); `saguaro` Saguaro (plant, 5.6–6.6 m tall, crown 0.8–1 m); `bamboo` Bamboo (plant, 7.5–8.9 m tall, crown 3.7–4.2 m); `banana` Banana (plant, 3.4–4.6 m tall, crown 2.1–2.3 m); `joshua` Joshua tree (plant, 5.7–8.2 m tall, crown 2–3.4 m); `hosta` Hosta (plant, 0.3–0.4 m tall, crown 0.4–0.5 m); `monstera` Monstera (plant, 0.9–1.1 m tall, crown 1.1–1.3 m); `strelitzia` Bird of paradise (plant, 1.3–1.3 m tall, crown 0.9–1.1 m); `cordyline` Cordyline (plant, 2.1–3.7 m tall, crown 1.1–1.5 m); `sunflower` Sunflower (flower, 1.6–2 m tall, crown 1.2–1.5 m); `rudbeckia` Black-eyed Susan (flower, 0.6–0.8 m tall, crown 0.5–0.8 m); `daisy` Oxeye daisy (flower, 0.4–0.7 m tall, crown 0.4–0.6 m); `poppy` Poppy (flower, 0.6–0.7 m tall, crown 0.3–0.5 m); `lily` Lily (flower, 0.9–1.1 m tall, crown 0.3–0.4 m); `gladiolus` Gladiolus (flower, 1.2–1.4 m tall, crown 0.3–0.4 m); `columbine` Columbine (flower, 0.5–0.8 m tall, crown 0.3–0.4 m); `heather` Heather (flower, 0.5–0.6 m tall, crown 0.4–0.5 m); `pampas` Pampas grass (grass, 3.2–3.7 m tall, crown 1.4–2 m); `meadowGrass` Meadow grass (grass, 0.9–1.2 m tall, crown 0.6–0.6 m); `sedge` Sedge (grass, 0.7–0.8 m tall, crown 0.6–0.8 m); `papyrus` Papyrus (grass, 2.4–3.1 m tall, crown 1–1.5 m); `coconut` Coconut palm (palm, 12.8–16.3 m tall, crown 6.9–7.8 m); `date` Date palm (palm, 11.8–14.5 m tall, crown 4.1–4.4 m); `fanPalm` Fan palm (palm, 14.2–18.1 m tall, crown 2.9–3.3 m); `royal` Royal palm (palm, 15.6–16.4 m tall, crown 4.2–4.6 m); `bottle` Bottle palm (palm, 4.1–5.3 m tall, crown 2.2–2.4 m); `areca` Areca palm (palm, 4.7–6.3 m tall, crown 3.9–4.5 m); `sago` Sago palm (palm, 2.1–2.5 m tall, crown 1.4–1.6 m); `curvedCoconut` Curved coconut palm (palm, 10.9–14.6 m tall, crown 8.1–10.2 m); `dateClump` Clustered date palm (palm, 13–15.2 m tall, crown 10.8–13.5 m); `spindle` Spindle palm (palm, 7.6–11.8 m tall, crown 2.9–3.1 m); `christmas` Christmas palm (palm, 6.7–8.3 m tall, crown 3.6–4.7 m); `fir` Fir (conifer, 12.4–15.9 m tall, crown 5.1–7 m); `pine` Stone pine (conifer, 14.9–19.3 m tall, crown 5.8–9.6 m); `cypress` Cypress (conifer, 12.1–15.9 m tall, crown 1.3–1.5 m); `sugi` Japanese cedar (conifer, 18.7–25.1 m tall, crown 6.5–7.7 m); `redwood` Redwood (conifer, 25.5–32.9 m tall, crown 6.6–8 m); `dawnRedwood` Dawn redwood (conifer, 16.5–20.8 m tall, crown 6.4–7.7 m); `blackPine` Black pine (conifer, 14–17.6 m tall, crown 6.6–9.2 m); `oak` Oak (broadleaf, 13.5–17.9 m tall, crown 6.3–8.4 m); `birch` Birch (broadleaf, 15.6–18.2 m tall, crown 4.9–5.6 m); `poplar` Poplar (broadleaf, 15.5–18.9 m tall, crown 2.3–2.7 m); `acacia` Acacia (broadleaf, 11–15.3 m tall, crown 7.2–9.7 m); `maple` Maple (broadleaf, 12.4–15.1 m tall, crown 3.7–5.6 m); `cherry` Cherry blossom (broadleaf, 8–9.5 m tall, crown 6.4–7.6 m); `willow` Weeping willow (broadleaf, 10–12.4 m tall, crown 5.7–6.6 m); `olive` Olive (broadleaf, 8.6–9.6 m tall, crown 4.8–6.9 m); `baobab` Baobab (broadleaf, 14–19.3 m tall, crown 3.5–5.6 m); `eucalyptus` Eucalyptus (broadleaf, 19.7–26 m tall, crown 5.4–7.8 m); `plane` Plane tree (broadleaf, 18.5–26.4 m tall, crown 7.9–10.9 m); `zelkova` Zelkova (broadleaf, 16.1–20.3 m tall, crown 6.7–9.5 m); `camphor` Camphor tree (broadleaf, 11.9–16.2 m tall, crown 9.7–12.6 m); `hackberry` Hackberry (broadleaf, 14.6–17.5 m tall, crown 4.8–8.1 m); `chestnut` Sweet chestnut (broadleaf, 14.7–20.2 m tall, crown 7.9–9.3 m); `beech` Beech (broadleaf, 17.8–24.3 m tall, crown 6.6–9.5 m); `alder` Alder (broadleaf, 12.7–15 m tall, crown 4–6.1 m); `feverTree` Fever tree (broadleaf, 17.6–21.6 m tall, crown 9.9–11.1 m); `blueGum` Blue gum (broadleaf, 22.1–29.1 m tall, crown 6.7–9.5 m); `dead` Dead tree (broadleaf, 9.1–13.6 m tall, crown 3.2–5.1 m).
 
 ### Starter materials
 
-Up to three of each subcategory of the bank (3091 in all in the catalog):
+Up to three of each subcategory of the bank (3253 in all in the catalog):
 
 - `masonry/brick/red-brick` — Red Brick, 1.4 × 1.4 m a tile, #8f6852
 - `masonry/brick/red-brick-03` — Red Brick 03, 1 × 1 m a tile, #6b564e
@@ -1649,9 +2566,9 @@ Up to three of each subcategory of the bank (3091 in all in the catalog):
 - `plaster/wallpaper/wallpaper-001a` — Wallpaper 001 A, 1 × 1 m a tile, #e0e0dc
 - `plaster/wallpaper/wallpaper-002c` — Wallpaper 002 C, 1 × 1 m a tile, #b5b4aa
 - `plaster/wallpaper/wallpaper-002b` — Wallpaper 002 B, 1 × 1 m a tile, #dadbd6
-- `plaster/ceiling/office-ceiling-003` — Office Ceiling 003, 5.15 × 5.15 m a tile, #f1f2f2, cut-out, glows
-- `plaster/ceiling/office-ceiling-005` — Office Ceiling 005, 13 × 13 m a tile, #f1f2f2, cut-out, glows
-- `plaster/ceiling/office-ceiling-006` — Office Ceiling 006, 10 × 10 m a tile, #efefef, cut-out, glows
+- `plaster/ceiling/wood-ceiling-coffers-001` — Wood Ceiling Coffers 001, 2 × 2 m a tile, #615e3d
+- `plaster/ceiling/wood-ceiling-coffers-003` — Wood Ceiling Coffers 003, 2.4 × 2.4 m a tile, #4e717a
+- `plaster/ceiling/wood-ceiling-coffers-004` — Wood Ceiling Coffers 004, 2.4 × 2.4 m a tile, #4a382f
 - `wood/planks/wood-table-worn` — Wood Table Worn, 0.55 × 0.55 m a tile, #533016
 - `wood/planks/brown-planks-03` — Brown Planks 03, 1 × 1 m a tile, #6d655b
 - `wood/planks/wood-planks-dirt` — Wood Planks Dirt, 2 × 2 m a tile, #755c46
@@ -1684,9 +2601,9 @@ Up to three of each subcategory of the bank (3091 in all in the catalog):
 - `metal/rusted/green-metal-rust` — Green Metal Rust, 1 × 1 m a tile, #3f4d34
 - `metal/rusted/rust-coarse-01` — Rust Coarse 01, 2.2 × 2.2 m a tile, #643b21
 - `metal/rusted/rusty-metal-02` — Rusty Metal 02, 1 × 1 m a tile, #ac9164
+- `metal/painted/hazard-stripes` — Hazard stripes, painted yellow and black, 0.4 × 0.4 m a tile, #ad8f1b
 - `metal/painted/painted-metal-shutter` — Painted Metal Shutter, 2 × 2 m a tile, #7f8486
 - `metal/painted/metal-027` — Metal 027, 1 × 1 m a tile, #2e2d35
-- `metal/painted/metal-029` — Metal 029, 1 × 1 m a tile, #1e2221
 - `roofing/tiles/roof-09` — Roof 09, 4 × 4 m a tile, #897663
 - `roofing/tiles/ceramic-roof-01` — Ceramic Roof 01, 3.5 × 3.5 m a tile, #927855
 - `roofing/tiles/grey-roof-tiles-02` — Grey Roof Tiles 02, 1.5 × 1.5 m a tile, #787b79
@@ -1772,9 +2689,12 @@ Up to three of each subcategory of the bank (3091 in all in the catalog):
 - `openwork/net/net-001a` — Net 001 A, 1.3 × 1.3 m a tile, #000000, cut-out
 - `openwork/net/chainmail-001` — Chainmail 001, 0.3 × 0.3 m a tile, #555657, cut-out
 - `openwork/net/net-002b` — Net 002 B, 1.3 × 1.3 m a tile, #6f6549, cut-out
-- `facade/facade/facade-006` — Facade 006, 8 × 8 m a tile, #828989
-- `facade/facade/facade-005` — Facade 005, 8 × 8 m a tile, #465353
-- `facade/facade/facade-001` — Facade 001, 8 × 8 m a tile, #484e55
+- `openwork/plants/iron-railing-flower-boxes-ivy` — Wrought-iron railing on a stone ledge, ivy climbing its bars, white boxes of pink and purple flowers, 3.9 × 1.17 m a tile, #9f9a89, cut-out
+- `openwork/plants/iron-railing-flowers-ivy` — Wrought-iron railing on a stone ledge, ivy climbing its bars, flowers along its foot, 5.6 × 1.17 m a tile, #7f7a60, cut-out
+- `openwork/plants/hanging-ivy` — Ivy hanging down a wall, thick at its top, thinning to its foot, 2.4 × 5 m a tile, #3e622f, cut-out
+- `facade/facade/tudor-timber-frame-brick-grass` — Tudor wall: dark timber posts and beams, brick between them, plaster panels braced at the top, grass at its foot, 10 × 5 m a tile, #7d6750
+- `facade/facade/tudor-timber-frame-plaster-leaded-window` — Tudor wall: dark timber frame, cream plaster panels, a leaded window of two lights in its middle, 6.8 × 7.3 m a tile, #8f836d
+- `facade/facade/cream-wallpaper-lace-window-balustrade` — Cream wallpaper between wooden bands, a window with a lace curtain over a turned wooden balustrade, 4.8 × 4.4 m a tile, #c4b29e
 - `facade/stylized/others-0021` — Office Building Facade Texture, 24 × 24 m a tile, #7f828d
 - `facade/stylized/others-0022` — Office Building Facade Texture, 33 × 33 m a tile, #91877d
 - `facade/stylized/others-0025` — Old Office Building Facade, 19.2 × 19.2 m a tile, #a2a29d
@@ -1815,3 +2735,24 @@ Up to three of each subcategory of the bank (3091 in all in the catalog):
 - `effects/lava/lava-001` — Lava crust, 3 × 3 m a tile, #54393c, cut-out, glows, moves
 - `effects/lava/lava-004` — Molten lava, 3 × 3 m a tile, #b04730, cut-out, glows, moves
 - `effects/lava/lava-005` — Lava 005, 3 × 3 m a tile, #84423d, cut-out, glows, moves
+- `effects/portal/event-horizon` — Event horizon, 5 × 5 m a tile, #3563a9, glows, moves
+- `effects/mirror/silvered` — Mirror, silvered, 1 × 1 m a tile, #f3f5f4, mirrors
+- `effects/mirror/antique` — Antique mirror, foxed and hazed, 1 × 1 m a tile, #dedcd3, mirrors
+- `images/paintings/a-cottage-in-the-woods` — A Cottage in the Woods — Meindert Hobbema, c. 1662, 1.114 × 0.84 m a tile, #716f67
+- `images/paintings/portrait-of-a-couple` — Portrait of a Couple — Northern Italy, late 16th century, c. 1580–88, 1.405 × 0.998 m a tile, #4e473a
+- `images/paintings/portrait-of-a-man` — Portrait of a Man — Bartolomeo Veneto, c. 1510s, 0.292 × 0.394 m a tile, #555459
+- `images/textiles/dianas-return-from-the-chase` — Diana's Return from the Chase (from Set of Ovid's Metamorphoses) — Gobelins Manufactory, 1704–1731, 3.26 × 3.225 m a tile, #6e5c45
+- `images/textiles/dido-and-aeneas-seek-shelter-from-a-storm` — Dido and Aeneas seek shelter from a storm — Giovanni Francesco Romanelli, 1679, 4.188 × 4.164 m a tile, #756a44
+- `images/textiles/peacock-and-dragon` — Peacock and Dragon  — William Morris, 1878, 1.747 × 2.066 m a tile, #8a7359
+- `images/ceramics/footed-dish-soucoupe-a-pied` — Footed Dish (soucoupe à pied) — Sèvres Porcelain Factory, 1786, 0.224 × 0.224 m a tile, #736f6d
+- `images/ceramics/delftware-plate-bristol` — Plate — Bristol Porcelain Factory, mid-1700s, 0.264 × 0.264 m a tile, #6e7677
+- `images/ceramics/dish-depicting-the-expulsion` — Dish Depicting the Expulsion — France, Lyon, late 1500s, 0.235 × 0.235 m a tile, #8e8870
+- `images/glass/two-windows-depicting-the-annunciation-and-adora` — Two Windows Depicting the Annunciation and Adoration of the Magi — Austria, Styria, 15th century, c. 1410–20, 0.49 × 0.72 m a tile, #625e58
+- `images/glass/stained-glass-panel-with-male-donor` — Stained Glass Panel with Male Donor — France, c. 1480, 0.435 × 1.56 m a tile, #b4b4b1
+- `images/glass/saint-george` — Saint George — England, 15th century, c. 1440–1450, 0.311 × 0.34 m a tile, #b1aca2
+- `images/signs/ground-floor-sign` — Sign, «GROUND FLOOR», 0.5 × 0.47 m a tile, #ebebe8
+- `images/signs/1st-floor-sign` — Sign, «1ST FLOOR», 0.5 × 0.47 m a tile, #eaeae7
+- `images/signs/2nd-floor-sign` — Sign, «2ND FLOOR», 0.5 × 0.47 m a tile, #eaeae7
+- `images/objects/rocker-switch` — Rocker switch, up and down, 0.09 × 0.09 m a tile, #e7e7e4
+- `images/objects/control-screen` — Control screen, a ring and lit bars, 0.5 × 0.5 m a tile, #4b341e
+- `images/objects/cast-iron-fireplace` — Cast-iron fireplace, arched, 1.2 × 1.2 m a tile, #29282e

@@ -42,3 +42,31 @@ A build at an address can be brought in by anyone: with an exact anchor it lands
 written for — share one without an anchor (or say so) when it is meant for anyone's place. A build
 can be placed by anyone who brings it in; what it becomes is theirs.
 
+## A whole parcel: a land
+
+A **land** is a parcel (~300 m, the status's `F5:11145,19300 Hinterland`) saved whole — Second Life's
+and OpenSim's region archive (OAR). It is a build file that names its parcel, so everything above holds
+for it, and it holds:
+
+- `"parcel": { "face", "x", "y" }`, and an exact `anchor` at that parcel's centre, its +y the parcel's
+  own;
+- everything that stands in the parcel by its root (an object's centre, a clone's, a tree's foot), with
+  an object's parts however far they reach, under their ids;
+- `"chunks"`: its ground where it was shaped (terraformed), each chunk as the world keeps it — never
+  write or change these by hand: they are the ground to the centimetre;
+- `"sky"`: the parcel's own sky, when it has one (time, clouds, rain).
+
+In *Builds as JSON*, **Save land** saves the parcel where the camera looks, and shows and downloads its
+file. A land pasted, dropped or opened by its address is checked as a whole parcel: counted, not held to
+one build's budget, but to what a newcomer is sent of the world at once (about 1.6 MB compressed, which
+the panel says). Its parcel's keeper then chooses:
+
+- **Load in its place**: the parcel becomes what the land holds, as it was saved: what it names is
+  changed where it stands, what it no longer holds is taken away, its ground and sky are put back.
+- **Load here**: the same, into the parcel where the camera looks — moved to that parcel's centre, under
+  new ids, its whole ground laid there. A smaller parcel that it would not fit refuses it.
+
+Either is one Ctrl+Z. To **rethink a land** (in recipes, say), keep its `parcel`, `anchor`, `chunks`,
+`sky` and every `id` as they are; change the objects as you would a build's export (Changing it, above).
+An object left out is taken away when it is loaded in its place.
+

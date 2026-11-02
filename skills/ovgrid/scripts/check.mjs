@@ -1,42 +1,42 @@
 #!/usr/bin/env node
 // Made by tools/build-skill-repo.js from OVGrid's tools/build-check.js: run with Node 18+ or Bun.
-// tools/build-check.js
-import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+var __defProp = Object.defineProperty;
+var __returnValue = (v) => v;
+function __exportSetter(name, newValue) {
+  this[name] = __returnValue.bind(null, newValue);
+}
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, {
+      get: all[name],
+      enumerable: true,
+      configurable: true,
+      set: __exportSetter.bind(all, name)
+    });
+};
+var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
 // src/math.js
-var add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-var sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-var scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
-var dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-var cross = (a, b) => [
+var add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross = (a, b) => [
   a[1] * b[2] - a[2] * b[1],
   a[2] * b[0] - a[0] * b[2],
   a[0] * b[1] - a[1] * b[0]
-];
-var length = (a) => Math.hypot(a[0], a[1], a[2]);
-var normalize = (a) => scale(a, 1 / length(a));
-var quatMultiply = (a, b) => [
+], length = (a) => Math.hypot(a[0], a[1], a[2]), normalize = (a) => scale(a, 1 / length(a)), clamp = (value, min, max) => Math.min(Math.max(value, min), max), quatMultiply = (a, b) => [
   a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
   a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
   a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
   a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]
-];
-var quatAxisAngle = (axis, angle) => {
+], quatAxisAngle = (axis, angle) => {
   const s = Math.sin(angle / 2);
   return [axis[0] * s, axis[1] * s, axis[2] * s, Math.cos(angle / 2)];
-};
-var quatNormalize = (q) => {
+}, quatNormalize = (q) => {
   const l = Math.hypot(q[0], q[1], q[2], q[3]);
   return [q[0] / l, q[1] / l, q[2] / l, q[3] / l];
-};
-var quatRotate = (q, v) => {
+}, quatRotate = (q, v) => {
   const axis = [q[0], q[1], q[2]];
   const t = scale(cross(axis, v), 2);
   return add(add(v, scale(t, q[3])), cross(axis, t));
-};
-var quatFromBasis = (right, up, back) => {
+}, quatFromBasis = (right, up, back) => {
   const [m00, m10, m20] = right;
   const [m01, m11, m21] = up;
   const [m02, m12, m22] = back;
@@ -57,213 +57,21 @@ var quatFromBasis = (right, up, back) => {
   return [(m02 + m20) / s, (m12 + m21) / s, 0.25 * s, (m10 - m01) / s];
 };
 
-// src/build/prim/params.js
-var PROFILE = Object.freeze({ CIRCLE: 0, SQUARE: 1, ISOTRI: 2, EQUALTRI: 3, RIGHTTRI: 4, HALF_CIRCLE: 5 });
-var HOLE = Object.freeze({ SAME: 0, CIRCLE: 16, SQUARE: 32, TRIANGLE: 48 });
-var PATH = Object.freeze({ LINE: 16, CIRCLE: 32, CIRCLE_33: 33, CIRCLE2: 48, TEST: 64, FLEXIBLE: 128 });
-var SHAPE_FIELDS = Object.freeze([
-  "profileCurve",
-  "profileBegin",
-  "profileEnd",
-  "hollow",
-  "pathCurve",
-  "pathBegin",
-  "pathEnd",
-  "scaleX",
-  "scaleY",
-  "shearX",
-  "shearY",
-  "twistBegin",
-  "twistEnd",
-  "radiusOffset",
-  "taperX",
-  "taperY",
-  "revolutions",
-  "skew"
-]);
-var LIMITS = Object.freeze({
-  cutGap: 0.02,
-  hollow: 0.99,
-  hollowSquare: 0.7,
-  holeMin: 0.01
-});
-var DEFAULT_PARAMS = Object.freeze({
-  profileCurve: PROFILE.SQUARE,
-  profileBegin: 0,
-  profileEnd: 1,
-  hollow: 0,
-  pathCurve: PATH.LINE,
-  pathBegin: 0,
-  pathEnd: 1,
-  scaleX: 1,
-  scaleY: 1,
-  shearX: 0,
-  shearY: 0,
-  twistBegin: 0,
-  twistEnd: 0,
-  radiusOffset: 0,
-  taperX: 0,
-  taperY: 0,
-  revolutions: 1,
-  skew: 0
-});
-var CUT = 50000;
-var roundAway = (x) => Math.sign(x) * Math.round(Math.abs(x)) + 0;
-var clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-var byte = { min: 0, max: 255, encode: (v) => Math.trunc(v), decode: (u) => u };
-var cut = { min: 0, max: 65535, encode: (v) => roundAway(v * CUT), decode: (u) => u / CUT };
-var cutEnd = { min: 0, max: 65535, encode: (v) => CUT - roundAway(v * CUT), decode: (u) => (CUT - u) / CUT };
-var scale2 = { min: 0, max: 255, encode: (v) => 200 - roundAway(v * 100), decode: (u) => (200 - u) / 100 };
-var signed = { min: -128, max: 127, encode: (v) => roundAway(v * 100), decode: (s) => s / 100 };
-var revolutions = { min: 0, max: 255, encode: (v) => roundAway((v - 1) * 200 / 3), decode: (u) => (200 + 3 * u) / 200 };
-var shear = {
-  min: 0,
-  max: 255,
-  encode: (v) => ((s) => s < 0 ? s + 256 : s)(clamp(roundAway(v * 100), -128, 127)),
-  decode: (u) => (u < 128 ? u : u - 256) / 100
-};
-var CODECS = [byte, cut, cutEnd, cut, byte, cut, cutEnd, scale2, scale2, shear, shear, signed, signed, signed, signed, signed, revolutions, signed];
-var CODEC = Object.fromEntries(SHAPE_FIELDS.map((name, i) => [name, CODECS[i]]));
-var snap = (name, value) => CODEC[name].decode(CODEC[name].encode(value));
-var decodeShape = (shape) => Object.fromEntries(SHAPE_FIELDS.map((name, i) => [name, CODECS[i].decode(shape[i])]));
-var encodeShape = (params) => SHAPE_FIELDS.map((name, i) => {
-  const value = Number.isFinite(params[name]) ? params[name] : DEFAULT_PARAMS[name];
-  return clamp(CODECS[i].encode(value), CODECS[i].min, CODECS[i].max);
-});
-var constrainParams = (input) => {
-  const errors = [];
-  const value = (name) => input[name] ?? DEFAULT_PARAMS[name];
-  const limit = (name, v, min, max, tolerance = 0.001) => {
-    if (!(v >= min - tolerance && v <= max + tolerance))
-      errors.push(name);
-    return Number.isFinite(v) ? clamp(v, min, max) : clamp(DEFAULT_PARAMS[name], min, max);
-  };
-  const curve = (name, fallback) => {
-    const v = value(name);
-    if (Number.isInteger(v) && v >= 0 && v <= 255)
-      return v;
-    errors.push(name);
-    return fallback;
-  };
-  let profileCurve = curve("profileCurve", PROFILE.SQUARE);
-  let pathCurve = curve("pathCurve", PATH.LINE);
-  if ((profileCurve & 15) > PROFILE.HALF_CIRCLE) {
-    errors.push("profileCurve");
-    profileCurve = PROFILE.SQUARE;
-  }
-  if (profileCurve >> 4 > 3) {
-    errors.push("profileCurve");
-    profileCurve &= 15;
-  }
-  if (pathCurve >> 4 < 1 || pathCurve >> 4 > 8) {
-    errors.push("pathCurve");
-    pathCurve = PATH.LINE;
-  }
-  const profile = profileCurve & 15;
-  const hole = profileCurve & 240;
-  const cuts = (prefix, snapEnd) => {
-    let end = value(`${prefix}End`);
-    if (snapEnd && end >= 0.0149 && end < LIMITS.cutGap)
-      end = LIMITS.cutGap;
-    let begin = limit(`${prefix}Begin`, value(`${prefix}Begin`), 0, 1 - LIMITS.cutGap);
-    end = limit(`${prefix}End`, end, LIMITS.cutGap, 1);
-    begin = limit(`${prefix}Begin`, begin, 0, end - LIMITS.cutGap, 0.01);
-    return [snap(`${prefix}Begin`, begin), snap(`${prefix}End`, end)];
-  };
-  const [profileBegin, profileEnd] = cuts("profile", true);
-  const [pathBegin, pathEnd] = cuts("path", false);
-  const squareHole = hole === HOLE.SQUARE && [PROFILE.CIRCLE, PROFILE.HALF_CIRCLE, PROFILE.EQUALTRI].includes(profile);
-  const hollow = snap("hollow", limit("hollow", value("hollow"), 0, squareHole ? LIMITS.hollowSquare : LIMITS.hollow));
-  const holeSize = pathCurve === PATH.CIRCLE && profile !== PROFILE.HALF_CIRCLE;
-  const scaleX = snap("scaleX", limit("scaleX", value("scaleX"), holeSize ? LIMITS.holeMin : 0, holeSize ? 1 : 2));
-  const scaleY = snap("scaleY", limit("scaleY", value("scaleY"), holeSize ? LIMITS.holeMin : 0, holeSize ? 0.5 : 2));
-  const [shearX, shearY] = ["shearX", "shearY"].map((name) => snap(name, limit(name, value(name), -0.5, 0.5)));
-  const [twistBegin, twistEnd, taperX, taperY] = ["twistBegin", "twistEnd", "taperX", "taperY"].map((name) => snap(name, limit(name, value(name), -1, 1)));
-  const turns = snap("revolutions", limit("revolutions", value("revolutions"), 1, 4));
-  let radiusOffset = 0;
-  if (holeSize) {
-    const offset = value("radiusOffset");
-    const taper = Math.sign(taperY) * Math.sign(offset) < 0 ? 0 : Math.abs(taperY);
-    const max = Math.max(0, 1 - scaleY * (1 - taper) / (1 - scaleY));
-    const step = Math.floor(max * 100 + 0.000000001) / 100;
-    radiusOffset = snap("radiusOffset", clamp(limit("radiusOffset", offset, -max, max, 0.01), -step, step));
-  }
-  let skew = limit("skew", value("skew"), -0.95, 0.95);
-  if (turns !== 1) {
-    const min = 1 - 1 / (turns * scaleX + 1);
-    const step = Math.min(Math.ceil(min * 100 - 0.000000001) / 100, 0.95);
-    if (Math.abs(skew) < min - 0.01)
-      errors.push("skew");
-    if (Math.abs(skew) < step)
-      skew = skew < 0 ? -step : step;
-  }
-  skew = snap("skew", skew);
-  return {
-    params: {
-      profileCurve,
-      profileBegin,
-      profileEnd,
-      hollow,
-      pathCurve,
-      pathBegin,
-      pathEnd,
-      scaleX,
-      scaleY,
-      shearX,
-      shearY,
-      twistBegin,
-      twistEnd,
-      radiusOffset,
-      taperX,
-      taperY,
-      revolutions: turns,
-      skew
-    },
-    errors: [...new Set(errors)]
-  };
-};
-var normalizeShape = (shape) => encodeShape(constrainParams(decodeShape(shape)).params);
-var UPRIGHT = Object.freeze([0, Math.SQRT1_2, 0, Math.SQRT1_2]);
-var AS_IS = Object.freeze([0, 0, 0, 1]);
-var preset = (params, rotation = AS_IS) => Object.freeze({ shape: Object.freeze(encodeShape({ ...DEFAULT_PARAMS, ...params })), rezRotation: rotation });
-var { SQUARE, CIRCLE, EQUALTRI, HALF_CIRCLE } = PROFILE;
-var PRESETS = Object.freeze({
-  cube: preset({ profileCurve: SQUARE }),
-  prism: preset({ profileCurve: SQUARE, scaleX: 0, shearX: -0.5 }),
-  pyramid: preset({ profileCurve: SQUARE, scaleX: 0, scaleY: 0 }),
-  tetrahedron: preset({ profileCurve: EQUALTRI, scaleX: 0, scaleY: 0 }),
-  cylinder: preset({ profileCurve: CIRCLE }),
-  hemiCylinder: preset({ profileCurve: CIRCLE, profileBegin: 0.25, profileEnd: 0.75 }),
-  cone: preset({ profileCurve: CIRCLE, scaleX: 0, scaleY: 0 }),
-  hemiCone: preset({ profileCurve: CIRCLE, scaleX: 0, scaleY: 0, profileBegin: 0.25, profileEnd: 0.75 }),
-  sphere: preset({ profileCurve: HALF_CIRCLE, pathCurve: PATH.CIRCLE }, UPRIGHT),
-  hemiSphere: preset({ profileCurve: HALF_CIRCLE, pathCurve: PATH.CIRCLE, pathEnd: 0.5 }),
-  torus: preset({ profileCurve: CIRCLE, pathCurve: PATH.CIRCLE, scaleY: 0.25 }, UPRIGHT),
-  tube: preset({ profileCurve: SQUARE, pathCurve: PATH.CIRCLE, scaleY: 0.25 }, UPRIGHT),
-  ring: preset({ profileCurve: EQUALTRI, pathCurve: PATH.CIRCLE, scaleY: 0.25 }, UPRIGHT)
-});
-
 // src/build/kinds/mesh.js
-var WELD = 1e6;
-var FLAT = 0.000000000001;
-var sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-var cross2 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-var dot2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-var unit = (v) => {
+var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross2 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], unit = (v) => {
   const length2 = Math.hypot(v[0], v[1], v[2]);
   return length2 > FLAT ? [v[0] / length2, v[1] / length2, v[2] / length2] : [0, 0, 1];
-};
-var area2 = (points) => points.reduce((sum, [x, y], i) => {
+}, area2 = (points) => points.reduce((sum, [x, y], i) => {
   const [nx, ny] = points[(i + 1) % points.length];
   return sum + x * ny - nx * y;
-}, 0);
-var turn = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-var triangulate = (points) => {
+}, 0), turn = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), triangulate = (points, { touching = false } = {}) => {
   const order = points.map((_, i) => i);
   if (area2(points) < 0)
     order.reverse();
   const triangles = [];
-  const inside = (p, a, b, c) => turn(a, b, p) > FLAT && turn(b, c, p) > FLAT && turn(c, a, p) > FLAT;
+  const strictly = (p, a, b, c) => turn(a, b, p) > FLAT && turn(b, c, p) > FLAT && turn(c, a, p) > FLAT;
+  const corner = (p, a, b, c) => [a, b, c].some((q) => q[0] === p[0] && q[1] === p[1]);
+  const inside = touching ? (p, a, b, c) => !corner(p, a, b, c) && turn(a, b, p) >= -FLAT && turn(b, c, p) >= -FLAT && turn(c, a, p) >= -FLAT : strictly;
   while (order.length > 3) {
     const n = order.length;
     let ear = -1, flattest = 0, least = Infinity;
@@ -284,8 +92,70 @@ var triangulate = (points) => {
   if (order.length === 3)
     triangles.push(order);
   return triangles;
-};
-var createMesh = (slots) => {
+}, same = (a, b) => a[0] === b[0] && a[1] === b[1], onSegment = (e, p, q) => {
+  const length2 = Math.hypot(q[0] - p[0], q[1] - p[1]);
+  return Math.abs(turn(p, q, e)) <= 0.000000001 * length2 * length2 && Math.min(p[0], q[0]) - 0.000000000001 <= e[0] && e[0] <= Math.max(p[0], q[0]) + 0.000000000001 && Math.min(p[1], q[1]) - 0.000000000001 <= e[1] && e[1] <= Math.max(p[1], q[1]) + 0.000000000001;
+}, insidePolygon = (e, ring) => {
+  let inside = false;
+  for (let k = 0, j = ring.length - 1;k < ring.length; j = k++) {
+    const [a, b] = [ring[k], ring[j]];
+    if (onSegment(e, a, b))
+      return false;
+    if (a[1] > e[1] !== b[1] > e[1] && e[0] < (b[0] - a[0]) * (e[1] - a[1]) / (b[1] - a[1]) + a[0])
+      inside = !inside;
+  }
+  return inside;
+}, triangulateWithHoles = (outer, holes = []) => {
+  const points = [...outer, ...holes.flat()];
+  const ccw = (ring2) => area2(ring2.map((i) => points[i])) < 0 ? [...ring2].reverse() : ring2;
+  const cw = (ring2) => [...ccw(ring2)].reverse();
+  let first = outer.length;
+  const rings = holes.map((hole) => {
+    const ring2 = hole.map((_, k) => first + k);
+    first += hole.length;
+    return cw(ring2);
+  });
+  let ring = ccw(outer.map((_, i) => i));
+  const right = (ring2) => Math.max(...ring2.map((i) => points[i][0]));
+  for (const hole of [...rings].sort((a, b) => right(b) - right(a))) {
+    const m = hole.reduce((best, i, k) => points[i][0] > points[hole[best]][0] ? k : best, 0);
+    const from = points[hole[m]];
+    const others = rings.filter((other) => other !== hole);
+    const edges = [ring, hole, ...others].flatMap((r) => r.map((i, k) => [i, r[(k + 1) % r.length]]));
+    const through = [hole, ...others].map((r) => r.map((i) => points[i]));
+    const meets = (a, b, [i, j]) => {
+      const [p, q] = [points[a], points[b]];
+      const ends = [i, j].filter((v) => v !== a && v !== b).map((v) => points[v]);
+      if (ends.length < 2)
+        return ends.some((e) => same(e, p) || same(e, q) ? false : onSegment(e, p, q));
+      const [r, s] = ends;
+      const [d1, d2, d3, d4] = [turn(p, q, r), turn(p, q, s), turn(r, s, p), turn(r, s, q)];
+      if (d1 * d2 < 0 && d3 * d4 < 0)
+        return true;
+      return onSegment(r, p, q) || onSegment(s, p, q) || onSegment(p, r, s) || onSegment(q, r, s);
+    };
+    const leaves = (r, k, point) => {
+      const [at, next, back] = [r[k], r[(k + 1) % r.length], r[(k + r.length - 1) % r.length]].map((i) => points[i]);
+      const [left, right2] = [turn(at, next, point) > 0, turn(at, point, back) > 0];
+      return turn(at, next, back) > 0 ? left && right2 : left || right2;
+    };
+    let to = -1, nearest = Infinity;
+    for (const [k, i] of ring.entries()) {
+      const d = Math.hypot(points[i][0] - from[0], points[i][1] - from[1]);
+      if (d >= nearest || same(points[i], from) || !leaves(ring, k, from) || !leaves(hole, m, points[i]))
+        continue;
+      const middle = [(points[i][0] + from[0]) / 2, (points[i][1] + from[1]) / 2];
+      if (through.some((r) => insidePolygon(middle, r)) || edges.some((edge) => meets(hole[m], i, edge)))
+        continue;
+      [to, nearest] = [k, d];
+    }
+    if (to < 0)
+      continue;
+    ring = [...ring.slice(0, to + 1), ...hole.slice(m), ...hole.slice(0, m + 1), ...ring.slice(to)];
+  }
+  const joined = ring.map((i) => points[i]);
+  return { points, triangles: triangulate(joined, { touching: true }).map((triangle) => triangle.map((k) => ring[k])) };
+}, createMesh = (slots) => {
   const faces = Array.from({ length: slots }, () => ({ positions: [], normals: [], uvs: [], indices: [] }));
   const vertex = (slot, position, normal, uv) => {
     const face = faces[slot];
@@ -353,15 +223,15 @@ var createMesh = (slots) => {
         const rx = rounded[o] = Math.round(positions[o] * WELD), ry = rounded[o + 1] = Math.round(positions[o + 1] * WELD), rz = rounded[o + 2] = Math.round(positions[o + 2] * WELD);
         const hash = Math.imul(rx | 0, 73856093) ^ Math.imul(ry | 0, 19349663) ^ Math.imul(rz | 0, 83492791) | 0;
         const head = heads.get(hash) ?? -1;
-        let same = head;
-        while (same >= 0 && (rounded[same * 3] !== rx || rounded[same * 3 + 1] !== ry || rounded[same * 3 + 2] !== rz))
-          same = chain[same];
-        if (same < 0) {
+        let same2 = head;
+        while (same2 >= 0 && (rounded[same2 * 3] !== rx || rounded[same2 * 3 + 1] !== ry || rounded[same2 * 3 + 2] !== rz))
+          same2 = chain[same2];
+        if (same2 < 0) {
           chain[v] = head;
           heads.set(hash, v);
           welded[v] = v;
         } else
-          welded[v] = same;
+          welded[v] = same2;
       }
       const first = used;
       const { indices: list } = face;
@@ -380,8 +250,7 @@ var createMesh = (slots) => {
     return { positions, normals, uvs, indices: indices.slice(0, used), slots: slotsOut, welded, bounds };
   };
   return { vertex, triangle, quad, polygon, pack };
-};
-var pieceOf = (asset, keep) => {
+}, pieceOf = (asset, keep) => {
   const { positions, normals, uvs, indices, slots } = asset;
   const count = positions.length / 3;
   const kept = slots.map((slot) => keep(slot.id));
@@ -424,8 +293,7 @@ var pieceOf = (asset, keep) => {
   });
   const bounds = total ? { min, max } : { min: [0, 0, 0], max: [0, 0, 0] };
   return { positions: out.positions, normals: out.normals, uvs: out.uvs, indices: list, slots: slotsOut, welded: out.welded, bounds };
-};
-var addBox = (mesh, min, max, slotOf, uvOf, place = null) => {
+}, addBox = (mesh, min, max, slotOf, uvOf, place = null) => {
   const corner = (x, y, z) => [x ? max[0] : min[0], y ? max[1] : min[1], z ? max[2] : min[2]];
   for (let axis = 0;axis < 3; axis++) {
     for (const sign of [-1, 1]) {
@@ -447,8 +315,7 @@ var addBox = (mesh, min, max, slotOf, uvOf, place = null) => {
         mesh.polygon(slot, corners.map(place), sub2(place(outward), place([0, 0, 0])), corners.map((p) => uvOf(p, outward, slot)));
     }
   }
-};
-var addBeam = (mesh, slot, from, to, up, width, height) => {
+}, addBeam = (mesh, slot, from, to, up, width, height) => {
   const along = unit(sub2(to, from));
   const side = unit(cross2(along, up));
   const over = cross2(side, along);
@@ -469,8 +336,7 @@ var addBeam = (mesh, slot, from, to, up, width, height) => {
     const points = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([s, h]) => point(t, s, h));
     mesh.polygon(slot, points, t ? along : along.map((v) => -v), (p) => [dot2(sub2(p, from), side), dot2(sub2(p, from), over)]);
   }
-};
-var addExtrusion = (mesh, profile, axis, from, to, endSlot, slotOf, uvOf) => {
+}, addExtrusion = (mesh, profile, axis, from, to, endSlot, slotOf, uvOf) => {
   const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
   const point = ([u, v], w) => {
     const p = [0, 0, 0];
@@ -492,9 +358,7 @@ var addExtrusion = (mesh, profile, axis, from, to, endSlot, slotOf, uvOf) => {
     const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvOf(p, normal, slot)));
     mesh.quad(slot, p0, p1, p2, p3);
   });
-};
-var addPrism = (mesh, profile, x0, x1, endSlot, slotOf, uvOf) => addExtrusion(mesh, profile, 0, x0, x1, endSlot, slotOf, uvOf);
-var remembered = (measure, keep = 16) => {
+}, addPrism = (mesh, profile, x0, x1, endSlot, slotOf, uvOf) => addExtrusion(mesh, profile, 0, x0, x1, endSlot, slotOf, uvOf), remembered = (measure, keep = 16) => {
   const kept = new Map;
   return (value) => {
     const key = JSON.stringify(value);
@@ -507,12 +371,10 @@ var remembered = (measure, keep = 16) => {
     }
     return found;
   };
-};
-var solidBox = (min, max, rotation = null) => {
+}, solidBox = (min, max, rotation = null) => {
   const half = max.map((v, k) => (v - min[k]) / 2);
   return { type: "box", half, radius: Math.min(0.01, ...half), at: min.map((v, k) => (v + max[k]) / 2), ...rotation && { rotation } };
-};
-var boxUv = (p, n, origin, across, up) => {
+}, boxUv = (p, n, origin, across, up) => {
   const x = p[0] - origin[0], y = p[1] - origin[1], z = p[2] - origin[2];
   const ax = Math.abs(n[0]), ay = Math.abs(n[1]), az = Math.abs(n[2]);
   if (az >= ax && az >= ay)
@@ -521,13 +383,1364 @@ var boxUv = (p, n, origin, across, up) => {
     return n[1] < 0 ? [x / across, z / up] : [-x / across, z / up];
   return n[0] > 0 ? [y / across, z / up] : [-y / across, z / up];
 };
+var init_mesh = () => {};
+
+// src/build/kinds/solid-surface.js
+var CREASE, turnZ = (p, degrees) => {
+  const r = degrees * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]];
+}, surfaceOf = (lefts, size, slots, origins) => {
+  const mesh = createMesh(slots);
+  const origin = size.map((v) => -v / 2);
+  let any = false;
+  for (const left of lefts) {
+    const { vertProperties: P, triVerts: T, numProp, runIndex, runOriginalID } = left.getMesh();
+    if (!T.length)
+      continue;
+    any = true;
+    const triangles = T.length / 3;
+    const owners = new Array(triangles).fill(null);
+    for (let r = 0;r < runOriginalID.length; r++)
+      owners.fill(origins.get(runOriginalID[r]) ?? null, runIndex[r] / 3, runIndex[r + 1] / 3);
+    const at = (v) => [P[v * numProp], P[v * numProp + 1], P[v * numProp + 2]];
+    const normals = new Float64Array(triangles * 3), ways = new Float64Array(triangles * 3);
+    const around = new Map;
+    for (let t = 0;t < triangles; t++) {
+      const [a, b, c] = [at(T[t * 3]), at(T[t * 3 + 1]), at(T[t * 3 + 2])];
+      const n = cross(sub(b, a), sub(c, a));
+      const l = length(n) || 1;
+      normals.set(n, t * 3);
+      ways.set([n[0] / l, n[1] / l, n[2] / l], t * 3);
+      for (let k = 0;k < 3; k++)
+        (around.get(T[t * 3 + k]) ?? around.set(T[t * 3 + k], []).get(T[t * 3 + k])).push(t);
+    }
+    const named = spotRegions(at, T, owners, ways);
+    for (let t = 0;t < triangles; t++) {
+      const own = [ways[t * 3], ways[t * 3 + 1], ways[t * 3 + 2]];
+      const owner = owners[t];
+      const tone = named && named[t] >= 0 ? owner.spots[named[t]].colour : owner?.toneOf?.(own) ?? owner?.colour ?? 0;
+      const points = [0, 1, 2].map((k) => at(T[t * 3 + k]));
+      const uvs = owner?.uv?.(points) ?? null;
+      const crease = owner?.crease ?? CREASE;
+      const corners = [0, 1, 2].map((k) => {
+        const sum = [0, 0, 0];
+        for (const other of around.get(T[t * 3 + k])) {
+          if (ways[other * 3] * own[0] + ways[other * 3 + 1] * own[1] + ways[other * 3 + 2] * own[2] < crease)
+            continue;
+          for (let i = 0;i < 3; i++)
+            sum[i] += normals[other * 3 + i];
+        }
+        const l = Math.hypot(...sum) || 1;
+        return mesh.vertex(tone, points[k], sum.map((s) => s / l), uvs ? uvs[k] : boxUv(points[k], own, origin, 1, 1));
+      });
+      mesh.triangle(tone, ...corners);
+    }
+  }
+  return any ? mesh.pack(size) : null;
+}, nearestOn = (p, a, b, c) => {
+  const ab = sub(b, a), ac = sub(c, a), ap = sub(p, a);
+  const d1 = dot(ab, ap), d2 = dot(ac, ap);
+  if (d1 <= 0 && d2 <= 0)
+    return a;
+  const bp = sub(p, b), d3 = dot(ab, bp), d4 = dot(ac, bp);
+  if (d3 >= 0 && d4 <= d3)
+    return b;
+  const vc = d1 * d4 - d3 * d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0)
+    return add(a, scale(ab, d1 / (d1 - d3)));
+  const cp = sub(p, c), d5 = dot(ab, cp), d6 = dot(ac, cp);
+  if (d6 >= 0 && d5 <= d6)
+    return c;
+  const vb = d5 * d2 - d1 * d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0)
+    return add(a, scale(ac, d2 / (d2 - d6)));
+  const va = d3 * d6 - d5 * d4;
+  if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0)
+    return add(b, scale(sub(c, b), (d4 - d3) / (d4 - d3 + (d5 - d6))));
+  const w = 1 / (va + vb + vc);
+  return add(a, add(scale(ab, vb * w), scale(ac, vc * w)));
+}, spotRegions = (at, T, owners, ways) => {
+  if (!owners.some((owner) => owner?.spots?.length))
+    return null;
+  const triangles = T.length / 3;
+  const named = new Int32Array(triangles).fill(-1);
+  const spotted = new Map;
+  for (let t = 0;t < triangles; t++)
+    if (owners[t]?.spots?.length)
+      (spotted.get(owners[t]) ?? spotted.set(owners[t], []).get(owners[t])).push(t);
+  const queue = [];
+  for (const [owner, own] of spotted)
+    owner.spots.forEach(({ at: spot }, s) => {
+      let best = -1, gap = Infinity;
+      for (const t of own) {
+        const d = length(sub(nearestOn(spot, at(T[t * 3]), at(T[t * 3 + 1]), at(T[t * 3 + 2])), spot));
+        if (d < gap)
+          [best, gap] = [t, d];
+      }
+      if (best < 0)
+        return;
+      named[best] = s;
+      queue.push(best);
+    });
+  const ids = new Map, corner = (v) => {
+    const key = at(v).map((x) => Math.round(x * 1e6)).join();
+    return ids.get(key) ?? ids.set(key, ids.size).get(key);
+  };
+  const edges = new Map, edgeOf = (a, b) => a < b ? `${a},${b}` : `${b},${a}`;
+  const sides = new Map;
+  for (const own of spotted.values())
+    for (const t of own) {
+      const [a, b, c] = [corner(T[t * 3]), corner(T[t * 3 + 1]), corner(T[t * 3 + 2])];
+      sides.set(t, [edgeOf(a, b), edgeOf(b, c), edgeOf(c, a)]);
+      for (const key of sides.get(t))
+        (edges.get(key) ?? edges.set(key, []).get(key)).push(t);
+    }
+  for (let head = 0;head < queue.length; head++) {
+    const t = queue[head];
+    const owner = owners[t], crease = owner.crease ?? CREASE;
+    for (const key of sides.get(t))
+      for (const n of edges.get(key)) {
+        if (named[n] >= 0 || owners[n] !== owner)
+          continue;
+        if (ways[t * 3] * ways[n * 3] + ways[t * 3 + 1] * ways[n * 3 + 1] + ways[t * 3 + 2] * ways[n * 3 + 2] < crease)
+          continue;
+        named[n] = named[t];
+        queue.push(n);
+      }
+  }
+  return named;
+}, hullOfGrid = (points) => {
+  const faces = hullOf(points);
+  if (!faces)
+    return null;
+  const orient = orientIn(points);
+  const onPlane = ([a, b, c], face2) => face2.every((p) => orient(a, b, c, p) === 0);
+  const around = new Map;
+  for (const face2 of faces)
+    for (const v of face2)
+      (around.get(v) ?? around.set(v, []).get(v)).push(face2);
+  const corners = [...around].filter(([, own]) => own.reduce((planes, face2) => planes.some((plane) => onPlane(plane, face2)) ? planes : [...planes, face2], []).length >= 3).map(([v]) => v);
+  if (corners.length === around.size)
+    return faces;
+  return hullOf(corners.map((v) => points[v]))?.map((face2) => face2.map((i) => corners[i])) ?? null;
+}, orientIn = (points) => (a, b, c, p) => {
+  const [ax, ay, az] = points[a], [bx, by, bz] = points[b], [cx, cy, cz] = points[c], [px, py, pz] = points[p];
+  const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
+  return (uy * vz - uz * vy) * (px - ax) + (uz * vx - ux * vz) * (py - ay) + (ux * vy - uy * vx) * (pz - az);
+}, hullOf = (points) => {
+  const n = points.length;
+  const orient = orientIn(points);
+  const [ax, ay, az] = points[0] ?? [];
+  const b = points.findIndex(([x, y, z]) => x !== ax || y !== ay || z !== az);
+  if (b < 0)
+    return null;
+  const [ux, uy, uz] = [points[b][0] - ax, points[b][1] - ay, points[b][2] - az];
+  const c = points.findIndex(([x, y, z]) => uy * (z - az) - uz * (y - ay) || uz * (x - ax) - ux * (z - az) || ux * (y - ay) - uy * (x - ax));
+  if (c < 0)
+    return null;
+  const d = points.findIndex((_, i) => orient(0, b, c, i));
+  if (d < 0)
+    return null;
+  const [p, q] = orient(0, b, c, d) < 0 ? [b, c] : [c, b];
+  let faces = [[0, p, q], [0, d, p], [p, d, q], [0, q, d]];
+  for (let i = 1;i < n; i++) {
+    if (i === b || i === c || i === d)
+      continue;
+    const seen = new Set(faces.filter(([x, y, z]) => orient(x, y, z, i) > 0));
+    if (!seen.size)
+      continue;
+    const edges = new Set([...seen].flatMap(([x, y, z]) => [x * n + y, y * n + z, z * n + x]));
+    faces = faces.filter((face2) => !seen.has(face2));
+    for (const edge of edges)
+      if (!edges.has(edge % n * n + Math.floor(edge / n)))
+        faces.push([Math.floor(edge / n), edge % n, i]);
+  }
+  return faces;
+};
+var init_solid_surface = __esm(() => {
+  init_mesh();
+  CREASE = Math.cos(30 * Math.PI / 180);
+});
+
+// src/settings.js
+var setting = (key, values, fallback) => {
+  const kept2 = () => {
+    try {
+      const stored = globalThis.localStorage?.getItem(key);
+      return values.find((value) => String(value) === stored) ?? null;
+    } catch {
+      return null;
+    }
+  };
+  let current = kept2() ?? fallback;
+  const listeners = new Set;
+  const use = (value) => {
+    if (!values.includes(value) || value === current)
+      return false;
+    current = value;
+    for (const listener of listeners)
+      listener(value);
+    return true;
+  };
+  return {
+    values,
+    get: () => current,
+    set: (value) => {
+      if (!use(value))
+        return;
+      try {
+        globalThis.localStorage?.setItem(key, String(value));
+      } catch {}
+    },
+    use,
+    on: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }
+  };
+}, resolution, cloudQuality, volumetricLight, shadowQuality, frameCap, waterQuality, smoothQuality;
+var init_settings = __esm(() => {
+  resolution = setting("ovgrid:resolution", Object.freeze([0.5, 0.75, 1]), 1);
+  cloudQuality = setting("ovgrid:clouds", Object.freeze(["none", "full"]), "full");
+  volumetricLight = setting("ovgrid:volumetric", Object.freeze(["off", "on"]), "on");
+  shadowQuality = setting("ovgrid:shadows", Object.freeze(["terrain", "cast", "all"]), "all");
+  frameCap = setting("ovgrid:frame-cap", Object.freeze([60, 0]), 0);
+  waterQuality = setting("ovgrid:water", Object.freeze(["low", "medium", "full"]), "full");
+  smoothQuality = setting("ovgrid:smoothing", Object.freeze([0, 1, 2, 3]), 3);
+});
+
+// src/build/kinds/solid-mesh.js
+var exports_solid_mesh = {};
+__export(exports_solid_mesh, {
+  meshSolid: () => meshSolid
+});
+var SHARP = 52.5, ROUND_SIDES = 12, ACROSS2, MITRE2 = 4, FACING = 0.7, TINY2 = 0.000000001, FOLD = 0.0005, MIRRORS, signedArea = (points) => points.reduce((sum, [x, y], i) => {
+  const [u, v] = points[(i + 1) % points.length];
+  return sum + x * v - u * y;
+}, 0) / 2, ccw = (points) => signedArea(points) < 0 ? [...points].reverse() : points, unturn = (m, p) => [0, 1, 2].map((k) => m[0][k] * p[0] + m[1][k] * p[1] + m[2][k] * p[2]), normalOf = ([a, b, c]) => {
+  const n = cross(sub(b, a), sub(c, a));
+  return length(n) > TINY2 ? normalize(n) : null;
+}, arcsOf = (line) => {
+  const arcs = [0];
+  for (let i = 1;i <= line.length; i++) {
+    const [ax, ay] = line[i - 1], [bx, by] = line[i % line.length];
+    arcs.push(arcs[i - 1] + Math.hypot(bx - ax, by - ay));
+  }
+  return arcs;
+}, NEARER, nearestAlong = (line, arcs, [px, py]) => {
+  let best = Infinity, bound = Infinity, along = 0;
+  for (let i = 0;i < line.length; i++) {
+    const [ax, ay] = line[i], [bx, by] = line[(i + 1) % line.length];
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    const t = l2 > TINY2 ? clamp(((px - ax) * dx + (py - ay) * dy) / l2, 0, 1) : 0;
+    const ex = ax + dx * t - px, ey = ay + dy * t - py;
+    if (ex * ex + ey * ey > bound)
+      continue;
+    const d = Math.hypot(ex, ey);
+    if (d < best)
+      [best, bound, along] = [d, d * d * NEARER, arcs[i] + t * (arcs[i + 1] - arcs[i])];
+  }
+  return along;
+}, unwrap = (values, whole) => Math.max(...values) - Math.min(...values) > whole / 2 ? values.map((v) => v < whole / 2 ? v + whole : v) : values, primitive = (shape, [x, y, z], sides, { Manifold }, keep) => {
+  if (shape === "box")
+    return keep(Manifold.cube([x, y, z], true));
+  if (shape === "cylinder" || shape === "cone")
+    return keep(keep(Manifold.cylinder(z, 0.5, shape === "cone" ? 0 : 0.5, sides, true)).scale([x, y, 1]));
+  if (shape === "ball")
+    return keep(keep(Manifold.sphere(0.5, sides)).scale([x, y, z]));
+  return keep(keep(keep(Manifold.cube([1, 1, 1], true)).trimByPlane([0, -1, -1], 0)).scale([x, y, z]));
+}, insetHull = (solid, t, { Manifold }, keep) => {
+  const pointsOf = (manifold) => {
+    const { vertProperties: P, triVerts: T, numProp } = manifold.getMesh();
+    const at = (v) => [P[v * numProp], P[v * numProp + 1], P[v * numProp + 2]];
+    return { at, T, count: P.length / numProp };
+  };
+  const outer = pointsOf(solid);
+  let centre = [0, 0, 0];
+  for (let v = 0;v < outer.count; v++)
+    centre = add(centre, outer.at(v));
+  centre = scale(centre, 1 / outer.count);
+  const duals = [];
+  for (let i = 0;i < outer.T.length; i += 3) {
+    const corners2 = [outer.at(outer.T[i]), outer.at(outer.T[i + 1]), outer.at(outer.T[i + 2])];
+    const normal = normalOf(corners2);
+    if (!normal)
+      continue;
+    const offset = dot(normal, sub(corners2[0], centre)) - t;
+    if (offset <= TINY2)
+      return null;
+    duals.push(scale(normal, 1 / offset));
+  }
+  const dual = pointsOf(keep(Manifold.hull(duals)));
+  const corners = [];
+  for (let i = 0;i < dual.T.length; i += 3) {
+    const face2 = [dual.at(dual.T[i]), dual.at(dual.T[i + 1]), dual.at(dual.T[i + 2])];
+    const normal = normalOf(face2);
+    if (!normal)
+      continue;
+    const offset = dot(normal, face2[0]);
+    if (offset <= TINY2)
+      return null;
+    corners.push(add(centre, scale(normal, 1 / offset)));
+  }
+  return corners.length >= 4 ? keep(Manifold.hull(corners)) : null;
+}, hullOf2 = (body, wasm, keep) => {
+  const { Manifold } = wasm;
+  const points = unpackPoints(body.points, 3).map((p) => p.map((v, k) => v * body.size[k]));
+  const ball = body.round ? keep(Manifold.sphere(body.round, ROUND_SIDES)) : null;
+  const outer = keep(Manifold.hull(ball ? points.map((p) => keep(ball.translate(p))) : points));
+  if (!body.hollow || !outer.numTri())
+    return outer;
+  const inner = insetHull(outer, body.hollow, wasm, keep);
+  return inner ? keep(outer.subtract(inner)) : outer;
+}, revolveUvs = (profile, size) => {
+  const across = (size[0] + size[1]) / 2;
+  const line = profile.map(([r, z]) => [r * across, z * size[2]]);
+  const arcs = arcsOf(line), whole = arcs.at(-1);
+  const widest = Math.max(...line.map(([r]) => r));
+  return (corners) => {
+    const normal = normalOf(corners);
+    const middle = scale(add(add(corners[0], corners[1]), corners[2]), 1 / 3);
+    const way = Math.atan2(middle[1] / size[1], middle[0] / size[0]);
+    if (!normal || Math.abs(normal[1] * Math.cos(way) - normal[0] * Math.sin(way)) > FACING)
+      return null;
+    const radii = corners.map(([x, y]) => Math.hypot(x / size[0], y / size[1]));
+    let angles = corners.map(([x, y], k) => radii[k] > 0.000001 ? Math.atan2(y / size[1], x / size[0]) + Math.PI : null);
+    const known = angles.filter((a) => a !== null);
+    if (!known.length)
+      return null;
+    const turned2 = unwrap(known, 2 * Math.PI);
+    let j = 0;
+    angles = angles.map((a) => a === null ? null : turned2[j++]);
+    const mean = turned2.reduce((sum, a) => sum + a, 0) / turned2.length;
+    const along = unwrap(corners.map(([, , z], k) => nearestAlong(line, arcs, [radii[k] * across, z])), whole);
+    return corners.map((_, k) => [(angles[k] ?? mean) * widest, along[k]]);
+  };
+}, revolveOf = (body, { Manifold }, keep) => {
+  const profile = ccw(unpackPoints(body.profile, 2).map(([x, z]) => [Math.max(x, 0), z]));
+  const angle = body.angle ?? 360, sides = body.sides ?? SIDES3;
+  const solid = keep(keep(Manifold.revolve([profile], angle < 360 ? Math.max(Math.round(sides * angle / 360), 1) : sides, angle)).scale(body.size));
+  return { solid, uv: revolveUvs(profile, body.size) };
+}, extrudeOf = (body, { Manifold }, keep) => {
+  const outer = ccw(unpackPoints(body.profile, 2));
+  const holes = (body.holes ?? []).map((text) => [...ccw(unpackPoints(text, 2))].reverse());
+  const twist = body.twist ?? 0, top = body.scale ?? 1;
+  const steps = twist ? Math.min(Math.ceil(Math.abs(twist) / 5), 72) : 0;
+  return keep(keep(Manifold.extrude([outer, ...holes], 1, steps, twist, Array.isArray(top) ? top : [top, top], true)).scale(body.size));
+}, newell = (ring) => ring.reduce((n, p, i) => {
+  const q = ring[(i + 1) % ring.length];
+  return [n[0] + (p[1] - q[1]) * (p[2] + q[2]), n[1] + (p[2] - q[2]) * (p[0] + q[0]), n[2] + (p[0] - q[0]) * (p[1] + q[1])];
+}, [0, 0, 0]), centreOf3 = (ring) => scale(ring.reduce(add, [0, 0, 0]), 1 / ring.length), tipOf = (ring) => ring.every((p) => length(sub(p, ring[0])) < 0.0000001), ringsSolid = (rings, loop, { Manifold, Mesh }, keep) => {
+  const count = rings.length, n = rings[0].length;
+  const centres = rings.map(centreOf3);
+  const wayAt = (r) => sub(centres[loop ? (r + 1) % count : Math.min(r + 1, count - 1)], centres[loop ? (r + count - 1) % count : Math.max(r - 1, 0)]);
+  const first = rings.findIndex((ring) => !tipOf(ring));
+  if (first < 0)
+    return null;
+  const ordered = dot(newell(rings[first]), wayAt(first)) < 0 ? rings.map((ring) => [...ring].reverse()) : rings;
+  const positions = [], index = [];
+  for (const ring of ordered) {
+    if (tipOf(ring)) {
+      positions.push(ring[0]);
+      index.push(Array(n).fill(positions.length - 1));
+    } else
+      index.push(ring.map((p) => positions.push(p) - 1));
+  }
+  const triangles = [];
+  for (let r = 0;r < (loop ? count : count - 1); r++) {
+    const A = index[r], B = index[(r + 1) % count];
+    for (let i = 0;i < n; i++) {
+      const j = (i + 1) % n;
+      const [a, b, c, d] = [A[i], A[j], B[j], B[i]];
+      if (a !== b && c !== d) {
+        const out = cross(sub(positions[b], positions[a]), sub(positions[d], positions[a]));
+        if (dot(out, sub(positions[c], positions[a])) > FOLD * length(out)) {
+          triangles.push(a, b, c, a, c, d);
+          continue;
+        }
+      }
+      if (a !== b)
+        triangles.push(a, b, d);
+      if (c !== d)
+        triangles.push(b, c, d);
+    }
+  }
+  if (!loop)
+    for (const r of [0, count - 1]) {
+      const ring = ordered[r];
+      if (tipOf(ring))
+        continue;
+      const normal = normalize(newell(ring));
+      const e1 = normalize(cross(normal, Math.abs(normal[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0])), e2 = cross(normal, e1);
+      const flat = ring.map((p) => [dot(sub(p, ring[0]), e1), dot(sub(p, ring[0]), e2)]);
+      for (const [a, b, c] of triangulate(flat))
+        triangles.push(...r ? [index[r][a], index[r][b], index[r][c]] : [index[r][a], index[r][c], index[r][b]]);
+    }
+  try {
+    const solid = keep(new Manifold(new Mesh({ numProp: 3, vertProperties: Float32Array.from(positions.flat()), triVerts: Uint32Array.from(triangles) })));
+    return solid.volume() > 0 ? solid : null;
+  } catch {
+    return null;
+  }
+}, insetRings = (rings, t) => {
+  const last = rings.length - 1;
+  const along = (r) => normalize(sub(centreOf3(rings[Math.min(r + 1, last)]), centreOf3(rings[Math.max(r - 1, 0)])));
+  return rings.map((ring, r) => {
+    const tip = tipOf(ring);
+    const shift = scale(along(r), (r === 0 ? 1 : r === last ? -1 : 0) * t * (tip ? 2 : 1));
+    if (tip)
+      return ring.map((p) => add(p, shift));
+    const normal = normalize(newell(ring)), n = ring.length;
+    return ring.map((p, i) => {
+      const a = cross(normal, normalize(sub(p, ring[(i + n - 1) % n]))), b = cross(normal, normalize(sub(ring[(i + 1) % n], p)));
+      const k = 1 + dot(a, b);
+      let mitre = k > TINY2 ? scale(add(a, b), 1 / k) : a;
+      if (length(mitre) > MITRE2)
+        mitre = scale(mitre, MITRE2 / length(mitre));
+      return add(add(p, scale(mitre, t)), shift);
+    });
+  });
+}, loftOf = (body, wasm, keep) => {
+  const points = unpackPoints(body.points, 3).map((p) => p.map((v, k) => v * body.size[k]));
+  const rings = Array.from({ length: points.length / body.count }, (_, r) => points.slice(r * body.count, (r + 1) * body.count));
+  const outer = ringsSolid(rings, false, wasm, keep);
+  if (!outer || !body.hollow)
+    return outer;
+  const inner = ringsSolid(insetRings(rings, body.hollow), false, wasm, keep);
+  return inner ? keep(outer.subtract(inner)) : outer;
+}, framesOf = (path, loop) => {
+  const n = path.length;
+  const leg = (i) => normalize(sub(path[(i + 1) % n], path[i]));
+  const frames = [];
+  let up = null, along = 0;
+  for (let i = 0;i < n; i++) {
+    const into = i > 0 || loop ? leg((i + n - 1) % n) : null;
+    const out = i < n - 1 || loop ? leg(i) : null;
+    const way = normalize(into && out ? add(into, out) : into ?? out);
+    up ??= Math.abs(way[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+    up = normalize(sub(up, scale(way, dot(up, way))));
+    const towards = into && out && length(sub(out, into)) > 0.000001 ? normalize(sub(out, into)) : null;
+    if (i)
+      along += length(sub(path[i], path[i - 1]));
+    frames.push({ at: path[i], way, up, side: cross(up, way), along, towards, bend: towards ? Math.min(1 / Math.max(dot(way, out), TINY2), MITRE2) : 1 });
+  }
+  return frames;
+}, ringAt = ({ at, up, side: side2, along, towards, bend }, profile, grows, twist, whole) => {
+  const f = whole > 0 ? along / whole : 0;
+  const grow = 1 + (grows - 1) * f, turn2 = twist * f * Math.PI / 180;
+  const c = Math.cos(turn2), s = Math.sin(turn2);
+  return profile.map(([x, y]) => {
+    let point = add(scale(side2, (x * c - y * s) * grow), scale(up, (x * s + y * c) * grow));
+    if (towards)
+      point = add(point, scale(towards, dot(point, towards) * (bend - 1)));
+    return add(at, point);
+  });
+}, sweepUvs = (frames, profile, grows, twist, whole, loop) => {
+  const arcs = arcsOf(profile), round = arcs.at(-1);
+  const legs = Array.from({ length: loop ? frames.length : frames.length - 1 }, (_, k) => {
+    const a = frames[k].at, d = sub(frames[(k + 1) % frames.length].at, a);
+    return { a, d, l2: dot(d, d) };
+  });
+  const nearest = ([px, py, pz]) => {
+    let best = Infinity, bound = Infinity, near = null;
+    for (let k = 0;k < legs.length; k++) {
+      const { a, d, l2 } = legs[k];
+      const t = l2 > TINY2 ? clamp(((px - a[0]) * d[0] + (py - a[1]) * d[1] + (pz - a[2]) * d[2]) / l2, 0, 1) : 0;
+      const qx = a[0] + d[0] * t, qy = a[1] + d[1] * t, qz = a[2] + d[2] * t;
+      const ex = px - qx, ey = py - qy, ez = pz - qz;
+      if (ex * ex + ey * ey + ez * ez > bound)
+        continue;
+      const gap = Math.hypot(ex, ey, ez);
+      if (gap < best)
+        [best, bound, near] = [gap, gap * gap * NEARER, { k, t, q: [qx, qy, qz] }];
+    }
+    return near;
+  };
+  return (corners) => {
+    const normal = normalOf(corners);
+    const near = corners.map(nearest);
+    if (!normal || near.some((n) => !n))
+      return null;
+    const A = frames[near[0].k], B = frames[(near[0].k + 1) % frames.length];
+    if (Math.abs(dot(normal, normalize(add(A.way, B.way)))) > FACING)
+      return null;
+    const coords = corners.map((p, i) => {
+      const { k, t, q } = near[i];
+      const from = frames[k], to = frames[(k + 1) % frames.length];
+      const along = from.along + t * ((k + 1 < frames.length ? to.along : whole) - from.along);
+      const up = normalize(add(scale(from.up, 1 - t), scale(to.up, t))), side2 = normalize(add(scale(from.side, 1 - t), scale(to.side, t)));
+      const f = whole > 0 ? along / whole : 0;
+      const grow = Math.max(1 + (grows - 1) * f, 0.001), turn2 = -(twist * f * Math.PI) / 180;
+      const x = dot(sub(p, q), side2) / grow, y = dot(sub(p, q), up) / grow;
+      return [nearestAlong(profile, arcs, [x * Math.cos(turn2) - y * Math.sin(turn2), x * Math.sin(turn2) + y * Math.cos(turn2)]), along];
+    });
+    const u = unwrap(coords.map(([u2]) => u2), round);
+    return coords.map(([, v], k) => [u[k], v]);
+  };
+}, sweepOf = (body, wasm, keep) => {
+  const path = unpackPoints(body.path, 3).map((p) => p.map((v, k) => v * body.size[k]));
+  const [w, h] = body.across ?? ACROSS2;
+  const profile = ccw(unpackPoints(body.profile, 2).map(([x, y]) => [x * w, y * h]));
+  const loop = body.closed === true;
+  const frames = framesOf(path, loop);
+  const whole = frames.at(-1).along + (loop ? length(sub(path[0], path.at(-1))) : 0);
+  const grows = body.scale ?? 1, twist = body.twist ?? 0;
+  const rings = frames.map((frame) => ringAt(frame, profile, grows, twist, whole));
+  return { solid: ringsSolid(rings, loop, wasm, keep), uv: sweepUvs(frames, profile, grows, twist, whole, loop) };
+}, formOf = (shape, body, wasm, keep) => {
+  if (SHAPES.includes(shape))
+    return { solid: primitive(shape, body.size, body.sides ?? SIDES3, wasm, keep) };
+  if (shape === "hull")
+    return { solid: hullOf2(body, wasm, keep) };
+  if (shape === "revolve")
+    return revolveOf(body, wasm, keep);
+  if (shape === "extrude")
+    return { solid: extrudeOf(body, wasm, keep) };
+  if (shape === "loft")
+    return { solid: loftOf(body, wasm, keep) };
+  return sweepOf(body, wasm, keep);
+}, piecesOf = (body, way, slots, wasm, keep, origins) => {
+  const { solid, uv } = formOf(body[way], body, wasm, keep);
+  if (!solid?.numTri())
+    return [];
+  const placed = keep((body.turn ? keep(solid.rotate(body.turn)) : solid).translate(body.at));
+  const matrix = body.turn ? matrixOf(body.turn) : null;
+  const toBody = (p) => matrix ? unturn(matrix, sub(p, body.at)) : sub(p, body.at);
+  const same2 = (p) => p;
+  let copies = [{ piece: placed, redo: same2, undo: same2, back: same2 }];
+  const { repeat, mirror } = body;
+  if (repeat)
+    copies = Array.from({ length: repeat.count }, (_, k) => {
+      if (!k)
+        return copies[0];
+      const by = repeat.step && scale(repeat.step, k);
+      if (repeat.around === undefined)
+        return { piece: keep(placed.translate(by)), redo: (p) => add(p, by), undo: (p) => sub(p, by), back: same2 };
+      const turnedBack = (p) => turnZ(p, -repeat.around * k);
+      const [x, y] = repeat.at ?? [0, 0], axis = [x, y, 0];
+      const about = (degrees) => repeat.at ? (p) => add(turnZ(sub(p, axis), degrees), axis) : (p) => turnZ(p, degrees);
+      let piece = repeat.at ? keep(placed.translate([-x, -y, 0])) : placed;
+      piece = keep(piece.rotate([0, 0, repeat.around * k]));
+      if (repeat.at || by)
+        piece = keep(piece.translate(add(axis, by ?? [0, 0, 0])));
+      const [turn2, unturn2] = [about(repeat.around * k), about(-repeat.around * k)];
+      return { piece, redo: by ? (p) => add(turn2(p), by) : turn2, undo: by ? (p) => unturn2(sub(p, by)) : unturn2, back: turnedBack };
+    });
+  if (mirror) {
+    const axis = AXES.indexOf(mirror);
+    const across = (p) => p.map((v, k) => k === axis ? -v : v);
+    copies = copies.flatMap((copy) => [copy, { piece: keep(copy.piece.mirror(MIRRORS[mirror])), redo: (p) => across(copy.redo(p)), undo: (p) => copy.undo(across(p)), back: (p) => copy.back(across(p)) }]);
+  }
+  const colour = Math.min(body.colour ?? 0, slots - 1);
+  const pieces = copies.map(({ piece, redo, undo, back }) => {
+    const own = keep(piece.asOriginal());
+    const toneOf = facesTone(body, way, slots, (out) => matrix ? unturn(matrix, back(out)) : back(out)), spots = placedSpots(body, slots, redo);
+    origins.set(own.originalID(), { colour, uv: uv && ((corners) => uv(corners.map((p) => toBody(undo(p))))), ...toneOf && { toneOf }, ...spots && { spots }, ...body.flat && { crease: FLAT2 } });
+    return own;
+  });
+  return way === "keep" && pieces.length > 1 ? [keep(wasm.Manifold.union(pieces))] : pieces;
+}, smoothed = (left, level, keep) => {
+  let n = level + 1;
+  while (n > 1 && left.numTri() * n * n > MOST_TRIANGLES)
+    n--;
+  return n > 1 ? keep(keep(left.smoothOut(SHARP)).refine(n)) : left;
+}, meshSolid = ({ base, sides, bodies, join, faces, spots }, size, slots, wasm, smoothing = MOST_SMOOTHING) => {
+  const made3 = [];
+  const keep = (manifold) => (made3.push(manifold), manifold);
+  const origins = new Map;
+  try {
+    if (join === GATHER)
+      return surfaceOf(bodies.filter((body) => body.add).flatMap((body) => piecesOf(body, "add", slots, wasm, keep, origins)), size, slots, origins);
+    let left = keep(primitive(SHAPES[base], size, sides ?? SIDES3, wasm, keep).asOriginal());
+    const own = baseBody({ base, sides, faces, spots }, size);
+    const toneOf = facesTone(own, "add", slots, (out) => out), spotted = placedSpots(own, slots);
+    origins.set(left.originalID(), { colour: 0, ...toneOf && { toneOf }, ...spotted && { spots: spotted } });
+    for (let i = 0;i < bodies.length; ) {
+      if (bodies[i].smooth) {
+        left = smoothed(left, Math.min(bodies[i].smooth, smoothing), keep);
+        i++;
+        continue;
+      }
+      const way = WAYS.find((name) => bodies[i][name]);
+      const pieces = [];
+      for (;i < bodies.length && !bodies[i].smooth && bodies[i][way]; i++)
+        pieces.push(...piecesOf(bodies[i], way, slots, wasm, keep, origins));
+      if (pieces.length)
+        left = keep(wasm.Manifold[way === "add" ? "union" : way === "cut" ? "difference" : "intersection"]([left, ...pieces]));
+    }
+    return surfaceOf([left], size, slots, origins);
+  } catch {
+    return null;
+  } finally {
+    for (const manifold of made3)
+      manifold.delete();
+  }
+};
+var init_solid_mesh = __esm(() => {
+  init_mesh();
+  init_solid_surface();
+  init_solid();
+  ACROSS2 = [0.05, 0.05];
+  MIRRORS = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+  NEARER = 1 + 0.000000001;
+});
+
+// src/build/kinds/solid.js
+var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SMOOTHING = 3, MOST_TRIANGLES = 5000, SIDES3 = 32, AXES, JOINS, GATHER = 1, MOST_CHARACTERS = 3072, REACH = 64, LEAST2 = 0.001, POINTS, ROUND_VERTICES = 38, HERE, engine = null, mesher = null, loading = null, listeners, back, told = false, tell = (key) => {
+  if (back)
+    key === null ? back = null : back.add(key);
+  if (told)
+    return;
+  told = true;
+  const flush = () => {
+    const keys = back;
+    back = new Set;
+    told = false;
+    for (const listener of listeners)
+      listener(keys);
+  };
+  if (globalThis.requestAnimationFrame && !HERE)
+    requestAnimationFrame(flush);
+  else
+    queueMicrotask(flush);
+}, loadSolids = () => loading ??= (async () => {
+  const [{ default: Module }, mesh] = await Promise.all([import(MANIFOLD.href), HERE ? Promise.resolve().then(() => (init_solid_mesh(), exports_solid_mesh)) : null]);
+  const wasm = await Module(HERE ? {} : { locateFile: (file) => new URL(file, MANIFOLD).href });
+  wasm.setup();
+  engine = wasm;
+  mesher = mesh;
+  tell(null);
+  return engine;
+})().catch((error) => {
+  loading = null;
+  console.error("solids unavailable:", error);
+  throw error;
+}), cap2, setSmoothing = (level) => {
+  const next = Math.min(Math.max(Math.round(level), 0), MOST_SMOOTHING);
+  if (next === cap2)
+    return;
+  cap2 = next;
+  tell(null);
+}, FULL = 65535, unpackPoints = (text, dims) => gridOf(text, dims).map((point) => point.map((v) => v / FULL - 0.5)), gridOf = (text, dims) => {
+  const raw = atob(text);
+  const points = [];
+  for (let i = 0;i + dims * 2 <= raw.length; i += dims * 2) {
+    points.push(Array.from({ length: dims }, (_, k) => raw.charCodeAt(i + 2 * k) | raw.charCodeAt(i + 2 * k + 1) << 8));
+  }
+  return points;
+}, matrixOf = (turn2) => {
+  const [ca, sa, cb, sb, cc, sc] = turn2.flatMap((v) => [Math.cos(v * Math.PI / 180), Math.sin(v * Math.PI / 180)]);
+  return [
+    [cc * cb, cc * sb * sa - sc * ca, cc * sb * ca + sc * sa],
+    [sc * cb, sc * sb * sa + cc * ca, sc * sb * ca - cc * sa],
+    [-sb, cb * sa, cb * ca]
+  ];
+}, fnv = (text) => {
+  let h = 2166136261;
+  for (let i = 0;i < text.length; i++)
+    h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(36);
+}, countOf = (text, dims) => {
+  if (typeof text !== "string" || !text.length || text.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text))
+    return -1;
+  const bytes = text.length / 4 * 3 - (text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0);
+  return bytes % (dims * 2) ? -1 : bytes / (dims * 2);
+}, round = (v) => Math.round(v * 1e4) / 1e4, within2 = (v, least, most) => Math.min(Math.max(v, least), most), triple = (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite), pair = (v) => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite), whole = (v, [least, most]) => Number.isInteger(v) && v >= least && v <= most ? v : 0, metres = (v) => Number.isFinite(v) && v > 0 ? round(within2(v, LEAST2, REACH)) : undefined, pointsOf = (text, dims, [least, most]) => {
+  const count = countOf(text, dims);
+  return count >= least && count <= most ? text : null;
+}, sidesOf = (value, shape) => {
+  if (!Number.isInteger(value))
+    return;
+  const sides = shape === "ball" ? Math.ceil(within2(value, 4, 64) / 4) * 4 : within2(value, 3, 64);
+  return sides === SIDES3 ? undefined : sides;
+}, scaleOf = (value) => {
+  if (Number.isFinite(value))
+    return value === 1 ? undefined : round(within2(value, 0, 4));
+  if (Array.isArray(value) && value.length === 2 && value.every(Number.isFinite) && value.some((v) => v !== 1))
+    return value.map((v) => round(within2(v, 0, 4)));
+  return;
+}, degreesOf = (value, most) => Number.isFinite(value) && value % 360 !== 0 ? round(within2(value, -most, most)) : undefined, inOrder = (given, kept2) => Object.fromEntries(Object.keys(given).filter((key) => (key in kept2)).map((key) => [key, kept2[key]])), repeatOf = (value) => {
+  const count = Number.isInteger(value?.count) && value.count >= POINTS.repeat[0] ? Math.min(value.count, POINTS.repeat[1]) : 0;
+  if (!count)
+    return;
+  const step = triple(value.step) ? value.step.map((v) => round(within2(v, -REACH, REACH))) : undefined;
+  const around = degreesOf(value.around, 360);
+  if (around === undefined)
+    return step && inOrder(value, { count, step });
+  const at = pair(value.at) ? value.at.map((v) => round(within2(v, -REACH, REACH)) || 0) : undefined;
+  return inOrder(value, { count, ...step?.some((v) => v !== 0) && { step }, around, ...at?.some((v) => v !== 0) && { at } });
+}, FACES, CAP = 0.999, faceOf = (shape, [x, y, z]) => {
+  if (shape === "extrude")
+    return z < -CAP ? 0 : z > CAP ? 1 : 2;
+  const [ax, ay, az] = [Math.abs(x), Math.abs(y), Math.abs(z)];
+  return ax >= ay && ax >= az ? x > 0 ? 1 : 0 : ay >= az ? y > 0 ? 3 : 2 : z > 0 ? 5 : 4;
+}, facesTone = (body, way, slots, back2) => {
+  const shape = body[way];
+  if (!Array.isArray(body.faces) || !FACES[shape])
+    return null;
+  const inward = way === "cut" ? -1 : 1;
+  return (out) => Math.min(body.faces[faceOf(shape, back2(out).map((v) => v * inward))], slots - 1);
+}, MOST_SPOTS = 64, same2 = (p) => p, spotsOf = (spots) => {
+  if (!Array.isArray(spots))
+    return null;
+  const kept2 = new Map;
+  for (const entry of spots) {
+    if (!Array.isArray(entry) || entry.length !== 4 || !entry.every(Number.isFinite))
+      continue;
+    const spot = entry.slice(0, 3).map((v) => Math.round(within2(v, -0.5, 0.5) * 1e4) / 1e4 || 0);
+    kept2.delete(spot.join());
+    kept2.set(spot.join(), [...spot, within2(Math.round(entry[3]), 0, MOST_COLOURS3 - 1)]);
+  }
+  return kept2.size ? [...kept2.values()].slice(-MOST_SPOTS) : null;
+}, placedSpots = (body, slots, place = same2) => {
+  if (!body.spots?.length)
+    return null;
+  const matrix = body.turn ? matrixOf(body.turn) : null;
+  return body.spots.map(([x, y, z, colour]) => {
+    const own = [x * body.size[0], y * body.size[1], z * body.size[2]];
+    const turned2 = matrix ? [0, 1, 2].map((i) => matrix[i][0] * own[0] + matrix[i][1] * own[1] + matrix[i][2] * own[2]) : own;
+    return { at: place(turned2.map((v, k) => v + body.at[k])), colour: Math.min(colour, slots - 1) };
+  });
+}, keepBaseFaces = (value) => Array.isArray(value) && value.length === 6 && value.every(Number.isInteger) ? value.map((v) => within2(v, 0, MOST_COLOURS3 - 1)) : [], baseBody = ({ base, sides, faces, spots }, size) => ({
+  add: SHAPES[base] ?? "box",
+  at: [0, 0, 0],
+  size,
+  ...sides && { sides },
+  ...faces?.length && { faces },
+  ...spots?.length && { spots }
+}), ownOf = (shape, body) => {
+  const own = {};
+  const set = (key, value) => {
+    if (value !== undefined)
+      own[key] = value;
+  };
+  if (shape === "cylinder" || shape === "cone" || shape === "ball")
+    set("sides", sidesOf(body.sides, shape));
+  if (shape === "hull") {
+    const [least, most] = POINTS.hull;
+    if (!(own.points = pointsOf(body.points, 3, [metres(body.round) ? 1 : least, most])))
+      return null;
+    set("round", metres(body.round));
+    set("hollow", metres(body.hollow));
+  }
+  if (shape === "revolve" || shape === "extrude" || shape === "sweep") {
+    if (!(own.profile = pointsOf(body.profile, 2, POINTS.profile)))
+      return null;
+  }
+  if (shape === "revolve") {
+    set("sides", sidesOf(body.sides, shape));
+    set("angle", Number.isFinite(body.angle) && body.angle < 360 ? round(within2(body.angle, 1, 360)) : undefined);
+  }
+  if (shape === "extrude") {
+    const holes = Array.isArray(body.holes) ? body.holes.filter((hole) => pointsOf(hole, 2, POINTS.profile)).slice(0, POINTS.holes) : [];
+    if (holes.length)
+      own.holes = holes;
+  }
+  if (shape === "extrude" || shape === "sweep") {
+    set("twist", degreesOf(body.twist, 360));
+    set("scale", scaleOf(shape === "sweep" && Array.isArray(body.scale) ? undefined : body.scale));
+  }
+  if (shape === "loft") {
+    const count = whole(body.count, POINTS.profile), points = countOf(body.points, 3);
+    if (!count || points < 0 || points % count || !whole(points / count, POINTS.sections))
+      return null;
+    Object.assign(own, { points: body.points, count });
+    set("hollow", metres(body.hollow));
+  }
+  if (shape === "sweep") {
+    if (!(own.path = pointsOf(body.path, 3, POINTS.path)))
+      return null;
+    if (Array.isArray(body.across) && body.across.length === 2 && body.across.every(Number.isFinite))
+      own.across = body.across.map((v) => round(within2(v, LEAST2, REACH)));
+    if (body.closed === true)
+      own.closed = true;
+  }
+  return own;
+}, keepBody = (body) => {
+  if (!body || typeof body !== "object")
+    return null;
+  if (body.smooth !== undefined)
+    return Number.isInteger(body.smooth) && body.smooth >= 1 ? { smooth: Math.min(body.smooth, MOST_SMOOTHING) } : null;
+  const way = WAYS.find((name) => SHAPES.includes(body[name]) || FORMS2.includes(body[name]));
+  if (!way || !triple(body.at) || !triple(body.size))
+    return null;
+  const own = ownOf(body[way], body);
+  if (!own)
+    return null;
+  const turn2 = triple(body.turn) ? body.turn.map((v) => round((v % 360 + 540) % 360 - 180)) : [0, 0, 0];
+  const colour = Number.isInteger(body.colour) ? within2(body.colour, 0, MOST_COLOURS3 - 1) : 0;
+  const repeat = repeatOf(body.repeat);
+  const count = FACES[body[way]];
+  const faces = count && Array.isArray(body.faces) && body.faces.length === count && body.faces.every(Number.isInteger) ? body.faces.map((v) => within2(v, 0, MOST_COLOURS3 - 1)) : null;
+  const spots = spotsOf(body.spots);
+  return inOrder(body, {
+    [way]: body[way],
+    at: body.at.map((v) => round(within2(v, -REACH, REACH))),
+    size: body.size.map((v) => round(within2(v, LEAST2, REACH))),
+    ...own,
+    ...turn2.some((v) => v !== 0) && { turn: turn2 },
+    ...colour && { colour },
+    ...faces?.some((v) => v !== colour) && { faces },
+    ...spots && { spots },
+    ...body.flat === true && { flat: true },
+    ...AXES.includes(body.mirror) && { mirror: body.mirror },
+    ...repeat && { repeat }
+  });
+}, trianglesOf = (body) => {
+  const shape = body[WAYS.find((name) => body[name])];
+  const sides = body.sides ?? SIDES3;
+  const points = countOf(body.points, 3), profile = countOf(body.profile, 2);
+  const own = shape === "box" ? 12 : shape === "wedge" ? 8 : shape === "ball" ? 8 * (sides / 4) ** 2 : shape === "cylinder" || shape === "cone" ? 4 * sides : shape === "hull" ? 2 * points * (body.round ? ROUND_VERTICES : 1) * (body.hollow ? 2 : 1) : shape === "revolve" ? 2 * profile * sides : shape === "extrude" ? 2 * (body.twist ? Math.min(Math.ceil(Math.abs(body.twist) / 5), 72) + 2 : 2) * [body.profile, ...body.holes ?? []].reduce((sum, text) => sum + countOf(text, 2), 0) : shape === "loft" ? 2 * points * (body.hollow ? 2 : 1) : 2 * profile * (countOf(body.path, 3) + 1);
+  return own * (body.repeat?.count ?? 1) * (body.mirror ? 2 : 1);
+}, trianglesOfBodies = (bodies) => bodies.reduce((sum, body) => body.smooth ? sum : sum + trianglesOf(body), 12), keepBodies = (value) => {
+  if (!Array.isArray(value) || value.length > MOST_BODIES)
+    return null;
+  const kept2 = value.map(keepBody).filter(Boolean);
+  return JSON.stringify(kept2).length > MOST_CHARACTERS || trianglesOfBodies(kept2) > MOST_TRIANGLES ? null : kept2;
+}, hullPieces = ({ bodies, join }, size) => {
+  const wayOf = (i) => i || join === GATHER ? "add" : "keep";
+  const fits = join === GATHER ? convexBody : plainBody;
+  if (!bodies.length || !bodies.every((body, i) => fits(body, wayOf(i))))
+    return null;
+  const key = `solid:hulls:${fnv(JSON.stringify(bodies))}:${size.join()}`;
+  return bodies.flatMap((body, i) => {
+    const corners = placedOf(body, gridOfBody(body, wayOf(i), COLLIDES)), copies = copiesOf(body);
+    return copies.map(({ place }, k) => ({
+      type: "hull",
+      key: `${key}:${i}${copies.length > 1 ? `:${k}` : ""}`,
+      points: Float32Array.from(corners.flatMap((p) => place(p).map((v, j) => v / size[j]))),
+      scale: [...size]
+    }));
+  });
+}, CONVEX, ROUND3, LEVEL_SIDES, COLLIDES = 1, ROUND_CREASE, FLAT2, creaseOf = (body) => body.flat ? FLAT2 : ROUND3.has(body.add) ? ROUND_CREASE : undefined, convexBody = (body, way) => body[way] === "hull" ? !body.round && !body.hollow : CONVEX.has(body[way]), plainBody = (body, way) => !body.repeat && !body.mirror && convexBody(body, way), copiesOf = ({ repeat, mirror }) => {
+  const copies = (repeat ? Array.from({ length: repeat.count }, (_, k) => {
+    if (!k)
+      return { place: same2, back: same2, undo: same2 };
+    const moved = repeat.step ? (p) => p.map((v, j) => v + repeat.step[j] * k) : same2;
+    const unmoved = repeat.step ? (p) => p.map((v, j) => v - repeat.step[j] * k) : same2;
+    if (repeat.around === undefined)
+      return { place: moved, back: same2, undo: unmoved };
+    const turnedBy = (degrees) => {
+      const c = Math.cos(degrees * Math.PI / 180), s = Math.sin(degrees * Math.PI / 180);
+      return ([x, y, z]) => [c * x - s * y, s * x + c * y, z];
+    };
+    const [turn2, unturn2] = [turnedBy(repeat.around * k), turnedBy(-repeat.around * k)];
+    const about = repeat.at ? (f) => ([x, y, z]) => f([x - repeat.at[0], y - repeat.at[1], z]).map((v, j) => v + (repeat.at[j] ?? 0)) : (f) => f;
+    return { place: (p) => moved(about(turn2)(p)), back: unturn2, undo: (p) => about(unturn2)(unmoved(p)) };
+  }) : [{ place: same2, back: same2, undo: same2 }]).map((copy) => ({ ...copy, flip: false }));
+  if (!mirror)
+    return copies;
+  const axis = AXES.indexOf(mirror);
+  const across = (p) => p.map((v, j) => j === axis ? -v : v);
+  return copies.flatMap((copy) => [copy, { place: (p) => across(copy.place(p)), back: (p) => copy.back(across(p)), undo: (p) => copy.undo(across(p)), flip: true }]);
+}, capsKept, capsOf = (body) => {
+  const key = `${body.profile}|${(body.holes ?? []).join("|")}`;
+  if (capsKept.has(key))
+    return capsKept.get(key);
+  const way = (ring, turned2) => twiceArea(ring) < 0 !== turned2 ? [...ring].reverse() : ring;
+  const outer = way(unpackPoints(body.profile, 2), false), holes = (body.holes ?? []).map((text) => way(unpackPoints(text, 2), true));
+  const { points, triangles } = triangulateWithHoles(outer, holes);
+  const turnOf = ([a, b, c]) => (points[b][0] - points[a][0]) * (points[c][1] - points[a][1]) - (points[b][1] - points[a][1]) * (points[c][0] - points[a][0]);
+  const area = triangles.reduce((sum, triangle) => sum + turnOf(triangle), 0);
+  const expected = twiceArea(outer) + holes.reduce((sum, hole) => sum + twiceArea(hole), 0);
+  const clean = triangles.length > 0 && triangles.every((triangle) => turnOf(triangle) > 0) && Math.abs(area - expected) <= 0.000000001 * Math.abs(expected);
+  const caps = clean ? { points, triangles, rings: [outer.length, ...holes.map((hole) => hole.length)] } : null;
+  capsKept.set(key, caps);
+  return caps;
+}, twiceArea = (ring) => ring.reduce((sum, [x, y], i) => sum + x * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * y, 0), flatExtrude = (body, way) => body[way] === "extrude" && !body.twist && body.scale === undefined && Boolean(capsOf(body)), madeHere = (body, way) => convexBody(body, way) || flatExtrude(body, way), extrudeTriangles = (body) => {
+  const { points, triangles, rings } = capsOf(body);
+  const n = points.length;
+  const corners = [...points.map(([x, y]) => [x, y, -0.5]), ...points.map(([x, y]) => [x, y, 0.5])];
+  const faces = [...triangles.map(([a, b, c]) => [a, c, b]), ...triangles.map(([a, b, c]) => [n + a, n + b, n + c])];
+  let first = 0;
+  for (const count of rings) {
+    for (let k = 0;k < count; k++) {
+      const [i, j] = [first + k, first + (k + 1) % count];
+      faces.push([i, j, n + j], [i, n + j, n + i]);
+    }
+    first += count;
+  }
+  return { corners, faces };
+}, revolveTriangles = (body) => {
+  const ring = unpackPoints(body.profile, 2).map(([x, z]) => [Math.max(x, 0), z]);
+  const profile = twiceArea(ring) < 0 ? [...ring].reverse() : ring;
+  const angle = body.angle ?? 360, whole2 = angle >= 360;
+  const steps = whole2 ? body.sides ?? SIDES3 : Math.max(Math.round((body.sides ?? SIDES3) * angle / 360), 1);
+  const turns = whole2 ? steps : steps + 1;
+  const corners = [];
+  const at = profile.map(([r, z]) => {
+    if (r < 0.000000001)
+      return Array(turns).fill(corners.push([0, 0, z]) - 1);
+    return Array.from({ length: turns }, (_, i) => {
+      const phi = angle * i / steps * Math.PI / 180;
+      return corners.push([r * Math.cos(phi), r * Math.sin(phi), z]) - 1;
+    });
+  });
+  const faces = [];
+  const facing = (face2, way) => {
+    const [a, b, c] = face2.map((v) => corners[v]);
+    return dot(cross(sub(b, a), sub(c, a)), way) < 0 ? [face2[0], face2[2], face2[1]] : face2;
+  };
+  profile.forEach(([r0, z0], j) => {
+    const k = (j + 1) % profile.length, [r1, z1] = profile[k];
+    for (let i = 0;i < steps; i++) {
+      const next = whole2 ? (i + 1) % steps : i + 1, phi = angle * (i + 0.5) / steps * Math.PI / 180;
+      const way = [(z1 - z0) * Math.cos(phi), (z1 - z0) * Math.sin(phi), r0 - r1];
+      for (const face2 of [[at[j][i], at[k][i], at[k][next]], [at[j][i], at[k][next], at[j][next]]])
+        if (new Set(face2).size === 3)
+          faces.push(facing(face2, way));
+    }
+  });
+  if (!whole2) {
+    const { triangles } = triangulateWithHoles(profile);
+    const end = angle * Math.PI / 180;
+    for (const triangle of triangles) {
+      faces.push(facing(triangle.map((j) => at[j][0]), [0, -1, 0]), facing(triangle.map((j) => at[j][steps]), [-Math.sin(end), Math.cos(end), 0]));
+    }
+  }
+  return { corners, faces };
+}, placedFromUnit = (body, points) => {
+  const matrix = body.turn ? matrixOf(body.turn) : null;
+  return points.map((point) => {
+    const p = point.map((v, k) => v * body.size[k]);
+    const q = matrix ? matrix.map((row) => row[0] * p[0] + row[1] * p[1] + row[2] * p[2]) : p;
+    return q.map((v, k) => v + body.at[k]);
+  });
+}, gridOfBody = (body, way, level) => {
+  const shape = body[way];
+  if (shape === "hull")
+    return gridOf(body.points, 3);
+  if (shape === "box")
+    return [0, FULL].flatMap((x) => [0, FULL].flatMap((y) => [0, FULL].map((z) => [x, y, z])));
+  if (shape === "wedge")
+    return [[0, 0, 0], [FULL, 0, 0], [0, FULL, 0], [FULL, FULL, 0], [0, 0, FULL], [FULL, 0, FULL]];
+  const on = (v) => Math.round((v + 0.5) * FULL);
+  const sides = Math.max(3, Math.round((body.sides ?? SIDES3) * LEVEL_SIDES[level]));
+  const ring = Array.from({ length: sides }, (_, i) => [on(0.5 * Math.cos(2 * Math.PI * i / sides)), on(0.5 * Math.sin(2 * Math.PI * i / sides))]);
+  return [...ring.map(([x, y]) => [x, y, 0]), ...shape === "cone" ? [[on(0), on(0), FULL]] : ring.map(([x, y]) => [x, y, FULL])];
+}, BOX_FACES2, WEDGE_FACES, roundFaces = (cone, n) => [
+  ...Array.from({ length: n }, (_, i) => cone ? [i, (i + 1) % n, n] : [i, (i + 1) % n, n + (i + 1) % n, n + i]),
+  Array.from({ length: n }, (_, i) => i),
+  ...cone ? [] : [Array.from({ length: n }, (_, i) => n + i)]
+], bodyTriangles = (body, way, grid) => {
+  if (body[way] === "hull")
+    return hullOfGrid(grid);
+  const faces = body[way] === "box" ? BOX_FACES2 : body[way] === "wedge" ? WEDGE_FACES : roundFaces(body[way] === "cone", body[way] === "cone" ? grid.length - 1 : grid.length / 2);
+  const middle = [0, 1, 2].map((k) => grid.reduce((sum, p) => sum + p[k], 0) / grid.length);
+  return faces.flatMap((face2) => face2.slice(1, -1).map((_, i) => {
+    const [a, b, c] = [face2[0], face2[i + 1], face2[i + 2]].map((v) => grid[v]);
+    const n = cross(sub(b, a), sub(c, a));
+    return dot(n, sub(middle, a)) > 0 ? [face2[0], face2[i + 2], face2[i + 1]] : [face2[0], face2[i + 1], face2[i + 2]];
+  }));
+}, placedOf = (body, grid) => {
+  const matrix = body.turn ? matrixOf(body.turn) : null;
+  return grid.map((point) => {
+    const p = point.map((v, k) => (v / FULL - 0.5) * body.size[k]);
+    const q = matrix ? matrix.map((row) => row[0] * p[0] + row[1] * p[1] + row[2] * p[2]) : p;
+    return q.map((v, k) => v + body.at[k]);
+  });
+}, placedBody = (body, way, level) => {
+  if (body[way] === "revolve") {
+    const { corners, faces: faces2 } = revolveTriangles(body);
+    return { corners: placedFromUnit(body, corners), faces: faces2 };
+  }
+  if (flatExtrude(body, way)) {
+    const { corners, faces: faces2 } = extrudeTriangles(body);
+    return { corners: placedFromUnit(body, corners), faces: faces2 };
+  }
+  const grid = gridOfBody(body, way, level);
+  const faces = bodyTriangles(body, way, grid);
+  return faces && { corners: placedOf(body, grid), faces };
+}, placedCopies = (body, way, level) => {
+  const own = placedBody(body, way, level);
+  if (!own)
+    return [];
+  return copiesOf(body).map(({ place, back: back2, undo, flip }) => ({ corners: own.corners.map(place), faces: flip ? own.faces.map(([a, b, c]) => [a, c, b]) : own.faces, place, back: back2, undo }));
+}, onPage = ({ bodies, join }) => join === GATHER && bodies.length > 0 && bodies.every((body) => madeHere(body, "add")), hullsSurface = ({ bodies }, size, slots, level) => {
+  const origins = new Map;
+  let id = 0;
+  const lefts = bodies.flatMap((body) => {
+    const matrix = body.turn ? matrixOf(body.turn) : null;
+    const unturned = (out) => matrix ? [0, 1, 2].map((k) => matrix[0][k] * out[0] + matrix[1][k] * out[1] + matrix[2][k] * out[2]) : out;
+    return placedCopies(body, "add", level).map(({ corners, faces, place, back: back2 }) => {
+      const vertProperties = Float64Array.from(corners.flat());
+      const triVerts = Uint32Array.from(faces.flat());
+      const toneOf = facesTone(body, "add", slots, (out) => unturned(back2(out)));
+      const spots = placedSpots(body, slots, place);
+      const own = id++;
+      origins.set(own, { colour: Math.min(body.colour ?? 0, slots - 1), ...toneOf && { toneOf }, ...spots && { spots }, ...creaseOf(body) && { crease: creaseOf(body) } });
+      return { getMesh: () => ({ vertProperties, triVerts, numProp: 3, runIndex: [0, triVerts.length], runOriginalID: [own] }) };
+    });
+  });
+  return surfaceOf(lefts, size, slots, origins);
+}, boxOf = (size, slots) => {
+  const mesh = createMesh(slots);
+  const origin = size.map((v) => -v / 2);
+  addBox(mesh, origin, size.map((v) => v / 2), () => 0, (point, normal) => boxUv(point, normal, origin, 1, 1));
+  return mesh.pack(size);
+}, smoothingsOf = ({ bodies, join }) => {
+  const most = join === GATHER ? 0 : Math.min(bodies.reduce((m, body) => Math.max(m, body.smooth ?? 0), 0), cap2);
+  return [0, 0, Math.max(most - 1, 0), most];
+}, made3, drawn, WORKERS, workers = null, asked, asks = 0, worked = 0, turn2 = 0, cameBack = ({ data: { key, meshes } }) => {
+  if (!asked.has(key))
+    return;
+  const { slots, size } = asked.get(key);
+  asked.delete(key);
+  const surfaces = made3.get(key) ?? new Map;
+  for (const [smoothing, mesh] of meshes)
+    surfaces.set(smoothing, mesh ?? boxOf(size, slots));
+  made3.set(key, surfaces);
+  if (meshes.some(([, mesh]) => mesh))
+    worked++;
+  tell(key);
+}, workersOf = () => workers ??= Array.from({ length: WORKERS }, () => Object.assign(new Worker(new URL("./solid-worker.js", import.meta.url), { type: "module" }), { onmessage: cameBack })), ask = (key, params, slots, size, wanted) => {
+  const before = asked.get(key);
+  const smoothings = [...new Set([...before?.smoothings ?? [], ...wanted])];
+  if (before && smoothings.length === before.smoothings.length)
+    return;
+  const at = before?.at ?? turn2++ % WORKERS;
+  asked.set(key, { slots, size, smoothings, at });
+  if (!before)
+    asks++;
+  workersOf()[at].postMessage({ key, params, slots, size, smoothings });
+}, later = false, deferred, forget = (key) => {
+  if (!key.endsWith(":waiting")) {
+    made3.delete(key);
+    drawn.delete(key);
+    return;
+  }
+  const recipe = key.slice(0, -":waiting".length);
+  deferred.delete(recipe);
+  const going = asked.get(recipe);
+  if (going) {
+    asked.delete(recipe);
+    workers?.[going.at].postMessage({ cancel: recipe });
+  } else if (!drawn.has(recipe))
+    made3.delete(recipe);
+}, nearestOf = (surfaces, smoothing) => [...surfaces].sort(([a], [b]) => Math.abs(a - smoothing) - Math.abs(b - smoothing))[0]?.[1], meshedOf3 = (params, slots, size, level, key) => {
+  const recipe = key.replace(/:waiting$/, "");
+  if (onPage(params)) {
+    drawn.add(recipe);
+    const surfaces2 = made3.get(recipe) ?? new Map;
+    made3.set(recipe, surfaces2);
+    const at = params.bodies.some((body) => ROUND3.has(body.add)) ? level : 3;
+    if (!surfaces2.has(at))
+      surfaces2.set(at, hullsSurface(params, size, slots, at) ?? boxOf(size, slots));
+    return surfaces2.get(at);
+  }
+  const smoothings = smoothingsOf(params);
+  const smoothing = smoothings[level] ?? smoothings[3];
+  const surfaces = made3.get(recipe);
+  if (HERE) {
+    if (!engine)
+      return boxOf(size, slots);
+    if (later && !surfaces) {
+      deferred.add(recipe);
+      return boxOf(size, slots);
+    }
+    drawn.add(recipe);
+    if (!surfaces)
+      made3.set(recipe, new Map);
+    const kept2 = made3.get(recipe);
+    if (!kept2.has(smoothing))
+      kept2.set(smoothing, mesher.meshSolid(params, size, slots, engine, smoothing) ?? boxOf(size, slots));
+    return kept2.get(smoothing);
+  }
+  if (recipe === key && surfaces) {
+    drawn.add(recipe);
+    const missing = [...new Set(smoothings)].filter((s) => !surfaces.has(s));
+    if (missing.length)
+      ask(recipe, params, slots, size, missing);
+    return surfaces.get(smoothing) ?? nearestOf(surfaces, smoothing);
+  }
+  if (!surfaces)
+    ask(recipe, params, slots, size, [...new Set(smoothings)]);
+  return boxOf(size, slots);
+}, colourOptions3, solid;
+var init_solid = __esm(() => {
+  init_mesh();
+  init_solid_surface();
+  init_settings();
+  MANIFOLD = new URL("../../manifold/manifold.js", import.meta.url);
+  SHAPES = ["box", "cylinder", "cone", "ball", "wedge"];
+  FORMS2 = ["hull", "revolve", "extrude", "loft", "sweep"];
+  WAYS = ["add", "cut", "keep"];
+  AXES = ["x", "y", "z"];
+  JOINS = ["union", "none"];
+  POINTS = Object.freeze({ hull: [4, 32], profile: [3, 64], holes: 8, sections: [2, 32], path: [2, 32], repeat: [2, 32] });
+  HERE = Boolean(globalThis.Bun || globalThis.process?.versions?.node);
+  listeners = new Set;
+  back = new Set;
+  cap2 = smoothQuality.get();
+  smoothQuality.on(setSmoothing);
+  FACES = Object.freeze({ box: 6, extrude: 3 });
+  CONVEX = new Set(["box", "cylinder", "cone", "wedge"]);
+  ROUND3 = new Set(["cylinder", "cone"]);
+  LEVEL_SIDES = [1 / 4, 3 / 8, 5 / 8, 1];
+  ROUND_CREASE = Math.cos(70 * Math.PI / 180);
+  FLAT2 = Math.cos(Math.PI / 180);
+  capsKept = new Map;
+  BOX_FACES2 = [[0, 1, 3, 2], [4, 5, 7, 6], [0, 1, 5, 4], [2, 3, 7, 6], [0, 2, 6, 4], [1, 3, 7, 5]];
+  WEDGE_FACES = [[0, 1, 3, 2], [0, 1, 5, 4], [2, 3, 5, 4], [0, 2, 4], [1, 3, 5]];
+  made3 = new Map;
+  drawn = new Set;
+  WORKERS = Math.min(2, Math.max(1, (globalThis.navigator?.hardwareConcurrency ?? 2) - 1));
+  asked = new Map;
+  deferred = new Set;
+  colourOptions3 = Array.from({ length: MOST_COLOURS3 }, (_, i) => `${i + 1} colour${i ? "s" : ""}`);
+  solid = Object.freeze({
+    name: "solid",
+    label: "Solid",
+    description: "A solid in one part: what fills its box (a box, a cylinder, a cone, a ball or a wedge), then bodies added to it, cut out of it or kept where they meet it, one after another — boxes, cylinders, cones, balls and wedges, hulls round points or balls, profiles revolved or extruded, lofts through sections and profiles swept along paths, each placed, sized and turned in metres about its middle, mirrored or repeated if asked —, with smoothing steps among them: a wall with its door and windows, an arch, a boat's hull with its flare, a rail, a vase, a wheel and its spokes. Each face of what is left takes the colour of the body it came from — or of its own face, a box body's six or an extrude's caps and sides, or of a spot on it: the facet there and the surface smooth round it, a hull's facet, an extrude's side, an arch's intrados —, up to eight.",
+    faces: ({ colours }) => Array.from({ length: colours + 1 }, (_, i) => `colour ${i + 1}`),
+    facesBy: "colours",
+    shape: "cube",
+    sized: true,
+    size: [1, 1, 1],
+    waiting: (params, size, key) => {
+      if (onPage(params))
+        return false;
+      if (HERE) {
+        if (!engine)
+          loadSolids().catch(() => {});
+        return !engine || later && !made3.has(key);
+      }
+      return !made3.has(key);
+    },
+    forget,
+    collider: (params, seed, size) => hullPieces(params, size),
+    params: [
+      { name: "base", label: "Base", min: 0, max: SHAPES.length - 1, default: 0, step: 1, options: SHAPES, description: "What fills its box before any body is added or cut: a box, a cylinder, a cone, a ball or a wedge (upright at its front, −y, its slope from its top front edge down to its bottom back one)." },
+      { name: "sides", label: "Sides", min: 3, max: 64, default: SIDES3, step: 1, when: ({ base }) => base >= 1 && base <= 3, description: "Sides round its base where it is round: 6 a hexagon, 32 smooth; a ball's a multiple of four." },
+      { name: "colours", label: "Colours", min: 0, max: MOST_COLOURS3 - 1, default: 0, step: 1, options: colourOptions3, fixed: true, description: "How many colours its faces take, each a face of the part: 0 one, 7 eight." },
+      { name: "join", label: "Join", min: 0, max: JOINS.length - 1, default: 0, step: 1, options: JOINS, fixed: true, description: "How its bodies come together: joined into one surface (union, its base and its ways as they say), or drawn as they are side by side (none: its added bodies alone, nothing cut, kept or smoothed) — a model's faces rebuilt as plates, exact where they meet, in the fewest triangles." },
+      { name: "faces", label: "Faces", list: true, optional: true, min: 0, max: MOST_COLOURS3 - 1, step: 1, default: [], fixed: true, keep: keepBaseFaces, description: "Its base box's faces each their own colour (−x +x −y +y −z +z, 0–7), as a box body's: what a union shows of its base, each side picked alone." },
+      { name: "spots", label: "Spots", list: true, optional: true, min: 0, max: MOST_SPOTS, step: 1, default: [], fixed: true, keep: (value) => spotsOf(value) ?? [], description: "Its base's faces by a spot on each, as a body's spots: fractions of its box (−0.5 to 0.5) and a colour." },
+      { name: "bodies", label: "Bodies", list: true, min: 0, max: MOST_BODIES, step: 1, default: [], fixed: true, keep: keepBodies, description: `Its bodies and smoothing steps, one after another, at most 32: each \`{ "add" | "cut" | "keep": <shape>, "at": [x, y, z], "size": [x, y, z], "turn": [x, y, z], "colour": n, "faces": [n, …], "spots": [[x, y, z, n], …], "flat": true, "mirror": "x" | "y" | "z", "repeat": { "count": n, "step": [x, y, z] } or { "count": n, "around": degrees, "at": [x, y] } or both, a helix }\` — in metres about the middle of its box, its turn ° about x, then y, then z, its colour 0 (its box's) to 7, a box's faces each their own (−x +x −y +y −z +z) or an extrude's (its −z cap, its +z cap, its sides), its spots each a spot on its surface (fractions of its box along its own axes, −0.5 to 0.5) and the colour of the facet nearest it and of the surface smooth round it (64 at most), flat to shade each facet alone and make it a face of its own (a faceted model's look) —, its shape box, cylinder, cone or ball (with "sides"), wedge, hull ("points", "round", "hollow"), revolve ("profile", "sides", "angle"), extrude ("profile", "holes", "twist", "scale"), loft ("points", "count", "hollow") or sweep ("path", "profile", "across", "scale", "twist", "closed"), its points packed (packPoints) as fractions of its box; or \`{ "smooth": 1 | 2 | 3 }\`, what came before it smoothed. At most 5,000 triangles before smoothing.` }
+    ],
+    mesh: (params, seed, level, size, key = `solid:${JSON.stringify([params.base, params.sides, params.colours, params.join, params.bodies, ...params.faces?.length || params.spots?.length ? [params.faces, params.spots] : []])}:${size.join()}`) => meshedOf3(params, params.colours + 1, size, level, key)
+  });
+});
+
+// tools/build-check.js
+import { readFileSync, existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+// src/build/prim/params.js
+var PROFILE = Object.freeze({ CIRCLE: 0, SQUARE: 1, ISOTRI: 2, EQUALTRI: 3, RIGHTTRI: 4, HALF_CIRCLE: 5 });
+var HOLE = Object.freeze({ SAME: 0, CIRCLE: 16, SQUARE: 32, TRIANGLE: 48 });
+var PATH = Object.freeze({ LINE: 16, CIRCLE: 32, CIRCLE_33: 33, CIRCLE2: 48, TEST: 64, FLEXIBLE: 128 });
+var SHAPE_FIELDS = Object.freeze([
+  "profileCurve",
+  "profileBegin",
+  "profileEnd",
+  "hollow",
+  "pathCurve",
+  "pathBegin",
+  "pathEnd",
+  "scaleX",
+  "scaleY",
+  "shearX",
+  "shearY",
+  "twistBegin",
+  "twistEnd",
+  "radiusOffset",
+  "taperX",
+  "taperY",
+  "revolutions",
+  "skew"
+]);
+var LIMITS = Object.freeze({
+  cutGap: 0.02,
+  hollow: 0.99,
+  hollowSquare: 0.7,
+  holeMin: 0.01
+});
+var DEFAULT_PARAMS = Object.freeze({
+  profileCurve: PROFILE.SQUARE,
+  profileBegin: 0,
+  profileEnd: 1,
+  hollow: 0,
+  pathCurve: PATH.LINE,
+  pathBegin: 0,
+  pathEnd: 1,
+  scaleX: 1,
+  scaleY: 1,
+  shearX: 0,
+  shearY: 0,
+  twistBegin: 0,
+  twistEnd: 0,
+  radiusOffset: 0,
+  taperX: 0,
+  taperY: 0,
+  revolutions: 1,
+  skew: 0
+});
+var CUT = 50000;
+var roundAway = (x) => Math.sign(x) * Math.round(Math.abs(x)) + 0;
+var clamp2 = (value, min, max) => Math.min(Math.max(value, min), max);
+var byte = { min: 0, max: 255, encode: (v) => Math.trunc(v), decode: (u) => u };
+var cut = { min: 0, max: 65535, encode: (v) => roundAway(v * CUT), decode: (u) => u / CUT };
+var cutEnd = { min: 0, max: 65535, encode: (v) => CUT - roundAway(v * CUT), decode: (u) => (CUT - u) / CUT };
+var scale2 = { min: 0, max: 255, encode: (v) => 200 - roundAway(v * 100), decode: (u) => (200 - u) / 100 };
+var signed = { min: -128, max: 127, encode: (v) => roundAway(v * 100), decode: (s) => s / 100 };
+var revolutions = { min: 0, max: 255, encode: (v) => roundAway((v - 1) * 200 / 3), decode: (u) => (200 + 3 * u) / 200 };
+var shear = {
+  min: 0,
+  max: 255,
+  encode: (v) => ((s) => s < 0 ? s + 256 : s)(clamp2(roundAway(v * 100), -128, 127)),
+  decode: (u) => (u < 128 ? u : u - 256) / 100
+};
+var CODECS = [byte, cut, cutEnd, cut, byte, cut, cutEnd, scale2, scale2, shear, shear, signed, signed, signed, signed, signed, revolutions, signed];
+var CODEC = Object.fromEntries(SHAPE_FIELDS.map((name, i) => [name, CODECS[i]]));
+var snap = (name, value) => CODEC[name].decode(CODEC[name].encode(value));
+var decodeShape = (shape) => Object.fromEntries(SHAPE_FIELDS.map((name, i) => [name, CODECS[i].decode(shape[i])]));
+var encodeShape = (params) => SHAPE_FIELDS.map((name, i) => {
+  const value = Number.isFinite(params[name]) ? params[name] : DEFAULT_PARAMS[name];
+  return clamp2(CODECS[i].encode(value), CODECS[i].min, CODECS[i].max);
+});
+var constrainParams = (input) => {
+  const errors = [];
+  const value = (name) => input[name] ?? DEFAULT_PARAMS[name];
+  const limit = (name, v, min, max, tolerance = 0.001) => {
+    if (!(v >= min - tolerance && v <= max + tolerance))
+      errors.push(name);
+    return Number.isFinite(v) ? clamp2(v, min, max) : clamp2(DEFAULT_PARAMS[name], min, max);
+  };
+  const curve = (name, fallback) => {
+    const v = value(name);
+    if (Number.isInteger(v) && v >= 0 && v <= 255)
+      return v;
+    errors.push(name);
+    return fallback;
+  };
+  let profileCurve = curve("profileCurve", PROFILE.SQUARE);
+  let pathCurve = curve("pathCurve", PATH.LINE);
+  if ((profileCurve & 15) > PROFILE.HALF_CIRCLE) {
+    errors.push("profileCurve");
+    profileCurve = PROFILE.SQUARE;
+  }
+  if (profileCurve >> 4 > 3) {
+    errors.push("profileCurve");
+    profileCurve &= 15;
+  }
+  if (pathCurve >> 4 < 1 || pathCurve >> 4 > 8) {
+    errors.push("pathCurve");
+    pathCurve = PATH.LINE;
+  }
+  const profile = profileCurve & 15;
+  const hole = profileCurve & 240;
+  const cuts = (prefix, snapEnd) => {
+    let end = value(`${prefix}End`);
+    if (snapEnd && end >= 0.0149 && end < LIMITS.cutGap)
+      end = LIMITS.cutGap;
+    let begin = limit(`${prefix}Begin`, value(`${prefix}Begin`), 0, 1 - LIMITS.cutGap);
+    end = limit(`${prefix}End`, end, LIMITS.cutGap, 1);
+    begin = limit(`${prefix}Begin`, begin, 0, end - LIMITS.cutGap, 0.01);
+    return [snap(`${prefix}Begin`, begin), snap(`${prefix}End`, end)];
+  };
+  const [profileBegin, profileEnd] = cuts("profile", true);
+  const [pathBegin, pathEnd] = cuts("path", false);
+  const squareHole = hole === HOLE.SQUARE && [PROFILE.CIRCLE, PROFILE.HALF_CIRCLE, PROFILE.EQUALTRI].includes(profile);
+  const hollow = snap("hollow", limit("hollow", value("hollow"), 0, squareHole ? LIMITS.hollowSquare : LIMITS.hollow));
+  const holeSize = pathCurve === PATH.CIRCLE && profile !== PROFILE.HALF_CIRCLE;
+  const scaleX = snap("scaleX", limit("scaleX", value("scaleX"), holeSize ? LIMITS.holeMin : 0, holeSize ? 1 : 2));
+  const scaleY = snap("scaleY", limit("scaleY", value("scaleY"), holeSize ? LIMITS.holeMin : 0, holeSize ? 0.5 : 2));
+  const [shearX, shearY] = ["shearX", "shearY"].map((name) => snap(name, limit(name, value(name), -0.5, 0.5)));
+  const [twistBegin, twistEnd, taperX, taperY] = ["twistBegin", "twistEnd", "taperX", "taperY"].map((name) => snap(name, limit(name, value(name), -1, 1)));
+  const turns = snap("revolutions", limit("revolutions", value("revolutions"), 1, 4));
+  let radiusOffset = 0;
+  if (holeSize) {
+    const offset = value("radiusOffset");
+    const taper = Math.sign(taperY) * Math.sign(offset) < 0 ? 0 : Math.abs(taperY);
+    const max = Math.max(0, 1 - scaleY * (1 - taper) / (1 - scaleY));
+    const step = Math.floor(max * 100 + 0.000000001) / 100;
+    radiusOffset = snap("radiusOffset", clamp2(limit("radiusOffset", offset, -max, max, 0.01), -step, step));
+  }
+  let skew = limit("skew", value("skew"), -0.95, 0.95);
+  if (turns !== 1) {
+    const min = 1 - 1 / (turns * scaleX + 1);
+    const step = Math.min(Math.ceil(min * 100 - 0.000000001) / 100, 0.95);
+    if (Math.abs(skew) < min - 0.01)
+      errors.push("skew");
+    if (Math.abs(skew) < step)
+      skew = skew < 0 ? -step : step;
+  }
+  skew = snap("skew", skew);
+  return {
+    params: {
+      profileCurve,
+      profileBegin,
+      profileEnd,
+      hollow,
+      pathCurve,
+      pathBegin,
+      pathEnd,
+      scaleX,
+      scaleY,
+      shearX,
+      shearY,
+      twistBegin,
+      twistEnd,
+      radiusOffset,
+      taperX,
+      taperY,
+      revolutions: turns,
+      skew
+    },
+    errors: [...new Set(errors)]
+  };
+};
+var normalizeShape = (shape) => encodeShape(constrainParams(decodeShape(shape)).params);
+var UPRIGHT = Object.freeze([0, Math.SQRT1_2, 0, Math.SQRT1_2]);
+var AS_IS = Object.freeze([0, 0, 0, 1]);
+var preset = (params, rotation = AS_IS) => Object.freeze({ shape: Object.freeze(encodeShape({ ...DEFAULT_PARAMS, ...params })), rezRotation: rotation });
+var { SQUARE, CIRCLE, EQUALTRI, HALF_CIRCLE } = PROFILE;
+var PRESETS = Object.freeze({
+  cube: preset({ profileCurve: SQUARE }),
+  prism: preset({ profileCurve: SQUARE, scaleX: 0, shearX: -0.5 }),
+  pyramid: preset({ profileCurve: SQUARE, scaleX: 0, scaleY: 0 }),
+  tetrahedron: preset({ profileCurve: EQUALTRI, scaleX: 0, scaleY: 0 }),
+  cylinder: preset({ profileCurve: CIRCLE }),
+  hemiCylinder: preset({ profileCurve: CIRCLE, profileBegin: 0.25, profileEnd: 0.75 }),
+  cone: preset({ profileCurve: CIRCLE, scaleX: 0, scaleY: 0 }),
+  hemiCone: preset({ profileCurve: CIRCLE, scaleX: 0, scaleY: 0, profileBegin: 0.25, profileEnd: 0.75 }),
+  sphere: preset({ profileCurve: HALF_CIRCLE, pathCurve: PATH.CIRCLE }, UPRIGHT),
+  hemiSphere: preset({ profileCurve: HALF_CIRCLE, pathCurve: PATH.CIRCLE, pathEnd: 0.5 }),
+  torus: preset({ profileCurve: CIRCLE, pathCurve: PATH.CIRCLE, scaleY: 0.25 }, UPRIGHT),
+  tube: preset({ profileCurve: SQUARE, pathCurve: PATH.CIRCLE, scaleY: 0.25 }, UPRIGHT),
+  ring: preset({ profileCurve: EQUALTRI, pathCurve: PATH.CIRCLE, scaleY: 0.25 }, UPRIGHT)
+});
+
+// src/build/kinds/index.js
+init_mesh();
 
 // src/build/kinds/rock.js
+init_mesh();
 var BOX = [-0.5, -0.5, -0.5];
+var FORMS = ["boulder", "crag", "layered", "pile", "crystals", "arch", "passage", "outcrop"];
+var [BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP] = [0, 1, 2, 3, 4, 6, 7];
 var SIDES = [6, 8, 12, 16];
-var FINEST = SIDES[3];
+var CRAG_SIDES = [8, 12, 20, 28];
+var BAND_SIDES = [6, 8, 12, 16];
+var STONE_SIDES = [4, 5, 6, 8];
+var PRISM_SIDES = [4, 4, 6, 6];
+var PRISMS_DRAWN = [0.5, 0.75, 1, 1];
+var STONE_UNDER = [6, 6, 8, 10];
+var PIECE_SIDES = [4, 6, 8, 10];
+var FINEST = 3;
+var DEG = Math.PI / 180;
 var KEEP = 64;
-var boxes = new Map;
+var kept = new Map;
+var keptAs = (key, make) => {
+  if (kept.has(key))
+    return kept.get(key);
+  const value = make();
+  kept.set(key, value);
+  if (kept.size > KEEP)
+    kept.delete(kept.keys().next().value);
+  return value;
+};
 var hash = (x, y, z, seed) => {
   let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(z, 1274126177) + Math.imul(seed, 1442695041) | 0;
   h = Math.imul(h ^ h >>> 13, 1274126177);
@@ -557,16 +1770,26 @@ var randomOf = (seed) => () => {
   t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
   return ((t ^ t >>> 14) >>> 0) / 4294967296;
 };
-var sampled = ({ roughness, elongation }, seed, n, floor) => {
+var normalized = ([x, y, z]) => {
+  const length2 = Math.hypot(x, y, z) || 1;
+  return [x / length2, y / length2, z / length2];
+};
+var crossOf = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+var BODIES = {
+  [BOULDER]: { chips: [6, 10], depth: [0.08, 0.24], square: 0.5, upright: 1.6, ribs: 0 },
+  [CRAG]: { chips: [10, 14], depth: [0.06, 0.3], square: 0.65, upright: 0.55, ribs: 0.07 }
+};
+var sampled = ({ roughness, elongation }, seed, n, floor, body = BODIES[BOULDER]) => {
   const stretch = 1 + 2 * elongation;
   const random = randomOf(seed);
-  const chips = new Float64Array(4 * (6 + Math.round(10 * roughness)));
+  const chips = new Float64Array(4 * (body.chips[0] + Math.round(body.chips[1] * roughness)));
   for (let c = 0;c < chips.length; c += 4) {
-    const z = random() * 2 - 1, angle = random() * 2 * Math.PI, r = Math.sqrt(1 - z * z);
+    const z = body.ribs ? random() < 0.7 ? (random() * 2 - 1) * 0.25 : 0.55 + random() * 0.45 : random() * 2 - 1;
+    const angle = random() * 2 * Math.PI, r = Math.sqrt(1 - z * z);
     chips[c] = r * Math.cos(angle);
     chips[c + 1] = r * Math.sin(angle);
     chips[c + 2] = z;
-    chips[c + 3] = 0.5 * Math.hypot(chips[c] * stretch, chips[c + 1], chips[c + 2]) * (1 - (0.08 + random() * 0.24) * (0.6 + 0.8 * roughness));
+    chips[c + 3] = 0.5 * Math.hypot(chips[c] * stretch, chips[c + 1], chips[c + 2]) * (1 - (body.depth[0] + random() * body.depth[1]) * (0.6 + 0.8 * roughness));
   }
   const lumps = 0.14 + 0.1 * roughness, rough = 0.06 * roughness;
   const points = new Float64Array((n + 1) * n * 3);
@@ -575,8 +1798,9 @@ var sampled = ({ roughness, elongation }, seed, n, floor) => {
     for (let column = 0;column < n; column++, o += 3) {
       const round = column / n * 2 * Math.PI;
       const dx = along, dy = across * Math.cos(round), dz = across * Math.sin(round);
-      const blocky = 0.5 + 0.5 / Math.cbrt(Math.abs(dx) ** 3 + Math.abs(dy) ** 3 + Math.abs(dz) ** 3);
-      const radius = 0.5 * blocky * (1 + lumps * fbm(dx * 1.6 + 11, dy * 1.6 + 11, dz * 1.6 + 11, seed, 3, 0.5) + rough * fbm(dx * 7 + 3, dy * 7 + 3, dz * 7 + 3, seed + 101, 2, 0.6));
+      const blocky = 1 - body.square + body.square / Math.cbrt(Math.abs(dx) ** 3 + Math.abs(dy) ** 3 + Math.abs(dz) ** 3);
+      const ribs = body.ribs ? body.ribs * roughness * noise(dx * 8 + 5, dy * 8 + 5, dz * 1.1 + 5, seed + 211) : 0;
+      const radius = 0.5 * blocky * (1 + lumps * fbm(dx * 1.6 + 11, dy * 1.6 + 11, dz * body.upright + 11, seed, 3, 0.5) + rough * fbm(dx * 7 + 3, dy * 7 + 3, dz * 7 + 3, seed + 101, 2, 0.6) + ribs);
       let x = dx * radius * stretch, y = dy * radius, z = dz * radius;
       for (let c = 0;c < chips.length; c += 4) {
         const past = x * chips[c] + y * chips[c + 1] + z * chips[c + 2] - chips[c + 3];
@@ -593,102 +1817,479 @@ var sampled = ({ roughness, elongation }, seed, n, floor) => {
   }
   return points;
 };
-var boxOf = (params, seed) => {
-  const key = `${seed}|${params.roughness}|${params.elongation}|${params.base}`;
-  if (boxes.has(key))
-    return boxes.get(key);
-  const points = sampled(params, seed, FINEST, -Infinity);
+var boundsOf = (points) => {
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0;i < points.length; i += 3) {
+    for (let k = 0;k < 3; k++) {
+      min[k] = Math.min(min[k], points[i + k]);
+      max[k] = Math.max(max[k], points[i + k]);
+    }
+  }
+  return { min, max };
+};
+var intoBox = (points, { min, max }) => {
+  for (let i = 0;i < points.length; i += 3) {
+    for (let k = 0;k < 3; k++)
+      points[i + k] = Math.min(Math.max((points[i + k] - min[k]) / (max[k] - min[k]) - 0.5, -0.5), 0.5);
+  }
+  return points;
+};
+var coverOf = (cover, { min, max }) => {
+  if (!(cover > 0))
+    return () => 0;
+  const reach = min.map((v, k) => max[k] - v || 1), least = 1 - 1.25 * cover;
+  return ([x, y, z]) => {
+    const bx = x / reach[0], by = y / reach[1], bz = z / reach[2];
+    return bz / (Math.hypot(bx, by, bz) || 1) > least ? 1 : 0;
+  };
+};
+var addGrid = (mesh, points, n, rounded, slotOf) => {
+  const indexOf = (row, column) => row === 0 ? 0 : row === n ? 1 : 2 + (row - 1) * n + column % n;
+  const pointOf = (row, column) => (row * n + column % n) * 3;
+  const corners = new Int32Array(n * n * 6 * 2);
+  for (let row = 0, t = 0;row < n; row++) {
+    for (let column = 0;column < n; column++) {
+      corners.set([row, column, row + 1, column, row + 1, column + 1, row, column, row + 1, column + 1, row, column + 1], t);
+      t += 12;
+    }
+  }
+  const count = corners.length / 6;
+  const flat = new Float64Array(count * 3), smooth = new Float64Array((2 + (n - 1) * n) * 3);
+  for (let t = 0;t < count; t++) {
+    const [a, b, c] = [0, 1, 2].map((k) => pointOf(corners[t * 6 + k * 2], corners[t * 6 + k * 2 + 1]));
+    const ux = points[b] - points[a], uy = points[b + 1] - points[a + 1], uz = points[b + 2] - points[a + 2];
+    const vx = points[c] - points[a], vy = points[c + 1] - points[a + 1], vz = points[c + 2] - points[a + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const length2 = Math.hypot(nx, ny, nz) || 1;
+    flat[t * 3] = nx / length2;
+    flat[t * 3 + 1] = ny / length2;
+    flat[t * 3 + 2] = nz / length2;
+    for (let k = 0;k < 3; k++) {
+      const s = indexOf(corners[t * 6 + k * 2], corners[t * 6 + k * 2 + 1]) * 3;
+      smooth[s] += nx;
+      smooth[s + 1] += ny;
+      smooth[s + 2] += nz;
+    }
+  }
+  for (let t = 0;t < count; t++) {
+    const facet = [flat[t * 3], flat[t * 3 + 1], flat[t * 3 + 2]];
+    const slot = slotOf(facet);
+    const [a, b, c] = [0, 1, 2].map((k) => {
+      const row = corners[t * 6 + k * 2], column = corners[t * 6 + k * 2 + 1];
+      const p = pointOf(row, column), s = indexOf(row, column) * 3;
+      const position = [points[p], points[p + 1], points[p + 2]];
+      const length2 = Math.hypot(smooth[s], smooth[s + 1], smooth[s + 2]) || 1;
+      const shade = [0, 1, 2].map((i) => facet[i] * (1 - rounded) + smooth[s + i] / length2 * rounded);
+      const norm = Math.hypot(...shade) || 1;
+      return mesh.vertex(slot, position, shade.map((v) => v / norm), boxUv(position, facet, BOX, 1, 1));
+    });
+    mesh.triangle(slot, a, b, c);
+  }
+};
+var addFacet = (mesh, slotOf, a, b, c) => {
+  const facet = normalized(crossOf([b[0] - a[0], b[1] - a[1], b[2] - a[2]], [c[0] - a[0], c[1] - a[1], c[2] - a[2]]));
+  const slot = slotOf(facet);
+  mesh.triangle(slot, ...[a, b, c].map((p) => mesh.vertex(slot, p, facet, boxUv(p, facet, BOX, 1, 1))));
+};
+var bodyBox = (params, seed) => keptAs(`body|${params.form}|${seed}|${params.roughness}|${params.elongation}|${params.base}`, () => {
+  const body = BODIES[params.form];
+  const points = sampled(params, seed, (params.form === CRAG ? CRAG_SIDES : SIDES)[FINEST], -Infinity, body);
   let low = Infinity;
   for (let i = 2;i < points.length; i += 3)
     low = Math.min(low, points[i]);
   const floor = low * (1 - params.base);
-  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
-  for (let i = 0;i < points.length; i += 3) {
-    for (let k = 0;k < 3; k++) {
-      const v = k === 2 ? Math.max(points[i + 2], floor) : points[i + k];
-      min[k] = Math.min(min[k], v);
-      max[k] = Math.max(max[k], v);
+  for (let i = 2;i < points.length; i += 3)
+    points[i] = Math.max(points[i], floor);
+  return { floor, ...boundsOf(points) };
+});
+var bodyMesh = (params, seed, level) => {
+  const n = (params.form === CRAG ? CRAG_SIDES : SIDES)[level];
+  const box = bodyBox(params, seed);
+  const points = intoBox(sampled(params, seed, n, box.floor, BODIES[params.form]), box);
+  const mesh = createMesh(2);
+  addGrid(mesh, points, n, params.edges, coverOf(params.cover, box));
+  return mesh.pack([1, 1, 1]);
+};
+var bandsOf = ({ layers, roughness }, seed) => keptAs(`bands|${seed}|${layers}|${roughness}`, () => {
+  const random = randomOf(seed ^ 739982445);
+  const thick = Array.from({ length: layers }, () => 0.6 + random() * 0.8);
+  const total = thick.reduce((sum, t) => sum + t, 0);
+  let to = 0;
+  return thick.map((t) => {
+    const from = to;
+    to += t / total;
+    const worn = (0.05 + 0.25 * random()) * (0.4 + 0.6 * roughness);
+    return {
+      from,
+      to,
+      scale: (1 - worn) * (1 - 0.22 * (from + to) / 2),
+      under: 0.9 + 0.1 * random(),
+      shift: [(random() - 0.5) * 0.12 * roughness, (random() - 0.5) * 0.12 * roughness],
+      turn: (random() - 0.5) * 0.5
+    };
+  });
+});
+var ringsOf = (params, seed, n, bulge) => {
+  const { roughness, elongation, edges } = params;
+  const stretch = 1 + 2 * elongation, lumps = 0.12 + 0.12 * roughness;
+  const rings = [];
+  bandsOf(params, seed).forEach((band, b) => {
+    const rows = bulge ? [[band.from, band.under], [(band.from + band.to) / 2, 1 + 0.06 * edges], [band.to, 1]] : [[band.from, band.under], [band.to, 1]];
+    rows.forEach(([z, widen], r) => {
+      const points = new Float64Array(n * 3);
+      for (let j = 0;j < n; j++) {
+        const angle = j / n * 2 * Math.PI, c = Math.cos(angle + band.turn), s = Math.sin(angle + band.turn);
+        const square = 0.6 + 0.4 / Math.cbrt(Math.abs(c) ** 3 + Math.abs(s) ** 3);
+        const outline = square * (1 + lumps * fbm(c * 1.3 + 7, s * 1.3 + 7, (band.from + band.to) * 1.6, seed, 2, 0.5));
+        const radius = 0.5 * band.scale * widen * outline * (1 + 0.05 * roughness * noise(c * 5 + 2, s * 5 + 2, z * 7, seed + 31));
+        points[j * 3] = (band.shift[0] + radius * Math.cos(angle)) * stretch;
+        points[j * 3 + 1] = band.shift[1] + radius * Math.sin(angle);
+        points[j * 3 + 2] = z;
+      }
+      rings.push({ band: b, foot: r === 0, points });
+    });
+  });
+  return rings;
+};
+var middleOf = (ring, rise = 0) => {
+  const count = ring.points.length / 3, middle = [0, 0, ring.points[2] + rise];
+  for (let i = 0;i < ring.points.length; i += 3) {
+    middle[0] += ring.points[i] / count;
+    middle[1] += ring.points[i + 1] / count;
+  }
+  return middle;
+};
+var layeredMesh = (params, seed, level) => {
+  const n = BAND_SIDES[level], rise = 0.03 + 0.05 * params.roughness;
+  const box = keptAs(`layered|${seed}|${params.layers}|${params.roughness}|${params.elongation}|${params.edges}`, () => {
+    const finest = ringsOf(params, seed, BAND_SIDES[FINEST], true);
+    const all = new Float64Array(finest.length * finest[0].points.length + 3);
+    finest.forEach((ring, i) => all.set(ring.points, i * ring.points.length));
+    all.set(middleOf(finest.at(-1), rise), all.length - 3);
+    return boundsOf(all);
+  });
+  const rings = ringsOf(params, seed, n, level >= 2);
+  const [peak, under] = [middleOf(rings.at(-1), rise), middleOf(rings[0])].map((point) => Array.from(intoBox(new Float64Array(point), box)));
+  for (const ring of rings)
+    intoBox(ring.points, box);
+  const at = (ring, j) => Array.from(ring.points.subarray(j % n * 3, j % n * 3 + 3));
+  const slotOf = coverOf(params.cover, box);
+  const mesh = createMesh(2);
+  for (let r = 0;r + 1 < rings.length; r++) {
+    const [low, high] = [rings[r], rings[r + 1]];
+    if (low.band !== high.band)
+      continue;
+    const normals = Array.from({ length: n }, (_, j) => {
+      const along = [0, 1, 2].map((k) => at(high, j)[k] - at(low, j)[k]);
+      const round = [0, 1, 2].map((k) => at(low, j + 1)[k] - at(low, j + n - 1)[k]);
+      return normalized(crossOf(round, along));
+    });
+    for (let j = 0;j < n; j++) {
+      const [a, b, c, d] = [at(low, j), at(low, j + 1), at(high, j + 1), at(high, j)];
+      for (const [p, q, s, i, k, l] of [[a, b, c, j, j + 1, j + 1], [a, c, d, j, j + 1, j]]) {
+        const facet = normalized(crossOf([q[0] - p[0], q[1] - p[1], q[2] - p[2]], [s[0] - p[0], s[1] - p[1], s[2] - p[2]]));
+        const slot = slotOf(facet);
+        const shade = (index) => normalized([0, 1, 2].map((m) => facet[m] * (1 - params.edges) + normals[index % n][m] * params.edges));
+        mesh.triangle(slot, mesh.vertex(slot, p, shade(i), boxUv(p, facet, BOX, 1, 1)), mesh.vertex(slot, q, shade(k), boxUv(q, facet, BOX, 1, 1)), mesh.vertex(slot, s, shade(l), boxUv(s, facet, BOX, 1, 1)));
+      }
     }
   }
-  const box = { floor, min, max };
-  boxes.set(key, box);
-  if (boxes.size > KEEP)
-    boxes.delete(boxes.keys().next().value);
-  return box;
+  for (let r = 0;r + 1 < rings.length; r++) {
+    const [low, high] = [rings[r], rings[r + 1]];
+    if (low.band === high.band)
+      continue;
+    for (let j = 0;j < n; j++) {
+      addFacet(mesh, slotOf, at(low, j), at(low, j + 1), at(high, j + 1));
+      addFacet(mesh, slotOf, at(low, j), at(high, j + 1), at(high, j));
+    }
+  }
+  const [top, bottom] = [rings.at(-1), rings[0]];
+  for (let j = 0;j < n; j++) {
+    addFacet(mesh, slotOf, at(top, j), at(top, j + 1), peak);
+    addFacet(mesh, slotOf, at(bottom, j + 1), at(bottom, j), under);
+  }
+  return mesh.pack([1, 1, 1]);
 };
+var stonesOf = ({ stones, roughness, elongation }, seed) => keptAs(`stones|${seed}|${stones}|${roughness}|${elongation}`, () => {
+  const random = randomOf(seed ^ 461845907);
+  const stretch = 1 + 2 * elongation;
+  const sizes = Array.from({ length: stones }, () => 0.55 + 0.45 * random() ** 1.5).sort((a, b) => b - a);
+  const reach = 0.45 * Math.sqrt(stones);
+  const placed = [];
+  for (const radius of sizes) {
+    const height = radius * (0.55 + 0.25 * random());
+    let best = null;
+    for (let k = 0;k < 4; k++) {
+      const angle = random() * 2 * Math.PI, distance = reach * Math.sqrt(random());
+      const x = distance * Math.cos(angle) * stretch, y = distance * Math.sin(angle);
+      let z = height;
+      for (const other of placed) {
+        const gap = Math.hypot(x - other.x, y - other.y) / ((radius + other.radius) * 0.85);
+        if (gap < 1)
+          z = Math.max(z, other.z + (height + other.height) * 0.9 * Math.sqrt(1 - gap * gap));
+      }
+      if (!best || z < best.z)
+        best = { x, y, z };
+    }
+    placed.push({ ...best, radius, height, yaw: random() * 2 * Math.PI, tilt: (random() - 0.5) * 0.5, own: Math.floor(random() * 2147483647), stretch: 0.15 + 0.3 * random() });
+  }
+  return placed;
+});
+var pileGrids = (params, seed, n, floor) => stonesOf(params, seed).map((stone) => {
+  const points = sampled({ roughness: params.roughness, elongation: stone.stretch }, stone.own, n, -Infinity);
+  const cy = Math.cos(stone.yaw), sy = Math.sin(stone.yaw), ct = Math.cos(stone.tilt), st = Math.sin(stone.tilt);
+  for (let i = 0;i < points.length; i += 3) {
+    const x = points[i] * 2 * stone.radius, y0 = points[i + 1] * 2 * stone.radius, z0 = points[i + 2] * 2 * stone.height;
+    const y = y0 * ct - z0 * st, z = y0 * st + z0 * ct;
+    points[i] = stone.x + x * cy - y * sy;
+    points[i + 1] = stone.y + x * sy + y * cy;
+    points[i + 2] = Math.max(stone.z + z, floor);
+  }
+  return points;
+});
+var pileMesh = (params, seed, level) => {
+  const n = STONE_SIDES[level];
+  const box = keptAs(`pile|${seed}|${params.stones}|${params.roughness}|${params.elongation}|${params.base}`, () => {
+    const stones = stonesOf(params, seed);
+    const floor = params.base * 0.35 * stones.reduce((sum, stone) => sum + stone.height, 0) / stones.length;
+    const grids = pileGrids(params, seed, STONE_SIDES[FINEST], floor);
+    const all = new Float64Array(grids.reduce((sum, grid) => sum + grid.length, 0));
+    grids.reduce((offset, grid) => (all.set(grid, offset), offset + grid.length), 0);
+    return { floor, ...boundsOf(all) };
+  });
+  const slotOf = coverOf(params.cover, box);
+  const mesh = createMesh(2);
+  for (const grid of pileGrids(params, seed, n, box.floor))
+    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf);
+  return mesh.pack([1, 1, 1]);
+};
+var crystalsOf = ({ crystals, roughness, elongation }, seed) => keptAs(`crystals|${seed}|${crystals}|${roughness}|${elongation}`, () => {
+  const random = randomOf(seed ^ 668265263);
+  const stretch = 1 + 2 * elongation, spread = 0.6 + 0.8 * roughness;
+  return Array.from({ length: crystals }, (_, i) => {
+    const t = crystals > 1 ? i / (crystals - 1) : 0;
+    const length2 = (1 - 0.72 * t ** 0.8) * (0.85 + 0.3 * random());
+    const radius = length2 * (0.13 + 0.07 * random());
+    const angle = random() * 2 * Math.PI;
+    const distance = 0.32 * (0.1 + 0.9 * t ** 0.7) * (0.7 + 0.3 * random());
+    const fallen = t > 0.6 && random() < 0.15;
+    const lean = fallen ? (75 + 12 * random()) * DEG : (4 + 46 * t) * (0.6 + 0.8 * random()) * spread * DEG;
+    const heading = angle + (random() - 0.5) * 0.9;
+    return {
+      foot: [distance * Math.cos(angle) * stretch, distance * Math.sin(angle), fallen ? radius * 0.6 : -0.12 * length2],
+      axis: [Math.sin(lean) * Math.cos(heading), Math.sin(lean) * Math.sin(heading), Math.cos(lean)],
+      length: length2,
+      radius,
+      point: radius * (1.1 + 0.6 * random()),
+      widths: Array.from({ length: 6 }, () => 0.85 + 0.3 * random()),
+      turn: random() * (Math.PI / 3),
+      off: [(random() - 0.5) * 0.4 * radius, (random() - 0.5) * 0.4 * radius],
+      fallen
+    };
+  });
+});
+var prismOf = (crystal, sides) => {
+  const { foot, axis, length: length2, radius, point, widths, turn: turn2, off, fallen } = crystal;
+  const across = normalized(crossOf(axis, Math.abs(axis[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0])), side = crossOf(axis, across);
+  const along = (distance, x = 0, y = 0) => [0, 1, 2].map((k) => foot[k] + axis[k] * distance + across[k] * x + side[k] * y);
+  const ring = (distance) => Array.from({ length: sides }, (_, j) => {
+    const angle = turn2 + j / sides * 2 * Math.PI, width = radius * widths[Math.floor(j * 6 / sides)];
+    return along(distance, Math.cos(angle) * width, Math.sin(angle) * width);
+  });
+  const base = fallen ? point * 0.8 : 0;
+  return { feet: ring(base), shoulders: ring(length2 - point), tip: along(length2, ...off), heel: along(0) };
+};
+var stoneUnder = (params, seed, n) => {
+  const points = sampled({ roughness: 0.6, elongation: params.elongation }, seed + 7, n, -Infinity);
+  for (let i = 0;i < points.length; i += 3) {
+    points[i] *= 0.85;
+    points[i + 1] *= 0.85;
+    points[i + 2] = Math.max(points[i + 2] * 0.22 + 0.02, 0);
+  }
+  return points;
+};
+var crystalsMesh = (params, seed, level) => {
+  const sides = PRISM_SIDES[level];
+  const crystals = crystalsOf(params, seed);
+  const box = keptAs(`cluster|${seed}|${params.crystals}|${params.roughness}|${params.elongation}`, () => {
+    const prisms = crystals.map((crystal2) => prismOf(crystal2, PRISM_SIDES[FINEST]));
+    const all = [...prisms.flatMap(({ feet, shoulders, tip, heel }) => [...feet, ...shoulders, tip, heel]).flat(), ...stoneUnder(params, seed, STONE_UNDER[FINEST])];
+    for (let i = 2;i < all.length; i += 3)
+      all[i] = Math.max(all[i], 0);
+    return boundsOf(all);
+  });
+  const unit2 = (p) => Array.from(intoBox(new Float64Array([p[0], p[1], Math.max(p[2], 0)]), box));
+  const mesh = createMesh(2);
+  const crystal = () => 0;
+  for (const each of crystals.slice(0, Math.ceil(crystals.length * PRISMS_DRAWN[level]))) {
+    const { feet, shoulders, tip, heel } = prismOf(each, sides);
+    const [down, up, point, foot] = [feet.map(unit2), shoulders.map(unit2), unit2(tip), unit2(heel)];
+    for (let j = 0;j < sides; j++) {
+      const k = (j + 1) % sides;
+      addFacet(mesh, crystal, down[j], down[k], up[k]);
+      addFacet(mesh, crystal, down[j], up[k], up[j]);
+      addFacet(mesh, crystal, up[j], up[k], point);
+      addFacet(mesh, crystal, down[k], down[j], foot);
+    }
+  }
+  const n = STONE_UNDER[level];
+  addGrid(mesh, intoBox(stoneUnder(params, seed, n), box), n, 0.3, () => 1);
+  return mesh.pack([1, 1, 1]);
+};
+var formationOf = ({ form, stones, roughness, elongation }, seed) => keptAs(`formation|${form}|${seed}|${stones}|${roughness}|${elongation}`, () => {
+  const random = randomOf(seed ^ 1759714724);
+  const stretch = 1 + 2 * elongation, pieces = [];
+  const add2 = (x, y, z, length2, depth, height, tip) => pieces.push({
+    x,
+    y,
+    z,
+    length: length2,
+    depth,
+    height,
+    yaw: (random() - 0.5) * 0.5,
+    tip: (random() - 0.5) * tip,
+    own: Math.floor(random() * 2147483647),
+    stretch: 0.1 + 0.3 * random()
+  });
+  if (form === PASSAGE) {
+    const way = 0.3 * stretch, pillar = 0.24 * stretch, height = 0.72 + 0.1 * random();
+    for (const side of [-1, 1])
+      add2(side * (way / 2 + pillar / 2), (random() - 0.5) * 0.12, 0, pillar * (0.9 + 0.2 * random()), 0.6 + 0.25 * random(), height * (0.94 + 0.12 * random()), 0.1);
+    add2((random() - 0.5) * 0.06 * stretch, (random() - 0.5) * 0.08, height * 0.92, way + pillar * 1.6, 0.55 + 0.2 * random(), 0.24 + 0.08 * random(), 0.06);
+    pieces[2].rests = [0, 1];
+    for (let i = 3;i < stones; i++) {
+      const side = random() < 0.5 ? -1 : 1, beyond = random() < 0.6;
+      const x = side * (beyond ? way / 2 + pillar * (0.9 + 0.6 * random()) : way / 2 + pillar * (0.2 + 0.6 * random()));
+      const y = beyond ? (random() - 0.5) * 0.5 : (random() < 0.5 ? -1 : 1) * (0.38 + 0.12 * random());
+      add2(x, y, 0, pillar * (0.5 + 0.5 * random()), 0.3 + 0.3 * random(), 0.12 + 0.3 * random(), 0.3);
+    }
+  } else {
+    for (let i = 0;i < stones; i++) {
+      const rank = stones > 1 ? i / (stones - 1) : 0;
+      const x = (random() - 0.5) * stretch * (0.25 + 0.6 * rank), y = (random() - 0.5) * (0.2 + 0.5 * rank);
+      const height = (1 - 0.65 * rank) * (0.8 + 0.2 * random()), length2 = (0.22 + 0.2 * random()) * stretch * (0.6 + 0.4 * rank);
+      add2(x, y, 0, length2, 0.35 + 0.35 * random(), height, 0.22);
+    }
+  }
+  return pieces;
+});
+var stoneGrid = (params, stone, n) => {
+  const points = sampled({ roughness: params.roughness, elongation: stone.stretch }, stone.own, n, -Infinity, BODIES[CRAG]);
+  const { min, max } = boundsOf(points);
+  const cy = Math.cos(stone.yaw), sy = Math.sin(stone.yaw), ct = Math.cos(stone.tip), st = Math.sin(stone.tip);
+  for (let i = 0;i < points.length; i += 3) {
+    const x = ((points[i] - min[0]) / (max[0] - min[0]) - 0.5) * stone.length;
+    const y0 = ((points[i + 1] - min[1]) / (max[1] - min[1]) - 0.5) * stone.depth;
+    const z0 = (points[i + 2] - min[2]) / (max[2] - min[2]) * stone.height;
+    const y = y0 * ct - z0 * st, z = y0 * st + z0 * ct;
+    points[i] = stone.x + x * cy - y * sy;
+    points[i + 1] = stone.y + x * sy + y * cy;
+    points[i + 2] = z;
+  }
+  return points;
+};
+var setDown = (points, dz) => {
+  for (let i = 2;i < points.length; i += 3)
+    points[i] = Math.max(points[i] + dz, 0);
+  return points;
+};
+var lowest = (points) => {
+  let low = Infinity;
+  for (let i = 2;i < points.length; i += 3)
+    low = Math.min(low, points[i]);
+  return low;
+};
+var grounded = (points, stone) => setDown(points, -lowest(points) - 0.04 * stone.height);
+var lintelDrop = (params, seed) => keptAs(`lintel|${params.form}|${seed}|${params.stones}|${params.roughness}|${params.elongation}`, () => {
+  const stones = formationOf(params, seed);
+  const lintel = stones.find((stone) => stone.rests);
+  const under = stoneGrid(params, lintel, PIECE_SIDES[FINEST]);
+  return Math.min(...lintel.rests.map((i) => {
+    const pillar = grounded(stoneGrid(params, stones[i], PIECE_SIDES[FINEST]), stones[i]);
+    let x0 = Infinity, x1 = -Infinity, head = 0, belly = Infinity;
+    for (let k = 0;k < pillar.length; k += 3) {
+      x0 = Math.min(x0, pillar[k]);
+      x1 = Math.max(x1, pillar[k]);
+      if (Math.abs(pillar[k] - lintel.x) <= lintel.length / 2 && Math.abs(pillar[k + 1] - lintel.y) <= lintel.depth / 2)
+        head = Math.max(head, pillar[k + 2]);
+    }
+    for (let k = 0;k < under.length; k += 3)
+      if (under[k] >= x0 && under[k] <= x1)
+        belly = Math.min(belly, under[k + 2]);
+    return head - belly;
+  })) - 0.22 * lintel.height;
+});
+var formationGrids = (params, seed, n) => formationOf(params, seed).map((stone) => {
+  const points = stoneGrid(params, stone, n);
+  return stone.rests ? setDown(points, lintelDrop(params, seed)) : grounded(points, stone);
+});
+var formationBox = (params, seed) => keptAs(`formation-box|${params.form}|${seed}|${params.stones}|${params.roughness}|${params.elongation}`, () => {
+  const grids = formationGrids(params, seed, PIECE_SIDES[FINEST]);
+  const all = new Float64Array(grids.reduce((sum, grid) => sum + grid.length, 0));
+  grids.reduce((offset, grid) => (all.set(grid, offset), offset + grid.length), 0);
+  return boundsOf(all);
+});
+var formationMesh = (params, seed, level) => {
+  const n = PIECE_SIDES[level], box = formationBox(params, seed);
+  const slotOf = coverOf(params.cover, box);
+  const mesh = createMesh(2);
+  for (const grid of formationGrids(params, seed, n))
+    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf);
+  return mesh.pack([1, 1, 1]);
+};
+var piecesHulls = (params, seed, size) => {
+  const key = `rock|${params.form}|${seed}|${params.stones}|${params.roughness}|${params.elongation}`;
+  const box = formationBox(params, seed);
+  return formationGrids(params, seed, PIECE_SIDES[1]).map((grid, i) => ({ type: "hull", key: `${key}#${i}`, points: Float32Array.from(intoBox(grid, box)), scale: [...size] }));
+};
+var MESHES = [bodyMesh, bodyMesh, layeredMesh, pileMesh, crystalsMesh, bodyMesh, formationMesh, formationMesh];
+var notCrystals = ({ form }) => form !== CRYSTALS;
 var rock = Object.freeze({
   name: "rock",
   label: "Rock",
-  description: "A rock: a sculpted sphere, lumped and chipped by its seed and cut flat underneath to sit on the ground. Its length (x) is its width (y) drawn out by its elongation; a few hundred triangles at most, the detail left to its texture's relief.",
-  faces: ["surface"],
+  description: "A rock of one of seven forms: a boulder (a sculpted sphere, lumped and chipped by its seed and cut flat underneath), a crag (the same cut into upright faces, for rocks of metres), layered (strata, ledges between them), a pile of stones heaped as they would rest, crystals (quartz prisms out of a stone of their own), a passage (two pillars either side of a way through, a lintel resting across them, blocks at their feet) or an outcrop (tall stones and blocks leaning together). Its length (x) is its width (y) drawn out by its elongation; a few hundred triangles to 1,500, a formation 200 a stone, the detail left to its texture's relief. Its second face is its cover — moss, snow or sand on what faces up, as far down as its cover says — or the stone its crystals grow out of. Passages and outcrops collide stone by stone: one walks under a lintel.",
+  faces: ({ form }) => form === CRYSTALS ? ["crystals", "stone"] : ["surface", "cover"],
+  facesBy: "form",
   shape: "sphere",
   seeded: true,
   size: [1, 0.8, 0.6],
   sizeNote: "its width (y) and height (z) its own; its length (x) its width drawn out by its elongation",
   params: [
-    { name: "roughness", label: "Roughness", min: 0, max: 1, default: 0.5, step: 0.01, description: "How broken its surface is: 0 a smooth, lumpy pebble; 1 jagged, chipped all over." },
-    { name: "edges", label: "Edges", min: 0, max: 1, default: 0, step: 0.01, description: "How its facets meet: 0 faceted, low-poly, each facet flat with hard edges; 1 rounded, shaded smoothly across them." },
-    { name: "base", label: "Flat base", min: 0, max: 1, default: 0.3, step: 0.01, description: "How much of its underside is cut flat, to sit on the ground: 0 none, 1 up to half its height." },
-    { name: "elongation", label: "Elongation", min: 0, max: 1, default: 0.25, step: 0.01, description: "How long it is for its width: its length (x) is 1 + 2 × this times its width (y)." }
+    { name: "form", label: "Form", min: 0, max: 7, default: 0, step: 1, options: FORMS, retired: ["arch"], description: "Boulder: a lumpy, chipped stone. Crag: a rock of metres cut into upright faces and ribbed. Layered: strata, bands one on another with ledges between. Pile: stones heaped as they would rest. Crystals: quartz prisms ending in points, out of a stone of their own. Passage: two pillars either side of a way through, a lintel resting across them, blocks at their feet. Outcrop: tall stones and blocks leaning together." },
+    { name: "roughness", label: "Roughness", min: 0, max: 1, default: 0.5, step: 0.01, description: "How broken its surface is: 0 a smooth, lumpy pebble; 1 jagged, chipped all over. Crystals: how far apart they lean." },
+    { name: "edges", label: "Edges", min: 0, max: 1, default: 0, step: 0.01, when: notCrystals, description: "How its facets meet: 0 faceted, low-poly, each facet flat with hard edges; 1 rounded, shaded smoothly across them." },
+    { name: "base", label: "Flat base", min: 0, max: 1, default: 0.3, step: 0.01, when: ({ form }) => form <= PILE && form !== LAYERED, description: "How much of its underside is cut flat, to sit on the ground: 0 none, 1 up to half its height. A pile: how far its stones are sunk." },
+    { name: "elongation", label: "Elongation", min: 0, max: 1, default: 0.25, step: 0.01, description: "How long it is for its width: its length (x) is 1 + 2 × this times its width (y)." },
+    { name: "layers", label: "Layers", min: 2, max: 8, default: 5, step: 1, when: ({ form }) => form === LAYERED, description: "Its strata, bottom to top." },
+    { name: "stones", label: "Stones", min: 3, max: 12, default: 8, step: 1, when: ({ form }) => form === PILE || form === PASSAGE || form === OUTCROP, description: "The stones of the pile, the passage (its two pillars and lintel among them) or the outcrop." },
+    { name: "crystals", label: "Crystals", min: 3, max: 24, default: 16, step: 1, when: ({ form }) => form === CRYSTALS, description: "Its crystals, the largest upright in the middle; at a distance the least are left out." },
+    { name: "cover", label: "Cover", min: 0, max: 1, default: 0, step: 0.01, when: notCrystals, description: "How far down its second face, its cover, reaches: the facets that face up, for moss, snow or sand — 0 none, 1 down past its sides." }
   ],
+  labelOf: ({ form }) => ["Rock", "Crag", "Layered rock", "Stone pile", "Crystals", "Rock", "Rock passage", "Outcrop"][form],
   fit: ({ elongation }, [, y, z]) => [y * (1 + 2 * elongation), y, z],
   resize: (params, [x, y]) => ({ ...params, elongation: (x / y - 1) / 2 }),
-  collider: "hull",
-  mesh: (params, seed, level) => {
-    const n = SIDES[level];
-    const { floor, min, max } = boxOf(params, seed);
-    const points = sampled(params, seed, n, floor);
-    for (let i = 0;i < points.length; i += 3) {
-      for (let k = 0;k < 3; k++)
-        points[i + k] = Math.min(Math.max((points[i + k] - min[k]) / (max[k] - min[k]) - 0.5, -0.5), 0.5);
-    }
-    const indexOf = (row, column) => row === 0 ? 0 : row === n ? 1 : 2 + (row - 1) * n + column % n;
-    const pointOf = (row, column) => (row * n + column % n) * 3;
-    const corners = new Int32Array(n * n * 6 * 2);
-    for (let row = 0, t = 0;row < n; row++) {
-      for (let column = 0;column < n; column++) {
-        corners.set([row, column, row + 1, column, row + 1, column + 1, row, column, row + 1, column + 1, row, column + 1], t);
-        t += 12;
-      }
-    }
-    const count = corners.length / 6;
-    const flat = new Float64Array(count * 3), smooth = new Float64Array((2 + (n - 1) * n) * 3);
-    for (let t = 0;t < count; t++) {
-      const [a, b, c] = [0, 1, 2].map((k) => pointOf(corners[t * 6 + k * 2], corners[t * 6 + k * 2 + 1]));
-      const ux = points[b] - points[a], uy = points[b + 1] - points[a + 1], uz = points[b + 2] - points[a + 2];
-      const vx = points[c] - points[a], vy = points[c + 1] - points[a + 1], vz = points[c + 2] - points[a + 2];
-      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-      const length2 = Math.hypot(nx, ny, nz) || 1;
-      flat[t * 3] = nx / length2;
-      flat[t * 3 + 1] = ny / length2;
-      flat[t * 3 + 2] = nz / length2;
-      for (let k = 0;k < 3; k++) {
-        const s = indexOf(corners[t * 6 + k * 2], corners[t * 6 + k * 2 + 1]) * 3;
-        smooth[s] += nx;
-        smooth[s + 1] += ny;
-        smooth[s + 2] += nz;
-      }
-    }
-    const mesh = createMesh(1);
-    const rounded = params.edges;
-    for (let t = 0;t < count; t++) {
-      const facet = [flat[t * 3], flat[t * 3 + 1], flat[t * 3 + 2]];
-      const [a, b, c] = [0, 1, 2].map((k) => {
-        const row = corners[t * 6 + k * 2], column = corners[t * 6 + k * 2 + 1];
-        const p = pointOf(row, column), s = indexOf(row, column) * 3;
-        const position = [points[p], points[p + 1], points[p + 2]];
-        const length2 = Math.hypot(smooth[s], smooth[s + 1], smooth[s + 2]) || 1;
-        const shade = [0, 1, 2].map((i) => facet[i] * (1 - rounded) + smooth[s + i] / length2 * rounded);
-        const norm = Math.hypot(...shade) || 1;
-        return mesh.vertex(0, position, shade.map((v) => v / norm), boxUv(position, facet, BOX, 1, 1));
-      });
-      mesh.triangle(0, a, b, c);
-    }
-    return mesh.pack([1, 1, 1]);
-  }
+  collider: (params, seed, size) => params.form === PASSAGE || params.form === OUTCROP ? piecesHulls(params, seed, size) : "hull",
+  families: [
+    { name: "boulder", label: "Boulder", params: { form: "boulder", roughness: 0.5, edges: 0.15, base: 0.35, elongation: 0.3 }, size: [1.4, 1, 0.85], material: "ground/rock/rock-boulder-dry", sink: 0.12 },
+    { name: "mossy", label: "Mossy boulder", params: { form: "boulder", roughness: 0.55, edges: 0.3, base: 0.4, elongation: 0.35, cover: 0.45 }, size: [1.6, 1.15, 0.95], material: "ground/rock/rock-01", second: "ground/grass/moss-002", sink: 0.12 },
+    { name: "pebble", label: "Pebble", params: { form: "boulder", roughness: 0.06, edges: 1, base: 0.2, elongation: 0.35 }, size: [0.36, 0.26, 0.16], material: "ground/rock/rock-01", sink: 0.2 },
+    { name: "slab", label: "Slab", params: { form: "boulder", roughness: 0.35, edges: 0.1, base: 0.7, elongation: 0.15 }, size: [2.2, 1.9, 0.45], material: "ground/rock/rock-002", sink: 0.25 },
+    { name: "crag", label: "Crag", params: { form: "crag", roughness: 0.8, edges: 0.1, base: 0.8, elongation: 0.45 }, size: [6, 4, 4.5], material: "ground/rock/rock-face-03", sink: 0.2 },
+    { name: "snowy", label: "Snowy crag", params: { form: "crag", roughness: 0.75, edges: 0.1, base: 0.8, elongation: 0.4, cover: 0.4 }, size: [6, 4.2, 4.5], material: "ground/rock/rock-face-03", second: "ground/snow/snow-004", sink: 0.2 },
+    { name: "strata", label: "Strata", params: { form: "layered", layers: 5, roughness: 0.5, edges: 0.3, elongation: 0.3 }, size: [4.5, 3.5, 2.4], material: "ground/rock/cliff-side", sink: 0.1 },
+    { name: "pile", label: "Stone pile", params: { form: "pile", stones: 8, roughness: 0.6, edges: 0.15, base: 0.2, elongation: 0.2 }, size: [1.8, 1.5, 0.8], material: "ground/rock/rock-08", sink: 0.05 },
+    { name: "quartz", label: "Quartz", params: { form: "crystals", crystals: 18, roughness: 0.45, elongation: 0.15 }, size: [1.1, 0.95, 1.15], material: "paving/stone/marble-005", second: "ground/snow/snow-004", look: { opacity: 0.55, gloss: 0.9, reflect: 0.3 }, sink: 0.04 },
+    { name: "amethyst", label: "Amethyst", params: { form: "crystals", crystals: 14, roughness: 0.55, elongation: 0.2 }, size: [1, 0.85, 0.9], material: "paving/stone/marble-005", second: "ground/rock/rock-01", look: { opacity: 0.65, gloss: 0.88, reflect: 0.25, tint: [0.62, 0.36, 0.95] }, sink: 0.04 },
+    { name: "passage", label: "Mossy passage", params: { form: "passage", stones: 9, roughness: 0.65, edges: 0.2, elongation: 0.6, cover: 0.4 }, size: [7.5, 3.4, 5], material: "ground/rock/rock-064", second: "ground/grass/moss-002", sink: 0.05 },
+    { name: "gate", label: "Stone gate", params: { form: "passage", stones: 5, roughness: 0.5, edges: 0.15, elongation: 0.75 }, size: [8, 3.2, 5.5], material: "ground/rock/rock-boulder-dry", sink: 0.05 },
+    { name: "outcrop", label: "Outcrop", params: { form: "outcrop", stones: 8, roughness: 0.75, edges: 0.1, elongation: 0.5 }, size: [8, 4, 4.5], material: "ground/rock/rock-face-03", sink: 0.08 },
+    { name: "mossyOutcrop", label: "Mossy outcrop", params: { form: "outcrop", stones: 7, roughness: 0.7, edges: 0.2, elongation: 0.45, cover: 0.5 }, size: [7.6, 4, 4.2], material: "ground/rock/rock-057", second: "ground/grass/moss-002", sink: 0.08 }
+  ],
+  mesh: (params, seed, level) => MESHES[params.form](params, seed, level)
 });
 
 // src/build/kinds/bevel.js
+init_mesh();
 var DETAIL = [1, 1.5, 2.5, 4];
 var ROUND = [6, 9, 15, 24];
 var stepsAt = (segments, level) => Math.max(2, 2 * Math.round(segments * DETAIL[level] / 8));
@@ -828,6 +2429,7 @@ var bevel = Object.freeze({
 });
 
 // src/build/kinds/stairs.js
+init_mesh();
 var RAIL = 0.9;
 var POST = 0.04;
 var HANDRAIL = [0.05, 0.04];
@@ -994,6 +2596,7 @@ var stairs = Object.freeze({
 });
 
 // src/build/kinds/door.js
+init_mesh();
 var GAP = 0.004;
 var FLOOR = 0.01;
 var HANDLE = 1;
@@ -1098,6 +2701,7 @@ var door = Object.freeze({
 });
 
 // src/build/kinds/window.js
+init_mesh();
 var SINK3 = 0.001;
 var PANE2 = 0.006;
 var METRE2 = [1, 1];
@@ -1149,6 +2753,7 @@ var windowKind = Object.freeze({
 });
 
 // src/build/kinds/roof.js
+init_mesh();
 var UP = [0, 0, 1];
 var roof = Object.freeze({
   name: "roof",
@@ -1215,6 +2820,7 @@ var roof = Object.freeze({
 });
 
 // src/build/kinds/column.js
+init_mesh();
 var ROUND2 = [8, 12, 16, 24];
 var SINK4 = 0.001;
 var SHAFT = 0.4;
@@ -1315,6 +2921,7 @@ var column = Object.freeze({
 });
 
 // src/build/kinds/arch.js
+init_mesh();
 var SEGMENTS = [8, 12, 16, 24];
 var arch = Object.freeze({
   name: "arch",
@@ -1376,6 +2983,7 @@ var arch = Object.freeze({
 });
 
 // src/build/kinds/fence.js
+init_mesh();
 var SINK5 = 0.002;
 var NONE = 0.000000001;
 var widthOf = ({ post, thickness }) => Math.min(post, thickness);
@@ -1551,6 +3159,7 @@ var fence = Object.freeze({
 });
 
 // src/build/kinds/road.js
+init_mesh();
 var LIFT = 0.1;
 var EVERY = 1;
 var ACROSS = 1.5;
@@ -1909,7 +3518,6 @@ var generatePath = (params, detail, split) => {
   });
   return { rows, open };
 };
-
 // src/build/prim/mesher.js
 var DETAIL2 = Object.freeze([1, 1.5, 2.5, 4]);
 var SEAM = 0.000001;
@@ -2032,16 +3640,16 @@ var side = ({ id, kind, index, count, flat }, { params, profile, path, grid }) =
       addTo(normals, vertex, n);
     addTo(sum, 0, n);
   }
-  const same = (a, b) => distance2(positions, a, b) < SEAM;
+  const same2 = (a, b) => distance2(positions, a, b) < SEAM;
   const weld = (a, b) => {
     for (let k = 0;k < 3; k++)
       normals[a * 3 + k] = normals[b * 3 + k] = normals[a * 3 + k] + normals[b * 3 + k];
   };
-  const pole = (s) => rows.every((_, t) => same(s, t * S + s));
-  if (columns.every((_, s) => same(s, (T - 1) * S + s)))
+  const pole = (s) => rows.every((_, t) => same2(s, t * S + s));
+  if (columns.every((_, s) => same2(s, (T - 1) * S + s)))
     for (let s = 0;s < S; s++)
       weld(s, (T - 1) * S + s);
-  if (!pole(0) && rows.every((_, t) => same(t * S, t * S + S - 1)))
+  if (!pole(0) && rows.every((_, t) => same2(t * S, t * S + S - 1)))
     for (let t = 0;t < T; t++)
       weld(t * S, t * S + S - 1);
   if (params.pathCurve === PATH.CIRCLE && (params.profileCurve & 15) === PROFILE.HALF_CIRCLE) {
@@ -2279,11 +3887,11 @@ var pack = (positions, normals, s, t, all) => {
     welded[v] = ids.get(key);
     place[v] = welded[v];
   }
-  const kept = [];
+  const kept2 = [];
   for (let k = 0;k < all.length; k += 3) {
     const a = all[k], b = all[k + 1], c = all[k + 2];
     if (place[a] !== place[b] && place[b] !== place[c] && place[c] !== place[a])
-      kept.push(a, b, c);
+      kept2.push(a, b, c);
   }
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   for (let v = 0;v < count; v++)
@@ -2295,8 +3903,8 @@ var pack = (positions, normals, s, t, all) => {
     positions,
     normals,
     uvs,
-    indices: (count > 65535 ? Uint32Array : Uint16Array).from(kept),
-    slots: [{ id: 32, first: 0, count: kept.length }],
+    indices: (count > 65535 ? Uint32Array : Uint16Array).from(kept2),
+    slots: [{ id: 32, first: 0, count: kept2.length }],
     welded,
     bounds: { min, max }
   };
@@ -2322,8 +3930,332 @@ var sculpt = Object.freeze({
   mesh: ({ stitch, mirror, invert, columns, rows, map }, seed, level) => meshSculpt({ samples: fromBase64(map), columns, rows, stitch: STITCHES[stitch], mirror: mirror === 1, invert: invert === 1 }, level)
 });
 
+// src/build/kinds/blocks.js
+init_mesh();
+var VERSION = 1;
+var MOST_COLOURS = 8;
+var MOST_BYTES = 32768;
+var MOST_CELLS = 32768;
+var MOST_BOXES = 2048;
+var decodeBlocks = (text) => {
+  const bytes = fromBase64(text ?? "");
+  if (bytes.length < 6 || bytes[0] !== VERSION)
+    return null;
+  const counts = [bytes[1], bytes[2], bytes[3]];
+  if (counts.some((n) => n < 1) || counts[0] * counts[1] * counts[2] > MOST_CELLS)
+    return null;
+  let at = 4;
+  if (bytes.length < at + 2 * (counts[0] + counts[1] + counts[2] - 3) + 2)
+    return null;
+  const planes = counts.map((n) => [0, ...Array.from({ length: n - 1 }, () => {
+    const v = bytes[at] | bytes[at + 1] << 8;
+    at += 2;
+    return v / 65536;
+  }), 1]);
+  if (planes.some((list) => list.some((v, i) => i > 0 && v <= list[i - 1])))
+    return null;
+  const count = bytes[at] | bytes[at + 1] << 8;
+  if (count > MOST_BOXES)
+    return null;
+  at += 2;
+  const boxes = [];
+  for (let b = 0;b < count && at + 7 <= bytes.length; b++) {
+    const [x0, x1, y0, y1, z0, z1, c] = bytes.subarray(at, at + 7);
+    at += 7;
+    const box = { lo: [x0, y0, z0], hi: [x1, y1, z1], colour: Math.min(c & 127, MOST_COLOURS - 1) };
+    if (c & 128) {
+      const packed = bytes.subarray(at, at + 3);
+      at += 3;
+      box.sides = [...packed].flatMap((v) => [v & 15, v >> 4]).map((s) => Math.min(s, MOST_COLOURS - 1));
+    }
+    if (box.lo.every((v, k) => v < box.hi[k] && box.hi[k] <= counts[k]))
+      boxes.push(box);
+  }
+  return { planes, boxes };
+};
+var meshBlocks = ({ planes, boxes }, size, slots) => {
+  const counts = planes.map((list) => list.length - 1);
+  const [nx, ny, nz] = counts;
+  const strides = [1, nx, nx * ny];
+  const colour = new Int8Array(nx * ny * nz).fill(-1);
+  const own = new Map;
+  for (const box of boxes) {
+    for (let k = box.lo[2];k < box.hi[2]; k++)
+      for (let j = box.lo[1];j < box.hi[1]; j++)
+        for (let i = box.lo[0];i < box.hi[0]; i++) {
+          const c = (k * ny + j) * nx + i;
+          colour[c] = box.colour;
+          if (box.sides)
+            own.set(c, box.sides);
+          else
+            own.delete(c);
+        }
+  }
+  const metres = planes.map((list, axis) => list.map((f) => (f - 0.5) * size[axis]));
+  const origin = size.map((v) => -v / 2);
+  const uvOf = (point, normal) => boxUv(point, normal, origin, 1, 1);
+  const mesh = createMesh(slots);
+  for (let axis = 0;axis < 3; axis++) {
+    const [p, q] = [(axis + 1) % 3, (axis + 2) % 3];
+    const [np, nq, na] = [counts[p], counts[q], counts[axis]];
+    const shown = new Int8Array(np * nq);
+    for (const sign of [-1, 1]) {
+      const side2 = axis * 2 + (sign > 0 ? 1 : 0);
+      const outward = [0, 0, 0];
+      outward[axis] = sign;
+      for (let layer = 0;layer < na; layer++) {
+        const next = layer + sign;
+        const open = next < 0 || next >= na;
+        for (let b = 0;b < nq; b++)
+          for (let a = 0;a < np; a++) {
+            const c = layer * strides[axis] + a * strides[p] + b * strides[q];
+            const here = colour[c];
+            shown[b * np + a] = here >= 0 && (open || colour[c + sign * strides[axis]] < 0) ? own.get(c)?.[side2] ?? here : -1;
+          }
+        for (let b = 0;b < nq; b++)
+          for (let a = 0;a < np; a++) {
+            const tone = shown[b * np + a];
+            if (tone < 0)
+              continue;
+            let a1 = a + 1;
+            while (a1 < np && shown[b * np + a1] === tone)
+              a1++;
+            let b1 = b + 1;
+            grow:
+              while (b1 < nq) {
+                for (let x = a;x < a1; x++)
+                  if (shown[b1 * np + x] !== tone)
+                    break grow;
+                b1++;
+              }
+            for (let y = b;y < b1; y++)
+              shown.fill(-1, y * np + a, y * np + a1);
+            const level = metres[axis][layer + (sign > 0 ? 1 : 0)];
+            const corner = (s, t) => {
+              const v = [0, 0, 0];
+              v[axis] = level;
+              v[p] = metres[p][s];
+              v[q] = metres[q][t];
+              return v;
+            };
+            mesh.polygon(tone, [corner(a, b), corner(a1, b), corner(a1, b1), corner(a, b1)], outward, uvOf);
+          }
+      }
+    }
+  }
+  return mesh.pack(size);
+};
+var made = new Map;
+var MADE = 16;
+var meshedOf = (text, colours, size) => {
+  const key = `${colours}:${size.join(",")}:${text}`;
+  if (made.has(key))
+    return made.get(key);
+  const read = decodeBlocks(text) ?? { planes: [[0, 1], [0, 1], [0, 1]], boxes: [{ lo: [0, 0, 0], hi: [1, 1, 1], colour: 0 }] };
+  const mesh = meshBlocks(read, size, colours + 1);
+  made.set(key, mesh);
+  if (made.size > MADE)
+    made.delete(made.keys().next().value);
+  return mesh;
+};
+var colourOptions = Array.from({ length: MOST_COLOURS }, (_, i) => `${i + 1} colour${i ? "s" : ""}`);
+var blocks = Object.freeze({
+  name: "blocks",
+  label: "Blocks",
+  description: "A square-cornered solid in one part: boxes on a grid of its own, each of one of up to eight colours, meshed as one surface — only what shows from outside, nothing between two boxes. Never written by hand: what rebuilds a model makes one of its square-cornered solids (a staircase, a block with its steps cut, a figure of voxels), exact to its corners.",
+  faces: ({ colours }) => Array.from({ length: colours + 1 }, (_, i) => `colour ${i + 1}`),
+  facesBy: "colours",
+  shape: "cube",
+  sized: true,
+  size: [1, 1, 1],
+  params: [
+    { name: "colours", label: "Colours", min: 0, max: MOST_COLOURS - 1, default: 0, step: 1, options: colourOptions, fixed: true, description: "How many colours its boxes take, each a face of the part: 0 one, 7 eight." },
+    { name: "blocks", label: "Blocks", bytes: MOST_BYTES, min: 0, max: MOST_BYTES, step: 4, default: "", fixed: true, valid: (text) => text === "" || decodeBlocks(text) !== null, description: "Its grid and its boxes, as base64: each axis's planes as fractions of its box, then each box between two planes along each axis, of a colour; at most 32,768 cells and 2,048 boxes." }
+  ],
+  mesh: ({ colours, blocks: text }, seed, level, size) => meshedOf(text, colours, size),
+  collider: ({ blocks: text }, seed, size) => {
+    const read = decodeBlocks(text);
+    if (!read)
+      return null;
+    const at = (axis, index) => (read.planes[axis][index] - 0.5) * size[axis];
+    return read.boxes.map(({ lo, hi }) => solidBox(lo.map((v, k) => at(k, v)), hi.map((v, k) => at(k, v))));
+  }
+});
+
+// src/build/kinds/outline.js
+init_mesh();
+var VERSION2 = 1;
+var MOST_COLOURS2 = 8;
+var MOST_POINTS = 512;
+var MOST_RINGS = 64;
+var MOST_BYTES2 = 4096;
+var SPAN = 65535;
+var LEAST = 0.000000000001;
+var decodeOutline = (text) => {
+  const bytes = fromBase64(text ?? "");
+  if (bytes.length < 3 || bytes[0] !== VERSION2 || bytes[2] < 1 || bytes[2] > MOST_RINGS)
+    return null;
+  const colour = (c) => Math.min(c, MOST_COLOURS2 - 1);
+  const read = { top: colour(bytes[1] & 15), bottom: colour(bytes[1] >> 4), rings: [] };
+  let at = 3, total = 0;
+  for (let r = 0;r < bytes[2]; r++) {
+    if (at + 2 > bytes.length)
+      return null;
+    const count = bytes[at] | bytes[at + 1] << 8;
+    at += 2;
+    total += count;
+    if (count < 3 || total > MOST_POINTS || at + count * 4 + Math.ceil(count / 2) > bytes.length)
+      return null;
+    const points = Array.from({ length: count }, (_, i) => {
+      const p = at + i * 4;
+      return [(bytes[p] | bytes[p + 1] << 8) / SPAN, (bytes[p + 2] | bytes[p + 3] << 8) / SPAN];
+    });
+    at += count * 4;
+    const colours = Array.from({ length: count }, (_, i) => colour(bytes[at + (i >> 1)] >> (i & 1) * 4 & 15));
+    at += Math.ceil(count / 2);
+    read.rings.push({ points, colours });
+  }
+  return read;
+};
+var area22 = (points) => points.reduce((sum, [x, y], i) => {
+  const [nx, ny] = points[(i + 1) % points.length];
+  return sum + x * ny - nx * y;
+}, 0);
+var within = ([x, y], points) => {
+  let odd = false;
+  for (let i = 0, j = points.length - 1;i < points.length; j = i++) {
+    const [ax, ay] = points[i], [bx, by] = points[j];
+    if (ay > y !== by > y && x < ax + (y - ay) * (bx - ax) / (by - ay))
+      odd = !odd;
+  }
+  return odd;
+};
+var inTriangle = ([px, py], [ax, ay], [bx, by], [cx, cy]) => {
+  const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  const d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
+  const d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+};
+var bridged = (ring, hole) => {
+  let h = 0;
+  for (let i = 1;i < hole.length; i++)
+    if (hole[i][0] > hole[h][0])
+      h = i;
+  const [hx, hy] = hole[h];
+  let seen = -1, reach = Infinity;
+  for (let i = 0;i < ring.length; i++) {
+    const [ax, ay] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
+    if (ay > hy === by > hy)
+      continue;
+    const x = ax + (hy - ay) * (bx - ax) / (by - ay);
+    if (x >= hx && x < reach)
+      [reach, seen] = [x, ax > bx ? i : (i + 1) % ring.length];
+  }
+  if (seen < 0)
+    return null;
+  const sight = ring[seen];
+  let chosen = seen, nearest = Infinity;
+  for (let i = 0;i < ring.length; i++) {
+    const p = ring[i];
+    if (i === seen || p[0] < hx || !inTriangle(p, [hx, hy], [reach, hy], sight))
+      continue;
+    const slope = Math.abs(p[1] - hy) / Math.max(p[0] - hx, 0.000000000001);
+    if (slope < nearest)
+      [nearest, chosen] = [slope, i];
+  }
+  return [...ring.slice(0, chosen + 1), ...hole.slice(h), ...hole.slice(0, h + 1), ...ring.slice(chosen)];
+};
+var meshOutline = ({ top, bottom, rings }, size, slots) => {
+  const [sx, sy, sz] = size;
+  const cleaned = rings.map(({ points: points2, colours }) => {
+    const kept2 = [];
+    points2.forEach(([fx, fy], i) => {
+      const p = [(fx - 0.5) * sx, (fy - 0.5) * sy];
+      const last = kept2.at(-1);
+      if (!last || Math.abs(last.p[0] - p[0]) > 0.000000001 || Math.abs(last.p[1] - p[1]) > 0.000000001)
+        kept2.push({ p, colour: colours[i] });
+      else
+        last.colour = colours[i];
+    });
+    if (kept2.length > 1 && Math.abs(kept2[0].p[0] - kept2.at(-1).p[0]) <= 0.000000001 && Math.abs(kept2[0].p[1] - kept2.at(-1).p[1]) <= 0.000000001)
+      kept2.pop();
+    return kept2;
+  }).filter((kept2) => kept2.length >= 3 && Math.abs(area22(kept2.map(({ p }) => p))) > LEAST);
+  const points = cleaned.map((kept2) => kept2.map(({ p }) => p));
+  const depth = points.map((ring, i) => points.reduce((n, other, j) => n + (j !== i && within(ring[0], other) ? 1 : 0), 0));
+  const turned2 = cleaned.map((kept2, i) => {
+    const wanted = depth[i] % 2 === 0 ? 1 : -1;
+    if (Math.sign(area22(points[i])) === wanted)
+      return kept2;
+    return kept2.map((_, k) => ({ p: kept2[kept2.length - 1 - k].p, colour: kept2[(2 * kept2.length - 2 - k) % kept2.length].colour }));
+  });
+  const mesh = createMesh(slots);
+  const origin = size.map((v) => -v / 2);
+  const uvOf = (point, normal) => boxUv(point, normal, origin, 1, 1);
+  const [low, high] = [-sz / 2, sz / 2];
+  turned2.forEach((kept2, i) => {
+    if (depth[i] % 2)
+      return;
+    const holes = turned2.filter((_, j) => depth[j] === depth[i] + 1 && within(points[j][0], points[i])).map((ring2) => ring2.map(({ p }) => p)).sort((a, b) => Math.max(...b.map(([x]) => x)) - Math.max(...a.map(([x]) => x)));
+    let ring = kept2.map(({ p }) => p);
+    for (const hole of holes)
+      ring = bridged(ring, hole) ?? ring;
+    const triangles = triangulate(ring);
+    const ups = ring.map(([x, y]) => mesh.vertex(top, [x, y, high], [0, 0, 1], uvOf([x, y, high], [0, 0, 1])));
+    const downs = ring.map(([x, y]) => mesh.vertex(bottom, [x, y, low], [0, 0, -1], uvOf([x, y, low], [0, 0, -1])));
+    for (const [a, b, c] of triangles) {
+      mesh.triangle(top, ups[a], ups[b], ups[c]);
+      mesh.triangle(bottom, downs[a], downs[c], downs[b]);
+    }
+  });
+  for (const kept2 of turned2) {
+    kept2.forEach(({ p: [ax, ay], colour }, k) => {
+      const [bx, by] = kept2[(k + 1) % kept2.length].p;
+      const length2 = Math.hypot(bx - ax, by - ay);
+      if (length2 < 0.000000001)
+        return;
+      const normal = [(by - ay) / length2, -(bx - ax) / length2, 0];
+      const corner = (x, y, z) => mesh.vertex(colour, [x, y, z], normal, uvOf([x, y, z], normal));
+      mesh.quad(colour, corner(ax, ay, low), corner(bx, by, low), corner(bx, by, high), corner(ax, ay, high));
+    });
+  }
+  return mesh.pack(size);
+};
+var made2 = new Map;
+var MADE2 = 16;
+var meshedOf2 = (text, colours, size) => {
+  const key = `${colours}:${size.join(",")}:${text}`;
+  if (made2.has(key))
+    return made2.get(key);
+  const read = decodeOutline(text) ?? { top: 0, bottom: 0, rings: [{ points: [[0, 0], [1, 0], [1, 1], [0, 1]], colours: [0, 0, 0, 0] }] };
+  const slots = colours + 1;
+  const fit = (c) => Math.min(c, slots - 1);
+  const mesh = meshOutline({ top: fit(read.top), bottom: fit(read.bottom), rings: read.rings.map(({ points, colours: edges }) => ({ points, colours: edges.map(fit) })) }, size, slots);
+  made2.set(key, mesh);
+  if (made2.size > MADE2)
+    made2.delete(made2.keys().next().value);
+  return mesh;
+};
+var colourOptions2 = Array.from({ length: MOST_COLOURS2 }, (_, i) => `${i + 1} colour${i ? "s" : ""}`);
+var outline = Object.freeze({
+  name: "outline",
+  label: "Outline",
+  description: "A flat shape drawn out through its box, bottom to top: rings of points round its outside and round holes right through it — whatever lies inside an odd number of rings solid —, each edge of one of up to eight colours, its two ends theirs. Never written by hand: what rebuilds a model makes one of its solids drawn out along a way (a gateway's arch, a wall with round windows, a letter, a beam of any section), exact to its corners.",
+  faces: ({ colours }) => Array.from({ length: colours + 1 }, (_, i) => `colour ${i + 1}`),
+  facesBy: "colours",
+  shape: "cube",
+  sized: true,
+  size: [1, 1, 1],
+  params: [
+    { name: "colours", label: "Colours", min: 0, max: MOST_COLOURS2 - 1, default: 0, step: 1, options: colourOptions2, fixed: true, description: "How many colours its edges and ends take, each a face of the part: 0 one, 7 eight." },
+    { name: "outline", label: "Outline", bytes: MOST_BYTES2, min: 0, max: MOST_BYTES2, step: 4, default: "", fixed: true, valid: (text) => text === "" || decodeOutline(text) !== null, description: "Its rings, as base64: each ring's points as fractions of its box across x and y, and each edge's colour; at most 64 rings and 512 points." }
+  ],
+  mesh: ({ colours, outline: text }, seed, level, size) => meshedOf2(text, colours, size)
+});
+
 // src/build/kinds/index.js
-var KINDS = Object.freeze({ rock, bevel, stairs, door, window: windowKind, roof, column, arch, fence, road, sculpt });
+init_solid();
+var KINDS = Object.freeze({ rock, bevel, stairs, door, window: windowKind, roof, column, arch, fence, road, sculpt, blocks, outline, solid });
 var BIAS = [0.5, 0.5, 0.5];
 var MIN_SIZE = 0.01;
 var MAX_SIZE = 64;
@@ -2334,13 +4266,13 @@ var constrain = (param, value) => {
   const given = typeof value === "string" && param.options ? param.options.indexOf(value) : value;
   if (!Number.isFinite(given) || param.options && given < 0)
     return param.default;
-  const within = Math.min(Math.max(given, param.min), param.max);
-  const stepped = Math.min(param.min + Math.round((within - param.min) / param.step) * param.step, param.max);
-  return Number(stepped.toFixed(decimals(param.step)));
+  const within3 = Math.min(Math.max(given, param.min), param.max);
+  const stepped = Number(Math.min(param.min + Math.round((within3 - param.min) / param.step) * param.step, param.max).toFixed(decimals(param.step)));
+  return param.retired?.includes(param.options?.[stepped]) ? param.default : stepped;
 };
 var written = (value) => Array.isArray(value) ? value.map((point) => Array.isArray(point) && point.length === 2 ? [...point, 0] : point) : value;
-var defaultOf = (param) => param.points ? param.default.map((point) => [...point]) : param.heights ? [...param.default] : param.default;
-var constrainBytes = (param, value) => typeof value === "string" && value.length <= param.bytes && value.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(value) ? value : param.default;
+var defaultOf = (param) => param.points ? param.default.map((point) => [...point]) : param.heights ? [...param.default] : param.list ? structuredClone(param.default) : param.default;
+var constrainBytes = (param, value) => typeof value === "string" && value.length <= param.bytes && value.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(value) && (!param.valid || param.valid(value)) ? value : param.default;
 var hashOf = (text) => {
   let a = 2166136261, b = 16777619 ^ text.length;
   for (let i = 0;i < text.length; i++) {
@@ -2351,21 +4283,22 @@ var hashOf = (text) => {
   return ((a >>> 0) * 2 ** 21 + (b >>> 0 & 2097151)).toString(36);
 };
 var constrainHeights = (param, value) => {
-  const kept = (Array.isArray(value) ? value : []).filter(Number.isFinite).slice(0, param.heights[1]).map((v) => constrain(param, v));
-  return kept.length >= param.heights[0] ? kept : defaultOf(param);
+  const kept2 = (Array.isArray(value) ? value : []).filter(Number.isFinite).slice(0, param.heights[1]).map((v) => constrain(param, v));
+  return kept2.length >= param.heights[0] ? kept2 : defaultOf(param);
 };
-var pointsWithin = (value, { least = 0, most = Infinity, min, max, step, horizontal = false }) => {
+var pointsWithin = (value, { least = 0, most = Infinity, min, max, step, horizontal = false, handles = false }) => {
   const held = { min, max, step };
   const points = [];
   for (const point of Array.isArray(value) ? value : []) {
     if (points.length === most)
       break;
-    if (!Array.isArray(point) || point.length < 2 || point.length > 3 || !point.every(Number.isFinite))
+    const handled = handles && point?.length === 6;
+    if (!Array.isArray(point) || point.length < 2 || point.length > 3 && !handled || !point.every(Number.isFinite))
       continue;
-    const kept = [point[0], point[1], point[2] ?? 0].map((v) => constrain(held, v));
+    const kept2 = (handled ? point : [point[0], point[1], point[2] ?? 0]).map((v) => constrain(held, v));
     const last = points.at(-1);
-    if (!last || last[0] !== kept[0] || last[1] !== kept[1] || !horizontal && last[2] !== kept[2])
-      points.push(kept);
+    if (!last || last[0] !== kept2[0] || last[1] !== kept2[1] || !horizontal && last[2] !== kept2[2])
+      points.push(kept2);
   }
   return points.length >= least ? points : null;
 };
@@ -2385,23 +4318,25 @@ var constrainKind = (name, params) => {
     return { params: null, errors: [`no kind ${name}`] };
   const given = params && typeof params === "object" ? params : {};
   const errors = Object.keys(given).filter((key) => !kind.params.some((param) => param.name === key)).map((key) => `${name}: no parameter ${key}`);
-  const values = Object.fromEntries(kind.params.map((param) => {
-    const value = given[param.name] === undefined ? defaultOf(param) : param.points ? constrainPoints(param, given[param.name]) : param.heights ? constrainHeights(param, given[param.name]) : param.bytes ? constrainBytes(param, given[param.name]) : constrain(param, given[param.name]);
+  const values = Object.fromEntries(kind.params.flatMap((param) => {
+    const value = given[param.name] === undefined ? defaultOf(param) : param.points ? constrainPoints(param, given[param.name]) : param.heights ? constrainHeights(param, given[param.name]) : param.list ? param.keep(given[param.name]) ?? defaultOf(param) : param.bytes ? constrainBytes(param, given[param.name]) : constrain(param, given[param.name]);
     const as = param.options && typeof given[param.name] === "string" ? param.options[value] : value;
-    const changed = param.points || param.heights ? JSON.stringify(as) !== JSON.stringify(written(given[param.name])) : as !== given[param.name];
+    const changed = param.points || param.heights || param.list ? JSON.stringify(as) !== JSON.stringify(param.list ? given[param.name] : written(given[param.name])) : as !== given[param.name];
     if (given[param.name] !== undefined && changed)
       errors.push(`${name}: ${param.name} ${JSON.stringify(given[param.name])} → ${JSON.stringify(value)}`);
-    return [param.name, value];
+    if (param.optional && Array.isArray(value) && !value.length)
+      return [];
+    return [[param.name, value]];
   }));
   return { params: values, errors };
 };
 var seedOf = (seed) => Number.isInteger(seed) ? Math.abs(seed) % 2147483648 : 0;
-var within = (size) => size.map((v) => Math.min(Math.max(v, MIN_SIZE), MAX_SIZE));
+var within3 = (size) => size.map((v) => Math.min(Math.max(v, MIN_SIZE), MAX_SIZE));
 var clean = (size) => size.map((v) => Math.round(v * 1e6) / 1e6);
 var resolve = (value, params) => typeof value === "function" ? value(params) : value;
 var fitSize = ({ kind, params, size }) => {
   const type = kindOf(kind);
-  return type?.fit ? clean(within(type.fit(constrainKind(kind, params).params, size))) : [...size];
+  return type?.fit ? clean(within3(type.fit(constrainKind(kind, params).params, size))) : [...size];
 };
 var resizeParams = ({ kind, params, size }) => {
   const type = kindOf(kind);
@@ -2436,14 +4371,14 @@ var turnOf = ({ at, axis, angle }) => {
 };
 var wholes = new Map;
 var wholeOf = (name, make) => {
-  const kept = wholes.get(name);
-  if (kept)
-    return kept;
+  const kept2 = wholes.get(name);
+  if (kept2)
+    return kept2;
   if (wholes.size >= KEEP2)
     wholes.delete(wholes.keys().next().value);
-  const whole = make();
-  wholes.set(name, whole);
-  return whole;
+  const whole2 = make();
+  wholes.set(name, whole2);
+  return whole2;
 };
 var kindMesh = ({ kind, params, seed, size } = {}) => {
   const type = kindOf(kind);
@@ -2451,47 +4386,227 @@ var kindMesh = ({ kind, params, seed, size } = {}) => {
     return null;
   const values = constrainKind(kind, params).params;
   const grain = type.seeded ? seedOf(seed) : 0;
-  const box = type.sized ? within(size ?? type.size).map((v) => Number(v.toFixed(3))) : null;
-  const shaping = type.params.filter((param) => !param.pose);
-  const key = [kind, shaping.map((param) => param.points || param.heights ? JSON.stringify(values[param.name]) : param.bytes ? hashOf(values[param.name]) : values[param.name]).join(","), ...type.seeded ? [grain] : [], ...box ? [box.join(",")] : []].join(":");
+  const box = type.sized ? within3(size ?? type.size).map((v) => Number(v.toFixed(3))) : null;
+  const shaping = type.params.filter((param) => !param.pose && !(param.optional && values[param.name] === undefined));
+  const recipe = [kind, shaping.map((param) => param.points || param.heights ? JSON.stringify(values[param.name]) : param.bytes ? hashOf(values[param.name]) : param.list ? hashOf(JSON.stringify(values[param.name])) : values[param.name]).join(","), ...type.seeded ? [grain] : [], ...box ? [box.join(",")] : []].join(":");
+  const key = type.waiting?.(values, box, recipe) ? `${recipe}:waiting` : recipe;
   const bias = resolve(type.bias, values) ?? BIAS;
   if (!type.moving)
-    return { key, bias, mesh: (level) => type.mesh(values, grain, level, box) };
+    return { key, bias, mesh: (level) => type.mesh(values, grain, level, box, key) };
   const poses = type.params.filter((param) => param.pose);
   const rest = { ...values, ...Object.fromEntries(poses.map((param) => [param.name, param.default])) };
   const posed = { ...values, ...Object.fromEntries(poses.map((param) => {
     const given = params?.[param.name];
     return [param.name, Number.isFinite(given) ? Math.min(Math.max(given, param.min), param.max) : values[param.name]];
   })) };
-  const whole = (level) => wholeOf(`${key}@${level}`, () => type.mesh(rest, grain, level, box));
+  const whole2 = (level) => wholeOf(`${key}@${level}`, () => type.mesh(rest, grain, level, box));
   const moved = new Set(type.moving.flatMap((piece) => piece.faces));
   return {
     key,
     bias,
-    mesh: (level) => pieceOf(whole(level), (face2) => !moved.has(face2)),
-    moving: type.moving.map((piece, i) => ({ key: `${key}#${i}`, mesh: (level) => pieceOf(whole(level), (face2) => piece.faces.includes(face2)), turn: turnOf(piece.turn(posed, box)) }))
+    mesh: (level) => pieceOf(whole2(level), (face2) => !moved.has(face2)),
+    moving: type.moving.map((piece, i) => ({ key: `${key}#${i}`, mesh: (level) => pieceOf(whole2(level), (face2) => piece.faces.includes(face2)), turn: turnOf(piece.turn(posed, box)) }))
   };
 };
-
 // src/vegetation/record.js
 var TREE_SCALE = [0.25, 4];
 var BUILT_IN = /^[a-z][a-zA-Z]{0,31}$/;
 var OWN = /^[^/\s]{1,80}:[^/\s]{1,80}$/;
+var finite = (value, length2) => Array.isArray(value) && value.length === length2 && value.every(Number.isFinite);
 var speciesName = (value) => typeof value === "string" && (BUILT_IN.test(value) || OWN.test(value));
 var wrapYaw = (degrees) => (degrees % 360 + 360) % 360;
-var WHOLE = new Set(["branches", "twigs"]);
+var SPECIES_PARAMS = {
+  scale: [0.3, 40],
+  baseSize: [0, 0.95],
+  ratio: [0.003, 0.25],
+  trunks: [1, 8],
+  lean: [0, 85],
+  fan: [20, 360],
+  spread: [0, 3],
+  bend: [-120, 120],
+  topBend: [-120, 120],
+  attractionUp: [-1, 1.5],
+  branches: [0, 60],
+  branchLength: [0.05, 1.5],
+  branchAngle: [0, 140],
+  twigs: [0, 16],
+  leafSize: [0.25, 3],
+  leafCount: [0.25, 3],
+  wind: [0, 3],
+  glow: [0, 1]
+};
+var CROWNS = ["conical", "spherical", "hemispherical", "cylindrical", "taperedCylindrical", "flame", "inverseConical", "tendFlame"];
+var WHOLE = new Set(["branches", "twigs", "trunks"]);
+var colour = (value) => finite(value, 3) && value.every((v) => v >= 0 && v <= 1);
+var paramsOf2 = (value) => {
+  if (!value || typeof value !== "object")
+    return {};
+  const kept2 = {};
+  for (const [key, [min, max]] of Object.entries(SPECIES_PARAMS)) {
+    const v = value[key];
+    if (Number.isFinite(v))
+      kept2[key] = WHOLE.has(key) ? Math.round(clamp(v, min, max)) : clamp(v, min, max);
+  }
+  if (CROWNS.includes(value.shape))
+    kept2.shape = value.shape;
+  for (const key of ["leaf", "bark", "flower"])
+    if (colour(value[key]))
+      kept2[key] = [...value[key]];
+  return kept2;
+};
+// src/terrain-height.js
+var ROOT_SIZE = 12696000;
+var NOISE_SCALE = 800;
+var SEA_LEVEL = 0.5555556;
+var ELEV_SCALE = 21600;
+var layer = (type, octaves, ridgeExponent, warpStrength, hmin, hmax) => ({
+  type,
+  octaves,
+  gain: 0.5,
+  ridgeOffset: 1.064,
+  ridgeExponent,
+  warpStrength,
+  hmin,
+  hmax,
+  density: 0.3
+});
+var RIDGED = 1;
+var FBM = 0;
+var BASE_LAYER = layer(RIDGED, 23, 1.665, 3.6, 0, 1);
+var TERRAIN_LAYER_0 = layer(RIDGED, 10, 1.005, 1.6, 0, 1);
+var TERRAIN_LAYER_1 = layer(FBM, 18, 1.665, 2.6, -2, 2);
+var TERRAIN_LAYER_2 = layer(RIDGED, 18, 1.1, 0.9, -2, 2);
+var BIAS2 = [[2.3, 4.5, 6.7], [8.9, 9.8, 8.7], [7.6, 6.5, 5.4]];
+var GRID_OFFSET = [5, 4, 9];
+var hash2 = (x, y, z) => {
+  const n = Math.imul(x, 1597) + Math.imul(y, 3571) + Math.imul(z, 7919) | 0;
+  let state = Math.imul(n, 747796405) + 2891336453 >>> 0;
+  state = Math.imul((state >>> (state >>> 28) + 4 ^ state) >>> 0, 277803737) >>> 0;
+  state = (state >>> 22 ^ state) >>> 0;
+  return -1 + 2 * state / 4294967295;
+};
+var valueNoise = (px, py, pz) => {
+  const ix = Math.floor(px), iy = Math.floor(py), iz = Math.floor(pz);
+  const wx = px - ix, wy = py - iy, wz = pz - iz;
+  const ux = wx * wx * wx * (wx * (wx * 6 - 15) + 10);
+  const uy = wy * wy * wy * (wy * (wy * 6 - 15) + 10);
+  const uz = wz * wz * wz * (wz * (wz * 6 - 15) + 10);
+  const a = hash2(ix, iy, iz), b = hash2(ix + 1, iy, iz), c = hash2(ix, iy + 1, iz), d = hash2(ix + 1, iy + 1, iz);
+  const e = hash2(ix, iy, iz + 1), f = hash2(ix + 1, iy, iz + 1), g = hash2(ix, iy + 1, iz + 1), h = hash2(ix + 1, iy + 1, iz + 1);
+  return a + (b - a) * ux + (c - a) * uy + (e - a) * uz + (a - b - c + d) * ux * uy + (a - c - e + g) * uy * uz + (a - b - e + f) * uz * ux + (-a + b + c - d + e - f - g + h) * ux * uy * uz;
+};
+var fbmRange = (gain, octaves) => Math.abs(gain - 1) < 0.00001 ? octaves + 1 : (1 - gain ** (octaves + 1)) / (1 - gain);
+var fbm2 = ([x, y, z], gain, octaves) => {
+  let f = 1, a = 1, t = 0;
+  for (let i = 0;i < octaves; i++, f *= 2, a *= gain)
+    t += a * valueNoise(f * x, f * y, f * z);
+  return t;
+};
+var fbmScaled = (p, gain, octaves, min, max) => {
+  const h = fbmRange(gain, octaves);
+  return min + (max - min) * ((fbm2(p, gain, octaves) + h) / (2 * h));
+};
+var ridgedFbmScaled = ([x, y, z], gain, octaves, offset, exponent, min, max) => {
+  let f = 1, a = 1, t = 0, weight = 1;
+  for (let i = 0;i < octaves; i++, f *= 2, a *= gain) {
+    const signal = (offset - Math.abs(valueNoise(f * x, f * y, f * z))) ** exponent * weight;
+    t += a * signal;
+    weight = Math.min(Math.max(signal * 2, 0), 1);
+  }
+  const low = (offset - 1) ** exponent;
+  const high = offset ** exponent * fbmRange(gain, octaves);
+  return min + (max - min) * ((t - low) / (high - low));
+};
+var layerValue = (pos, n, scaleIndex) => {
+  const bias = BIAS2[scaleIndex];
+  const pt = pos.map((c, i) => (c + bias[i]) * n.density + GRID_OFFSET[i]);
+  return n.type === RIDGED ? ridgedFbmScaled(pt, n.gain, n.octaves, n.ridgeOffset, n.ridgeExponent, n.hmin, n.hmax) : fbmScaled(pt, n.gain, n.octaves, n.hmin, n.hmax);
+};
+var warpOffset = (pos, n) => [0, 1, 2].map((i) => layerValue(pos, n, i) * n.warpStrength);
+var add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+var scale3 = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+var rotateDomain = ([x, y, z], angle) => {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return [c * x + s * y, -s * x + c * y, z];
+};
+var terrainHeight = (dir) => {
+  const pCoords = scale3(dir, 700000 * NOISE_SCALE / ROOT_SIZE);
+  const angle = fbmScaled(scale3(pCoords, 0.01), 1, 3, -Math.PI, Math.PI) * 0.4;
+  const baseH = layerValue(rotateDomain(scale3(pCoords, 0.5), angle), BASE_LAYER, 0);
+  const ratio = fbmScaled(scale3(dir, 40), 0.8, 3, 0, 1);
+  const v0 = warpOffset(pCoords, TERRAIN_LAYER_2);
+  const v1 = warpOffset(add3(pCoords, v0), TERRAIN_LAYER_1);
+  let h = layerValue(add3(pCoords, v1), TERRAIN_LAYER_0, 0);
+  h = (baseH + h * ratio * 0.9) / 1.3;
+  const pmix = fbmScaled(add3(scale3(pCoords, 0.53), [123, 456, 789]), 1, 3, 0, 1) * 0.5 + 0.5;
+  h **= 0.95 + (1.3 - 0.95) * pmix;
+  const pt = scale3(dir, 40);
+  const bf = Math.min(Math.max((fbmScaled(pt, 0.8, 5, 0, 1.2) - 0.5) / 0.5, 0), 1);
+  const lf = fbmScaled(scale3(pt, 10), 0.9, 8, 0, 0.03);
+  const deltaH = h - SEA_LEVEL;
+  const hf = Math.min(Math.max(Math.abs(deltaH) / lf, 0), 1) ** 1.4;
+  return SEA_LEVEL + deltaH * hf + (h - SEA_LEVEL - deltaH * hf) * bf;
+};
+var bareElevation = (dir) => terrainHeight(dir) * ELEV_SCALE;
+var land = null;
+var useLand = (edits) => {
+  land = edits;
+};
+var groundElevation = (dir) => land ? land.elevation(dir, bareElevation) : terrainHeight(dir) * ELEV_SCALE;
+
+// src/build/survey.js
+var RADIUS = 6348000;
+var SEA = 12000;
+var DEG2 = Math.PI / 180;
+var unit3 = (v) => {
+  const length2 = Math.hypot(v[0], v[1], v[2]);
+  return [v[0] / length2, v[1] / length2, v[2] / length2];
+};
+var cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+var dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+var axesAt = (up) => {
+  const north = unit3([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
+  return { north, east: cross3(north, up) };
+};
+var frameAt2 = (at, heading = 0, ground = groundElevation) => {
+  const up = unit3(at);
+  const { north, east } = axesAt(up);
+  const ahead = north.map((v, i) => v * Math.cos(heading * DEG2) + east[i] * Math.sin(heading * DEG2));
+  const right = cross3(ahead, up);
+  const origin = [...at];
+  const base = Math.hypot(...at);
+  const point = (x, y, z = 0) => origin.map((v, i) => v + right[i] * x + ahead[i] * y + up[i] * z);
+  const local = (p) => {
+    const d = p.map((v, i) => v - origin[i]);
+    return [dot3(d, right), dot3(d, ahead), dot3(d, up)];
+  };
+  const surface = (dir) => RADIUS + Math.max(ground(dir), SEA);
+  const groundAt2 = (x, y) => {
+    const dir = unit3(point(x, y));
+    return local(dir.map((v) => v * surface(dir)))[2];
+  };
+  const wetAt = (x, y) => ground(unit3(point(x, y))) < SEA;
+  const depthAt = (x, y) => Math.max(0, SEA - ground(unit3(point(x, y))));
+  return { origin, up, right, ahead, heading, base, point, local, groundAt: groundAt2, wetAt, depthAt, surface };
+};
 
 // src/build/behaviours.js
 var TIME = { name: "time", label: "Time", min: 0.2, max: 5, default: 1, step: 0.1, unit: "s", description: "How long it takes to open, and to shut (s)." };
 var STAY = { name: "stay", label: "Stays open", min: 0, max: 60, default: 5, step: 0.5, unit: "s", description: "How long it stays open after a click before it shuts by itself (s); 0, until clicked again." };
 var TRIGGER = { name: "trigger", label: "Opens on", min: 0, max: 2, default: 0, step: 1, options: ["click", "near", "both"], description: "What opens it: a click; someone coming near — it shuts once they have all gone; or either." };
-var REACH = { name: "reach", label: "Near", min: 0.5, max: 10, default: 2.5, step: 0.5, unit: "m", description: "How near someone comes before it opens by itself (m)." };
+var REACH2 = { name: "reach", label: "Near", min: 0.5, max: 10, default: 2.5, step: 0.5, unit: "m", description: "How near someone comes before it opens by itself (m)." };
 var along = (axis, fallback, what) => ({ name: axis, label: `Along ${axis}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `How far it ${what} along its own ${axis} (m).` });
+var HIGHEST = 1e5;
 var BEHAVIOURS = Object.freeze({
   spin: {
     label: "Turns",
     description: "Turns round its own up (z) without stopping: a carousel, a fan, a sign.",
     params: [{ name: "speed", label: "Speed", min: -360, max: 360, default: 30, step: 1, unit: "°/s", description: "How fast it turns, in degrees a second; below 0, the other way." }]
+  },
+  bounce: {
+    label: "Bounces",
+    description: "Hops up along its own up (z) and falls back without stopping, as a ball does: as high as it is asked, as fast as gravity brings it down.",
+    params: [{ name: "height", label: "Height", min: 0.05, max: 20, default: 1, step: 0.05, unit: "m", description: "How high it hops (m): the higher, the longer each hop, as a ball's." }]
   },
   move: {
     label: "Goes and comes back",
@@ -2499,10 +4614,51 @@ var BEHAVIOURS = Object.freeze({
     params: [
       along("x", 0, "goes"),
       along("y", 0, "goes"),
-      along("z", 3, "goes"),
-      { name: "speed", label: "Speed", min: 0.1, max: 20, default: 1, step: 0.1, unit: "m/s", description: "How fast it goes (m/s), easing in and out at either end." },
+      { ...along("z", 3, "goes"), max: HIGHEST, wide: true, description: "How far it goes along its own z (m), up to 100 km." },
+      { name: "speed", label: "Speed", min: 0.1, max: 20, default: 1, step: 0.1, unit: "m/s", description: "How fast it goes (m/s): smoothly, on average over its way; accelerating, at its fastest." },
+      { name: "ease", label: "Starts and stops", min: 0, max: 1, default: 0, step: 1, options: ["smooth", "accel"], labels: ["Smoothly", "Accelerating"], description: "Smoothly, easing in and out over its whole way, as ever; or accelerating: speeding up and slowing down as fast as Speeds up and Slows down say, on at its speed between." },
+      { name: "accel", label: "Speeds up", min: 0.01, max: 20, default: 1, step: 0.01, unit: "m/s²", wide: true, when: ({ ease }) => ease === 1, description: "How fast it speeds up as it sets off from either end (m/s²), accelerating." },
+      { name: "decel", label: "Slows down", min: 0.01, max: 20, default: 1, step: 0.01, unit: "m/s²", wide: true, when: ({ ease }) => ease === 1, description: "How fast it slows down as it comes to either end (m/s²), accelerating." },
       { name: "wait", label: "Waits", min: 0, max: 60, default: 2, step: 0.5, unit: "s", description: "How long it waits at either end (s)." }
-    ]
+    ],
+    stretches: {
+      accel: { name: "first", label: "Over the first", min: 0, max: HIGHEST, step: 0.05, unit: "m", wide: true, description: "How far it goes speeding up, from either end, till it is at its speed (m): Speeds up follows it." },
+      decel: { name: "last", label: "Over the last", min: 0, max: HIGHEST, step: 0.05, unit: "m", wide: true, description: "How far from either end it starts slowing down (m): Slows down follows it." }
+    },
+    since: { name: "since", unit: "ms", description: "When it last set off from where it is kept, in the epoch's ms: set as something calls it down (`call`); 0, as if at the epoch." }
+  },
+  call: {
+    label: "Calls down",
+    description: "On a click, brings what goes and comes back near it — a platform, a lift — down to where it is kept at once, to set off again from there; a lift near it, to its stop nearest the button: a call button.",
+    touch: true,
+    params: [{ name: "reach", label: "Reaches", min: 0.5, max: 64, default: 8, step: 0.5, unit: "m", description: "How near it what it calls down is kept (m)." }]
+  },
+  lift: {
+    label: "Lift",
+    description: "Goes from stop to stop up and down its frame — a part up and down its object's, a thing of its own its own — on a click on it or on a call button by a stop, and waits at each till it is called again: a platform lift, an elevator. The parts of an object whose lift has the same group go as one: a platform, its rails, its buttons.",
+    touch: true,
+    params: [
+      { name: "speed", label: "Speed", min: 0.1, max: 6, default: 0.8, step: 0.1, unit: "m/s", description: "How fast it goes between its stops (m/s), speeding up and slowing down at either as an elevator does." },
+      { name: "button", label: "A click on it", min: 0, max: 2, default: 1, step: 1, options: ["none", "next", "stop"], labels: ["Does nothing", "Next stop", "To a stop"], description: "What a click on it does: nothing — its floor, its rails —; sends it on to its next stop, back the other way from either end — one button that takes it down and up —; or to one stop — a button a floor." },
+      { name: "stop", label: "Its stop", min: 0, max: 8, default: 0, step: 1, when: ({ button }) => button === 2, description: "Where a click on it sends it: 0 where it is kept, 1 its first stop, 2 its second…" }
+    ],
+    stops: { name: "stops", most: 8, reach: 1000, step: 0.01, unit: "m", description: "Where it stops besides where it is kept: how far up its frame from there (m; below 0, down), a floor each, in order." },
+    group: { name: "group", description: "The parts of its object whose lift has the same group go as one, wherever any of them is clicked: a platform, its rails, its buttons." },
+    trip: { name: "trip", description: "Its last way: from stop `from` to stop `to` (0 where it is kept), set off at `since` (the epoch's ms) from `start` m up its frame, by the `stops` and `speed` of the part that set it off — the same for all its group, so that they never come apart — written as it is called, so that whoever comes later finds it where it went." }
+  },
+  switch: {
+    label: "Light switch",
+    description: "Switches its object's lights in its zones, for everyone: on a click, on or off — one by a room's door, one for a whole floor, one for every light of it — or, a presence detector, on while someone is near and off once all have gone. Lights on at night still come on and go off by themselves; switched by hand, they stay as they were left till the next nightfall or daybreak; by presence, each lights as far as its own light lets it (On, or At night only).",
+    touch: true,
+    prim: true,
+    params: [
+      { ...TRIGGER, label: "Switched by", description: "What switches its lights: a click, on or off; someone coming near — a presence detector: on while anyone is near, off once all have gone — or either." },
+      { ...REACH2, default: 4, when: ({ trigger }) => trigger >= 1, description: "How far across under it it senses someone (m): standing on its own floor, up to 3.5 m under it." },
+      { name: "stay", label: "Stays on", min: 0, max: 600, default: 30, step: 1, unit: "s", when: ({ trigger }) => trigger >= 1, description: "How long its lights stay on once everyone near has gone (s)." }
+    ],
+    zones: { name: "zones", most: 16, description: "Which of its object's lights it switches: those whose light's `zone` is one of these names (a room's, a floor's), or 'all' — every light of its object in a zone." },
+    since: { name: "since", unit: "ms", description: "When it was last switched, in the epoch's ms — kept, with how it left its lights (`on`), by a page that may change it, so that whoever comes later finds them so; 0, never." },
+    lit: { name: "on", description: "How it last left its lights, with `since`: true on, false off." }
   },
   door: {
     label: "Door",
@@ -2513,7 +4669,7 @@ var BEHAVIOURS = Object.freeze({
       { name: "angle", label: "Opens", min: -170, max: 170, default: 90, step: 1, unit: "°", description: "How far it swings open (°); below 0, the other way. A door of the door kind opens up to 110°." },
       { name: "hinge", label: "Hinges", min: 0, max: 1, default: 0, step: 1, options: ["left", "right"], description: "The side it hangs on, seen from its front (−y): its −x side or its +x side." },
       TRIGGER,
-      REACH,
+      REACH2,
       TIME,
       STAY
     ]
@@ -2522,39 +4678,58 @@ var BEHAVIOURS = Object.freeze({
     label: "Slides",
     description: "Slides aside on a click or as someone comes near, and back by itself: a sliding door, a window, a hatch.",
     touch: true,
-    params: [along("x", 1, "slides"), along("y", 0, "slides"), along("z", 0, "slides"), TRIGGER, REACH, TIME, STAY]
+    params: [along("x", 1, "slides"), along("y", 0, "slides"), along("z", 0, "slides"), TRIGGER, REACH2, TIME, STAY]
   },
   belt: {
     label: "Conveyor",
     description: "Carries whoever stands on it along its own y: an escalator (stairs rise along their y), a moving walkway.",
     params: [{ name: "speed", label: "Speed", min: -5, max: 5, default: 0.5, step: 0.05, unit: "m/s", description: "How fast it carries (m/s); below 0, the other way." }]
   },
+  passage: {
+    label: "Goes through",
+    description: "A click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside (x, y, z of its object) — into a vehicle by a click on its hull —, from inside out across its thinnest side, past it, onto what is there — out of it by its door. Inside its object is within the box round its solid parts' middles.",
+    params: [
+      { name: "way", label: "Goes", min: 0, max: 2, default: 0, step: 1, options: ["both", "in", "out"], labels: ["In and out", "In only", "Out only"], description: "In from outside its object and out from inside it; only in; or only out." },
+      ...[["x", 0, "across it"], ["y", 0, "along it"], ["z", 1, "up it: on its floor"]].map(([name, fallback, what]) => ({ name, label: `In at ${name}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `Where in its object one stands going in, ${what} (m).` })),
+      { name: "depth", label: "Out past it", min: 0.3, max: 5, default: 1, step: 0.1, unit: "m", description: "How far past it one stands going out, across its thinnest side (m)." }
+    ]
+  },
   route: {
     label: "Follows a route",
-    description: "Goes from where it is through its points, round and on again or to the last and back, stopping a while if asked — at each point, or only at its ends: a boat on a tour that comes back to port, a train on its line with its station.",
+    description: "Goes from where it is through its points, round and on again or to the last and back, stopping a while if asked — at each point, or only at its ends: a boat on a tour that comes back to port, a train on its line with its station, a ship on its autopilot. Held, it waits where it was left until it is run again, and then comes back onto it from there. Run once, it goes round or there and back once and stays where it is kept.",
     params: [
-      { name: "speed", label: "Speed", min: 0.1, max: 50, default: 3, step: 0.1, unit: "m/s", description: "How fast it goes (m/s); where it stops, it slows down and speeds up again at about 1 m/s²." },
+      { name: "speed", label: "Speed", min: 0.1, max: 120, default: 3, step: 0.1, unit: "m/s", description: "How fast it goes (m/s); where it stops, it slows down and speeds up again as Speeds up says." },
+      { name: "accel", label: "Speeds up", min: 0.1, max: 10, default: 1, step: 0.1, unit: "m/s²", description: "How fast it speeds up from a stop and slows down into one (m/s²): 1 a boat or a train; a plane, its take-off run and its landing." },
       { name: "stop", label: "Stops", min: 0, max: 120, default: 0, step: 0.5, unit: "s", description: "How long it stops (s), where Stops at says: a port, a station; 0, it goes on through them all." },
       { name: "at", label: "Stops at", min: 0, max: 1, default: 0, step: 1, options: ["each", "ends"], labels: ["Every point", "Its ends"], description: "Where it stops, as long as Stops says: at every point; or only where it is kept — its station, its port — and, going there and back, at its last point too." },
       { name: "mode", label: "Goes", min: 0, max: 1, default: 0, step: 1, options: ["round", "back"], description: "Round its points and on again, or to the last and back the way it came." },
       { name: "face", label: "Faces its way", min: 0, max: 1, default: 1, step: 1, options: ["no", "yes"], description: "Whether it turns to where it goes, as a boat or a train does." },
       { name: "water", label: "On the water", min: 0, max: 1, default: 0, step: 1, options: ["no", "yes"], description: "Whether it keeps its height over the sea wherever its points are: a boat." }
     ],
-    points: { name: "points", max: 64, reach: 1e4, step: 0.01, description: "Where it goes, in its own frame (m): from where it is kept through each point in turn." },
-    since: { name: "since", unit: "ms", description: "When it set off from where it is kept, in the epoch's ms: set as it is chosen or changed on the card; 0, as if at the epoch." }
+    points: { name: "points", max: 64, reach: 1e4, step: 0.01, description: "Where it goes, in its own frame (m): from where it is kept through each point in turn, [x, y, z] — or [x, y, z, hx, hy, hz], gone through along its handle (hx, hy, hz): leaving towards its tip, coming in from the other side; [x, y, z, 0, 0, 0] a corner, where it slows to a stop and turns." },
+    since: { name: "since", unit: "ms", description: "When it set off from where it is kept, in the epoch's ms: set as it is chosen or changed on the card; 0, as if at the epoch." },
+    held: { name: "held", description: "Not run: held where it was left, planet-centred `{ at, rotation }` — slowing to a stop along its way from `going` m/s at `since` (the epoch's ms) if it was under way; `true`, held where it is kept. A ship's autopilot off, or its driver gone." },
+    join: { name: "join", description: "Coming back onto its route: from planet-centred `{ at, rotation }`, set off at `since`, on a curve into where its route has it at `until` (the epoch's ms) — its `since` set so that it is there then." },
+    once: { name: "once", description: "Run once: round, or there and back, once from `since` — then where it is kept, as it set off, and still. A ship's Auto: one tour, and back in port." },
+    name: { name: "name", description: "What its route is called among its routes (1–32 characters); none, Route 1." },
+    routes: { name: "routes", most: 7, description: "Its other routes, kept to be run instead — `{ name, points, speed, stop, at, mode, face, water }` each, as its own are: one recorded by its driver, or chosen at its helm or on its card, takes this one's place and keeps it among them." }
   }
 });
+var MOVE_DEFAULTS = Object.fromEntries(BEHAVIOURS.move.params.map((param) => [param.name, param.default]));
 var paths = new WeakMap;
 var timelines = new WeakMap;
+var airs = new WeakMap;
 var drawnPlaces = new WeakMap;
+var coasts = new WeakMap;
+var joins = new WeakMap;
 
 // src/physics/colliders.js
 var CUBE = PRESETS.cube.shape.join(",");
 var CYLINDER = PRESETS.cylinder.shape.join(",");
 var SPHERE = PRESETS.sphere.shape.join(",");
 var LEVEL = 1;
-var ROUND3 = 0.02;
-var FLAT2 = 0.01;
+var ROUND4 = 0.02;
+var FLAT3 = 0.01;
 var ALIKE = 0.001;
 var normals = new Map;
 var convexity = new Map;
@@ -2569,7 +4744,7 @@ var shapeKey = (shape) => {
   const raw = shape.join(",");
   return normals.get(raw) ?? remember(normals, raw, normalizeShape(shape).join(","));
 };
-var round = (a, b) => Math.abs(a - b) <= ALIKE * Math.max(a, b);
+var round2 = (a, b) => Math.abs(a - b) <= ALIKE * Math.max(a, b);
 var isConvex = ({ positions, indices }) => {
   const count = positions.length / 3;
   for (let t = 0;t < indices.length; t += 3) {
@@ -2585,26 +4760,26 @@ var isConvex = ({ positions, indices }) => {
     nz /= length2;
     for (let i = 0;i < count; i++) {
       const o = i * 3;
-      if ((positions[o] - positions[a]) * nx + (positions[o + 1] - positions[a + 1]) * ny + (positions[o + 2] - positions[a + 2]) * nz > FLAT2)
+      if ((positions[o] - positions[a]) * nx + (positions[o + 1] - positions[a + 1]) * ny + (positions[o + 2] - positions[a + 2]) * nz > FLAT3)
         return false;
     }
   }
   return indices.length > 0;
 };
-var pointsOf = ({ positions, welded }) => {
-  const kept = [];
+var pointsOf2 = ({ positions, welded }) => {
+  const kept2 = [];
   for (let v = 0;v < welded.length; v++)
     if (welded[v] === v)
-      kept.push(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]);
-  return Float32Array.from(kept);
+      kept2.push(positions[v * 3], positions[v * 3 + 1], positions[v * 3 + 2]);
+  return Float32Array.from(kept2);
 };
 var fromMesh = (key, mesh, size) => {
   if (!mesh)
     return [];
   const convex = convexity.get(key) ?? remember(convexity, key, isConvex(mesh));
-  return [convex ? { type: "hull", key, points: pointsOf(mesh), scale: [...size] } : { type: "mesh", key, positions: mesh.positions, indices: mesh.indices, scale: [...size] }];
+  return [convex ? { type: "hull", key, points: pointsOf2(mesh), scale: [...size] } : { type: "mesh", key, positions: mesh.positions, indices: mesh.indices, scale: [...size] }];
 };
-var piecesOf = (part, meshOf) => {
+var piecesOf2 = (part, meshOf) => {
   if (part.phantom)
     return [];
   const { size } = part;
@@ -2613,33 +4788,33 @@ var piecesOf = (part, meshOf) => {
   if (kind) {
     const params = constrainKind(recipe.kind, recipe.params).params;
     const own = typeof kind.collider === "function" ? kind.collider(params, kind.seeded ? seedOf(recipe.seed) : 0, size) : null;
-    if (own)
+    if (own && own !== "hull")
       return own;
     const key2 = `k:${kindMesh({ ...recipe, size }).key}`;
     const mesh = meshOf(LEVEL);
-    if (kind.collider === "hull" && mesh)
-      return [{ type: "hull", key: key2, points: pointsOf(mesh), scale: [...size] }];
+    if ((kind.collider === "hull" || own === "hull") && mesh)
+      return [{ type: "hull", key: key2, points: pointsOf2(mesh), scale: [...size] }];
     return fromMesh(key2, mesh, size);
   }
   const key = shapeKey(part.shape);
   const [x, y, z] = size;
   if (key === CUBE)
-    return [{ type: "box", half: [x / 2, y / 2, z / 2], radius: Math.min(ROUND3, x / 2, y / 2, z / 2) }];
-  if (key === CYLINDER && round(x, y))
-    return [{ type: "cylinder", half: z / 2, radius: x / 2, rounding: Math.min(ROUND3, z / 2, x / 2) }];
-  if (key === SPHERE && round(x, y) && round(y, z))
+    return [{ type: "box", half: [x / 2, y / 2, z / 2], radius: Math.min(ROUND4, x / 2, y / 2, z / 2) }];
+  if (key === CYLINDER && round2(x, y))
+    return [{ type: "cylinder", half: z / 2, radius: x / 2, rounding: Math.min(ROUND4, z / 2, x / 2) }];
+  if (key === SPHERE && round2(x, y) && round2(y, z))
     return [{ type: "sphere", radius: x / 2 }];
   return fromMesh(`p:${key}`, meshOf(LEVEL), size);
 };
 var wheelsOf = (parts, meshesOf = () => () => null) => parts.flatMap((part, index) => {
-  const pieces = piecesOf(part, meshesOf(part));
+  const pieces = piecesOf2(part, meshesOf(part));
   if (pieces.length !== 1 || pieces[0].type !== "cylinder")
     return [];
   const [piece] = pieces;
   const axis = quatRotate(part.rotation, quatRotate(piece.rotation ?? [0, 0, 0, 1], [0, 0, 1]));
   if (Math.abs(axis[0]) < 0.8)
     return [];
-  return [{ index, at: add(part.position, quatRotate(part.rotation, piece.at ?? [0, 0, 0])), radius: piece.radius, width: 2 * piece.half }];
+  return [{ index, at: add(part.position, quatRotate(part.rotation, piece.at ?? [0, 0, 0])), axis, radius: piece.radius, width: 2 * piece.half }];
 }).sort((a, b) => b.at[1] - a.at[1] || a.at[0] - b.at[0]);
 
 // src/build/vehicles.js
@@ -2665,6 +4840,17 @@ var VEHICLES = Object.freeze({
       { ...MASS, default: 250 }
     ]
   },
+  bicycle: {
+    label: "Bicycle",
+    description: "Ridden on its two wheels as a motorbike is, leaning into its turns, and pedalled: W pedals, S brakes, A and D steer. A cylinder lying across it between its wheels is its crank: it turns, and what lies within it — its arms, its pedals —, as its rider pedals (the seat's pose Pedalling), Gear times slower than its back wheel.",
+    params: [
+      { name: "power", label: "Pedals", min: 5, max: 200, default: 45, step: 1, unit: "N·m", description: "How hard its rider pushes on its back wheel (N·m)." },
+      { name: "speed", label: "Top speed", min: 1, max: 20, default: 8, step: 0.5, unit: "m/s", description: "As fast as it is pedalled (m/s)." },
+      { name: "steer", label: "Steers", min: 5, max: 45, default: 30, step: 1, unit: "°", description: "How far its front wheel turns (°)." },
+      { ...MASS, default: 90, description: "How heavy it is with its rider (kg)." },
+      { name: "gear", label: "Gear", min: 1, max: 5, default: 2.8, step: 0.1, unit: "", description: "How many turns its back wheel makes for each of its pedals: higher, its rider pedals more slowly for the same speed." }
+    ]
+  },
   train: {
     label: "Train",
     description: "Along its route (Does: follows a route), its driver setting its speed: W faster, S slower and then back; left, it goes on with its timetable from there.",
@@ -2682,31 +4868,267 @@ var VEHICLES = Object.freeze({
       { name: "steer", label: "Rudder", min: 5, max: 45, default: 30, step: 1, unit: "°", description: "How hard its rudder turns it." },
       { ...MASS, default: 800 }
     ]
+  },
+  ship: {
+    label: "Ship or yacht",
+    auto: true,
+    description: "Afloat at its waterline — its frame's z = 0, as it was built to float, whatever its decks carry — and as heavy as the water it moves: slow to get going and to stop, turning wide on its rudder as it goes and slowly on its bow thrusters when it does not, never skidding sideways. W and S ahead and astern, A and D the helm.",
+    params: [
+      { name: "speed", label: "Top speed", min: 1, max: 25, default: 10, step: 0.5, unit: "m/s", description: "As fast as it goes ahead (m/s); astern, at most 70 % of it." },
+      { name: "accel", label: "Speeds up", min: 0.05, max: 3, default: 0.5, step: 0.05, unit: "m/s²", description: "How fast it gets going from a standstill at full ahead (m/s²): a heavy ship slowly." },
+      { name: "turn", label: "Turns", min: 1, max: 30, default: 6, step: 0.5, unit: "°/s", description: "How fast it comes round at full helm once it is under way (°/s)." },
+      { name: "thrusters", label: "Bow thrusters", min: 0, max: 10, default: 2, step: 0.5, unit: "°/s", description: "How fast it turns on the spot, standing still (°/s): 0 for none." }
+    ]
+  },
+  submarine: {
+    label: "Submarine",
+    auto: true,
+    description: "A ship that dives: at the surface afloat with its hull's top level with the water — all that is inside it under the water and dry, wherever its frame is —, and under it down to the depth its driver takes it, held there and level, never through the sea's floor. W and S ahead and astern, A and D the helm, Space up and C down.",
+    params: [
+      { name: "speed", label: "Top speed", min: 1, max: 25, default: 6, step: 0.5, unit: "m/s", description: "As fast as it goes ahead (m/s); astern, at most 70 % of it." },
+      { name: "accel", label: "Speeds up", min: 0.05, max: 3, default: 0.6, step: 0.05, unit: "m/s²", description: "How fast it gets going from a standstill at full ahead (m/s²)." },
+      { name: "turn", label: "Turns", min: 1, max: 30, default: 8, step: 0.5, unit: "°/s", description: "How fast it comes round at full helm once it is under way (°/s)." },
+      { name: "thrusters", label: "Thrusters", min: 0, max: 10, default: 3, step: 0.5, unit: "°/s", description: "How fast it turns on the spot, standing still (°/s): 0 for none." },
+      { name: "dive", label: "Dives", min: 0.2, max: 5, default: 1, step: 0.1, unit: "m/s", description: "How fast it goes down on C and up on Space (m/s)." },
+      { name: "depth", label: "Deepest", min: 2, max: 500, default: 60, step: 1, unit: "m", description: "As deep as its waterline goes under the surface (m)." }
+    ]
+  },
+  helicopter: {
+    label: "Helicopter",
+    auto: true,
+    description: "Flies on its rotors: Space takes it up and C down, and between them it holds its height, never into the ground nor over its ceiling; once off the ground W and S fly it ahead and back, its nose down as it goes, and A and D turn it, on the spot or banking as it goes. On the ground it rests on what it stands on — land, a roof, the sea. Its parts that turn (Does: turns) are its rotors: they turn while it runs, driven or on its Auto, and stand still once it is parked. Up from its controls in the air, it lands first.",
+    params: [
+      { name: "speed", label: "Top speed", min: 2, max: 80, default: 25, step: 1, unit: "m/s", description: "As fast as it flies ahead (m/s); back, a third of it." },
+      { name: "accel", label: "Speeds up", min: 0.5, max: 10, default: 3, step: 0.5, unit: "m/s²", description: "How fast it gets going, and stops again once let go (m/s²)." },
+      { name: "turn", label: "Turns", min: 5, max: 120, default: 45, step: 1, unit: "°/s", description: "How fast it turns round (°/s)." },
+      { name: "climb", label: "Climbs", min: 0.5, max: 20, default: 5, step: 0.5, unit: "m/s", description: "How fast it goes up on Space and down on C (m/s)." },
+      { name: "ceiling", label: "Highest", min: 10, max: 3000, default: 500, step: 10, unit: "m", description: "As high as it goes over the ground under it (m)." }
+    ]
+  },
+  plane: {
+    label: "Plane",
+    auto: true,
+    description: "Flies on its wings. On its wheels W speeds it up along its way, S or C brake it, A and D steer it; once as fast as its take-off speed, Space lifts it off. In the air W and S speed it up and slow it down, Space takes it up and C down, and between them it holds its height, never into the ground nor over its ceiling; slower than its take-off speed it sinks; A and D turn it, banking. Back on its wheels it rolls on. On its Auto it flies its route by itself: along its runway, off it, round and down again.",
+    params: [
+      { name: "speed", label: "Top speed", min: 20, max: 300, default: 80, step: 1, unit: "m/s", description: "As fast as it flies (m/s)." },
+      { name: "accel", label: "Speeds up", min: 0.5, max: 15, default: 4, step: 0.5, unit: "m/s²", description: "How fast it gets going, along the ground and in the air (m/s²); it brakes three times as hard." },
+      { name: "lift", label: "Take-off speed", min: 10, max: 120, default: 40, step: 1, unit: "m/s", description: "How fast it must go along the ground to lift off; slower in the air, it sinks (m/s)." },
+      { name: "turn", label: "Turns", min: 3, max: 60, default: 15, step: 1, unit: "°/s", description: "How fast it turns at full A or D, banked in the air (°/s)." },
+      { name: "climb", label: "Climbs", min: 1, max: 50, default: 10, step: 0.5, unit: "m/s", description: "How fast it goes up on Space and down on C (m/s)." },
+      { name: "ceiling", label: "Highest", min: 100, max: 15000, default: 3000, step: 50, unit: "m", description: "As high as it goes over the ground under it (m)." }
+    ]
   }
 });
+var afloat = (type) => type === "boat" || type === "ship" || type === "submarine";
+var PEDALLING = "ovgrid/pedalling";
+var TILT = Object.freeze({ pitch: 10, surge: 5, bank: 25, attitude: 3 });
+var PLANE_TILT = Object.freeze({ pitch: 20, bank: 35 });
 var vehicleType = (name) => typeof name === "string" && Object.hasOwn(VEHICLES, name) ? VEHICLES[name] : null;
 var decimals2 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001));
 var held = (param, value) => {
   if (!Number.isFinite(value))
     return param.default;
-  const within2 = Math.min(Math.max(value, param.min), param.max);
-  return Number(Math.min(param.min + Math.round((within2 - param.min) / param.step) * param.step, param.max).toFixed(decimals2(param.step)));
+  const within4 = Math.min(Math.max(value, param.min), param.max);
+  return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals2(param.step)));
 };
 var vehicleOf = (value) => {
   const kind = vehicleType(value?.type);
   return kind && { type: value.type, ...Object.fromEntries(kind.params.map((param) => [param.name, held(param, value[param.name])])) };
 };
 
+// src/build/seat.js
+var POSES = [
+  { clip: "dcl/sitting-chair-1", name: "On a chair", rests: "hips" },
+  { clip: "dcl/sitting-chair-2", name: "Leaning back", rests: "hips" },
+  { clip: "quaternius/sitting-talking", name: "Talking", rests: "hips" },
+  { clip: "quaternius/driving", name: "At the wheel", rests: "hips" },
+  { clip: "ovgrid/pedalling", name: "Pedalling", rests: "hips" },
+  { clip: "dcl/sitting-ground-1", name: "On the ground", rests: "feet" },
+  { clip: "dcl/sitting-ground-2", name: "Cross-legged", rests: "feet" },
+  { clip: "quaternius/kneeling", name: "Kneeling", rests: "feet" },
+  { clip: "quaternius/crouch-idle", name: "Crouching", rests: "feet" },
+  { clip: "quaternius/idle", name: "Standing", rests: "feet" },
+  { clip: "quaternius/dance", name: "Dancing", rests: "feet" },
+  { clip: "mixamo/swing-dancing", name: "Swing dancing", rests: "feet" }
+];
+var POSE = new Map(POSES.map((pose) => [pose.clip, pose]));
+var REACH3 = 64;
+var DEG3 = Math.PI / 180;
+var wrapTurn = (degrees) => {
+  const turn3 = (degrees % 360 + 360) % 360;
+  return turn3 > 180 ? turn3 - 360 : turn3;
+};
+var heldTarget = ({ at, turn: turn3 = 0 }) => ({
+  at: at.map((v) => Math.round(Math.min(Math.max(v, -REACH3), REACH3) * 1000) / 1000 || 0),
+  turn: Math.round(wrapTurn(turn3) * 10) / 10 || 0
+});
+var seatWith = (target, pose) => target || pose ? { ...target, ...pose && { pose } } : true;
+var seatOf = (value) => {
+  const seat = value?.seat;
+  if (seat === true)
+    return { seat: true };
+  if (!seat || typeof seat !== "object")
+    return {};
+  const { at, turn: turn3 = 0, pose } = seat;
+  const target = Array.isArray(at) && at.length === 3 && at.every(Number.isFinite) && Number.isFinite(turn3) ? heldTarget({ at, turn: turn3 }) : null;
+  return { seat: seatWith(target, POSE.has(pose) ? pose : null) };
+};
+
+// src/build/bouncy.js
+var BOUNCY = Object.freeze({
+  params: [
+    { name: "trigger", label: "Bouncy", min: 0, max: 1, default: 0, step: 1, options: ["landing", "step"], labels: ["When landed on", "When stepped on"], description: "What throws whoever is on it back up: landing on it from a jump or a fall, as on a trampoline; or stepping on it at all, as on a jump pad." },
+    { name: "height", label: "Height", min: 0.5, max: 30, default: 3, step: 0.5, unit: "m", description: "How high it throws them at most (m); stepped on, this high every time." },
+    { name: "give", label: "Gives back", min: 0, max: 100, default: 80, step: 5, unit: "%", when: ({ trigger }) => trigger === 0, description: "Of how hard they land on it, how much it gives back (%): 100, as high each time, on and on; less, lower each time, till they land." },
+    { name: "along", label: "Throws", min: 0, max: 1, default: 0, step: 1, options: ["up", "own"], labels: ["Straight up", "Along its own up"], description: "Which way it throws them: straight up; or along its own up (z), so that tilted it throws them across, a launch pad." }
+  ]
+});
+var decimals3 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001));
+var held2 = (param, value) => {
+  const given = typeof value === "string" && param.options ? param.options.indexOf(value) : value;
+  if (!Number.isFinite(given) || param.options && given < 0)
+    return param.default;
+  const within4 = Math.min(Math.max(given, param.min), param.max);
+  return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals3(param.step)));
+};
+var bouncyOf = (value) => {
+  const given = value === true ? {} : value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  return given && Object.fromEntries(BOUNCY.params.map((param) => [param.name, held2(param, given[param.name])]));
+};
+
+// src/build/mirror-kind.js
+var MIRROR_PARAMS = Object.freeze([
+  {
+    name: "reflects",
+    label: "Reflects",
+    options: ["near", "avatars"],
+    labels: ["Avatars and what is near", "Avatars alone"],
+    default: "near",
+    description: "What it shows drawn as a mirror does: the avatars and what is built within 5 m before it, or the avatars alone — the room behind them from the surroundings as metal shows them."
+  },
+  {
+    name: "on",
+    label: "Comes on",
+    options: ["near", "click", "aim"],
+    labels: ["When one is near", "On a click", "Aimed at"],
+    default: "near",
+    description: "When it shows what stands before it: by itself while one is near it and it is in view; switched by a click on it; or, aimed at within reach as a vehicle is, by E or a click. Off, it mirrors the surroundings as metal does. Each viewer for themself."
+  },
+  {
+    name: "radius",
+    label: "Near",
+    min: 2,
+    max: 30,
+    default: 6,
+    step: 1,
+    unit: "m",
+    description: "How near one stands to it for it to come on by itself (m)."
+  }
+]);
+var MIRROR_DEFAULTS = Object.freeze(Object.fromEntries(MIRROR_PARAMS.map((param) => [param.name, param.default])));
+
+// src/build/live.js
+var WHO = Object.freeze(["anyone", "owner"]);
+var WHO_PARAM = { name: "who", label: "On air", options: WHO, labels: ["Anyone near", "Its owner"], default: "anyone", description: "Who may go on air in it: anyone within its radius, or the prim's owner alone." };
+var LIVE = Object.freeze({
+  voice: {
+    label: "Voice zone",
+    description: "Whoever stands within its radius hears the others in it, each from where they stand, fainter farther; on air with the microphone button. Leaving it hangs up.",
+    params: [
+      WHO_PARAM,
+      { name: "radius", label: "Radius", min: 2, max: 60, default: 12, step: 1, unit: "m", description: "How far from the prim one is in the zone (m)." },
+      { name: "quality", label: "Quality", min: 16, max: 128, default: 32, step: 8, unit: "kb/s", description: "Each voice's bitrate (kb/s): more, clearer and costlier." }
+    ]
+  },
+  screen: {
+    label: "Screen",
+    description: "One of its faces shows a camera or a screen shared by whoever is on air, to everyone within its radius, lit by it as a video face is. Viewing only.",
+    params: [
+      WHO_PARAM,
+      { name: "radius", label: "Radius", min: 5, max: 60, default: 30, step: 1, unit: "m", description: "How far from the prim it is watched (m)." },
+      { name: "quality", label: "Quality", min: 240, max: 1080, default: 720, step: 120, unit: "px", description: "The tallest picture sent (px): more, sharper and costlier." },
+      { name: "fps", label: "Frame rate", min: 5, max: 30, default: 15, step: 1, unit: "fps", description: "Frames sent a second." },
+      { name: "face", label: "Face", min: 0, max: 8, default: 0, step: 1, unit: "", description: "Which of its faces shows it." }
+    ]
+  },
+  mirror: {
+    label: "Mirror",
+    description: "One of its faces is a mirror: whoever stands before it sees themself in it, and what is built near — when one is near, on a click, or aimed at. Nothing goes on the wire.",
+    params: [
+      ...MIRROR_PARAMS,
+      { name: "face", label: "Face", min: 0, max: 8, default: 3, step: 1, unit: "", description: "Which of its faces is the mirror." },
+      { name: "look", label: "Look", options: ["silvered", "antique"], labels: ["Silvered", "Antique"], default: "silvered", description: "The bank's mirror its face wears: silvered, or antique, foxed and hazed." }
+    ]
+  },
+  drop: {
+    label: "File drop",
+    description: "A file dropped on it reaches whoever is within its radius — or its owner alone —, peer to peer, with its progress; each one keeps it with a click.",
+    params: [
+      { ...WHO_PARAM, label: "Sends", description: "Who may drop a file on it: anyone near, or its owner alone." },
+      { name: "to", label: "Reaches", options: ["near", "owner"], labels: ["Everyone near", "Its owner"], default: "near", description: "Whom a file dropped on it reaches: everyone within its radius, or its owner alone." },
+      { name: "radius", label: "Radius", min: 2, max: 60, default: 10, step: 1, unit: "m", description: "How far from the prim one is near it (m)." },
+      { name: "quality", label: "Largest file", min: 1, max: 200, default: 50, step: 1, unit: "MB", description: "The largest file it carries (MB)." }
+    ]
+  }
+});
+var liveOf = (value) => {
+  const kind = LIVE[value?.type];
+  if (!kind || !Object.hasOwn(LIVE, value.type))
+    return null;
+  const live = { type: value.type };
+  for (const param of kind.params) {
+    const given = value[param.name];
+    if (param.options)
+      live[param.name] = param.options.includes(given) ? given : param.default;
+    else
+      live[param.name] = Number.isFinite(given) ? Math.min(Math.max(Math.round(given / param.step) * param.step, param.min), param.max) : param.default;
+  }
+  return live;
+};
+var liveUrl = (id) => `live:${id}`;
+var LIVE_URL = /^live:[\w:.~@/-]{1,160}$/;
+var isLiveUrl = (url) => typeof url === "string" && LIVE_URL.test(url);
+var MIRROR_TEXTURE = /^effects\/mirror\//;
+var withoutLive = (surface) => {
+  if (!surface)
+    return null;
+  const { media, faces, ...rest } = structuredClone(surface);
+  const out = { ...rest, ...media && !isLiveUrl(media.url) && { media } };
+  if (faces) {
+    out.faces = Object.fromEntries(Object.entries(faces).map(([face2, own]) => {
+      const { media: ownMedia, mirror, ...lay } = own;
+      if (mirror && MIRROR_TEXTURE.test(lay.texture ?? ""))
+        delete lay.texture;
+      return [face2, { ...lay, ...ownMedia && !isLiveUrl(ownMedia.url) && { media: ownMedia } }];
+    }).filter(([, own]) => Object.keys(own).length));
+    if (!Object.keys(out.faces).length)
+      delete out.faces;
+  }
+  return Object.keys(out).length ? out : null;
+};
+var surfaceWithLive = (surface, id, live) => {
+  const plain = withoutLive(surface);
+  if (live?.type !== "screen" && live?.type !== "mirror")
+    return plain;
+  const out = plain ?? {};
+  const own = out.faces?.[live.face];
+  out.faces = {
+    ...out.faces,
+    [live.face]: live.type === "screen" ? { ...own, media: { url: liveUrl(id), autoplay: true } } : { ...own, texture: `effects/mirror/${live.look}`, mirror: { reflects: live.reflects, on: live.on, radius: live.radius } }
+  };
+  return out;
+};
+
 // src/build/edit/import.js
-var DEG = Math.PI / 180;
+var DEG4 = Math.PI / 180;
 var seedFor = (name, index) => {
-  let hash2 = 2166136261;
+  let hash3 = 2166136261;
   for (const char of `${name}#${index}`)
-    hash2 = Math.imul(hash2 ^ char.charCodeAt(0), 16777619);
-  return seedOf(hash2 >>> 0);
+    hash3 = Math.imul(hash3 ^ char.charCodeAt(0), 16777619);
+  return seedOf(hash3 >>> 0);
 };
 var turnOf2 = (degrees) => {
-  const [x, y, z] = (degrees ?? [0, 0, 0]).map((value) => value * DEG);
+  const [x, y, z] = (degrees ?? [0, 0, 0]).map((value) => value * DEG4);
   return quatMultiply(quatAxisAngle([0, 0, 1], z), quatMultiply(quatAxisAngle([0, 1, 0], y), quatAxisAngle([1, 0, 0], x)));
 };
 var slugOf = (name) => String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -2715,16 +5137,16 @@ var kindPart = (prim, name, index) => {
   if (!kind)
     throw new Error(`${name}: no kind ${prim.kind}`);
   const given = { ...prim.params, ...Object.fromEntries(kind.params.filter((param) => prim[param.name] !== undefined).map((param) => [param.name, prim[param.name]])) };
-  const { params: held2, errors } = constrainKind(prim.kind, given);
-  const sized = prim.size && kind.resize ? constrainKind(prim.kind, { ...resizeParams({ kind: prim.kind, params: held2, size: prim.size }), ...given }).params : held2;
+  const { params: held3, errors } = constrainKind(prim.kind, given);
+  const sized = prim.size && kind.resize ? constrainKind(prim.kind, { ...resizeParams({ kind: prim.kind, params: held3, size: prim.size }), ...given }).params : held3;
   const { params, shift } = recentred({ kind: prim.kind, params: sized });
   const part = { kind: prim.kind, params, ...kind.seeded && { seed: Number.isInteger(prim.seed) ? seedOf(prim.seed) : seedFor(name, index) } };
   const lies = Boolean(kind.settle) && kind.params.some((param) => param.points && Array.isArray(given[param.name]) && given[param.name].every((point) => Array.isArray(point) && point.length === 2));
   return { part: { ...part, shape: fallbackShape(part), size: fitSize({ ...part, size: prim.size ?? kind.size }) }, shift, lies, errors };
 };
-var laidOnGround = (part, at, turn2, object, groundRadius) => {
+var laidOnGround = (part, at, turn3, object, groundRadius) => {
   const type = kindOf(part.kind);
-  const rotation = quatMultiply(object.rotation, turn2);
+  const rotation = quatMultiply(object.rotation, turn3);
   const place = add(object.at, quatRotate(object.rotation, at));
   const up = quatRotate(rotation, [0, 0, 1]);
   const { min, max } = type.footprint(part.params);
@@ -2734,7 +5156,7 @@ var laidOnGround = (part, at, turn2, object, groundRadius) => {
     return dot(sub(scale(dir, groundRadius(dir)), place), up) + centre[2];
   };
   const { params, shift } = recentred({ kind: part.kind, params: type.settle(part.params, heightAt) });
-  return { params, at: add(at, quatRotate(turn2, shift)), size: fitSize({ ...part, params }) };
+  return { params, at: add(at, quatRotate(turn3, shift)), size: fitSize({ ...part, params }) };
 };
 var shapeOf = (shape, name, warnings) => {
   if (typeof shape === "string")
@@ -2762,19 +5184,23 @@ var partsOf = (prims, { name, objectId, materials, warnings, object, groundRadiu
   if (kind)
     warnings.push(...kind.errors.map((error) => `${prim.name ?? `part ${index}`}: ${error}`));
   const texture = prim.material ?? (prim.surface?.texture ? undefined : kind && kindOf(prim.kind).material);
-  const surface = texture || prim.surface ? { ...texture && { texture }, ...prim.surface } : null;
-  const turn2 = turnOf2(prim.turn);
-  const at = kind ? add(prim.at, quatRotate(turn2, kind.shift)) : [...prim.at];
-  const laid = kind?.lies ? laidOnGround(kind.part, at, turn2, object, groundRadius) : null;
+  let surface = texture || prim.surface ? { ...texture && { texture }, ...prim.surface } : null;
+  const turn3 = turnOf2(prim.turn);
+  const at = kind ? add(prim.at, quatRotate(turn3, kind.shift)) : [...prim.at];
+  const laid = kind?.lies ? laidOnGround(kind.part, at, turn3, object, groundRadius) : null;
   if (laid)
     Object.assign(kind.part, { params: laid.params, size: laid.size });
+  const id = `${objectId}-${index}`;
+  const live = prim.live === undefined ? null : liveOf(prim.live);
+  if (live)
+    surface = surfaceWithLive(surface, id, live);
   return {
     type: "prim",
-    id: `${objectId}-${index}`,
+    id,
     object: objectId,
     shape: [...kind ? kind.part.shape : preset2.shape],
     at: laid?.at ?? at,
-    rotation: quatNormalize(quatMultiply(turn2, preset2?.rez ?? [0, 0, 0, 1])),
+    rotation: quatNormalize(quatMultiply(turn3, preset2?.rez ?? [0, 0, 0, 1])),
     size: [...kind ? kind.part.size : prim.size],
     color: prim.color ?? materials.get(surface?.texture)?.color ?? [0.6, 0.6, 0.6],
     ...kind && { kind: kind.part.kind, params: kind.part.params, ...kind.part.seed !== undefined && { seed: kind.part.seed } },
@@ -2782,23 +5208,27 @@ var partsOf = (prims, { name, objectId, materials, warnings, object, groundRadiu
     ...prim.light && { light: prim.light },
     ...prim.particles && { particles: prim.particles },
     ...prim.phantom === true ? { phantom: true } : prim.collisionOnly === true && { collisionOnly: true },
-    ...prim.seat === true && { seat: true },
+    ...prim.climbable === true && { climbable: true },
+    ...bouncyOf(prim.bouncy) && { bouncy: bouncyOf(prim.bouncy) },
+    ...seatOf(prim),
+    ...typeof prim.box === "string" && { box: prim.box },
     ...prim.behaviour && { behaviour: prim.behaviour },
-    ...prim.script && { script: typeof prim.script === "string" ? { source: prim.script } : prim.script }
+    ...prim.script && { script: typeof prim.script === "string" ? { source: prim.script } : prim.script },
+    ...live && { live }
   };
 });
-var placeBuild = (spec, { groundRadius, materials, id }) => {
+var placeBuild = (spec, { groundRadius, bareRadius = groundRadius, materials, id }) => {
   const up = normalize(spec.anchor.at);
   const north = normalize(sub([0, 1, 0], scale(up, up[1])));
   const east = cross(north, up);
-  const heading = spec.anchor.heading * DEG;
+  const heading = spec.anchor.heading * DEG4;
   const ahead = add(scale(north, Math.cos(heading)), scale(east, Math.sin(heading)));
   const right = cross(ahead, up);
-  const origin = spec.anchor.exact ? [...spec.anchor.at] : scale(up, groundRadius(up));
+  const origin = spec.anchor.exact ? [...spec.anchor.at] : scale(up, (spec.land || spec.anchor.bare ? bareRadius : groundRadius)(up));
   const frame = quatFromBasis(right, ahead, up);
   const used = new Set;
-  const idOf = (given, made) => {
-    const chosen = typeof given === "string" && given.length > 0 && given.length <= 160 && !given.includes("/") ? given : made;
+  const idOf = (given, made4) => {
+    const chosen = typeof given === "string" && given.length > 0 && given.length <= 160 && !given.includes("/") ? given : made4;
     if (used.has(chosen))
       throw new Error(`${spec.name}: two records with the id ${chosen}`);
     used.add(chosen);
@@ -2815,26 +5245,26 @@ var placeBuild = (spec, { groundRadius, materials, id }) => {
   const objects = [];
   const parts = [];
   const names = new Map;
-  const addObject = (name, objectId, at, turn2, prims, behaviour, vehicle, origin2) => {
+  const addObject = (name, objectId, at, turn3, prims, behaviour, vehicle, origin2, marked, dry) => {
     if (!prims?.length)
       return;
-    const rotation = quatNormalize(quatMultiply(frame, turnOf2(turn2)));
+    const rotation = quatNormalize(quatMultiply(frame, turnOf2(turn3)));
     const driven = vehicle === undefined ? null : vehicleOf(vehicle);
     if (vehicle !== undefined && !driven)
       warnings.push(`${name}: no vehicle "${vehicle?.type}"`);
-    objects.push({ type: "object", id: objectId, name, at, rotation, ...behaviour && { behaviour }, ...driven && { vehicle: driven }, ...origin2 && typeof origin2 === "object" && { origin: origin2 } });
+    objects.push({ type: "object", id: objectId, name, at, rotation, ...behaviour && { behaviour }, ...driven && { vehicle: driven }, ...dry === true && { dry: true }, ...origin2 && typeof origin2 === "object" && { origin: origin2 }, ...typeof marked === "string" && { package: marked } });
     parts.push(...partsOf(prims, { name: objectId === id ? spec.name : `${spec.name}#${name}`, objectId, materials, warnings, object: { at, rotation }, groundRadius }));
     names.set(name, objectId);
   };
   if (spec.prims?.length)
-    addObject(spec.name, idOf(null, id), origin, null, spec.prims);
+    addObject(spec.name, idOf(null, id), origin, null, spec.prims, null, undefined, null, spec.package);
   for (const object of spec.objects ?? []) {
     const slug = slugOf(object.name);
     if (!slug)
       throw new Error(`${spec.name}: an object without a name`);
     if (names.has(object.name) || objects.some(({ id: other }) => other === `${id}~${slug}`))
       throw new Error(`${spec.name}: two objects named ${object.name}`);
-    addObject(object.name, idOf(object.id, `${id}~${slug}`), placeOf(object.at), object.turn, object.prims, object.behaviour, object.vehicle, object.origin);
+    addObject(object.name, idOf(object.id, `${id}~${slug}`), placeOf(object.at), object.turn, object.prims, object.behaviour, object.vehicle, object.origin, object.package ?? spec.package, object.dry);
   }
   const clones = (spec.clones ?? []).map((clone, n) => {
     if (!names.has(clone.of))
@@ -2855,11 +5285,28 @@ var placeBuild = (spec, { groundRadius, materials, id }) => {
     const size = Number.isFinite(tree.scale) ? Math.min(Math.max(tree.scale, TREE_SCALE[0]), TREE_SCALE[1]) : 1;
     if (size !== (tree.scale ?? 1))
       warnings.push(`tree ${n}: scale ${tree.scale} → ${size}`);
-    const turn2 = Number.isFinite(tree.turn) ? tree.turn : seed * 137.508 % 360;
-    return { type: "tree", id: idOf(tree.id, `${id}~tree-${n}`), species: tree.species, seed, at: placeOf(tree.at), yaw: wrapYaw(spec.anchor.heading - turn2), scale: size };
+    const turn3 = Number.isFinite(tree.turn) ? tree.turn : seed * 137.508 % 360;
+    const params = paramsOf2(tree.params);
+    const key = typeof tree.key === "string" || Number.isInteger(tree.key) ? String(tree.key) : null;
+    if (key !== null && !/^[\w.-]{1,64}$/.test(key))
+      throw new Error(`${spec.name}: tree ${n}'s key ${key}: letters, digits, dots and dashes`);
+    const script = tree.script && (typeof tree.script === "string" ? { source: tree.script } : tree.script);
+    return {
+      type: "tree",
+      id: idOf(tree.id, `${id}~tree-${key ?? n}`),
+      species: tree.species,
+      seed,
+      at: placeOf(tree.at),
+      yaw: wrapYaw(spec.anchor.heading - turn3),
+      scale: size,
+      ...Object.keys(params).length && { params },
+      ...script && { script },
+      ...Array.isArray(tree.tint) && { tint: tree.tint },
+      ...Number.isFinite(tree.glow) && { glow: tree.glow }
+    };
   });
   const own = objects.find((object) => object.id === id) ?? null;
-  return { object: own, parts: parts.filter((part) => part.object === id), records: [...objects, ...parts, ...clones, ...trees], warnings };
+  return { object: own, parts: parts.filter((part) => part.object === id), records: [...objects, ...parts, ...clones, ...trees], warnings, frame: { origin, right, ahead, up } };
 };
 
 // src/build/particles.js
@@ -2869,6 +5316,7 @@ var ADDED = 1;
 var LIT = 2;
 var STREAK = 4;
 var BOUNCE = 8;
+var SHAPES2 = Object.freeze({ soft: 0, drop: 1, flake: 2, sparkle: 3, bubble: 4, leaf: 5, heart: 6, confetti: 7, firefly: 8 });
 var PRESETS2 = Object.freeze({
   fire: {
     pattern: "cone",
@@ -3005,6 +5453,165 @@ var PRESETS2 = Object.freeze({
     blend: "alpha",
     lit: true,
     turbulence: 0.25
+  },
+  snowflakes: {
+    pattern: "drop",
+    rate: 0.3,
+    count: 2,
+    life: 9,
+    radius: 8,
+    angle: [0, 0],
+    speed: [0.6, 1],
+    accel: [0, 0, 0],
+    drag: 0,
+    color: [[1, 1, 1], [0.95, 0.97, 1]],
+    alpha: [0.9, 0.9],
+    size: [0.07, 0.07],
+    glow: [0, 0],
+    blend: "alpha",
+    lit: true,
+    turbulence: 0.25,
+    shape: "flake"
+  },
+  rain: {
+    pattern: "drop",
+    rate: 0.035,
+    count: 2,
+    life: 0.8,
+    radius: 2.5,
+    angle: [0, 0],
+    speed: [4, 5],
+    accel: [0, 0, -9.8],
+    drag: 0,
+    color: [[0.7, 0.76, 0.85], [0.7, 0.76, 0.85]],
+    alpha: [0.55, 0.55],
+    size: [0.05, 0.05],
+    glow: [0, 0],
+    blend: "alpha",
+    lit: true,
+    shape: "drop",
+    streak: true,
+    stretch: 0.02
+  },
+  fireflies: {
+    pattern: "drop",
+    rate: 0.5,
+    count: 1,
+    life: 6,
+    radius: 3,
+    angle: [0, 0],
+    speed: [0, 0.1],
+    accel: [0, 0, 0.05],
+    drag: 0.3,
+    color: [[0.75, 1, 0.25], [0.6, 0.9, 0.2]],
+    alpha: [1, 0.6],
+    size: [0.12, 0.12],
+    glow: [0.9, 0.9],
+    blend: "add",
+    lit: false,
+    turbulence: 0.35,
+    shape: "firefly"
+  },
+  magic: {
+    pattern: "explode",
+    rate: 0.12,
+    count: 2,
+    life: 2.2,
+    radius: 0.25,
+    angle: [0, 0],
+    speed: [0.15, 0.5],
+    accel: [0, 0, 0.2],
+    drag: 0.8,
+    color: [[0.75, 0.45, 1], [0.35, 0.85, 1]],
+    alpha: [1, 0],
+    size: [0.09, 0.03],
+    glow: [0.8, 0.1],
+    blend: "add",
+    lit: false,
+    turbulence: 0.35,
+    shape: "sparkle",
+    variety: 0.5
+  },
+  bubbles: {
+    pattern: "cone",
+    rate: 0.35,
+    count: 1,
+    life: 3.5,
+    radius: 0.15,
+    angle: [0, 25],
+    speed: [0.25, 0.5],
+    accel: [0, 0, 0.35],
+    drag: 0.9,
+    color: [[0.8, 0.92, 1], [0.85, 0.95, 1]],
+    alpha: [0.75, 0.5],
+    size: [0.07, 0.13],
+    glow: [0, 0],
+    blend: "alpha",
+    lit: true,
+    turbulence: 0.25,
+    shape: "bubble",
+    variety: 0.15
+  },
+  confetti: {
+    pattern: "cone",
+    rate: 0.3,
+    count: 3,
+    life: 3.5,
+    radius: 0.05,
+    angle: [0, 30],
+    speed: [3, 4.5],
+    accel: [0, 0, -1.2],
+    drag: 1.5,
+    color: [[1, 0.25, 0.35], [1, 0.25, 0.35]],
+    alpha: [1, 0.7],
+    size: [0.05, 0.05],
+    glow: [0, 0],
+    blend: "alpha",
+    lit: true,
+    turbulence: 0.35,
+    shape: "confetti",
+    variety: 1
+  },
+  leaves: {
+    pattern: "drop",
+    rate: 0.7,
+    count: 1,
+    life: 7,
+    radius: 3,
+    angle: [0, 0],
+    speed: [0.1, 0.3],
+    accel: [0, 0, -0.5],
+    drag: 0.6,
+    color: [[0.72, 0.38, 0.08], [0.5, 0.22, 0.06]],
+    alpha: [1, 0.9],
+    size: [0.1, 0.1],
+    glow: [0, 0],
+    blend: "alpha",
+    lit: true,
+    turbulence: 0.45,
+    drift: [0.35, 0.1, 0],
+    shape: "leaf",
+    variety: 0.12
+  },
+  exhaust: {
+    pattern: "cone",
+    rate: 0.02,
+    count: 1,
+    life: 0.16,
+    radius: 0.12,
+    angle: [0, 2],
+    speed: [14, 18],
+    accel: [0, 0, 0],
+    drag: 2,
+    color: [[0.85, 0.93, 1], [0.15, 0.35, 1]],
+    alpha: [0.04, 0],
+    size: [0.45, 0.06],
+    glow: [0.9, 0.15],
+    blend: "add",
+    lit: false,
+    turbulence: 0.04,
+    streak: true,
+    stretch: 0.02
   }
 });
 var KITS = Object.freeze({
@@ -3023,6 +5630,7 @@ var RANGES = {
   floor: [-1000, 0],
   stretch: [0, 2],
   shine: [0, 10],
+  variety: [0, 1],
   angle: [0, 180, 2],
   speed: [0, 50, 2],
   alpha: [0, 1, 2],
@@ -3031,11 +5639,11 @@ var RANGES = {
   accel: [-50, 50, 3],
   drift: [-20, 20, 3]
 };
-var OPTIONS = { pattern: Object.keys(PATTERNS), blend: ["add", "alpha"] };
+var OPTIONS = { pattern: Object.keys(PATTERNS), blend: ["add", "alpha"], shape: Object.keys(SHAPES2) };
 var AMOUNT = [0.1, 4];
 var SCALE = [0.1, 10];
 var clamp3 = (value, low, high, fallback) => Number.isFinite(value) ? Math.min(Math.max(value, low), high) : fallback;
-var pair = (value, low, high, fallback) => Array.isArray(value) && value.length === 2 ? value.map((v, i) => clamp3(v, low, high, fallback[i])) : fallback;
+var pair2 = (value, low, high, fallback) => Array.isArray(value) && value.length === 2 ? value.map((v, i) => clamp3(v, low, high, fallback[i])) : fallback;
 var vector = (value, limit, fallback) => Array.isArray(value) && value.length === 3 ? value.map((v, i) => clamp3(v, -limit, limit, fallback[i])) : fallback;
 var colorOf = (value, fallback) => Array.isArray(value) && value.length === 3 ? value.map((v, i) => clamp3(v, 0, 1, fallback[i])) : fallback;
 var numbers = (value, n) => Array.isArray(value) && value.length === n && value.every(Number.isFinite);
@@ -3045,49 +5653,330 @@ var particlesOf = (spec) => {
     return null;
   const base = PRESETS2[spec.preset] ?? PRESETS2.fire;
   const value = (key) => spec[key] ?? base[key];
-  const amount = clamp3(spec.amount, ...AMOUNT, 1), scale3 = clamp3(spec.scale, ...SCALE, 1);
+  const amount = clamp3(spec.amount, ...AMOUNT, 1), scale4 = clamp3(spec.scale, ...SCALE, 1);
   const tint = numbers(spec.tint, 3) ? spec.tint.map((v) => clamp3(v, 0, 1)) : [1, 1, 1];
-  const asked = clamp3(Math.round(value("count")), ...RANGES.count, base.count) * amount;
+  const asked2 = clamp3(Math.round(value("count")), ...RANGES.count, base.count) * amount;
   const every = clamp3(value("rate"), ...RANGES.rate, base.rate);
-  const rate = asked < 1 ? clamp3(every / asked, ...RANGES.rate, every) : every;
+  const rate = asked2 < 1 ? clamp3(every / asked2, ...RANGES.rate, every) : every;
   const life = clamp3(value("life"), ...RANGES.life, base.life);
   const bursts = Math.ceil(life / rate) + 1;
-  const count = Math.min(Math.max(Math.round(asked), 1), Math.max(1, Math.floor(MAX_PER_SYSTEM / bursts)));
+  const count = Math.min(Math.max(Math.round(asked2), 1), Math.max(1, Math.floor(MAX_PER_SYSTEM / bursts)));
   const colors = Array.isArray(spec.color) && spec.color.length === 2 ? spec.color : base.color;
-  const scaled = (values, by = scale3) => values.map((v) => v * by);
+  const scaled = (values, by = scale4) => values.map((v) => v * by);
   const system = {
     pattern: PATTERNS[value("pattern")] ?? PATTERNS.cone,
     rate,
     life,
     count,
     bursts,
-    radius: clamp3(value("radius"), ...RANGES.radius, base.radius) * scale3,
-    angle: pair(value("angle"), 0, 180, base.angle),
-    speed: scaled(pair(value("speed"), 0, 50, base.speed)),
+    radius: clamp3(value("radius"), ...RANGES.radius, base.radius) * scale4,
+    angle: pair2(value("angle"), 0, 180, base.angle),
+    speed: scaled(pair2(value("speed"), 0, 50, base.speed)),
     accel: scaled(vector(value("accel"), 50, base.accel)),
     drift: scaled(vector(value("drift"), 20, base.drift ?? [0, 0, 0])),
     drag: clamp3(value("drag"), ...RANGES.drag, base.drag),
-    turbulence: clamp3(value("turbulence"), ...RANGES.turbulence, base.turbulence ?? 0) * scale3,
+    turbulence: clamp3(value("turbulence"), ...RANGES.turbulence, base.turbulence ?? 0) * scale4,
     color: [colorOf(colors[0], base.color[0]), colorOf(colors[1], base.color[1])].map((color) => color.map((v, k) => v * tint[k])),
-    alpha: pair(value("alpha"), 0, 1, base.alpha),
-    size: scaled(pair(value("size"), 0.005, 10, base.size)),
-    glow: pair(value("glow"), 0, 1, base.glow),
+    alpha: pair2(value("alpha"), 0, 1, base.alpha),
+    size: scaled(pair2(value("size"), 0.005, 10, base.size)),
+    glow: pair2(value("glow"), 0, 1, base.glow),
     floor: clamp3(value("floor"), ...RANGES.floor, -1000),
-    stretch: clamp3(value("stretch"), ...RANGES.stretch, 0.04) * scale3,
-    shine: Math.min(clamp3(value("shine"), ...RANGES.shine, 0) * scale3, RANGES.shine[1]),
+    stretch: clamp3(value("stretch"), ...RANGES.stretch, 0.04) * scale4,
+    shine: Math.min(clamp3(value("shine"), ...RANGES.shine, 0) * scale4, RANGES.shine[1]),
     flags: (value("blend") === "add" ? ADDED : 0) | (value("lit") ? LIT : 0) | (value("streak") ? STREAK : 0) | (value("bounce") ? BOUNCE : 0),
-    since: Number.isFinite(spec.since) ? spec.since : 0
+    shape: Object.hasOwn(SHAPES2, value("shape")) ? SHAPES2[value("shape")] : SHAPES2.soft,
+    variety: clamp3(value("variety"), ...RANGES.variety, base.variety ?? 0),
+    since: Number.isFinite(spec.since) ? spec.since : 0,
+    running: spec.running === true
   };
   system.alive = system.count * system.bursts;
   return system;
 };
 var systemsOf = (spec) => layersOf(spec).map(particlesOf).filter(Boolean);
+var MOTION_RECIPES = {
+  falls: { pattern: "drop", angle: [0, 0], speed: [0.7, 1], accel: 0, drag: 0 },
+  rises: { pattern: "cone", angle: [0, 10], speed: [0.6, 1], accel: 0.5, drag: 0.5 },
+  bursts: { pattern: "explode", angle: [0, 0], speed: [0.5, 1], accel: 0, drag: 1.2 },
+  sprays: { pattern: "cone", angle: [0, 25], speed: [0.8, 1], accel: -1.96, drag: 0.2 },
+  floats: { pattern: "drop", angle: [0, 0], speed: [0, 0.2], accel: 0, drag: 0.5 },
+  streams: { pattern: "cone", angle: [0, 2], speed: [0.85, 1], accel: 0, drag: 1 }
+};
+var MOTIONS = Object.freeze(Object.keys(MOTION_RECIPES));
+// src/build/media-kind.js
+var PLAYING = 4;
+var SHOWING = 8;
+var STILLS = 32;
+var PICTURE = /\.(webp|gif|png|apng|avif)$/i;
+var isPicture = (url) => typeof url === "string" && URL.canParse(url) && PICTURE.test(new URL(url).pathname);
+var GIPHY_HOSTS = ["media.giphy.com", "media0.giphy.com", "media1.giphy.com", "media2.giphy.com", "media3.giphy.com", "media4.giphy.com", "i.giphy.com"];
+
+// src/build/page-actions.js
+var VERBS = ["add", "set", "toggle", "push", "remove", "clear", "place", "draw"];
+var NAME = /^[a-z][\w.-]{0,31}$/i;
+var VALUE_MOST = 64;
+var ITEM_MOST = 256;
+var PENS = ["#111111", "#e63946", "#1d4ed8", "#2a9d8f"];
+var ERASER = PENS.length;
+var actionOf = (text) => {
+  const [verb, name, ...rest] = String(text ?? "").trim().split(/\s+/);
+  if (!VERBS.includes(verb) || !NAME.test(name ?? ""))
+    return null;
+  return { verb, name, argument: rest.join(" ").slice(0, ITEM_MOST) };
+};
+var showOf = (text) => {
+  const [name, ...rest] = String(text ?? "").trim().split(".");
+  if (!NAME.test(name ?? ""))
+    return null;
+  const view = rest.join(".");
+  return { name, view: view === "" ? "total" : view.slice(0, VALUE_MOST) };
+};
+
+// src/build/face-plane.js
+var FLAT4 = 0.0001;
+var facePlane = ({ positions, normals: normals2, indices, slots }, slot) => {
+  const { first, count } = slots[slot] ?? { first: 0, count: 0 };
+  const normal = [0, 0, 0], centre = [0, 0, 0], min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (let i = first;i < first + count; i++) {
+    const v = indices[i] * 3;
+    for (let k = 0;k < 3; k++) {
+      normal[k] += normals2[v + k];
+      centre[k] += positions[v + k] / count;
+      min[k] = Math.min(min[k], positions[v + k]);
+      max[k] = Math.max(max[k], positions[v + k]);
+    }
+  }
+  const length2 = Math.hypot(...normal);
+  if (count < 3 || !(length2 > 0))
+    return null;
+  for (let k = 0;k < 3; k++)
+    normal[k] /= length2;
+  const offset = normal[0] * centre[0] + normal[1] * centre[1] + normal[2] * centre[2];
+  for (let i = first;i < first + count; i++) {
+    const v = indices[i] * 3;
+    if (Math.abs(normal[0] * positions[v] + normal[1] * positions[v + 1] + normal[2] * positions[v + 2] - offset) > FLAT4)
+      return null;
+    if (normal[0] * normals2[v] + normal[1] * normals2[v + 1] + normal[2] * normals2[v + 2] <= 0.999)
+      return null;
+  }
+  return { normal, offset, centre, min, max };
+};
+
+// src/build/pattern-kind.js
+var PATTERNS2 = [
+  ["grid", "Grid", "Lines along and across, a square in every cell."],
+  ["hex", "Hex", "A honeycomb of hexagons."],
+  ["circuit", "Circuit", "A grid with pads where its lines cross.", {
+    pads: ["Pads", 0, 6, 3, 0.25],
+    pad: ["Pad glow", 0, 1, 0.5, 0.05]
+  }],
+  ["pulse-grid", "Pulse grid", "A grid with pulses running along its lines.", {
+    every: ["Every", 1, 16, 4, 1],
+    length: ["Length", 0.01, 0.4, 0.04, 0.01],
+    base: ["Base", 0, 1, 0.4, 0.05]
+  }],
+  ["plasma", "Plasma", "Bands of a glow flowing and shifting.", {
+    bands: ["Bands", 1, 12, 4, 1]
+  }],
+  ["scan", "Scan", "Scan lines, a brighter band sweeping up them.", {
+    every: ["Every", 0.5, 20, 2, 0.5],
+    sweep: ["Sweep", 0, 0.45, 0.05, 0.01]
+  }],
+  ["matrix", "Matrix", "Columns of glyphs raining.", {
+    glyphs: ["Glyphs", 0, 1, 0.7, 0.05],
+    drop: ["Drop", 0.5, 20, 2, 0.5]
+  }],
+  ["glitch", "Glitch", "Scan lines torn by bands that jump and flicker.", {
+    bands: ["Bands", 0, 1, 0.15, 0.05],
+    shift: ["Shift", 0, 2, 0.3, 0.05],
+    flicker: ["Flicker", 0, 1, 0.3, 0.05]
+  }],
+  ["dots", "Dots", "A dot in every cell.", {
+    softness: ["Softness", 0, 1, 1, 0.05],
+    stagger: ["Stagger", 0, 0.5, 0, 0.05]
+  }],
+  ["stripes", "Stripes", "Stripes at an angle, drifting if asked.", {
+    angle: ["Angle", 0, 180, 45, 5],
+    fill: ["Fill", 0.05, 0.95, 0.5, 0.05],
+    drift: ["Drift", -2, 2, 0, 0.1]
+  }],
+  ["plaid", "Plaid", "Bands along and across, as on a woven cloth.", {
+    band: ["Band", 0.05, 0.9, 0.4, 0.05],
+    crossings: ["Crossings", 0, 1, 1, 0.05]
+  }],
+  ["tesla", "Tesla", "Electric arcs crackling up the face.", {
+    bolts: ["Bolts", 1, 4, 2, 1],
+    reach: ["Reach", 0, 0.45, 0.25, 0.01],
+    crackle: ["Crackle", 0, 40, 20, 1]
+  }],
+  ["dna", "DNA", "Double helices turning, rungs between their strands.", {
+    radius: ["Radius", 0.1, 0.45, 0.3, 0.01],
+    turn: ["Turn", 0.5, 8, 2, 0.25],
+    rungs: ["Rungs", 0, 12, 5, 1]
+  }],
+  ["reactor", "Reactor", "Rings and spiral arms round a core pulsing at the face's middle.", {
+    arms: ["Arms", 0, 8, 3, 1],
+    twist: ["Twist", -1, 1, 0.2, 0.05],
+    core: ["Core", 0, 4, 1, 0.1]
+  }],
+  ["fire", "Fire", "Flames rising from the face's foot.", {
+    height: ["Height", 0.5, 20, 4, 0.5],
+    tongues: ["Tongues", 0.25, 4, 1, 0.05]
+  }],
+  ["ember", "Ember", "Glowing cracks between plates, the plates flaring and fading.", {
+    cracks: ["Cracks", 0, 1, 0.7, 0.05],
+    embers: ["Embers", 0, 1, 0.6, 0.05],
+    smoulder: ["Smoulder", 0, 2, 0.2, 0.05]
+  }],
+  ["fluid", "Fluid", "Lines of a flowing liquid.", {
+    flow: ["Flow", 0, 2, 1, 0.05],
+    foam: ["Foam", 0, 1, 0.3, 0.05]
+  }],
+  ["vein", "Vein", "A network of veins, pulses running through it.", {
+    warp: ["Warp", 0, 1, 0.3, 0.05],
+    branches: ["Branches", 0, 2, 1, 0.05],
+    pulse: ["Pulse", 0, 1, 0.8, 0.05]
+  }],
+  ["shockwave", "Shockwave", "Rings bursting out from points here and there.", {
+    spread: ["Spread", 1, 12, 4, 0.5],
+    fade: ["Fade", 0.5, 4, 2, 0.1]
+  }],
+  ["heartbeat", "Heartbeat", "Heart traces running along every row, over a faint grid.", {
+    beat: ["Beat", 2, 40, 6, 1],
+    height: ["Height", 0.05, 0.5, 0.35, 0.01],
+    grid: ["Grid", 0, 1, 0.15, 0.05]
+  }],
+  ["stargate", "Stargate", "Rings of symbols turning round the face's middle.", {
+    rings: ["Rings", 1, 8, 5, 1],
+    symbols: ["Symbols", 0.05, 0.9, 0.3, 0.05],
+    spin: ["Spin", 0, 3, 1, 0.05]
+  }],
+  ["firefly", "Firefly", "Glowing specks drifting and blinking.", {
+    density: ["Density", 0, 1, 0.6, 0.05],
+    wander: ["Wander", 0, 1, 0.5, 0.05],
+    blink: ["Blink", 0, 6, 2, 0.1]
+  }],
+  ["rune", "Rune", "Glyphs in circles, glowing in turn.", {
+    ring: ["Ring", 0, 1, 0.3, 0.05],
+    pulse: ["Pulse", 0, 2, 0.3, 0.05],
+    dim: ["Dim", 0, 1, 0.15, 0.05]
+  }],
+  ["pcb-trace", "PCB trace", "Traces and pads of a circuit board, signals running along them.", {
+    pads: ["Pads", 0, 1, 0.2, 0.05],
+    signal: ["Signal", 0, 1, 0.7, 0.05],
+    traces: ["Traces", 0, 1, 0.25, 0.05]
+  }],
+  ["warp", "Warp", "Streaks rushing out from the face's middle.", {
+    streaks: ["Streaks", 4, 64, 16, 1],
+    dashes: ["Dashes", 0.05, 1, 0.3, 0.05],
+    core: ["Core", 0, 4, 1, 0.1]
+  }],
+  ["synapses", "Synapses", "Nerve cells with their branches, firing.", {
+    branches: ["Branches", 1, 8, 3, 1],
+    firing: ["Firing", 0, 2, 0.5, 0.05],
+    dendrites: ["Dendrites", 0, 1, 0.25, 0.05]
+  }],
+  ["nano", "Nano", "A hexagonal lattice of discs, a cross spinning in each.", {
+    spin: ["Spin", 0, 4, 1, 0.1],
+    disc: ["Disc", 0, 1, 0.3, 0.05],
+    cross: ["Cross", 0, 1, 0.5, 0.05]
+  }],
+  ["radar", "Radar", "A sweep turning round the face's middle, blips lit in its wake.", {
+    trail: ["Trail", 0.02, 1, 0.25, 0.01],
+    blips: ["Blips", 0, 1, 0.15, 0.05],
+    rings: ["Rings", 0, 1, 0.15, 0.05]
+  }],
+  ["sonar", "Sonar", "Pings spreading out in rings from points here and there.", {
+    spread: ["Spread", 1, 12, 4, 0.5],
+    echoes: ["Echoes", 1, 3, 3, 1],
+    fade: ["Fade", 0.5, 4, 2, 0.1]
+  }],
+  ["dot-wave", "Dot wave", "Dots swelling in waves.", {
+    swell: ["Swell", 0, 6, 3, 0.25],
+    wave: ["Wave", 0.1, 2, 1, 0.05],
+    calm: ["Calm", 0, 1, 0.3, 0.05]
+  }],
+  ["dot-orbit", "Dot orbit", "Dots circling the middle of every cell.", {
+    dots: ["Dots", 1, 3, 3, 1],
+    orbit: ["Orbit", 0.05, 0.4, 0.3, 0.01],
+    centre: ["Centre", 0, 1, 0.2, 0.05]
+  }],
+  ["ic-chip", "IC chip", "Chips with their pins, blinking.", {
+    pins: ["Pins", 0, 8, 4, 1],
+    die: ["Die", 2, 16, 8, 1],
+    blink: ["Blink", 0, 10, 3, 0.25]
+  }],
+  ["bus-line", "Bus line", "Lanes of bits running, a clock above them.", {
+    lanes: ["Lanes", 1, 12, 6, 1],
+    bits: ["Bits", 0.5, 8, 2, 0.5],
+    clock: ["Clock", 0, 1, 1, 0.05]
+  }],
+  ["motherboard", "Motherboard", "Traces, vias and signals of a board.", {
+    traces: ["Traces", 0, 1, 0.55, 0.05],
+    vias: ["Vias", 0, 1, 0.3, 0.05],
+    signal: ["Signal", 0, 1, 0.7, 0.05]
+  }],
+  ["led-grid", "LED grid", "A grid of LEDs lit in waves, in sparks or in a spiral.", {
+    show: ["Show", 0, 3, 0, 1, ["each", "waves", "sparks", "spiral"]],
+    size: ["Size", 0.1, 1, 0.6, 0.05]
+  }],
+  ["signal", "Signal", "Oscilloscope traces along every row, sine and square.", {
+    amplitude: ["Amplitude", 0.05, 0.5, 0.27, 0.01],
+    frequency: ["Frequency", 0.25, 4, 1, 0.05],
+    grid: ["Grid", 0, 1, 0, 0.05]
+  }],
+  ["particles", "Particles", "Specks swirling round two cores in every cell.", {
+    count: ["Particles", 1, 8, 5, 1],
+    swirl: ["Swirl", 0.05, 0.3, 0.15, 0.01],
+    cores: ["Cores", 0, 1, 0.5, 0.05]
+  }],
+  ["p2p-mesh", "P2P mesh", "Nodes linked to their neighbours, packets running between them.", {
+    links: ["Links", 0, 1, 0.6, 0.05],
+    packets: ["Packets", 0, 1, 0.6, 0.05],
+    jitter: ["Jitter", 0, 0.45, 0.3, 0.01]
+  }],
+  ["fluid-plus", "Fluid+", "A flowing liquid, shaded by its depth.", {
+    flow: ["Flow", 0, 2, 1, 0.05],
+    foam: ["Foam", 0, 1, 0.3, 0.05],
+    depth: ["Depth", 0, 1, 0.15, 0.05]
+  }],
+  ["lava-flow", "Lava flow", "Plates of crust on glowing lava, flowing down.", {
+    flow: ["Flow", 0, 1, 0.4, 0.05],
+    heat: ["Heat", 0.02, 0.5, 0.2, 0.01],
+    crust: ["Crust", 0, 1, 0.4, 0.05]
+  }]
+];
+var PATTERN_RANGES = { scale: [0.25, 20, 2], width: [0.01, 0.3, 0.06], glow: [0, 1, 0.5], power: [0.5, 10, 3], speed: [0, 5, 1], background: [0, 1, 1] };
+var COLOR = /^#[0-9a-f]{6}$/i;
+var BY_NAME = new Map(PATTERNS2.map(([name, , , own = {}]) => [name, Object.entries(own)]));
+var ownNumbers = (name) => (BY_NAME.get(name) ?? []).map(([key, [label, low, high, start, step, names]]) => [key, { label, low, high, start, step, ...names && { names } }]);
+var patternOf = (value) => {
+  if (!value || typeof value !== "object" || !BY_NAME.has(value.name))
+    return;
+  const pattern = { name: value.name };
+  const held3 = (number, low, high) => Math.min(Math.max(number, low), high);
+  for (const [key, [low, high]] of Object.entries(PATTERN_RANGES)) {
+    if (Number.isFinite(value[key]))
+      pattern[key] = held3(value[key], low, high);
+  }
+  for (const [key, { low, high, step }] of ownNumbers(value.name)) {
+    if (Number.isFinite(value[key]))
+      pattern[key] = held3(step === 1 ? Math.round(value[key]) : value[key], low, high);
+  }
+  if (Array.isArray(value.colors) && value.colors.length === 2 && value.colors.every((c) => typeof c === "string" && COLOR.test(c)))
+    pattern.colors = value.colors.map((c) => c.toLowerCase());
+  if (value.multicolor === true)
+    pattern.multicolor = true;
+  return pattern;
+};
 
 // src/build/edit/check.js
+init_solid();
+var lowestOf = ({ at, size, rotation = [0, 0, 0, 1] }) => Math.min(...Array.from({ length: 8 }, (_, i) => at[2] + quatRotate(rotation, [i & 4 ? size[0] / 2 : -size[0] / 2, i & 2 ? size[1] / 2 : -size[1] / 2, i & 1 ? size[2] / 2 : -size[2] / 2])[2]));
 var LINKSET = 256;
 var LIGHT_RANGE = 10;
 var LIGHTS_EACH = 8;
 var NEAR = 30;
+var DENSE_CAGE = 400;
 var BUDGET = Object.freeze({
   parts: { fair: 1500, most: 4000 },
   triangles: { fair: 150000, most: 600000 },
@@ -3109,6 +5998,7 @@ var ZONE = Object.freeze({
 });
 var R = 6348000;
 var NOWHERE = Object.freeze({ at: [R, 0, 0], heading: 0 });
+var landHolds = ({ at, step, size, heights } = {}) => Array.isArray(at) && at.length === 2 && at.every(Number.isFinite) && step >= 0.25 && step <= 8 && Array.isArray(size) && size.length === 2 && size.every((n) => Number.isInteger(n) && n >= 2) && size[0] * size[1] <= 512 * 512 && typeof heights === "string" && heights.length === Math.ceil(size[0] * size[1] * 2 / 3) * 4;
 var frameOfAnchor = (anchor, groundRadius = () => R) => {
   const up = normalize(anchor.at);
   const north = normalize(sub([0, 1, 0], scale(up, up[1])));
@@ -3133,12 +6023,12 @@ var lightFor = (materials) => {
     return { range: Math.min(part.light?.range ?? LIGHT_RANGE, LIGHT_RANGE), night: part.light?.on === "night" };
   };
 };
-var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone = null }) => {
+var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groundRadius, id = "check", zone = null, budget = BUDGET }) => {
   const errors = [], notes = [];
   const placed = { ...spec, anchor: spec.anchor ?? NOWHERE };
   let records = [], warnings = [];
   try {
-    ({ records, warnings } = placeBuild(placed, { groundRadius: groundRadius ?? (() => R), materials, id }));
+    ({ records, warnings } = placeBuild(placed, { groundRadius: groundRadius ?? (() => R), bareRadius: bareRadius ?? (() => R), materials, id }));
   } catch (error) {
     errors.push(error.message);
   }
@@ -3148,14 +6038,20 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone
     else
       notes.push(`held to range: ${warning}`);
   }
-  const frame = frameOfAnchor(placed.anchor, groundRadius);
+  if (spec.land !== undefined && !landHolds(spec.land))
+    errors.push("its land does not hold: { at: [x, y], step (0.25–8 m), size: [nx, ny], heights: base64 int16 centimetres }");
+  const frame = frameOfAnchor(placed.anchor, spec.land || placed.anchor.bare ? bareRadius : groundRadius);
   const meshes = new Map;
   const meshOf = (part) => {
-    const made = part.kind ? kindMesh(part) : null;
-    const key = made ? made.key : part.shape.join();
+    const made4 = part.kind ? kindMesh(part) : null;
+    const key = made4 ? made4.key : part.shape.join();
     if (!meshes.has(key)) {
-      const levels = [0, 1, 2, 3].map((level) => made ? made.mesh(level) : meshPrimAsset(part.shape, level));
-      meshes.set(key, { triangles: levels.map((mesh) => mesh.indices.length / 3), faces: levels[3].slots.map((slot) => slot.count > 0) });
+      const levels = [0, 1, 2, 3].map((level) => made4 ? made4.mesh(level) : meshPrimAsset(part.shape, level));
+      meshes.set(key, {
+        triangles: levels.map((mesh) => mesh.indices.length / 3),
+        faces: levels[3].slots.map((slot) => slot.count > 0),
+        flat: levels[3].slots.map((_, slot) => Boolean(facePlane(levels[3], slot)))
+      });
     }
     return meshes.get(key);
   };
@@ -3163,6 +6059,13 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone
   const texturesOf = (part) => [part.surface?.texture, ...Object.values(part.surface?.faces ?? {}).map((face2) => face2.texture)].filter(Boolean);
   const unknown = new Set, sizeless = new Set;
   let seeThrough = 0, cutOut = 0;
+  const screened = new Map, untrusted = new Set;
+  let dropped = 0, droppedPages = 0;
+  const unread = new Set;
+  const patterned = new Set, strangePatterns = new Set;
+  let mirrorFaces = 0;
+  const curvedMirrors = new Set;
+  const valuesOf = (html, attribute) => [...html.matchAll(new RegExp(`${attribute}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "gi"))].map(([, double, single]) => double ?? single);
   for (const part of prims) {
     for (const texture of texturesOf(part)) {
       const material = materials.get(texture);
@@ -3181,25 +6084,87 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone
         seeThrough++;
       else if (material?.alpha === "mask")
         cutOut++;
+      if (material?.effects?.mirror) {
+        mirrorFaces++;
+        if (!meshOf(part).flat[face2])
+          curvedMirrors.add(`${part.name ?? "a prim"} (face ${face2})`);
+      }
+      const pattern = own?.pattern ?? part.surface?.pattern;
+      if (pattern) {
+        const kept2 = patternOf(pattern);
+        if (kept2)
+          patterned.add(JSON.stringify(kept2));
+        else
+          strangePatterns.add(String(pattern?.name ?? pattern));
+      }
+      const media = own?.media ?? (own?.page ? null : part.surface?.media);
+      const page = !media && (own?.page ?? part.surface?.page);
+      if (page) {
+        if (typeof page.html !== "string" || page.html.length > 8192)
+          return void droppedPages++;
+        for (const text of valuesOf(page.html, "data-on-click"))
+          if (!actionOf(text))
+            unread.add(`data-on-click="${text}"`);
+        for (const text of valuesOf(page.html, "data-show"))
+          if (!showOf(text))
+            unread.add(`data-show="${text}"`);
+        for (const text of valuesOf(page.html, "data-drag"))
+          if (text && (!actionOf(`set ${text} here`) || /\s/.test(text)))
+            unread.add(`data-drag="${text}"`);
+        const [faces2, videos2, pages2] = screened.get(part) ?? [0, 0, 0];
+        return void screened.set(part, [faces2, videos2, pages2 + 1]);
+      }
+      if (!media)
+        return;
+      if (isLiveUrl(media.url)) {
+        const [faces2, videos2, pages2] = screened.get(part) ?? [0, 0, 0];
+        return void screened.set(part, [faces2 + 1, videos2 + 1, pages2]);
+      }
+      const url = typeof media.url === "string" && media.url.length <= 512 && URL.canParse(media.url) ? new URL(media.url) : null;
+      if (url?.protocol !== "https:" || url.username || url.password) {
+        dropped++;
+        return;
+      }
+      const [faces, videos, pages] = screened.get(part) ?? [0, 0, 0];
+      screened.set(part, [faces + 1, videos + (isPicture(url.href) ? 0 : 1), pages]);
+      if (!GIPHY_HOSTS.includes(url.host))
+        untrusted.add(url.host);
     });
   }
   if (unknown.size)
     errors.push(`no such material: ${[...unknown].join(", ")}`);
+  if (strangePatterns.size)
+    errors.push(`no such pattern: ${[...strangePatterns].join(", ")} (format.md, Surface; catalog.json, patterns)`);
+  if (patterned.size > 256)
+    notes.push(`${patterned.size} patterns, each its own settings: 256 show at once, the others none — the same settings on many faces`);
+  if (curvedMirrors.size)
+    notes.push(`a mirror on a face that is not flat — ${[...curvedMirrors].join(", ")}: it mirrors the surroundings as metal does, never what stands before it; put it on a flat face (format.md, Mirrors)`);
+  if (mirrorFaces > 1)
+    notes.push(`${mirrorFaces} mirror faces: one at a time shows what stands before it — of those on, the one taking most of the screen —, the others the surroundings as metal does`);
   for (const texture of sizeless)
     notes.push(`${texture}: the bank gives it no real size — give its faces a \`scale\` [u, v] in metres`);
   const lightOf = lightFor(materials);
   const objectRecords = records.filter((record) => record.type === "object");
   const clones = records.filter((record) => record.type === "instance");
   const objects = [], lights = [], systems = [];
-  let finest = 0, second = 0;
+  let finest = 0, second = 0, mediaFaces = 0, videoFaces = 0, pageFaces = 0;
   for (const object of objectRecords) {
     const own = prims.filter((part) => part.object === object.id);
     const copies = [object, ...clones.filter((clone) => clone.of === object.id)];
     const [, l1, , l3] = own.reduce((sum, part) => meshOf(part).triangles.map((t, i) => sum[i] + t), [0, 0, 0, 0]);
     if (own.length > LINKSET)
       errors.push(`${object.name}: ${own.length} parts, more than an object takes (${LINKSET}): split it`);
+    own.forEach((part, n) => {
+      if (part.size.some((v) => v > MAX_SIZE))
+        errors.push(`${object.name}: part ${n} is ${part.size.map((v) => +v.toFixed(2)).join(" × ")} m, longer than a part may be (${MAX_SIZE} m along each axis): split it`);
+    });
     finest += l3 * copies.length;
     second += l1 * copies.length;
+    for (const [faces, videos, pages] of own.map((part) => screened.get(part)).filter(Boolean)) {
+      mediaFaces += faces * copies.length;
+      videoFaces += videos * copies.length;
+      pageFaces += pages * copies.length;
+    }
     const lit = own.map(lightOf).filter(Boolean);
     const thrown = own.flatMap((part) => part.collisionOnly ? [] : systemsOf(part.particles));
     for (const copy of copies) {
@@ -3209,29 +6174,65 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone
     }
     objects.push({ id: object.id, name: object.name, parts: own.length, copies: copies.length, triangles: [l3, l1], lights: lit.length, systems: thrown.length });
   }
+  const objectNames = new Map(objectRecords.map((object) => [object.id, object.name]));
+  for (const part of prims) {
+    const bodies = part.kind === "solid" ? part.params?.bodies ?? [] : [];
+    const step = bodies.findIndex((body) => body.smooth);
+    const cage = step > 0 ? trianglesOfBodies(bodies.slice(0, step)) : 0;
+    if (cage > DENSE_CAGE)
+      notes.push(`${objectNames.get(part.object) ?? "a part"}: a solid smoothed over a cage of ${cage} triangles, every one drawn far away — few sections and points where its form turns hold it, ${DENSE_CAGE} at most`);
+  }
   const vehicles = objectRecords.filter((object) => object.vehicle);
   for (const object of vehicles) {
     const own = prims.filter((part) => part.object === object.id);
     const wheels = wheelsOf(own.map((part) => ({ ...part, position: part.at })));
     const { type } = object.vehicle;
-    if ((type === "car" || type === "bike") && wheels.length < 2)
+    if ((type === "car" || type === "bike" || type === "bicycle") && wheels.length < 2)
       errors.push(`${object.name}: a ${type} runs on its wheels — two or more cylinders lying across it, "turn": [0, 90, 0]`);
     if (type === "bike" && wheels.length > 2)
       notes.push(`${object.name}: ${wheels.length} cylinders lie across it — a bike runs on its front and back ones; make any other a box, or phantom`);
+    if (type === "bicycle" && wheels.length === 2)
+      notes.push(`${object.name}: no crank — a cylinder lying across it between its wheels ("collisionOnly": true), its arms and pedals within it, turns as its rider pedals`);
+    if (type === "bicycle" && own.some((part) => part.seat) && !own.some((part) => part.seat?.pose === PEDALLING))
+      notes.push(`${object.name}: nobody pedals it — give its saddle the pose Pedalling ("seat": { "pose": "${PEDALLING}" })`);
     if (type === "train" && object.behaviour?.type !== "route")
       errors.push(`${object.name}: a train keeps to its route — give the object a "route" behaviour`);
+    if ((type === "ship" || type === "submarine") && !own.some((part) => !part.phantom && lowestOf(part) < 0))
+      errors.push(`${object.name}: a ${type} floats at its waterline, its frame's z = 0 — nothing of its hull reaches under it`);
+    if (type === "plane" && object.vehicle.speed < object.vehicle.lift)
+      notes.push(`${object.name}: its top speed is under its take-off speed — a plane that never leaves the ground ("speed" ≥ "lift")`);
+    if (type === "helicopter" && !own.some((part) => part.behaviour?.type === "spin"))
+      notes.push(`${object.name}: nothing of it turns — a helicopter's rotors are its parts that turn ("behaviour": { "type": "spin" }), phantom`);
     if (!own.some((part) => part.seat))
       notes.push(`${object.name}: no seat — nobody can drive it ("seat": true on the part sat on)`);
     if (clones.some((clone) => clone.of === object.id))
       notes.push(`${object.name}: its clones are not driven — only the object itself; make each vehicle an object of its own`);
   }
+  const runs = new Set(objectRecords.filter((object) => object.vehicle || object.behaviour?.type === "route").map((object) => object.id));
+  const idle = new Set(prims.filter((part) => !runs.has(part.object) && layersOf(part.particles).some((layer2) => layer2?.running === true)).map((part) => part.object ?? null));
+  for (const id2 of idle)
+    notes.push(`${objectRecords.find((object) => object.id === id2)?.name ?? "a prim"}: particles thrown only while it runs ("running": true), yet it is no vehicle and runs no route — never seen`);
   const trees = records.filter((record) => record.type === "tree");
   const strange = [...new Set(trees.map((tree) => tree.species).filter((species) => !isSpecies(species)))];
   if (strange.length)
     errors.push(`no such species: ${strange.join(", ")}`);
+  if (dropped)
+    notes.push(`${dropped} ${dropped > 1 ? "faces'" : "face's"} media not an https address (512 characters at most): dropped`);
+  if (droppedPages)
+    notes.push(`${droppedPages} ${droppedPages > 1 ? "faces'" : "face's"} page not HTML of 8,192 characters at most: dropped`);
+  if (unread.size)
+    notes.push(`${[...unread].join(", ")}: not read, nothing done — an action is add, set, toggle, push, remove or clear and a name (letters, digits, . - _, 32 at most), what is shown a name and maybe .last, .when or a value, what moves a name (format.md, Pages)`);
+  if (mediaFaces > SHOWING)
+    notes.push(`${mediaFaces} faces show media: only the ${SHOWING} nearest show at once, the others nothing (a picture's) or their own material (a video's) till nearer — give it to fewer faces (a board's front, not its whole surface), or set them apart`);
+  if (pageFaces > SHOWING + STILLS)
+    notes.push(`${pageFaces} faces show a page: the ${SHOWING} nearest drawn as they change and ${STILLS} more still, at once, the others their own material till nearer — give it to fewer faces (a board's front, not its whole surface), or set them apart`);
+  if (videoFaces > PLAYING)
+    notes.push(`${videoFaces} faces show videos: ${PLAYING} play at once, the nearest`);
+  for (const host of untrusted)
+    notes.push(`${host}: not a host the world trusts — each viewer but its owner starts its media with a click (GIPHY's play by themselves)`);
   const most = (list) => list.reduce((top, each) => Math.max(top, list.filter((other) => Math.hypot(other.at[0] - each.at[0], other.at[1] - each.at[1]) < NEAR).length), 0);
   const crowd = most(lights);
-  const moving = records.filter((record) => record.behaviour).length + clones.filter((clone) => !clone.behaviour && objectRecords.find((object) => object.id === clone.of)?.behaviour).length;
+  const moving = records.filter((record) => record.behaviour && record.behaviour.type !== "switch" && record.behaviour.type !== "passage").length + clones.filter((clone) => !clone.behaviour && objectRecords.find((object) => object.id === clone.of)?.behaviour).length;
   const totals = {
     objects: objectRecords.length,
     parts: prims.length,
@@ -3242,6 +6243,9 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone
     materials: new Set(prims.flatMap(texturesOf)).size,
     seeThrough,
     cutOut,
+    media: mediaFaces,
+    videos: videoFaces,
+    pages: pageFaces,
     lights: lights.length,
     nightLights: lights.filter((light) => light.night).length,
     crowd,
@@ -3266,7 +6270,7 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone
     trees: "a forest is painted with the editor's brush, not written tree by tree"
   };
   const NAMES = { crowd: `lights within ${NEAR} m of one another`, systems: "particle systems", particles: "particles in the air", moving: "things moving by themselves" };
-  for (const [key, { fair, most: max }] of Object.entries(BUDGET)) {
+  for (const [key, { fair, most: max }] of Object.entries(budget ?? {})) {
     const value = key === "triangles" ? finest : totals[key];
     const said = `${value.toLocaleString("en")} ${NAMES[key] ?? key}`;
     if (value > max)
@@ -3287,142 +6291,479 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, id = "check", zone
   }
   return { records, errors, notes, objects, lights, systems, totals, frame, zone };
 };
+// tools/build-check.js
+import { readdirSync } from "node:fs";
 
-// src/terrain-height.js
-var ROOT_SIZE = 12696000;
-var NOISE_SCALE = 800;
-var SEA_LEVEL = 0.5555556;
-var ELEV_SCALE = 21600;
-var layer = (type, octaves, ridgeExponent, warpStrength, hmin, hmax) => ({
-  type,
-  octaves,
-  gain: 0.5,
-  ridgeOffset: 1.064,
-  ridgeExponent,
-  warpStrength,
-  hmin,
-  hmax,
-  density: 0.3
-});
-var RIDGED = 1;
-var FBM = 0;
-var BASE_LAYER = layer(RIDGED, 23, 1.665, 3.6, 0, 1);
-var TERRAIN_LAYER_0 = layer(RIDGED, 10, 1.005, 1.6, 0, 1);
-var TERRAIN_LAYER_1 = layer(FBM, 18, 1.665, 2.6, -2, 2);
-var TERRAIN_LAYER_2 = layer(RIDGED, 18, 1.1, 0.9, -2, 2);
-var BIAS2 = [[2.3, 4.5, 6.7], [8.9, 9.8, 8.7], [7.6, 6.5, 5.4]];
-var GRID_OFFSET = [5, 4, 9];
-var hash2 = (x, y, z) => {
-  const n = Math.imul(x, 1597) + Math.imul(y, 3571) + Math.imul(z, 7919) | 0;
-  let state = Math.imul(n, 747796405) + 2891336453 >>> 0;
-  state = Math.imul((state >>> (state >>> 28) + 4 ^ state) >>> 0, 277803737) >>> 0;
-  state = (state >>> 22 ^ state) >>> 0;
-  return -1 + 2 * state / 4294967295;
+// src/planet.js
+var FACES2 = [
+  { id: 0, normal: [1, 0, 0], u: [0, 0, -1], v: [0, 1, 0] },
+  { id: 1, normal: [-1, 0, 0], u: [0, 0, 1], v: [0, 1, 0] },
+  { id: 2, normal: [0, 1, 0], u: [1, 0, 0], v: [0, 0, -1] },
+  { id: 3, normal: [0, -1, 0], u: [1, 0, 0], v: [0, 0, 1] },
+  { id: 4, normal: [0, 0, 1], u: [1, 0, 0], v: [0, 1, 0] },
+  { id: 5, normal: [0, 0, -1], u: [-1, 0, 0], v: [0, 1, 0] }
+];
+
+// src/land/lattice.js
+var NODES = 2 ** 23;
+var CHUNK = 32;
+var CHUNK_NODES = CHUNK * CHUNK;
+var CHUNKS = NODES / CHUNK;
+var EMPTY = -32768;
+var APRON = 2;
+var JOIN = 8;
+var MOST_BOXES2 = 32;
+var SPAN2 = 2 ** 18;
+var ROCK_WORDS = CHUNK_NODES / 32;
+var NODE_METRES = 12696000 / NODES;
+var chunkKey = (face2, cx, cy) => `${face2}/${cx}/${cy}`;
+var chunkNumber = (face2, cx, cy) => (face2 * SPAN2 + cx) * SPAN2 + cy;
+var nodeDirection = (face2, i, j) => {
+  const { normal, u, v } = FACES2[face2];
+  return normalize(add(normal, add(scale(u, 2 * i / NODES - 1), scale(v, 2 * j / NODES - 1))));
 };
-var valueNoise = (px, py, pz) => {
-  const ix = Math.floor(px), iy = Math.floor(py), iz = Math.floor(pz);
-  const wx = px - ix, wy = py - iy, wz = pz - iz;
-  const ux = wx * wx * wx * (wx * (wx * 6 - 15) + 10);
-  const uy = wy * wy * wy * (wy * (wy * 6 - 15) + 10);
-  const uz = wz * wz * wz * (wz * (wz * 6 - 15) + 10);
-  const a = hash2(ix, iy, iz), b = hash2(ix + 1, iy, iz), c = hash2(ix, iy + 1, iz), d = hash2(ix + 1, iy + 1, iz);
-  const e = hash2(ix, iy, iz + 1), f = hash2(ix + 1, iy, iz + 1), g = hash2(ix, iy + 1, iz + 1), h = hash2(ix + 1, iy + 1, iz + 1);
-  return a + (b - a) * ux + (c - a) * uy + (e - a) * uz + (a - b - c + d) * ux * uy + (a - c - e + g) * uy * uz + (a - b - e + f) * uz * ux + (-a + b + c - d + e - f - g + h) * ux * uy * uz;
+var latticeOf = (point) => {
+  const face2 = FACES2.reduce((best, f) => dot(point, f.normal) > dot(point, best.normal) ? f : best);
+  const along2 = 1 / dot(point, face2.normal);
+  return { face: face2.id, x: (dot(point, face2.u) * along2 + 1) / 2 * NODES, y: (dot(point, face2.v) * along2 + 1) / 2 * NODES };
 };
-var fbmRange = (gain, octaves) => Math.abs(gain - 1) < 0.00001 ? octaves + 1 : (1 - gain ** (octaves + 1)) / (1 - gain);
-var fbm2 = ([x, y, z], gain, octaves) => {
-  let f = 1, a = 1, t = 0;
-  for (let i = 0;i < octaves; i++, f *= 2, a *= gain)
-    t += a * valueNoise(f * x, f * y, f * z);
-  return t;
+var weights = (t) => {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return [(-t3 + 2 * t2 - t) / 2, (3 * t3 - 5 * t2 + 2) / 2, (-3 * t3 + 4 * t2 + t) / 2, (t3 - t2) / 2];
 };
-var fbmScaled = (p, gain, octaves, min, max) => {
-  const h = fbmRange(gain, octaves);
-  return min + (max - min) * ((fbm2(p, gain, octaves) + h) / (2 * h));
+var slopes = (t) => {
+  const t2 = t * t;
+  return [(-3 * t2 + 4 * t - 1) / 2, (9 * t2 - 10 * t) / 2, (-9 * t2 + 8 * t + 1) / 2, (3 * t2 - 2 * t) / 2];
 };
-var ridgedFbmScaled = ([x, y, z], gain, octaves, offset, exponent, min, max) => {
-  let f = 1, a = 1, t = 0, weight = 1;
-  for (let i = 0;i < octaves; i++, f *= 2, a *= gain) {
-    const signal = (offset - Math.abs(valueNoise(f * x, f * y, f * z))) ** exponent * weight;
-    t += a * signal;
-    weight = Math.min(Math.max(signal * 2, 0), 1);
+var texelHash = (a, b, c, d) => {
+  let [x, y, z, w] = [a, b, c, d].map((k) => Math.imul(k, 1664525) + 1013904223 >>> 0);
+  x = x + Math.imul(y, w) >>> 0;
+  y = y + Math.imul(z, x) >>> 0;
+  z = z + Math.imul(x, y) >>> 0;
+  w = w + Math.imul(y, z) >>> 0;
+  [x, y, z, w] = [x, y, z, w].map((k) => (k ^ k >>> 16) >>> 0);
+  x = x + Math.imul(y, w) >>> 0;
+  y = y + Math.imul(z, x) >>> 0;
+  z = z + Math.imul(x, y) >>> 0;
+  return (x >>> 8) / 8388607.5 - 1;
+};
+var fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+var latticeNoise = (x, y, level, face2, salt) => {
+  const [i, j] = [Math.floor(x), Math.floor(y)];
+  const [u, v] = [fade(x - i), fade(y - j)];
+  const hash3 = (a, b) => texelHash(a >>> 0, b >>> 0, level + salt, face2);
+  return (hash3(i, j) * (1 - u) + hash3(i + 1, j) * u) * (1 - v) + (hash3(i, j + 1) * (1 - u) + hash3(i + 1, j + 1) * u) * v;
+};
+var ROCK_FROM = 15;
+var ROCK_TO = 21;
+var ROCK_SCALE = 0.3;
+var ROCK_SALT = 64;
+var rockRelief = (face2, x, y, slope) => {
+  let sum = 0;
+  for (let level = ROCK_FROM;level <= ROCK_TO; level++) {
+    const scale4 = 2 ** (level - 17);
+    const ridge = 1 - Math.abs(latticeNoise(x * scale4, y * scale4, level, face2, ROCK_SALT));
+    sum += (ridge * ridge - 1 / 3) * NODE_METRES / scale4;
   }
-  const low = (offset - 1) ** exponent;
-  const high = offset ** exponent * fbmRange(gain, octaves);
-  return min + (max - min) * ((t - low) / (high - low));
+  const steep = Math.min(Math.max((slope - 0.35) / 0.85, 0), 1);
+  return sum * ROCK_SCALE * (0.35 + 0.65 * steep * steep * (3 - 2 * steep));
 };
-var layerValue = (pos, n, scaleIndex) => {
-  const bias = BIAS2[scaleIndex];
-  const pt = pos.map((c, i) => (c + bias[i]) * n.density + GRID_OFFSET[i]);
-  return n.type === RIDGED ? ridgedFbmScaled(pt, n.gain, n.octaves, n.ridgeOffset, n.ridgeExponent, n.hmin, n.hmax) : fbmScaled(pt, n.gain, n.octaves, n.hmin, n.hmax);
-};
-var warpOffset = (pos, n) => [0, 1, 2].map((i) => layerValue(pos, n, i) * n.warpStrength);
-var add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-var scale3 = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
-var rotateDomain = ([x, y, z], angle) => {
-  const c = Math.cos(angle), s = Math.sin(angle);
-  return [c * x + s * y, -s * x + c * y, z];
-};
-var terrainHeight = (dir) => {
-  const pCoords = scale3(dir, 700000 * NOISE_SCALE / ROOT_SIZE);
-  const angle = fbmScaled(scale3(pCoords, 0.01), 1, 3, -Math.PI, Math.PI) * 0.4;
-  const baseH = layerValue(rotateDomain(scale3(pCoords, 0.5), angle), BASE_LAYER, 0);
-  const ratio = fbmScaled(scale3(dir, 40), 0.8, 3, 0, 1);
-  const v0 = warpOffset(pCoords, TERRAIN_LAYER_2);
-  const v1 = warpOffset(add3(pCoords, v0), TERRAIN_LAYER_1);
-  let h = layerValue(add3(pCoords, v1), TERRAIN_LAYER_0, 0);
-  h = (baseH + h * ratio * 0.9) / 1.3;
-  const pmix = fbmScaled(add3(scale3(pCoords, 0.53), [123, 456, 789]), 1, 3, 0, 1) * 0.5 + 0.5;
-  h **= 0.95 + (1.3 - 0.95) * pmix;
-  const pt = scale3(dir, 40);
-  const bf = Math.min(Math.max((fbmScaled(pt, 0.8, 5, 0, 1.2) - 0.5) / 0.5, 0), 1);
-  const lf = fbmScaled(scale3(pt, 10), 0.9, 8, 0, 0.03);
-  const deltaH = h - SEA_LEVEL;
-  const hf = Math.min(Math.max(Math.abs(deltaH) / lf, 0), 1) ** 1.4;
-  return SEA_LEVEL + deltaH * hf + (h - SEA_LEVEL - deltaH * hf) * bf;
-};
-var groundElevation = (dir) => terrainHeight(dir) * ELEV_SCALE;
-
-// src/build/survey.js
-var RADIUS = 6348000;
-var SEA = 12000;
-var DEG2 = Math.PI / 180;
-var unit3 = (v) => {
-  const length2 = Math.hypot(v[0], v[1], v[2]);
-  return [v[0] / length2, v[1] / length2, v[2] / length2];
-};
-var cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-var dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-var axesAt = (up) => {
-  const north = unit3([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
-  return { north, east: cross3(north, up) };
-};
-var frameAt2 = (at, heading = 0, ground = groundElevation) => {
-  const up = unit3(at);
-  const { north, east } = axesAt(up);
-  const ahead = north.map((v, i) => v * Math.cos(heading * DEG2) + east[i] * Math.sin(heading * DEG2));
-  const right = cross3(ahead, up);
-  const origin = [...at];
-  const base = Math.hypot(...at);
-  const point = (x, y, z = 0) => origin.map((v, i) => v + right[i] * x + ahead[i] * y + up[i] * z);
-  const local = (p) => {
-    const d = p.map((v, i) => v - origin[i]);
-    return [dot3(d, right), dot3(d, ahead), dot3(d, up)];
+var createLandField = ({ bare }) => {
+  const edits = new Map;
+  const rocks = new Map;
+  const values = new Map;
+  const bares = new Map;
+  const faces = new Map;
+  let version = 0;
+  const index = (i, j) => (j & CHUNK - 1) * CHUNK + (i & CHUNK - 1);
+  const inside = (i, j) => i >= 0 && j >= 0 && i < NODES && j < NODES;
+  const editAt = (face2, i, j) => inside(i, j) ? edits.get(chunkNumber(face2, i >> 5, j >> 5))?.[index(i, j)] ?? NaN : NaN;
+  const valueAt = (face2, i, j) => inside(i, j) ? values.get(chunkNumber(face2, i >> 5, j >> 5))?.[index(i, j)] ?? 0 : 0;
+  const rockAt = (face2, i, j) => {
+    const bits = inside(i, j) && rocks.get(chunkNumber(face2, i >> 5, j >> 5));
+    if (!bits)
+      return 0;
+    const k = index(i, j);
+    return bits[k >>> 5] >>> (k & 31) & 1;
   };
-  const surface = (dir) => RADIUS + Math.max(ground(dir), SEA);
-  const groundAt2 = (x, y) => {
-    const dir = unit3(point(x, y));
-    return local(dir.map((v) => v * surface(dir)))[2];
+  const bareAt = (face2, i, j) => {
+    const key = chunkNumber(face2, i >> 5, j >> 5);
+    let chunk2 = bares.get(key);
+    if (!chunk2)
+      bares.set(key, chunk2 = new Float64Array(CHUNK_NODES).fill(NaN));
+    const k = index(i, j);
+    if (Number.isNaN(chunk2[k]))
+      chunk2[k] = bare(nodeDirection(face2, i, j));
+    return chunk2[k];
   };
-  const wetAt = (x, y) => ground(unit3(point(x, y))) < SEA;
-  const depthAt = (x, y) => Math.max(0, SEA - ground(unit3(point(x, y))));
-  return { origin, up, right, ahead, heading, base, point, local, groundAt: groundAt2, wetAt, depthAt, surface };
+  const warm = (face2, i0, j0, i1, j1, until) => {
+    for (let j = Math.max(j0, 0);j <= Math.min(j1, NODES - 1); j++) {
+      if (performance.now() > until)
+        return false;
+      for (let i = Math.max(i0, 0);i <= Math.min(i1, NODES - 1); i++)
+        bareAt(face2, i, j);
+    }
+    return true;
+  };
+  const heightAt = (face2, i, j) => {
+    const edited = editAt(face2, i, j);
+    return Number.isNaN(edited) ? bareAt(face2, i, j) : edited;
+  };
+  const nearEdit = (face2, i0, j0, i1, j1) => {
+    const [e0, f0] = [Math.max(i0 - APRON, 0), Math.max(j0 - APRON, 0)];
+    const [e1, f1] = [Math.min(i1 + APRON, NODES - 1), Math.min(j1 + APRON, NODES - 1)];
+    const width = e1 - e0 + 1;
+    const marked = new Uint8Array(width * (f1 - f0 + 1));
+    for (let cy = f0 >> 5;cy <= f1 >> 5; cy++) {
+      for (let cx = e0 >> 5;cx <= e1 >> 5; cx++) {
+        const kept2 = edits.get(chunkNumber(face2, cx, cy));
+        if (!kept2)
+          continue;
+        for (let j = Math.max(f0, cy * CHUNK);j <= Math.min(f1, cy * CHUNK + CHUNK - 1); j++) {
+          for (let i = Math.max(e0, cx * CHUNK);i <= Math.min(e1, cx * CHUNK + CHUNK - 1); i++) {
+            if (!Number.isNaN(kept2[index(i, j)]))
+              marked[(j - f0) * width + i - e0] = 1;
+          }
+        }
+      }
+    }
+    return (i, j) => {
+      for (let b = Math.max(j - APRON, f0);b <= Math.min(j + APRON, f1); b++) {
+        for (let a = Math.max(i - APRON, e0);a <= Math.min(i + APRON, e1); a++)
+          if (marked[(b - f0) * width + a - e0])
+            return true;
+      }
+      return false;
+    };
+  };
+  const changed = new Set;
+  const boxes = [];
+  const keepBox = (face2, i0, j0, i1, j1) => {
+    const near = boxes.find((box) => box[0] === face2 && i0 <= box[3] + JOIN && box[1] <= i1 + JOIN && j0 <= box[4] + JOIN && box[2] <= j1 + JOIN) ?? (boxes.length >= MOST_BOXES2 ? boxes.find((box) => box[0] === face2) : null);
+    if (!near)
+      return boxes.push([face2, i0, j0, i1, j1]);
+    near.splice(1, 4, Math.min(near[1], i0), Math.min(near[2], j0), Math.max(near[3], i1), Math.max(near[4], j1));
+  };
+  const derive = (face2, i0, j0, i1, j1) => {
+    const [a0, b0] = [Math.max(i0 - APRON, 0), Math.max(j0 - APRON, 0)];
+    const [a1, b1] = [Math.min(i1 + APRON, NODES - 1), Math.min(j1 + APRON, NODES - 1)];
+    const near = nearEdit(face2, a0, b0, a1, b1);
+    let [c0, d0, c1, d1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let cy = b0 >> 5;cy <= b1 >> 5; cy++) {
+      for (let cx = a0 >> 5;cx <= a1 >> 5; cx++) {
+        const key = chunkNumber(face2, cx, cy);
+        const kept2 = edits.get(key);
+        let chunk2 = values.get(key);
+        for (let j = Math.max(b0, cy * CHUNK);j <= Math.min(b1, cy * CHUNK + CHUNK - 1); j++) {
+          for (let i = Math.max(a0, cx * CHUNK);i <= Math.min(a1, cx * CHUNK + CHUNK - 1); i++) {
+            const k = index(i, j);
+            const height = kept2 ? kept2[k] : NaN;
+            const value = Number.isNaN(height) ? near(i, j) ? -bareAt(face2, i, j) : 0 : height;
+            if (!chunk2) {
+              if (value === 0)
+                continue;
+              values.set(key, chunk2 = new Float32Array(CHUNK_NODES));
+              faces.set(face2, (faces.get(face2) ?? 0) + 1);
+            }
+            if (chunk2[k] === Math.fround(value))
+              continue;
+            chunk2[k] = value;
+            changed.add(key);
+            if (i < c0)
+              c0 = i;
+            if (j < d0)
+              d0 = j;
+            if (i > c1)
+              c1 = i;
+            if (j > d1)
+              d1 = j;
+          }
+        }
+      }
+    }
+    if (c1 >= c0)
+      keepBox(face2, c0, d0, c1, d1);
+    for (const key of changed) {
+      const chunk2 = values.get(key);
+      if (chunk2 && chunk2.every((value) => value === 0)) {
+        values.delete(key);
+        const face3 = Math.floor(key / SPAN2 / SPAN2);
+        faces.set(face3, faces.get(face3) - 1);
+      }
+    }
+    version++;
+  };
+  const setRock = (face2, cx, cy, bits) => {
+    const key = chunkNumber(face2, cx, cy);
+    const kept2 = edits.get(key);
+    const next = kept2 && bits ? Uint32Array.from(bits, (word, w) => {
+      let edited = 0;
+      for (let b = 0;b < 32; b++)
+        if (!Number.isNaN(kept2[w * 32 + b]))
+          edited |= 1 << b;
+      return (word & edited) >>> 0;
+    }) : null;
+    const rock2 = next?.some(Boolean) ? next : null;
+    const before = rocks.get(key);
+    if ((before ?? null) === rock2 || before && rock2 && before.every((word, w) => word === rock2[w]))
+      return;
+    if (rock2)
+      rocks.set(key, rock2);
+    else
+      rocks.delete(key);
+    changed.add(key);
+    keepBox(face2, cx * CHUNK - 1, cy * CHUNK - 1, cx * CHUNK + CHUNK, cy * CHUNK + CHUNK);
+  };
+  const setChunk = (face2, cx, cy, kept2) => {
+    const key = chunkNumber(face2, cx, cy);
+    if (kept2?.heights.some((h) => !Number.isNaN(h)))
+      edits.set(key, Float32Array.from(kept2.heights));
+    else if (edits.delete(key))
+      rocks.delete(key);
+    else
+      return setRock(face2, cx, cy, null);
+    derive(face2, cx * CHUNK, cy * CHUNK, cx * CHUNK + CHUNK - 1, cy * CHUNK + CHUNK - 1);
+    setRock(face2, cx, cy, kept2?.rock ?? null);
+  };
+  const chunk = (face2, cx, cy) => {
+    const key = chunkNumber(face2, cx, cy);
+    const kept2 = edits.get(key);
+    return kept2 ? { heights: Float32Array.from(kept2), rock: rocks.has(key) ? Uint32Array.from(rocks.get(key)) : null } : null;
+  };
+  const setNodes = (nodes) => {
+    const touched = new Set;
+    const boxes2 = new Map;
+    const stones = new Map;
+    let last = -1;
+    let kept2 = null;
+    let cleared = false;
+    let [face2, box] = [-1, null];
+    for (let n = 0;n < nodes.length; n++) {
+      const node = nodes[n];
+      const i = node[1];
+      const j = node[2];
+      const height = node[3];
+      const rock2 = node[4];
+      if (!inside(i, j))
+        continue;
+      if (node[0] !== face2)
+        [face2, box] = [node[0], boxes2.get(node[0]) ?? null];
+      const key = chunkNumber(face2, i >> 5, j >> 5);
+      if (key !== last)
+        [last, kept2] = [key, edits.get(key)];
+      if (!kept2) {
+        if (Number.isNaN(height))
+          continue;
+        edits.set(key, kept2 = new Float32Array(CHUNK_NODES).fill(NaN));
+      }
+      const k = index(i, j);
+      kept2[k] = height;
+      if (Number.isNaN(height))
+        cleared = true;
+      if (rock2 !== undefined || Number.isNaN(height)) {
+        if (!stones.has(key))
+          stones.set(key, Uint32Array.from(rocks.get(key) ?? new Uint32Array(ROCK_WORDS)));
+        const bits = stones.get(key);
+        bits[k >>> 5] = (rock2 && !Number.isNaN(height) ? bits[k >>> 5] | 1 << (k & 31) : bits[k >>> 5] & ~(1 << (k & 31))) >>> 0;
+      }
+      touched.add(key);
+      if (!box)
+        boxes2.set(face2, box = [i, j, i, j]);
+      if (i < box[0])
+        box[0] = i;
+      if (j < box[1])
+        box[1] = j;
+      if (i > box[2])
+        box[2] = i;
+      if (j > box[3])
+        box[3] = j;
+    }
+    if (cleared) {
+      for (const key of touched)
+        if (edits.get(key)?.every(Number.isNaN))
+          edits.delete(key);
+    }
+    for (const [face3, box2] of boxes2)
+      derive(face3, ...box2);
+    for (const [key, bits] of stones) {
+      const { face: face3, cx, cy } = chunkOfNumber(key);
+      setRock(face3, cx, cy, bits);
+    }
+    return new Set(Array.from(touched, (key) => {
+      const { face: face3, cx, cy } = chunkOfNumber(key);
+      return chunkKey(face3, cx, cy);
+    }));
+  };
+  const elevation = (dir, ground = bare) => {
+    if (!values.size)
+      return ground(dir);
+    const { face: face2, x, y } = latticeOf(dir);
+    if (!faces.get(face2))
+      return ground(dir);
+    const i = Math.floor(x);
+    const j = Math.floor(y);
+    const fx = x - i;
+    const fy = y - j;
+    const c00 = valueAt(face2, i, j);
+    const c10 = valueAt(face2, i + 1, j);
+    const c01 = valueAt(face2, i, j + 1);
+    const c11 = valueAt(face2, i + 1, j + 1);
+    const [e00, e10, e01, e11] = [c00 > 0, c10 > 0, c01 > 0, c11 > 0].map(Number);
+    const weight = (e00 * (1 - fx) + e10 * fx) * (1 - fy) + (e01 * (1 - fx) + e11 * fx) * fy;
+    if (weight <= 0)
+      return ground(dir);
+    const reference = (c00 * e00 + c10 * e10 + c01 * e01 + c11 * e11) / (e00 + e10 + e01 + e11);
+    const wx = weights(fx);
+    const wy = weights(fy);
+    let sum = 0;
+    for (let b = 0;b < 4; b++) {
+      let row = 0;
+      for (let a = 0;a < 4; a++) {
+        const value = valueAt(face2, i + a - 1, j + b - 1);
+        if (value !== 0)
+          row += wx[a] * (Math.abs(value) - reference);
+      }
+      sum += wy[b] * row;
+    }
+    let height = reference + sum;
+    const rock2 = rocks.size ? (rockAt(face2, i, j) * (1 - fx) + rockAt(face2, i + 1, j) * fx) * (1 - fy) + (rockAt(face2, i, j + 1) * (1 - fx) + rockAt(face2, i + 1, j + 1) * fx) * fy : 0;
+    if (rock2 > 0) {
+      const [dx, dy] = [slopes(fx), slopes(fy)];
+      let [gx, gy] = [0, 0];
+      for (let b = 0;b < 4; b++) {
+        for (let a = 0;a < 4; a++) {
+          const value = valueAt(face2, i + a - 1, j + b - 1);
+          if (value === 0)
+            continue;
+          gx += wy[b] * dx[a] * (Math.abs(value) - reference);
+          gy += dy[b] * wx[a] * (Math.abs(value) - reference);
+        }
+      }
+      height += rock2 * rockRelief(face2, x, y, Math.hypot(gx, gy) / NODE_METRES);
+    }
+    if (weight >= 1)
+      return height;
+    const base = ground(dir);
+    return base + weight * (height - base);
+  };
+  const taken = () => {
+    const out = { chunks: [...changed], boxes: boxes.splice(0) };
+    changed.clear();
+    return out;
+  };
+  return {
+    elevation,
+    editAt,
+    heightAt,
+    bareAt,
+    warm,
+    rockAt,
+    setChunk,
+    setNodes,
+    chunk,
+    taken,
+    values: (key) => values.get(key),
+    rockBits: (key) => rocks.get(key),
+    get rockNodes() {
+      let count = 0;
+      for (const bits of rocks.values())
+        for (const word of bits)
+          for (let rest = word;rest; rest &= rest - 1)
+            count++;
+      return count;
+    },
+    valueKeys: () => [...values.keys()],
+    editedKeys: () => [...edits.keys()].map((key) => chunkKey(Math.floor(key / SPAN2 / SPAN2), Math.floor(key / SPAN2) % SPAN2, key % SPAN2)),
+    get version() {
+      return version;
+    },
+    get empty() {
+      return edits.size === 0;
+    },
+    get dirty() {
+      return changed.size > 0;
+    }
+  };
+};
+var chunkOfNumber = (key) => ({ face: Math.floor(key / SPAN2 / SPAN2), cx: Math.floor(key / SPAN2) % SPAN2, cy: key % SPAN2 });
+// src/land/build-land.js
+var MOST_SAMPLES = 512 * 512;
+var fromBase642 = (text) => {
+  try {
+    return Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
+  } catch {
+    return null;
+  }
+};
+var readLand = (land2) => {
+  if (!land2 || typeof land2 !== "object")
+    return null;
+  const { at, step, size, heights } = land2;
+  if (!Array.isArray(at) || at.length !== 2 || !at.every(Number.isFinite) || !(step >= 0.25 && step <= 8))
+    return null;
+  if (!Array.isArray(size) || size.length !== 2 || !size.every((n) => Number.isInteger(n) && n >= 2) || size[0] * size[1] > MOST_SAMPLES)
+    return null;
+  const bytes = typeof heights === "string" ? fromBase642(heights) : null;
+  if (bytes?.length !== size[0] * size[1] * 2)
+    return null;
+  const view = new DataView(bytes.buffer);
+  const samples = Float64Array.from({ length: size[0] * size[1] }, (_, k) => {
+    const cm = view.getInt16(k * 2, true);
+    return cm === EMPTY ? NaN : cm / 100;
+  });
+  return { at, step, size, samples };
+};
+var landHeight = ({ at: [x0, y0], step, size: [nx, ny], samples }, x, y) => {
+  const fa = (x - x0) / step;
+  const fb = (y - y0) / step;
+  if (fa < 0 || fb < 0 || fa > nx - 1 || fb > ny - 1)
+    return NaN;
+  const a = Math.min(Math.floor(fa), nx - 2);
+  const b = Math.min(Math.floor(fb), ny - 2);
+  const [ta, tb] = [fa - a, fb - b];
+  const at = (i, j) => samples[(b + j) * nx + a + i];
+  return (at(0, 0) * (1 - ta) + at(1, 0) * ta) * (1 - tb) + (at(0, 1) * (1 - ta) + at(1, 1) * ta) * tb;
+};
+var landNodes = (land2, { origin, right, ahead, up }, radius) => {
+  const { at: [x0, y0], step, size: [nx, ny] } = land2;
+  const corners = [[x0, y0], [x0 + (nx - 1) * step, y0], [x0, y0 + (ny - 1) * step], [x0 + (nx - 1) * step, y0 + (ny - 1) * step]].map(([x, y]) => latticeOf(add(origin, add(scale(right, x), scale(ahead, y)))));
+  const nodes = [];
+  for (const face2 of new Set(corners.map((corner) => corner.face))) {
+    const on = corners.filter((corner) => corner.face === face2);
+    const [i0, i1] = [Math.max(Math.floor(Math.min(...on.map((c) => c.x))) - 2, 0), Math.min(Math.ceil(Math.max(...on.map((c) => c.x))) + 2, NODES - 1)];
+    const [j0, j1] = [Math.max(Math.floor(Math.min(...on.map((c) => c.y))) - 2, 0), Math.min(Math.ceil(Math.max(...on.map((c) => c.y))) + 2, NODES - 1)];
+    for (let j = j0;j <= j1; j++) {
+      for (let i = i0;i <= i1; i++) {
+        const dir = nodeDirection(face2, i, j);
+        if (latticeOf(dir).face !== face2)
+          continue;
+        const point = scale(dir, dot(origin, up) / dot(dir, up));
+        const offset = point.map((v, k) => v - origin[k]);
+        const [x, y] = [dot(offset, right), dot(offset, ahead)];
+        if (x < x0 || y < y0 || x > x0 + (nx - 1) * step || y > y0 + (ny - 1) * step)
+          continue;
+        const z = landHeight(land2, x, y);
+        nodes.push([face2, i, j, Number.isNaN(z) ? NaN : length(add(point, scale(up, z))) - radius]);
+      }
+    }
+  }
+  return nodes;
+};
+var frameOf = ({ origin, heading }) => {
+  const up = normalize(origin);
+  const north = normalize([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
+  const east = [north[1] * up[2] - north[2] * up[1], north[2] * up[0] - north[0] * up[2], north[0] * up[1] - north[1] * up[0]];
+  const h = heading * Math.PI / 180;
+  const ahead = add(scale(north, Math.cos(h)), scale(east, Math.sin(h)));
+  const right = [ahead[1] * up[2] - ahead[2] * up[1], ahead[2] * up[0] - ahead[0] * up[2], ahead[0] * up[1] - ahead[1] * up[0]];
+  return { origin, right, ahead, up };
 };
 
 // tools/build-kit.js
 var RADIUS2 = 6348000;
 var SEA2 = 12000;
-var DEG3 = Math.PI / 180;
+var DEG5 = Math.PI / 180;
 var unit4 = (v) => {
   const length2 = Math.hypot(...v);
   return v.map((x) => x / length2);
@@ -3432,10 +6773,10 @@ var axesAt2 = (up) => {
   const north = unit4([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
   return { north, east: cross4(north, up) };
 };
-var frameOf = (anchor) => {
+var frameOf2 = (anchor) => {
   const up = unit4(anchor.at);
   const { north, east } = axesAt2(up);
-  const ahead = north.map((v, i) => v * Math.cos(anchor.heading * DEG3) + east[i] * Math.sin(anchor.heading * DEG3));
+  const ahead = north.map((v, i) => v * Math.cos(anchor.heading * DEG5) + east[i] * Math.sin(anchor.heading * DEG5));
   const right = cross4(ahead, up);
   const base = groundElevation(up);
   const dirOf = (x, y) => unit4(up.map((v, i) => v * RADIUS2 + right[i] * x + ahead[i] * y));
@@ -3443,8 +6784,8 @@ var frameOf = (anchor) => {
   const wet = (x, y) => groundElevation(dirOf(x, y)) < SEA2;
   const depth = (x, y) => Math.max(0, SEA2 - groundElevation(dirOf(x, y)));
   const point = (x, y, z) => up.map((v, i) => v * (RADIUS2 + Math.max(base, SEA2) + z) + right[i] * x + ahead[i] * y);
-  const survey = ({ at: [cx, cy], size: [w, d], turn: turn2 = 0, step = 1 }) => {
-    const c = Math.cos(turn2 * DEG3), s = Math.sin(turn2 * DEG3);
+  const survey = ({ at: [cx, cy], size: [w, d], turn: turn3 = 0, step = 1 }) => {
+    const c = Math.cos(turn3 * DEG5), s = Math.sin(turn3 * DEG5);
     const nx = Math.max(1, Math.ceil(w / step)), ny = Math.max(1, Math.ceil(d / step));
     const heights = [];
     let wetAny = false;
@@ -3466,12 +6807,12 @@ var frameOf = (anchor) => {
           slope = Math.max(slope, Math.abs(at(i, j + 1) - at(i, j)) / (d / ny));
       }
     }
-    const round2 = (v) => +v.toFixed(3);
+    const round3 = (v) => +v.toFixed(3);
     return {
-      min: round2(Math.min(...heights)),
-      max: round2(Math.max(...heights)),
-      mean: round2(heights.reduce((sum, h) => sum + h, 0) / heights.length),
-      slope: +(Math.atan(slope) / DEG3).toFixed(1),
+      min: round3(Math.min(...heights)),
+      max: round3(Math.max(...heights)),
+      mean: round3(heights.reduce((sum, h) => sum + h, 0) / heights.length),
+      slope: +(Math.atan(slope) / DEG5).toFixed(1),
       wet: wetAny
     };
   };
@@ -3479,6 +6820,8 @@ var frameOf = (anchor) => {
 };
 
 // tools/build-check.js
+init_solid();
+await loadSolids().catch(() => console.warn("solids counted as their boxes: Manifold (src/manifold) could not be had"));
 var args = process.argv.slice(2);
 var option = (flag) => args.includes(flag) ? args[args.indexOf(flag) + 1] : null;
 var name = args[0];
@@ -3504,6 +6847,25 @@ var bank = new Map(existsSync(manifest) ? readJson(manifest).materials.map((mate
 }]));
 var species = new Map(catalog.species.map((entry) => [entry.species, entry]));
 var groundRadius = (dir) => RADIUS2 + Math.max(groundElevation(dir), SEA2);
+var bareRadius = (dir) => RADIUS2 + Math.max(bareElevation(dir), SEA2);
+var sameAnchor = (other) => other.anchor && spec.anchor && !other.anchor.exact && other.anchor.at.every((v, i) => v === spec.anchor.at[i]) && other.anchor.heading === spec.anchor.heading;
+var lands = [spec, ...name.endsWith(".json") ? readdirSync(dirname(file)).filter((other) => other.endsWith(".json") && join(dirname(file), other) !== file).map((other) => {
+  try {
+    return readJson(join(dirname(file), other));
+  } catch {
+    return null;
+  }
+}) : []].filter((build) => build?.land && build.anchor && (build === spec || sameAnchor(build)));
+if (lands.length) {
+  const field = createLandField({ bare: bareElevation });
+  for (const build of lands) {
+    const up = build.anchor.at.map((v) => v / Math.hypot(...build.anchor.at));
+    const land2 = readLand(build.land);
+    if (land2)
+      field.setNodes(landNodes(land2, frameOf({ origin: up.map((v) => v * bareRadius(up)), heading: build.anchor.heading }), RADIUS2));
+  }
+  useLand(field);
+}
 var surveyFile = option("--survey");
 var zone = null;
 if (surveyFile) {
@@ -3515,19 +6877,20 @@ if (surveyFile) {
   })(spec.anchor.at) : null;
   if (!anchored)
     throw new Error("--survey: the build says nowhere (no anchor)");
-  const within2 = ([x, y, z]) => Math.hypot(...seen.point(x, y, z).map((v, i) => v - anchored[i])) <= ZONE.radius;
-  const near = (survey.builds ?? []).filter((build) => within2(build.centre));
+  const within4 = ([x, y, z]) => Math.hypot(...seen.point(x, y, z).map((v, i) => v - anchored[i])) <= ZONE.radius;
+  const near = (survey.builds ?? []).filter((build) => within4(build.centre));
   zone = {
     parts: near.reduce((sum, build) => sum + build.parts, 0),
     lights: near.reduce((sum, build) => sum + (build.lights ?? 0), 0),
     systems: near.reduce((sum, build) => sum + (build.emitters ?? 0), 0),
-    trees: (survey.trees ?? []).filter((tree) => within2(tree.at)).length
+    trees: (survey.trees ?? []).filter((tree) => within4(tree.at)).length
   };
 }
-var checked = checkBuild(spec, { materials: bank, isSpecies: (name2) => species.has(name2), groundRadius, zone });
+var checked = checkBuild(spec, { materials: bank, isSpecies: (name2) => species.has(name2), groundRadius, bareRadius, zone });
 var { records, errors, notes, objects, totals } = checked;
 var { inFrame } = checked.frame;
-var frame = frameOf(spec.anchor);
+var frame = frameOf2(spec.anchor);
+var lift = RADIUS2 + groundElevation(frame.up) - Math.hypot(...checked.frame.origin);
 var dot4 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 var along2 = (vector2) => [dot4(vector2, frame.right), dot4(vector2, frame.ahead), dot4(vector2, frame.up)];
 var cornersOf2 = (parts, at, rotation) => parts.flatMap((part) => [-1, 1].flatMap((sx) => [-1, 1].flatMap((sy) => [-1, 1].map((sz) => {
@@ -3545,8 +6908,8 @@ var boxOf2 = (part, unit5) => {
 };
 var topOf = (box, x, y) => box.plane ? box.plane.top[2] - (box.plane.up[0] * (x - box.plane.top[0]) + box.plane.up[1] * (y - box.plane.top[1])) / box.plane.up[2] : box.max[2];
 var units = records.filter((record) => record.type === "object" || record.type === "instance").map((unit5) => ({ unit: unit5, parts: records.filter((part) => part.object === (unit5.of ?? unit5.id)) }));
-var boxes2 = units.flatMap(({ unit: unit5, parts }) => parts.map((part) => ({ unit: unit5.id, ...boxOf2(part, unit5) })));
-var support = ([x, y, z], unit5) => Math.max(frame.ground(x, y), ...boxes2.filter((box) => box.unit !== unit5 && x >= box.min[0] && x <= box.max[0] && y >= box.min[1] && y <= box.max[1] && topOf(box, x, y) <= z + 0.05).map((box) => topOf(box, x, y)));
+var boxes = units.flatMap(({ unit: unit5, parts }) => parts.map((part) => ({ unit: unit5.id, ...boxOf2(part, unit5) })));
+var support = ([x, y, z], unit5) => Math.max(frame.ground(x, y) + lift, ...boxes.filter((box) => box.unit !== unit5 && x >= box.min[0] && x <= box.max[0] && y >= box.min[1] && y <= box.max[1] && topOf(box, x, y) <= z + 0.05).map((box) => topOf(box, x, y)));
 var settles = (part) => part.kind === "road" || part.kind === "fence" && Array.isArray(part.params?.points);
 for (const { unit: unit5, parts } of units) {
   if (!parts.length || parts.every(settles))
@@ -3558,13 +6921,14 @@ for (const { unit: unit5, parts } of units) {
   const xs = corners.map((c) => c[0]), ys = corners.map((c) => c[1]);
   const centre = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2, bottom];
   const gap = Math.max(...[...low, centre].map((point) => bottom - support(point, unit5.id)));
-  if (gap > 0.05 && unit5.vehicle?.type !== "boat")
+  const floats = afloat(unit5.vehicle?.type);
+  if (gap > 0.05 && !floats)
     notes.push(`${label}: a gap of ${gap.toFixed(2)} m under its lowest parts — lower it, or its footing`);
-  if (unit5.vehicle?.type === "boat") {
+  if (floats) {
     const under = Math.min(...[...low, centre].map(([x, y]) => frame.depth(x, y)));
     const needs = inFrame(unit5.at)[2] - bottom + 0.2;
     if (!frame.wet(centre[0], centre[1]))
-      notes.push(`${label}: a boat floats only at sea — this one stands on land`);
+      notes.push(`${label}: a ${unit5.vehicle.type} floats only at sea — this one stands on land`);
     else if (under < needs)
       notes.push(`${label}: ${under.toFixed(2)} m of water under it — it needs ${needs.toFixed(1)} m, or it sits on the bottom and its engine cannot move it (the survey's depths say where)`);
   } else if (low.some(([x, y]) => frame.wet(x, y)))
@@ -3589,6 +6953,10 @@ for (const object of objects) {
 console.log(`triangles, clones counted: ${totals.triangles[0]} at the finest level, ${totals.triangles[1]} at the second; ${totals.meshes} distinct meshes`);
 console.log(`trees: ${totals.trees}, ${treeTriangles} triangles near, ${variants.size} variants`);
 console.log(`see-through faces: ${totals.seeThrough} (glass and water, the dear ones), cut-out: ${totals.cutOut}`);
+if (totals.media)
+  console.log(`media: ${totals.media} faces show it, ${totals.videos} of them videos (8 shown at once, 4 videos, the nearest)`);
+if (totals.pages)
+  console.log(`pages: ${totals.pages} faces show one (the 8 nearest drawn as they change, with media; 32 more still)`);
 console.log(`lights: ${totals.lights} (${totals.nightLights} at night only), at most ${totals.crowd} within 30 m of one another`);
 console.log(`particles: ${totals.systems} systems (${totals.blended} blended — smoke, steam, fog, water), ${totals.particles} particles in the air, at most ${totals.swarm} systems within 30 m`);
 var valueOf = (key) => key === "triangles" ? totals.triangles[0] : totals[key];

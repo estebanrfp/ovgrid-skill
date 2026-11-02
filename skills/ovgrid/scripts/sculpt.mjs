@@ -2015,7 +2015,8 @@ var BIN_CHUNK = 5130562;
 var UNREAD = {
   KHR_draco_mesh_compression: "compressed with Draco: decompress it first (npx @gltf-transform/cli copy in.glb out.glb)",
   EXT_meshopt_compression: "compressed with meshopt: decompress it first (npx @gltf-transform/cli copy in.glb out.glb)",
-  KHR_mesh_quantization: null
+  KHR_mesh_quantization: null,
+  KHR_materials_pbrSpecularGlossiness: null
 };
 var localOf = (node) => {
   if (node.matrix)
@@ -2110,16 +2111,24 @@ var readGltf = (bytes, { bufferOf = null } = {}) => {
       }
     return out;
   };
-  const materials = (gltf.materials ?? []).map((material, i) => ({ name: material.name ?? `material ${i}`, color: (material.pbrMetallicRoughness?.baseColorFactor ?? [1, 1, 1, 1]).slice(0, 3) }));
+  const materials = (gltf.materials ?? []).map((material, i) => ({ name: material.name ?? `material ${i}`, color: (material.pbrMetallicRoughness?.baseColorFactor ?? material.extensions?.KHR_materials_pbrSpecularGlossiness?.diffuseFactor ?? [1, 1, 1, 1]).slice(0, 3) }));
   const fallback = materials.length;
   materials.push({ name: "none", color: [0.8, 0.8, 0.8] });
-  const positions = [], indices = [], materialOf = [], notes = [];
+  const positions = [], indices = [], materialOf = [], pieceOf = [], pieces = [], notes = [];
   const shaded = new Map;
   const scene = gltf.scenes?.[gltf.scene ?? 0];
   const roots = scene?.nodes ?? (gltf.nodes ?? []).map((_, i) => i).filter((i) => !(gltf.nodes ?? []).some((node) => node.children?.includes(i)));
+  const lights = [];
   const visit = (index, parent) => {
     const node = gltf.nodes[index];
     const world = multiply(parent, localOf(node));
+    const at2 = [world[12], world[14], world[13]];
+    const light = node.extensions?.KHR_lights_punctual?.light;
+    if (light !== undefined) {
+      const kind = gltf.extensions?.KHR_lights_punctual?.lights?.[light] ?? {};
+      lights.push({ name: node.name ?? kind.name ?? `light ${light}`, type: kind.type ?? "point", color: kind.color ?? [1, 1, 1], intensity: kind.intensity ?? 1, range: kind.range ?? null, at: at2 });
+    } else if (node.mesh === undefined && /light|lamp|lumen|bulb/i.test(node.name ?? ""))
+      lights.push({ name: node.name, type: "empty", at: at2 });
     if (node.mesh !== undefined) {
       for (const primitive of gltf.meshes[node.mesh].primitives) {
         const mode = primitive.mode ?? 4;
@@ -2145,6 +2154,7 @@ var readGltf = (bytes, { bufferOf = null } = {}) => {
         if (mode === 6)
           order = order.slice(2).flatMap((_, i) => [order[0], order[i + 1], order[i + 2]]);
         const material = primitive.material ?? fallback;
+        const piece = pieces.push({ name: node.name ?? `node ${index}`, material }) - 1;
         const determinant = world[0] * (world[5] * world[10] - world[9] * world[6]) - world[4] * (world[1] * world[10] - world[9] * world[2]) + world[8] * (world[1] * world[6] - world[5] * world[2]);
         const turn = determinant > 0;
         for (let i = 0;i + 2 < order.length; i += 3) {
@@ -2154,6 +2164,7 @@ var readGltf = (bytes, { bufferOf = null } = {}) => {
           else
             indices.push(first + a, first + b, first + c);
           materialOf.push(material);
+          pieceOf.push(piece);
         }
         if (primitive.attributes.COLOR_0 !== undefined) {
           const colors = accessor(primitive.attributes.COLOR_0), width = COMPONENTS[gltf.accessors[primitive.attributes.COLOR_0].type];
@@ -2183,6 +2194,10 @@ var readGltf = (bytes, { bufferOf = null } = {}) => {
     indices: Uint32Array.from(indices),
     materialOf: Uint32Array.from(materialOf),
     materials,
+    pieceOf: Uint32Array.from(pieceOf),
+    pieces,
+    lights,
+    title: gltf.asset.extras?.title ?? null,
     author: gltf.asset.extras?.author ?? gltf.asset.copyright ?? null,
     licence: gltf.asset.extras?.license ?? null,
     source: gltf.asset.extras?.source ?? null,

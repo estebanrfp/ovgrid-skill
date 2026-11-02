@@ -22,11 +22,19 @@ every system in view (1,500 particles), each thinned alike past it.
 
 `particles` on a prim: a kit's name — `"campfire"`, `"torch"`, `"chimney"` — one layer —
 `{ "preset": "smoke", "scale": 1.5, "amount": 0.8, "tint": [0.8, 0.8, 0.8] }` — or up to four layers
-in a list. The presets: `fire`, `smoke`, `sparks`, `steam`, `fog`, `fountain`, `snow`. `amount`
-(0.1–4) is how many, `scale` (0.1–10) how large and how far they go, `tint` multiplies their
-colours; any of a preset's own parameters may be given over it. Every name, range and each
-preset's own values: catalog.json → `particles`. A string names a kit only: a preset is
+in a list. The presets: `fire`, `smoke`, `sparks`, `steam`, `fog`, `fountain`, `snow` (soft
+flecks), `snowflakes`, `rain`, `fireflies`, `magic` (magic dust), `bubbles`, `confetti`, `leaves`
+(falling), `exhaust` (a jet engine's or a rocket's flame, straight out of its part). `amount` (0.1–4) is how many, `scale` (0.1–10) how large and how far they go, `tint`
+multiplies their colours; any of a preset's own parameters may be given over it. Every name, range
+and each preset's own values: catalog.json → `particles`. A string names a kit only: a preset is
 `{ "preset": "steam" }`, never `"steam"`.
+
+- **Their shape**, drawn by the shader, no image, sharp however near: `"shape"` is `soft` (a soft
+  puff: fire, smoke, steam, fog — the default), `drop` (round end first along its motion: rain),
+  `flake`, `sparkle`, `bubble`, `leaf` (petals too, in their colour), `heart`, `confetti` or
+  `firefly` (a glow that comes and goes). Any preset takes any shape: `{ "preset": "snowflakes",
+  "shape": "heart", "color": [[1, 0.4, 0.6], [1, 0.8, 0.9]] }` rains hearts. `"variety"` (0–1): how
+  far each particle's hue strays from its colours — 1 every hue (confetti), 0.1–0.2 a little (leaves).
 
 - **Thrown from the top of the prim**, in a cone round its own +z, then carried by the world's up,
   east and north (`accel`, `drift`). Put the emitter where the effect starts — a chimney's cap,
@@ -34,6 +42,11 @@ preset's own values: catalog.json → `particles`. A string names a kit only: a 
   a `phantom` one does: emitters are phantom.
 - **Steady**: leave `since` out and they have always been going. `"on": false` keeps a layer
   switched off.
+- **While it runs**: `"running": true` on a layer of a vehicle's part — or of what runs a route —
+  throws it only while that runs: driven, here or by another, or on its Auto or its route. It comes up
+  over 3 s as it starts and dies away as it stops, as a helicopter's rotors do; still, none of it, at no
+  cost. An engine's flame, a car's exhaust smoke, a steamer's funnel. On anything else it never shows
+  (the check says so).
 - **Flames light only by their part's light**: without one they glow and light nothing. With it on
   (`true` or `"night"`), the part lights as its `light` says — glowing embers (`emissive` 1, warm)
   with `"light": { "range": 5, "flicker": 0.35 }` light a room or a square — and the two nearest
@@ -51,7 +64,14 @@ preset's own values: catalog.json → `particles`. A string names a kit only: a 
 | `{ "preset": "smoke" }` | a smouldering ruin, a kiln, a charcoal pile | | |
 | `{ "preset": "fog" }` | low ground: a valley floor, a shore, a marsh, a graveyard | a slab sunk a few cm under the ground (drawn, unseen) | slow and wide (a 4 m disc); see the costs |
 | `{ "preset": "fountain" }` | a fountain's jet | a nozzle at the water, upright | `floor`, negative: how far under the nozzle the drops stop (the basin's water) |
-| `{ "preset": "snow" }` | snow over a place | high over it | an 8 m disc by default |
+| `{ "preset": "snowflakes" }` | snow over a place | high over it | an 8 m disc by default; `snow` the same as soft flecks |
+| `{ "preset": "rain" }` | a shower under a cloud, a dripping eave, a waterfall's spray | the cloud's or the eave's underside | a 2.5 m disc, drops falling ~7 m; `radius` wider for a field |
+| `{ "preset": "fireflies" }` | a garden, a meadow or a pond at night | a slab in the grass (drawn, unseen) | a dozen in a 3 m round, wandering |
+| `{ "preset": "magic" }` | a wizard's table, a portal's rim, a wishing well | where the magic is | sparkles in colours, bursting and rising |
+| `{ "preset": "bubbles" }` | an aquarium, a cauldron, a bath | the water's floor or surface | rising and wobbling |
+| `{ "preset": "confetti" }` | a party, a stage, a wedding arch | at the floor, upright | thrown up in every colour, fluttering down |
+| `{ "preset": "leaves" }` | autumn under a tree, a windy lane | in the crown, 4–6 m up | falling, fluttering, drifting east |
+| `{ "preset": "exhaust", "running": true }` | a jet engine, a rocket, an afterburner — on a vehicle | the nozzle's face: the part turned so that its +z points the way it blows | whitish to blue and almost see-through, ~2 m long from a nozzle ~0.5 m across; `"scale": 2` for one 1.3 m across; `"alpha": [0.1, 0]` brighter, towards white-hot |
 
 ```json
 { "name": "chimney cap", "shape": "cube", "at": [3.3, -0.8, 7.1], "size": [0.84, 1.04, 0.1], "material": "paving/stone/granite-tile-04", "particles": "chimney" },
@@ -81,12 +101,15 @@ example; catalog.json → `behaviours` every range).
 | `door` | every door people use | the door kind shut, `{ "type": "door", "trigger": "both", "reach": 2.5, "stay": 8 }`: it opens as someone comes within 2.5 m or on a click, and shuts once they have gone; `"click"` for a door that waits to be knocked on |
 | `slide` | sliding doors, shutters, hatches, a shop's window | `{ "type": "slide", "x": -1.3, "trigger": "both", "reach": 2.5, "stay": 12 }`: along its own x as someone comes near or on a click, back by itself; a shutter on a click alone |
 | `spin` | windmill sails, a water wheel, a weathervane, a carousel, a sign | an object whose own z is the axle: sails `"turn": [90, 0, yaw]` (axle level), `{ "type": "spin", "speed": 12 }` °/s |
+| `bounce` | a ball, a toy, a sign that jumps | `{ "type": "bounce", "height": 0.6 }`: up along its own z and back as a ball falls, over and over; whoever stands on it goes with it |
 | `move` | an elevator, a lift bridge, a ferry, a moving platform | an object, `{ "type": "move", "z": 3.2, "speed": 1.5, "wait": 4 }` — its own axes, there and back |
+| `lift` | a lift between floors that waits to be called: in a house, a tower, a vessel | its platform, rails and buttons, parts of one object, each `{ "type": "lift", "stops": [-3.8, -7], "group": "lift", "button": "none" }` — a floor's button `"button": "stop", "stop": 1` —, a `call` button at each stop |
 | `belt` | a conveyor, an escalator, a moving walkway | `{ "type": "belt", "speed": 0.6 }` carries along its own y; stairs rise along their y |
+| `passage` | in and out of a vehicle — or anything closed — by a click, standing | its hull's parts `{ "type": "passage", "way": "in", "x": 0.6, "y": 3, "z": 1.6 }` (its floor inside, in its object's frame), its door's `"way": "both"` with the same place: a click on its door from inside puts one out past it |
 | `route` | a tour boat, a train, a cart on its round | an object, `{ "type": "route", "points": [[0, 40, 0], [30, 60, 0], [60, 20, 0]], "speed": 3, "stop": 10 }` — through its points and on again (`"mode": "back"`: there and back), turning to where it goes, stopping at each (`"at": "ends"`: only where it is kept) |
 
-- **What people ride moves whole**: a behaviour on an object carries the avatar standing on it. A
-  part moving inside its object is drawn moving, but its collider is made again only once it stops.
+- **What people ride carries them**: a behaviour on an object carries the avatar standing on it, and so
+  does a part moving inside its object — a lift's platform in a building or a vessel, as it goes.
 - Slow is believable: sails 6–15 °/s, a water wheel 20–40 °/s, an elevator 1–2 m/s.
 - Everything moves the same on every peer from the clock: no two players see a different ferry.
 
@@ -129,7 +152,7 @@ WebAssembly): no page, no network, no storage, nothing but its API.
 
 | | |
 |---|---|
-| `on(event, handler, options?)` | `'click'` `({ who, face })` — who clicked (an address, lower case; null if not signed in); `'near'`, `'away'` `({ who, count })` — someone within `options.radius` m (0.5–32, 5 unless said), and gone; `'day'`, `'night'` — the sun crossing the horizon where it stands, once at start as it is; `'change'` `(props)` — what is kept of it changed |
+| `on(event, handler, options?)` | `'click'` `({ who, face, target, uv, values })` — who clicked (an address, lower case; null if not signed in), on a page the `id` of the element it fell on, where on the page (across and down, 0–1) and its fields as the clicker had them (by `id`, a box's or a radio's by its `name`); `'near'`, `'away'` `({ who, count })` — someone within `options.radius` m (0.5–32, 5 unless said), and gone; `'day'`, `'night'` — the sun crossing the horizon where it stands, once at start as it is; `'change'` `(props)` — what is kept of it changed |
 | `every(seconds, handler)`, `after(seconds, handler)`, `cancel(id)` | timers on the shared clock (0.1 s at least) |
 | `set(props)` | what it shows, here and now, over what is kept: every peer running it shows the same; nothing written |
 | `keep(props)` | the same, kept: written by its owner's peer, signed, for everyone — at most once a second |

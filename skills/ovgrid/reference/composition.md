@@ -47,11 +47,18 @@ ways through it, what stands along them, what grows round them, what lights them
 
 ## Forests, groves, clearings
 
-- **Species by place**: conifers (`fir`, `pine`, `cypress`) on heights and slopes, broadleaf
-  (`oak`, `maple`, `birch`, `poplar`) in valleys and round villages, `willow` by water, `olive`,
-  `cypress` and `pine` in the south, palms (`coconut`, `date`, `fanPalm`) on hot coasts, `dead`
+- **Species by place**: conifers (`fir`, `pine`, `cypress`, `blackPine`, `sugi`) on heights and slopes,
+  `redwood` and `dawnRedwood` in damp valleys, broadleaf (`oak`, `maple`, `birch`, `poplar`, `beech`,
+  `chestnut`) in valleys and round villages, `plane`, `zelkova`, `camphor` and `hackberry` along streets
+  and squares, `willow` and `alder` by water, `feverTree` and `blueGum` where it is hot, `olive`,
+  `cypress` and `pine` in the south, palms (`coconut`, `date`, `fanPalm`, `curvedCoconut` leaning over a beach, `dateClump` in an oasis)
+  on hot coasts, `spindle` and `christmas` palms in gardens, `dead`
   ones sparingly. One dominant species 60–70 %, one or two others; bushes (`bush`, `oleander`,
   `fern`) at the edges and in gardens.
+- **Meadows, beds and borders**: a meadow is `meadowGrass` with `rudbeckia`, `daisy` or `poppy`
+  sown loose through it; beds hold `lily`, `gladiolus`, `columbine`, `heather` or `sunflower`, a few
+  of a kind together; `sedge` and `papyrus` grow by water, `hosta`, `monstera`, `strelitzia` and
+  `cordyline` under palms in a hot garden. These are 0.3–1.3 m tall: 0.4–0.8 m apart, never one alone.
 - **Spacing**: crowns may touch in a wood — 0.8–1.2 × the crown's width apart (twice its `reach`
   in catalog.json → `species`: an oak's ~7 m reach, 10–14 m apart in open woodland, 6–8 m in a dense
   wood); a row of poplars 5–6 m apart.

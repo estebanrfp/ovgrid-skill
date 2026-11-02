@@ -13,7 +13,7 @@ refuses the build. Counted with every clone (a clone's parts draw again).
 
 | | fair | most | Why |
 |---|---|---|---|
-| parts | 1,500 | 4,000 | each an instance; the reference village is 593 |
+| parts | 1,500 | 4,000 | each an instance; the reference village is 65, rethought (535 as prims) |
 | triangles | 150,000 | 600,000 | at the finest level, near the camera; round shapes are the dear ones |
 | materials | 40 | 96 | each ~150 kB for every visitor to fetch, ~700 kB up close; past 16 within 10 m, the nearest blur |
 | lights | 12 | 32 | the renderer lights with the 32 strongest in view |
@@ -26,7 +26,10 @@ refuses the build. Counted with every clone (a clone's parts draw again).
 
 Besides: **an object holds at most 256 parts** (split a village into objects: each house, the
 square, each run of fence), a part's `light` reaches **10 m** at most, a build is at most 2 MB of
-JSON.
+JSON. Parts are what a build weighs on every peer — each a record signed, kept and sent to whoever
+comes —, so a shape a `solid` makes in one part (a hull, a rail, a wheel and its spokes) beats a
+pile of prims. A solid comes to at most 5,000 triangles before its smoothing; each step of smoothing
+multiplies what came before it by 4, 9 or 16, held to 5,000 near, its cage alone far away.
 
 ## What a place may hold
 
@@ -53,6 +56,8 @@ A place past its *most* takes nothing more: build lighter, or somewhere else.
 | Clones | A transform each; the original's parts, meshes and far mesh shared | Clone what repeats unchanged |
 | See-through faces (glass, water, `opacity` < 1) | A pass of their own, sorted far to near, no hidden-surface removal: ~0.3 ms for a layer covering the screen | Small panes; no big translucent walls; no glass behind glass |
 | Cut-out materials (fences, grates) | Discard fragments, defeating the GPU's hidden-surface removal | Small things only |
+| Media (videos, GIFs, stickers on faces) | The 8 nearest faces with media get a screen each (18.9 MB of video memory once one is near). A video's new frame is copied in ~0.2 ms, a sticker's in ~0.3 ms (480 × 270). Nothing at all without a face with media near | On a board's front, not its whole surface; a few near one another (format.md, Media) |
+| Pages (HTML on a face) | The 8 nearest take the screens with media, drawn when they change — 0.3–0.5 ms a page where the browser has HTML-in-Canvas —, each page's drawings 2 % of the GPU at most and what blurs left out, a texture each (2.4 MB at most); the rest show still, 32 at once, 0.8 MB each, made smaller once and mipmapped; a page that lights itself is a light round it, counted with the lights; an effect it is drawn through costs only its face's pixels, nothing measurable at a board's size (a CRT, Liquid Glass); nothing at all without a face with a page near. An action — a stroke drawn too — is a write in the world's graph — a person's one a second, what they do between going with the next —, and today every write has every peer save the whole graph again (200 ms at 15,000 nodes) | On a board's front; changed by its script a few times a second at most; actions for what people do now and then — signing, voting, a visit —, never a stream (format.md, Pages) |
 | Lights | Per lit pixel within range. Up to 8 in view: every pixel tries all; more: clustered, dearer; the 32 strongest kept. Off by day outdoors; `'night'` ones cost nothing by day | Few, short (≤ 10 m, 5–8 typical), ≤ 8 within any 30 m |
 | Glow | A half-resolution pass when anything glows in view | Halos for a few lanterns, not for every window |
 | Particles | Symbolic: a flame 3–4 cards, smoke 3–5 puffs; one budget a frame for every system in view (1,500 particles, 0.6 of the screen covered), thinned alike past it; past 30 m a part throws its first layer only, past 200 m nothing. Blended ones (smoke, steam, fog) are the dearest where they fill the screen | A chimney for each burning hearth, a few fires, fog in one or two hollows (effects.md) |

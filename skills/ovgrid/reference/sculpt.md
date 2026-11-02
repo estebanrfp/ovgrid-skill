@@ -8,7 +8,9 @@ record, which every peer draws as it draws any prim, coarser as it gets farther.
 format's own: whatever you describe, a part never costs more.
 
 Boxes, walls, floors, beams, steps and anything flat stay prims and kinds (format.md): a box is 12
-triangles, a sculpt hundreds. Reach for a sculpt only where the shape is curved.
+triangles, a sculpt hundreds. **Make a sculpt only when the person asks for one**: a curved or
+organic shape is otherwise a solid, faceted — a revolve, an extrude, a loft or a sweep of its profile,
+a large smooth curve a coarse cage smoothed near (format.md, «Choosing a recipe»).
 
 ## The flow
 

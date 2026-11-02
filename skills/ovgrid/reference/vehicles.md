@@ -1,4 +1,4 @@
-# 6. Interactivity: vehicles — a car, a motorbike, a boat, a train
+# 6. Interactivity: vehicles — a car, a motorbike, a bicycle, a boat, a ship or yacht, a submarine, a helicopter, a plane, a train
 
 An object one sits in and drives. Its owner, sitting on its seat, drives it — W and S throttle and
 brake, A and D steer, Space the hand brake, Escape out — and everyone sees it go, with whoever rides
@@ -7,11 +7,16 @@ then 0.07 ms of physics a frame on its driver's peer alone.
 
 ## What makes one
 
-- **The object** says what it is: `"vehicle": { "type": "car" }` — `car`, `bike`, `boat` or
-  `train` — and its parameters, each held to its range (catalog.json → `vehicles`): a car's
-  `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg); a bike's the same; a boat's
-  `power`, `speed`, `steer` (its rudder) and `mass`; a train's `speed` and `accel`.
-- **A seat**: a part with `"seat": true`, sat on by a click — on its top, facing its +y. The
+- **The object** says what it is: `"vehicle": { "type": "car" }` — `car`, `bike`, `bicycle`, `boat`, `ship`,
+  `submarine`, `helicopter`, `plane` or `train` — and its parameters, each held to its range (catalog.json →
+  `vehicles`): a car's `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg); a bike's the
+  same; a bicycle's those — `power` its rider's push, `mass` with its rider — and `gear` (how many turns
+  its back wheel makes for each of its pedals'); a boat's `power`, `speed`, `steer` (its rudder) and `mass`; a ship's `speed`, `accel` (m/s²),
+  `turn` and `thrusters` (°/s); a submarine's those and `dive` (m/s) and `depth` (m); a helicopter's
+  `speed`, `accel`, `turn`, `climb` (m/s) and `ceiling` (m over the ground); a plane's those and `lift`
+  (m/s, its take-off speed); a train's `speed` and `accel`.
+- **A seat**: a part with `"seat": true`, sat on by a click — on its top, facing its +y, or where
+  its sit target says (`"seat": { "at": [x, y, z], "turn": 0 }`: format.md). The
   driver's where the driver sits; more for passengers. The driver faces +y, so the driver's left is
   +x: a car that keeps to the right of the road, as in Spain, has its driver's seat and steering
   wheel at +x (the roadster's at x = 0.36); one that keeps to the left, at −x.
@@ -130,6 +135,53 @@ axle to the head, its handlebar a rounded box across it.
 ] }
 ```
 
+## A bicycle
+
+Ridden as a motorbike is, and pedalled. **What lies within a wheel turns with it** — within its width
+and its radius of its axle, a part centred on its axle as far as its size across — and is not its body:
+so a wheel is its volume, a plain cylinder lying across it with `"collisionOnly": true` (not drawn), and
+round its spokes a tyre (a torus) and a rim (a hollow cylinder), its hub (a sphere stretched along x)
+and its spokes (thin cylinders through the hub, two spokes each), all `"phantom": true`. **Its crank** is
+a cylinder lying across it between its wheels, collision only too, as wide as its pedals and reaching
+past them: its arms, its pedals (rods along x — a rounded box whose radius is its half thickness; a
+cylinder lying across it would be a wheel) and its chainring lie within it, phantom, and turn as its
+rider pedals — at their first turn the right pedal (−x) at the top. **Its saddle** is a seat in the pose
+`ovgrid/pedalling`, its sit target where that pose was made: the feet meet the pedals and the hands the
+grips only on that geometry, so build on this one's measurements (the hips 0.155 m over the saddle's
+top, 0.18 m behind the crank's axle; the grips 0.27 m either side, swept back). Up off it — or off a
+motorbike —, one steps off beside it on its left, past its bars. Its key parts — the
+build has five more spokes a wheel (each 30° on), a rim, a hub and a sprocket, its chainring, its stays
+and its fork's crown, a lamp:
+
+```json
+{ "name": "bicycle", "vehicle": { "type": "bicycle", "power": 45, "speed": 8, "steer": 30, "mass": 90, "gear": 2.8 }, "at": [0, 0], "prims": [
+  { "name": "front wheel", "shape": "cylinder", "at": [0, 0.636, 0.367], "size": [0.734, 0.734, 0.1], "turn": [0, 90, 0], "collisionOnly": true },
+  { "name": "front wheel's tyre", "shape": { "preset": "torus", "scaleY": 0.075 }, "at": [0, 0.636, 0.367], "size": [0.055, 0.734, 0.734], "turn": [0, 90, 0], "material": "synthetic/rubber/rubber-001", "phantom": true },
+  { "name": "front wheel's spokes", "shape": "cylinder", "at": [0, 0.636, 0.367], "size": [0.005, 0.005, 0.58], "turn": [-75, 0, 0], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "back wheel", "shape": "cylinder", "at": [0, -0.636, 0.367], "size": [0.734, 0.734, 0.1], "turn": [0, 90, 0], "collisionOnly": true },
+  { "name": "back wheel's tyre", "shape": { "preset": "torus", "scaleY": 0.075 }, "at": [0, -0.636, 0.367], "size": [0.055, 0.734, 0.734], "turn": [0, 90, 0], "material": "synthetic/rubber/rubber-001", "phantom": true },
+  { "name": "back wheel's spokes", "shape": "cylinder", "at": [0, -0.636, 0.367], "size": [0.005, 0.005, 0.58], "turn": [-75, 0, 0], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "crank", "shape": "cylinder", "at": [0, -0.107, 0.356], "size": [0.401, 0.401, 0.39], "turn": [0, 90, 0], "collisionOnly": true },
+  { "name": "crank arm", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.008, "segments": 2, "at": [-0.08, -0.107, 0.444], "size": [0.016, 0.034, 0.209], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "pedal", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.015, "segments": 2, "at": [-0.14, -0.107, 0.531], "size": [0.1, 0.03, 0.03], "material": "synthetic/plastic/plastic-006", "surface": { "gloss": 0.5 }, "phantom": true },
+  { "name": "crank arm", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.008, "segments": 2, "at": [0.08, -0.107, 0.268], "size": [0.016, 0.034, 0.209], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 }, "phantom": true },
+  { "name": "pedal", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.015, "segments": 2, "at": [0.14, -0.107, 0.181], "size": [0.1, 0.03, 0.03], "material": "synthetic/plastic/plastic-006", "surface": { "gloss": 0.5 }, "phantom": true },
+  { "name": "seat tube", "shape": "cylinder", "at": [0, -0.153, 0.619], "size": [0.032, 0.032, 0.535], "turn": [10.008, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "top tube", "shape": "cylinder", "at": [0, 0.173, 0.802], "size": [0.03, 0.03, 0.701], "turn": [-84.102, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "down tube", "shape": "cylinder", "at": [0, 0.21, 0.581], "size": [0.038, 0.038, 0.776], "turn": [-54.651, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "head tube", "shape": "cylinder", "at": [0, 0.525, 0.82], "size": [0.042, 0.042, 0.15], "turn": [13.8, 0, 0], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "stem", "shape": "cylinder", "at": [0, 0.474, 1.022], "size": [0.025, 0.025, 0.268], "turn": [14.324, 0, 0], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "fork", "shape": "cylinder", "at": [-0.052, 0.59, 0.557], "size": [0.024, 0.024, 0.392], "turn": [13.762, 2.133, 0.522], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "fork", "shape": "cylinder", "at": [0.053, 0.59, 0.557], "size": [0.024, 0.024, 0.392], "turn": [13.762, -2.133, -0.522], "color": [0.42, 0.03, 0.03], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 } },
+  { "name": "saddle", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.025, "segments": 2, "at": [0, -0.294, 0.994], "size": [0.16, 0.16, 0.064], "material": "fabric/leather/brown-leather", "seat": { "at": [0, 0.01, 0.187], "turn": 0, "pose": "ovgrid/pedalling" } },
+  { "name": "handlebar", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.012, "segments": 2, "at": [0, 0.441, 1.152], "size": [0.2, 0.024, 0.024], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "handlebar", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.012, "segments": 2, "at": [-0.155, 0.381, 1.152], "size": [0.187, 0.024, 0.024], "turn": [0, 0, -132.51], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "grip", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.017, "segments": 2, "at": [-0.265, 0.321, 1.152], "size": [0.11, 0.034, 0.034], "material": "fabric/leather/brown-leather" },
+  { "name": "handlebar", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.012, "segments": 2, "at": [0.155, 0.381, 1.152], "size": [0.187, 0.024, 0.024], "turn": [0, 0, -47.49], "material": "metal/bare/metal-050a", "surface": { "gloss": 0.95, "metal": 1 } },
+  { "name": "grip", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.017, "segments": 2, "at": [0.265, 0.321, 1.152], "size": [0.11, 0.034, 0.034], "material": "fabric/leather/brown-leather" }
+] }
+```
+
 ## A boat
 
 No wheels: its parts are its hull, held at the sea's surface — it floats only **at sea**, and only
@@ -171,6 +223,192 @@ lamp, at its head. The boat beside the head, its bow out to sea.
 "clones": [ { "of": "pier", "at": [32.98, 43.28, 0], "turn": [0, 0, -50] }, { "of": "pier", "at": [48.3, 56.14, 0], "turn": [0, 0, -50] } ]
 ```
 
+## A ship or a yacht
+
+Anything afloat with decks and a deckhouse — a yacht, a ferry, a cargo ship — is a `ship`, not a
+`boat`: a boat floats with 40 % of its volume under the water, so a deckhouse sinks it, and its engine
+pushes against a drag that grows with its size. A ship floats **at its waterline: its frame's z = 0**,
+whatever stands on its decks — build its hull from z = 0 down to its keel and up to its decks, and it
+is borne there; it weighs the water under that line, so its mass is no parameter. It is steered as
+heavy ships are: `accel` (m/s², 0.5 a large yacht) up to `speed`, slow to stop, half the thrust
+astern; `turn` (°/s) on its rudder as it goes, nothing standing still, and `thrusters` (°/s) turning
+it on the spot to come off a quay; it never skids sideways.
+
+- **Its hull** is what floats it: a solid's `loft` along y (format.md, Solids) — closed, convex, its keel
+  and its waterline in its sections — or boxes, prisms and hulls, as many as a solid of hulls side by
+  side holds. A hull that is not convex (a hollow, an open sheet) does not float: the physics takes only
+  solid convex pieces — so a hollow shell is drawn only, and convex pieces under it float it.
+- **Deep water**: as much under it as its keel reaches under z = 0, and a hand more, all along its way
+  out (the survey's `depths`; the check says so). A yacht drawing 2.5 m wants 3 m: moor it at the head
+  of a pier long enough, its stern to the pier (a gangway from its swim platform), its bow to sea.
+- **Its helm** a seat high enough to see over its bow, open or under a hardtop; benches and sofas
+  seats for its passengers.
+- **Alive**: navigation lights at night — red to port (its +x, its helmsman's left), green to
+  starboard (−x), white at its masthead and stern —, deck lights, and doors that slide.
+- **Rooms to walk in**: a deckhouse built hollow, not a solid box. Give it floors, walls with their
+  windows' glass seen through (tinted dark, `"opacity": 0.3` on each face, `"matte": 1`), ceilings
+  2.8 m over its floors, and
+  sliding doors that open as one comes near (the `slide` behaviour, `"trigger": "near"`). Stairs go up
+  inside, each through a well in the floor above, railed round. Make a part that moves by itself all
+  the time (a radar turning) `phantom`: a body is made again only once what of it collides has settled,
+  and its doors let one through only then.
+- **Its Auto**: a ship or a submarine drives itself on its object's route. Give the object a
+  `"behaviour": { "type": "route", "mode": "back", "points": […], "speed": 6, "stop": 20, "at": "ends",
+  "face": "yes", "water": "yes", "held": true }` — out from its berth and back, held there till its Auto
+  is set on. Read its depth all along, as its berth's. Aimed at its helm, E is Manual and O its Auto, for
+  whoever may drive it: nobody sat down, whoever is aboard carried. Its Auto runs the route once, out and
+  back, and is off again in its berth. Driven off its route, it comes back onto it when its Auto is on
+  again.
+- **Room to stand up at its helm**: up from a seat, the avatar stands 0.6 m past its front edge, or, a
+  console there, beside it or behind it: leave a floor clear at one side of a helm seat or behind it.
+- **Matte, mirroring nothing** (`"matte": 1` on every part, no `reflect`, no metal): its gelcoat, its
+  glass, its teak, its fittings. Anything else mirrors the sky: faintly under a gloss of 0.3, low and
+  blurred, late as one moves; from 0.3 the world, and a metal at any gloss. On a hull's curves, its panes
+  and its chrome it shows in waves and distortions. Its fittings white, not chrome.
+
+```json
+{ "name": "launch", "at": [0, 0], "vehicle": { "type": "ship", "speed": 9, "accel": 0.7, "turn": 7, "thrusters": 3 }, "prims": [
+  { "name": "hull", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.25, "at": [0, -0.5, 0.4], "size": [3.4, 9, 2.8], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "bow", "shape": "prism", "at": [0.85, 5, 0.4], "size": [1.7, 2.8, 2], "turn": [-90, 0, 0], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "bow", "shape": "prism", "at": [-0.85, 5, 0.4], "size": [1.7, 2.8, 2], "turn": [-90, 180, 0], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "boot top", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0, -0.5, 0.05], "size": [3.44, 9.04, 0.12], "color": [0.03, 0.12, 0.4], "surface": { "matte": 1 } },
+  { "name": "deck", "shape": "cube", "at": [0, -0.5, 1.83], "size": [3.2, 8.8, 0.06], "material": "wood/planks/teak-veneer", "surface": { "rotation": 90 } },
+  { "name": "deckhouse", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.1, "at": [0, 0.3, 2.9], "size": [2.6, 4.2, 2.1], "color": [0.9, 0.9, 0.88], "surface": { "matte": 1 } },
+  { "name": "windows", "shape": "cube", "at": [0, 0.3, 3.3], "size": [2.64, 4.24, 0.7], "color": [0.02, 0.025, 0.03], "surface": { "matte": 1 } },
+  { "name": "helm seat", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0.5, -2.6, 2.1], "size": [0.6, 0.5, 0.14], "material": "fabric/leather/leather-white", "seat": true },
+  { "name": "stern bench", "kind": "bevel", "base": "box", "edge": "round", "radius": 0.05, "segments": 2, "at": [0, -4.2, 2.1], "size": [2.4, 0.5, 0.14], "material": "fabric/leather/leather-white", "seat": true },
+  { "name": "port light", "shape": "cube", "at": [1.32, 2.2, 3.4], "size": [0.04, 0.16, 0.1], "color": [0.9, 0.05, 0.03], "surface": { "emissive": 1 }, "light": { "on": "night", "range": 0 } },
+  { "name": "starboard light", "shape": "cube", "at": [-1.32, 2.2, 3.4], "size": [0.04, 0.16, 0.1], "color": [0.05, 0.8, 0.2], "surface": { "emissive": 1 }, "light": { "on": "night", "range": 0 } }
+] }
+```
+
+## A submarine
+
+A `submarine` is a ship that dives, dry inside by its kind (`"dry": true` is in it: format.md): at the
+surface afloat with its hull's top level with the water — the top of the box round its largest parts, its
+hull and a dome over it, wherever its frame is: all of its inside under the water and dry —; C takes it down at `dive` m/s, to `depth` at most and never through the
+sea's floor (0.5 m over it), Space brings it up again; under the water it holds its depth, level. Chosen
+as one in the editor, over the sea, it is brought down to where it floats. Its hull a closed loft or
+lathe — or a hollow cylinder lying along it, its ends closed —, its conning tower a part over it, its
+seats inside a hatch or under a canopy of glass. Under the water the view goes under with whoever is in it, and its cabin, closed — walls
+round it on every side but one at most, a roof over it within 30 m —, is walked in dry: out of its
+hatch one swims on from where one is (docs/decisions.md, «Under the water»).
+
+**One to walk round inside**: its decks 3 m clear or more, each as high, all of them under its
+waterline afloat — its deck just out of the water —, so that the view inside is always under the water
+and its air is kept dry; in by a door in its sail over the water into a hall big enough for several,
+and down by a lift: its platform beside the hall, down through each deck in a hole flush with its floor,
+parts of one group with a `lift` behaviour (format.md), a button a floor on its post and a `call` button
+at each stop — dry from the first moment under the surface, no stairs needed. Its hull and its dome thin shells — a loft of sections each its outline
+and, back the other way, that outline a few cm inside it, its two ends `corners` — seen and walked into
+from inside, at least three of a sculpt's steps thick (its box over 255: 12–14 cm across 10 m), and
+opaque decks and walls inside them; its tour a `route` whose points' z is its depth, `"water": "no"`,
+its depth read all along it for its keel. Its inside is the box round its largest parts: make its hull
+and its dome the largest — nothing else a quarter of either as a box —, and the fish keep out of it and
+the air in it is all of it; close its top with its deck, but where its tower goes up through its sail:
+up out of its inside the air goes on, no sea's surface seen up its lift's shaft. Light it inside with
+lamps `"on": true`: no sun comes into the air under the sea, only the water's light round it, so its
+lamps are its light.
+
+## A helicopter
+
+A `helicopter` flies on its rotors, whatever it is built of: Space takes it up and C down at `climb`, and
+between them it holds its height, never into the ground nor over its `ceiling`; off the ground W and S fly
+it ahead and back (a third of its speed), its nose down as it goes, and A and D turn it — on the spot, or
+banking as it goes. Its pilot gets up only once it has landed: up from its controls in the air, it comes
+straight down first.
+
+- **Its feet**: what of it is lowest — skids, wheels, pods — within 0.2 m of its bottom, its frame's
+  z = 0 the ground under them. Its centre of mass is put over their middle, so it stands level on two
+  skids or on one line of wheels. Keep boarding steps higher than that (0.25 m and up) or they are feet.
+- **Where it lands**: on what is under its feet — the ground, a pad, a roof, the sea's surface. Give it a
+  pad where it is kept, level and clear of anything as tall as its rotor within its radius.
+- **Its rotors** are parts with `"behaviour": { "type": "spin", "speed": 300 }`, `phantom`: they turn
+  only while it runs — driven or on its Auto —, up to speed over 3 s and still again 3 s after it stops.
+  A part turns about its own z through its own middle, so a pair of blades is one part across the hub
+  (two crossing ones for four blades); a tail rotor turned `[0, 90, 0]` so that its z lies across the
+  helicopter.
+- **Its exhausts**: a turbine's breath, the jet's exhaust half as long —
+  `"particles": { "preset": "exhaust", "running": true, "life": 0.08 }`, some 1.3 m —, coming up with its
+  rotors and dying away with them; `"scale"` to its outlet (0.6 for one 0.27 m high). On a part whose +z
+  points the way it blows: an engine block made from its intake to its exhaust, a pod's or a drum's
+  cylinder turned `[90, 0, 0]` (its +z its back), or, where the outlet is a plate on a slanted face, a small
+  box hidden in the plate, turned the way it faces, `phantom`. An outlet wider than high, a slot: several such
+  boxes side by side across it, each stream as high as it.
+- **Inside**: a cabin to walk in wants 2.3 m and more over its floor; its pilot's seat
+  `"seat": { "pose": "quaternius/driving" }` with a stick and a panel low enough to see over. In and out by
+  a click (`passage`, format.md): its hull's parts `"way": "in"` with the place on its floor one is put,
+  its door's `"way": "both"` — a click on it from inside puts one out past it, across its box's thinnest side: a door
+  taken from a hull's skin, folded at its shoulder, may be as deep as it is long, so give its part a box longer along
+  the hull than it is deep. No steps up to a high sill.
+- **Its Auto**: a `route` whose points' z is its height over where it is kept (`"water": "no"`): up
+  steeply off its pad — a first point 15–20 m ahead and as high —, round, and back down onto it from
+  behind, so that it comes in facing as it was kept. Set it as it should fly over level ground: wherever
+  the land under it rises, it is lifted to keep as high over it as it was set over its pad's ground, 25 m
+  at most, eased over hills (set down anywhere, its tour never goes into one). Only the land is read: keep
+  it over what is built and tall trees on its way. On its Auto it tilts as its pilot's flying does — nose
+  down as it goes, banked into its turns —, so a tight turn reads as one: give it room. Its driver may
+  record more as they fly it (K at its controls, smoothed as it is kept), kept in `routes` beside it; a
+  build may give it several too — N at its helm goes through them.
+
+```json
+{ "name": "prim helicopter", "at": [0, 0], "vehicle": { "type": "helicopter", "speed": 25, "climb": 5, "ceiling": 500 }, "prims": [
+  { "name": "cabin", "shape": "cube", "at": [0, 0.5, 1.5], "size": [2.2, 5, 2], "color": [0.55, 0.6, 0.65] },
+  { "name": "boom", "shape": "cube", "at": [0, -4.5, 1.9], "size": [0.4, 5, 0.5], "color": [0.55, 0.6, 0.65] },
+  { "name": "skid", "shape": "cube", "at": [-1, 0.5, 0.075], "size": [0.15, 4.4, 0.15], "color": [0.55, 0.6, 0.65] },
+  { "name": "skid", "shape": "cube", "at": [1, 0.5, 0.075], "size": [0.15, 4.4, 0.15], "color": [0.55, 0.6, 0.65] },
+  { "name": "pilot seat", "shape": "cube", "at": [-0.5, 1.8, 0.8], "size": [0.6, 0.6, 0.2], "color": [0.55, 0.6, 0.65], "seat": { "pose": "quaternius/driving" } },
+  { "name": "blade", "shape": "cube", "at": [0, 0.5, 2.8], "size": [10, 0.3, 0.05], "color": [0.1, 0.1, 0.1], "phantom": true, "behaviour": { "type": "spin", "speed": 300 } },
+  { "name": "blade", "shape": "cube", "at": [0, 0.5, 2.8], "size": [10, 0.3, 0.05], "turn": [0, 0, 90], "color": [0.1, 0.1, 0.1], "phantom": true, "behaviour": { "type": "spin", "speed": 300 } },
+  { "name": "tail rotor", "shape": "cube", "at": [0.3, -7, 2], "size": [1.6, 0.15, 0.04], "turn": [0, 90, 0], "color": [0.1, 0.1, 0.1], "phantom": true, "behaviour": { "type": "spin", "speed": 360 } }
+] }
+```
+
+## A plane
+
+A `plane` flies on its wings. On its wheels W speeds it along its way at `accel`, S or C brake it, A and D
+steer its nose wheel; once as fast as its take-off speed (`lift`), Space lifts it off. In the air W and S
+speed it up to `speed` and down to `lift`, Space takes it up and C down at `climb`, and between them it
+holds its height, never into the ground nor over its `ceiling`; slower than `lift` it sinks. A and D turn
+it at `turn`, banking. Back on its wheels it rolls on. Up from its controls in the air, it comes down where
+it is, and its pilot gets up once it has stopped.
+
+On its **Auto** (O at its helm, as a helicopter's) it flies its object's route by itself, everyone aboard, tilted as
+a plane — nose up as it climbs, banked into its turns. Give its route `"accel"` (m/s², its Speeds up) as the plane's
+own, so that it sets off along its runway as it would by hand: from its stop where it is kept, its first points on the
+runway at z 0 (with a level handle on the last of them, `[x, y, 0, 0, 40, 0]`, so that its curve never dips into it)
+till it is past its take-off speed — lift² / (2 × accel) m on —, then up and round, and back lined up with its runway,
+down onto it as far before where it is kept as it needs to slow from its take-off speed, and `"stop"` there, `"at":
+"ends"`. A route goes 120 m/s at most.
+
+- **Its feet**: its wheels — what of it is lowest, within 0.2 m of its bottom, its frame's z = 0 the ground
+  under them —: one under its nose and two under its wings, so that it stands level on them.
+- **Where it is kept**: at one end of a runway long enough for its take-off — speeding up at `accel` to
+  `lift` takes lift² / (2 × accel) m: 45 m/s at 4 m/s² is 250 m —, level, nothing tall at its ends. A runway
+  is road parts (`"kind": "road"`, 12 m wide at most) side by side on the ground, its markings thin boxes
+  laid on them.
+- **Inside**: as a helicopter's — 2.3 m over its floor where people walk, its pilot's seat
+  `"seat": { "pose": "quaternius/driving" }`, in and out by a click (`passage`).
+- **Its exhausts**: `"particles": { "preset": "exhaust", "running": true }` on each engine — a cylinder
+  along it, `"turn": [90, 0, 0]`, so that its +z, the face it is thrown from, is its back — blow its flame
+  backwards while it runs, coming up as its pilot takes it and dying away as they leave it; `"scale"`
+  for a larger nozzle (2: 1.3 m across).
+
+```json
+{ "name": "prim plane", "at": [0, 0], "vehicle": { "type": "plane", "speed": 70, "accel": 4, "lift": 35, "turn": 15, "climb": 8, "ceiling": 2000 }, "prims": [
+  { "name": "fuselage", "shape": "cube", "at": [0, 0, 1.6], "size": [2, 10, 1.8], "color": [0.9, 0.9, 0.9] },
+  { "name": "wing", "shape": "cube", "at": [0, 0.5, 1.2], "size": [12, 2, 0.2], "color": [0.9, 0.9, 0.9] },
+  { "name": "tailplane", "shape": "cube", "at": [0, -4.5, 1.9], "size": [4, 1.2, 0.12], "color": [0.9, 0.9, 0.9] },
+  { "name": "fin", "shape": "cube", "at": [0, -4.6, 2.9], "size": [0.12, 1.4, 1.8], "color": [0.9, 0.9, 0.9] },
+  { "name": "engine", "shape": "cylinder", "at": [0, -5.3, 1.6], "size": [0.7, 0.7, 0.6], "turn": [90, 0, 0], "color": [0.2, 0.2, 0.22],
+    "particles": { "preset": "exhaust", "running": true } },
+  { "name": "nose wheel", "shape": "cylinder", "at": [0, 4, 0.3], "size": [0.6, 0.6, 0.2], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
+  { "name": "main wheel", "shape": "cylinder", "at": [-1.4, -0.5, 0.35], "size": [0.7, 0.7, 0.25], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
+  { "name": "main wheel", "shape": "cylinder", "at": [1.4, -0.5, 0.35], "size": [0.7, 0.7, 0.25], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
+  { "name": "pilot seat", "shape": "cube", "at": [0.4, 2.5, 1.1], "size": [0.6, 0.6, 0.2], "color": [0.3, 0.3, 0.32], "seat": { "pose": "quaternius/driving" } }
+] }
+```
+
 ## A boat that takes people round
 
 Not every boat is driven. A tour boat that takes people round and brings them back to its port is an
@@ -209,7 +447,9 @@ on; build its platform beside where it is kept. Its driver takes it from where t
 it, W faster, S slower and then back, no further than its ends; left again, its timetable goes on
 from there. One object makes the whole train — an engine and a carriage or two —
 so give its line curves of 10 m or more and keep it short (8–12 m). Lay the line's bed as a `road`
-through the same points (format.md), in the build's frame.
+through the same points (format.md), in the build's frame. Build it along its +y, its engine ahead, facing the way its
+route sets off: a route turns what follows it from how it stands at its start, so a train laid aslant of its way runs
+its whole line askew, and its rollers, lying along no axis of it, are no wheels.
 
 ```json
 { "name": "train", "at": [0, 0], "turn": [0, 0, -90],
@@ -230,9 +470,9 @@ Its route's points are in its own frame — turned with it: here its +y runs alo
 ## Within budget
 
 A car of 25–35 parts (this roadster: 7,100 triangles up close, 2,800 at the next level), a bike of
-15–20 (3,700), a boat of 10–15 (3,000), a train of 20–35 — each its object's share of the build's
+15–20 (3,700), a bicycle of about 50 (12,000: its tyres the most), a boat of 10–15 (3,000), a train of 20–35 — each its object's share of the build's
 parts and triangles (budget.md). Rounds cost triangles: two `segments` for a small one. Headlamps
 are lights of the build's, lit at night only; two for a car. A pier of eleven sections drawn as
 clones: 200 parts, 30,000 triangles. The check says why a vehicle could not be driven: no wheels for
-a car or a bike, no route for a train, no seat.
+a car or a bike, no route for a train, no seat; a bicycle with no crank, or a saddle nobody pedals.
 
