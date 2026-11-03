@@ -2272,9 +2272,11 @@ drawn near and 2,540 at 40 m.
 One way of driving for every car — W and S throttle and brake, A and D steer, Space its hand brake — and its numbers make
 it what it is, each held to its range, its default where it is left out (all but `power`, `speed`, `steer` and `mass` may
 be). **Its steering holds itself**: its wheels turn all the way while it is slow and, faster, only as far as its tyres hold
-at its speed — 85 % of it, tan δ = L · a / v², L its wheelbase and a what its `grip` holds across —, as in a driving game.
-So no lock is set by hand for a speed: `steer` is how tight it turns while slow, parking; how tight it turns at speed is
-its `grip`.
+at its speed — 85 % of it, tan δ = L · a / v², L its wheelbase and a what its `grip` holds across —, as in a driving game;
+or, where it would go over first, as far as keeps it on its wheels — a its track over twice its centre of mass's height,
+85 % of it again: a van, an ambulance, a bus, whose centre of mass stands high over a narrow track, turn wider at speed
+than they could grip, and stay upright. So no lock is set by hand for a speed: `steer` is how tight it turns while slow,
+parking; how tight it turns at speed is its `grip`, or its height.
 
 | Parameter | Range | Default | What it does to the feel |
 |---|---|---|---|
@@ -2287,7 +2289,7 @@ its `grip`.
 | `brake` | 0.25–3 × | 1 | how hard it brakes: 1 holds each wheel with 1,500 N·m, a family car's — its grip then stops it —; a heavy one wants about mass × wheel radius / (160 × its wheels), or it takes long to stop |
 | `suspension` | 0.8–4 Hz | 1.5 | its springs: low, soft and swaying over bumps; high, firm and flat in a turn |
 | `travel` | 0.1–1 m | 0.3 | how far its wheels go up and down: long for rough ground and jumps, short for a low car |
-| `steering` | `front` / `rear` / `all` | `front` | the wheels that steer: `rear` as a forklift's; `all`, its back ones the other way, turning half as wide while slow |
+| `steering` | `front` / `rear` / `all` | `front` | the wheels that steer: `rear` as a forklift's; `all`, its back ones the other way, turning half as wide while slow. Each axle steers as far as turns the car about one point, so a truck's tandem, or a six-axled one's every axle, steers a little and none scrubs |
 
 Given its `suspension` or its `travel`, its wheels rest where they were built, its springs pressed by its load. Typical
 values for the kinds a collection of cars holds — each a start, tuned when its car is built (the family car's are measured:
@@ -2303,7 +2305,7 @@ at full lock at its top speed it goes 2.5° off where it heads, powering out of 
 | Pickup | 1,100 | 27 | 32 | 2,200 | 1.9 | `all` | 1.4 | 1.2 | 0.4 | `front` |
 | Van | 900 | 24 | 34 | 2,400 | 2 | `rear` | 1.5 | 1.3 | 0.3 | `front` |
 | Ambulance | 1,000 | 26 | 34 | 2,800 | 2 | `rear` | 1.7 | 1.4 | 0.3 | `front` |
-| Limousine | 1,000 | 26 | 30 | 2,800 | 2 | `rear` | 1.7 | 1.2 | 0.3 | `front` |
+| Limousine | 1,000 | 22 | 30 | 2,800 | 2 | `all` | 1.7 | 1.2 | 0.3 | `front` |
 | Bus | 2,600 | 20 | 34 | 5,000 | 2 | `rear` | 3 | 1.2 | 0.25 | `front` |
 | Truck | 2,600 | 22 | 32 | 5,000 | 2 | `rear` | 2 | 1.2 | 0.3 | `front` |
 | Truck with trailer (one rigid body) | 3,000 | 20 | 30 | 5,000 | 2 | `rear` | 1.2 | 1.1 | 0.3 | `all` |
