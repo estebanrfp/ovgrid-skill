@@ -4931,6 +4931,7 @@ var init_vehicles = __esm(() => {
   VEHICLES = Object.freeze({
     car: {
       label: "Car",
+      auto: true,
       description: "Driven on its wheels — its cylinders lying across it — the front ones steering: W and S throttle and brake, A and D steer, Space the hand brake.",
       params: [
         { name: "power", label: "Power", min: 50, max: 3000, default: 500, step: 10, unit: "N·m", description: "Its engine's torque (N·m): more, it speeds up faster and climbs steeper." },
