@@ -107,6 +107,10 @@ build it again (it uses ffmpeg, where it is installed, for its textures' colours
   (a box, its cuts); furniture, a railing, a row, the loose pieces of a room one `"join": "none"` solid (`repeat`, `mirror`).
   No overlapping pieces of one surface, no boxes touching round an opening, no two faces in one plane (they flicker), no open joint between a wall and
   its opening (recipes.md).
+- **Glass between pillars, measured.** A glazed body — a coach, a car's glasshouse, a pavilion — is made from one list of
+  pillars: each window the gap between two of them, its glass the same outline inside the skin. A `colour` dresses every face
+  its body leaves, so a floor's material needs a body of its own. Check by numbers, not by eye, that no window crosses a
+  pillar (1.2 mm) and which faces wear each colour (method.md).
 - **Lights are few and short.** Ranges of 10 m at most, 5–8 m usually; no more than 8 lights
   within 30 m of one another — fires count; outdoors `on: "night"`; a lamp inside a house is a part
   of the house's object, whose walls stop its light.

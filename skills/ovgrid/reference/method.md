@@ -70,6 +70,42 @@ of the wall. A roof over the block, its eaves out front and back, its underside 
 Never build a wall as boxes round its openings: boxes that touch round a gap leave **overlaps**, **two faces in one plane**
 that flicker, and **open joints between the wall and its door or window**, which a carved block does not have.
 
+### Glass between pillars, from one source, measured
+
+A glazed body — a coach, a car's glasshouse, a pavilion, a greenhouse — is a run of pillars with glass between them. Make it
+from **one list**, the pillars' positions: each window is the gap between two neighbouring pillars, `cut` from the body, and
+its glass is the same outline set **inside the skin** (the skin 2 cm; the glass 8 mm thick, 4 mm in from the outside face), so
+that a window can neither cross its pillar nor leave the skin. Never type a window's cut and its glass apart, and never give
+a window of its own to what is too small to be one (under about 0.05 m²: it is a pillar).
+
+```js
+// pillars along a wall, metres: [{ from, to }] in order. A window is the gap between two of them, and what is too small is a pillar.
+const windows = pillars.slice(0, -1).map((p, i) => ({ from: p.to, to: pillars[i + 1].from })).filter(w => (w.to - w.from) * (head - sill) >= 0.05)
+// Its glass is the same outline, reaching 1 cm into each pillar's skin so that it is held, and never past the pillar.
+const panes = windows.map(w => ({ from: w.from - 0.01, to: w.to + 0.01 }))
+```
+
+What goes wrong without it, all three found in a coach an AI built from this guide, each seen by eye and by no check:
+
+- **A window out of its pillars.** Cut from numbers typed for the middle of a wall, the front side window crossed over itself
+  by 230 mm, and the door's window sank 130 mm into the windscreen's pillar. Derive each window from the pillars on both sides.
+- **A face index that is shared.** A `colour` dresses every face its body leaves, so a material given to a colour lands on
+  **all** of them: the carpet meant for the floor covered the pillars, the roof's underside and the band over the windows. Give
+  each role its own colour (floor, walls, pillars, roof, glass reveal), and when only the floor needs another material, give
+  the floor a body of its own. List which faces wear each colour before giving a material to one.
+- **Two heights for one thing.** A windscreen that stopped 13 cm under the side windows left two strips of roof and a step:
+  the windscreen's top and the side windows' tops are one height, with one strip of roof above.
+
+Measure it, as numbers and not by eye: for each window, how far its edges stand from the pillars beside it (0 where it fits;
+past 1.2 mm either way it crosses a pillar or leaves a gap of wall), the glass inside the skin (its edges entering the skin by
+1 cm at most and never passing a pillar), and, for each colour, how many faces wear it and where.
+
+```js
+// windows[i] sits between pillars[i] and pillars[i + 1]: its edges against theirs, metres
+const off = windows.flatMap((w, i) => [w.from - pillars[i].to, pillars[i + 1].from - w.to])
+const bad = off.filter(d => Math.abs(d) > 0.0012)   // not empty: a window crosses its pillar, or leaves a gap
+```
+
 ## An example: the cottage, as a build
 
 The cottage these rules make — 8 × 6 m, concrete outside and plaster within, a flat roof with its wooden soffit, a door that opens on a click, a window — as one build of one object, carved from one block, four parts, standing on the ground at its origin on a footing 0.8 m deep:

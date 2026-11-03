@@ -9,6 +9,9 @@ clashes, a village hidden behind its own trees.
 - Does it stand on the ground everywhere? Look at the footings, steps, paths, fence posts, lamp feet.
 - Does each thing face the way it should — doors outward, houses to the square, stairs up?
 - Are the roofs closed and on their walls? Openings filled? Nothing pokes through anything?
+- Do the windows sit between their pillars and the glass within the skin, to a millimetre and a half? Is each material on the
+  faces it was meant for, and on no others (a floor's carpet on the pillars)? Measure it, do not trust the eye (method.md,
+  *Glass between pillars*).
 - Do materials read at their size (bricks the size of bricks, tiles of tiles) and go together?
 - Is there one thing to look at? Is the square open, the way through clear?
 - Inside: is there room for the camera; is the room lit; can the avatar walk in (doors open)?
