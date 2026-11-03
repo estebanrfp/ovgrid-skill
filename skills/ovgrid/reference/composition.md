@@ -75,10 +75,12 @@ ways through it, what stands along them, what grows round them, what lights them
   panelling), a ceiling (the roof's underside, face 2, or a slab), and one warm lamp.
 - **Furniture against walls**, a clear way from the door through the room (≥ 1 m — the avatar is
   0.6 m wide and everything is solid), and one focal piece: a hearth, a table, a bed, a counter.
-- **Recipes from boxes and cylinders**, bevelled where hands touch (`bevel` kind, `radius`
-  0.01–0.03): a table is a top 0.04 m and four legs; a chair a seat, four legs, a back; a bed a
-  frame, a mattress, a duvet, pillows (spheres); a shelf, a barrel (cylinder), a crate (box), a
-  rug (a box 1 cm thick, `fabric/carpet/…`), a hearth (a stone box, a dark opening, a log).
+- **Each piece of furniture one `solid`**, never a part a leg: its plates `add`ed side by side (`"join": "none"`), a leg
+  `mirror`ed, a row `repeat`ed, each look a colour. A table is its top 0.04 m and its legs, one part; a chair its frame
+  (legs, seat and back) one part, with its `seat` target; a bed its frame, mattress, duvet, pillows and headboard one part of
+  three looks; a shelf a box with its shelves `cut` (one cut `repeat`ed); a rug a box 1 cm thick (`fabric/carpet/…`); a hearth
+  a stone box with its opening `cut`; a barrel a cylinder. Bevel (`bevel` kind, `radius` 0.01–0.03) only where hands touch
+  and a plain edge shows (recipes.md).
 - **A hearth that burns**: embers with fire's particles under the flue, smoke on the chimney's cap
   outside (effects.md); a cold one, neither.
 - **The lamp** is a part of the house's object, under the ceiling or on a table:
@@ -142,7 +144,7 @@ night, and off `cut-out` ones for anything solid: they are for fences, grates an
    opening cut for it).
 5. A shut door the avatar cannot open: give it the `door` behaviour (or build it open).
 6. A roof that does not cover the walls, a gap under it, gables open to the sky.
-7. Two faces in one plane (a floor's top on a footing's top): they flicker. Offset 1–2 cm.
+7. Two faces in one plane (a floor's top on a footing's top): they flicker. Make the two one block, or offset 1–2 cm.
 8. A texture stretched or tiny: `scale` set by hand — leave it out.
 9. Spheres sized as boxes (their size is height, depth, width).
 10. Too many lights, all at 10 m; a room's lamp in an object of its own, lighting through walls.
@@ -151,3 +153,5 @@ night, and off `cut-out` ones for anything solid: they are for fences, grates an
 13. Paths straight up slopes, or floating over a bump (lay them in short legs).
 14. Trees on paths, in houses, crowns through roofs.
 15. Rooms the camera cannot get into.
+16. Overlapping pieces of one surface; boxes that touch round a door, a window or an arch; an open joint between a wall and its opening: carve the wall
+    as one block (method.md, recipes.md).

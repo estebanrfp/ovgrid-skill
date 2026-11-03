@@ -27,6 +27,17 @@ from where the camera is? What is walked, climbed or used is sized for them, at 
 larger where the camera must get in; what is only looked at can be any size.
 → [method.md](reference/method.md), Scale and proportions
 
+## Carve, don't pile
+
+**Carved blocks are preferred.** Whatever you build, it is a few kinds of form, each with its recipe: a mass with hollows and
+openings (a house, a tower, a basin) is **one** `solid`, a box with its rooms and openings `cut`; a plate with holes is one; a
+frame of members, a run of the same at a step, the loose pieces of a room are **one** `solid` of bodies side by side
+(`"join": "none"`, `mirror`, `repeat`), never a part for each; what repeats far apart is an object and its clones. A carve has
+no seams where pieces meet; pieces do. So never leave **overlaps** of pieces of one surface, **boxes that touch round an opening**, **two faces in one
+plane** (they flicker) or **open joints between a wall and its opening**. Count your own parts, clones aside, and say why any
+place keeps several boxes. Gather what is plain and measure what is textured (budget.md).
+→ [recipes.md](reference/recipes.md), [method.md](reference/method.md), Walls with openings
+
 ## The walkthrough
 
 1. **Plan.** From the request to a plan: what stands where, how big, the palette, the lights, what
@@ -51,7 +62,8 @@ larger where the camera must get in; what is only looked at can be any size.
    smaller: method.md, Scale);
    composition — the square, the ways, the gardens, the woods, the rooms, the night, the palette.
    If you can run code, write the build with a short program: parts from loops and functions,
-   never typed by hundreds. → [method.md](reference/method.md), [composition.md](reference/composition.md)
+   never typed by hundreds. If you cannot, carve: a few dozen parts, each form one `solid` of boxes and cuts.
+   → [recipes.md](reference/recipes.md), [method.md](reference/method.md), [composition.md](reference/composition.md)
 5. **Budget.** `node scripts/check.mjs build.json` checks it as the world will: unknown names,
    objects past 256 parts and anything past the budget's *most* are errors; past *fair*, notes;
    `--survey site.json` counts what already stands round it. → [budget.md](reference/budget.md)
@@ -91,6 +103,10 @@ build it again (it uses ffmpeg, where it is installed, for its textures' colours
 - **Materials at their real size**, one or two a role across a build: name a bank id
   (`masonry/brick/red-brick`) from `catalog.json` and leave `scale` out.
 - **What repeats is cloned.** One object, then `clones` of it: a clone costs a transform.
+- **Carve, don't pile.** Carved blocks are preferred: a shell, a slab with its stairwell, a wall with its openings is one `solid`
+  (a box, its cuts); furniture, a railing, a row, the loose pieces of a room one `"join": "none"` solid (`repeat`, `mirror`).
+  No overlapping pieces of one surface, no boxes touching round an opening, no two faces in one plane (they flicker), no open joint between a wall and
+  its opening (recipes.md).
 - **Lights are few and short.** Ranges of 10 m at most, 5–8 m usually; no more than 8 lights
   within 30 m of one another — fires count; outdoors `on: "night"`; a lamp inside a house is a part
   of the house's object, whose walls stop its light.
@@ -109,6 +125,7 @@ sound, plain build; a page of detail gets that detail, within the budget.
 | [reference/site.md](reference/site.md) | 2 — URLs and coordinates, the survey and its map, reading the ground, standing on it, terraces, ways, bridges, views, what is there |
 | [reference/format.md](reference/format.md) | 3 — the build file: anchor, prims, shapes, kinds, materials by use, surface, mirrors, media (videos, GIFs and stickers on a face), pages (HTML on a face), light, collisions, behaviours, objects, clones, trees, ids |
 | [reference/sculpt.md](reference/sculpt.md) | 3 — curved and organic shapes as sculpted prims: lathes, boxes, lofts, sweeps, models; bends, twists, noise; examples |
+| [reference/recipes.md](reference/recipes.md) | 3 — carve, gather, clone: each form its recipe, with its JSON; what never to leave (overlaps, boxes round an opening, flickering faces, open joints) |
 | [reference/method.md](reference/method.md) | 4 — the frame, scale and proportions, walls with openings, a cottage as JSON |
 | [reference/composition.md](reference/composition.md) | 4 — villages, squares, ways, fences, forests and clearings, interiors, night, palettes, mistakes |
 | [reference/budget.md](reference/budget.md) | 5 — what one build and one place may bring (fair, most), what costs what, what was measured |

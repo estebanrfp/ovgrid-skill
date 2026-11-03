@@ -85,6 +85,14 @@ The village's lights were not always so cheap: with twelve at 5–7 m, ten of th
 another, its square by night once cost twice as much and took frames past 8.33 ms. Kept to ten at
 4–5 m, the renderer's cheaper path holds — the budget's `crowd`.
 
+## What to aim at
+
+*Fair* and *most* are ceilings: the editor refuses past *most*, and says so from *fair*. They are not what to aim at. Aim at what a
+rethought build weighs: the reference village is 65 parts for five houses and their furniture (535 as prims); a cottage with its
+door and window is four; a chair one or two. Count your own parts, clones aside: past a hundred for one house with its furniture,
+something is piled (recipes.md). Parts are not draws: a gathered solid wearing textures is a mesh of its own, so look at the
+check's *distinct meshes* and measure before you give a build of many.
+
 ## When it is over
 
 Clone what repeats; kinds instead of piles of prims; fewer spheres and tori (a box where nobody sees

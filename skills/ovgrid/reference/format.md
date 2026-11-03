@@ -196,6 +196,10 @@ Each `repeat`ed and `mirror`ed copy of either is made there too. A round one is 
 body and its copies — a tyre's faces, a rim's, a wheel's spokes, the part turned so that its z is the axle —, a pair
 one body `mirror`ed across the part's middle: a few hundred characters where a body each took thousands.
 
+**Recipes by form, by hand** — a mass with hollows, a basin, a plate with holes, a frame of members, a run, the loose pieces of a
+room: each its recipe, with its JSON, and what never to leave (overlaps, boxes that touch round an opening, two faces in one
+plane, open joints between a wall and its opening): recipes.md.
+
 **Choosing a recipe** — what has made recipes lighter than the prims they replaced, and what has not, each measured:
 
 - *Rethink it; never gather it* — every build, and every rebuild of one, is designed from its form's own logic before

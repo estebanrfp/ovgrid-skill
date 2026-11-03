@@ -20,7 +20,8 @@ Ask only what changes the plan; take sensible defaults for the rest and say whic
 In the build's frame — x right, y ahead, z up (right as seen from in front, looking back at it from +y; for whoever faces +y — a driver, someone walking in — +x is on the left), metres; the anchor's ground at z = 0 — list:
 
 1. **The pieces**: each building, the square, the ways, the fences, the groves, the lights and what
-   moves, each with its size, where it stands and which way it faces.
+   moves, each with its size, where it stands and which way it faces, its recipe (a carved solid, a gathered solid, a kind, an object and
+   clones: recipes.md) and its count of parts.
 2. **The ground under each**: flat enough, or a terrace, a footing, a bridge (site.md).
 3. **The palette**: one material for each role — walls, roofs, floors and paths, wood, metal,
    glass — the same across the houses, varied by colour, offsets and a few accents (composition.md).
@@ -37,7 +38,9 @@ for more — a city in one go, a hundred lit windows, a forest of ten thousand t
 everywhere — keep its spirit and make it fit, in this order:
 
 1. **Clone** what repeats: a street of alike houses is one house and its clones.
-2. **Kinds** instead of piles of prims: stairs, roofs, fences, doors, windows, columns, arches.
+2. **Solids and kinds** instead of piles of prims: a shell, a slab with its stairwell, a wall with its openings carved from one
+   block; furniture, railings and rows gathered side by side in one part (recipes.md); stairs, roofs, fences, doors, windows,
+   columns, arches as kinds.
 3. **Fewer, shorter lights**: light the ways and the rooms seen from them; glow (`range: 0`) for
    the rest; `"on": "night"` everywhere outdoors.
 4. **Sober particles**: one chimney in two smoking, one fire for a square, fog in one hollow.

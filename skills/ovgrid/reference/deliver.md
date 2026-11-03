@@ -9,6 +9,7 @@
   puts it where they point.
 - **What you simplified, and why** (plan.md), and what each part of it is: the person reads it
   before they place it.
+- **Your parts**: your own parts per object, clones aside, and, wherever several boxes remain, why they could not be one `solid`.
 
 ## How the person brings it in
 
@@ -46,9 +47,12 @@ wide, a step up of 0.3 m at most), from outside into every room, and fix what st
    (method.md, Walls with openings): a door set before an uncut wall blocks the way.
 2. **Every threshold, step or ledge** is 0.3 m at most, or stairs with risers of 0.2 m at most.
 3. **Headroom** 2.1 m under beams, lofts and stair landings; rooms at least 4 × 4 m with ceilings of 2.8 m.
-4. **A clear way** of 1 m from the door through each room: furniture against the walls.
+4. **A clear way** of 1 m from the door through each room, and past the foot and the top of every stair: furniture against the walls.
 5. **Every name** — kind, parameter, material, species — is in the guide or `catalog.json`, and no object has
    more than 256 parts.
+6. **Carve, don't pile.** Count your parts. Carved blocks are preferred: a wall of boxes round a gap, a part to a leg, a row of
+   identical parts side by side are each one `solid` (recipes.md). And no overlapping pieces of one surface, no boxes touching round an opening, no two
+   faces in one plane, no open joint between a wall and its opening. Redo them before you give it.
 
 ## Sharing it
 

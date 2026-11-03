@@ -11,7 +11,7 @@ it walks through the eight steps of doing it well:
 
 1. **Plan** — from the request to a plan, within the budget, saying what you simplified.
 2. **Place** — where it goes: a survey of the ground and what is built there, its anchor.
-3. **Resources** — the build file; shapes, kinds, materials by use, species, effects.
+3. **Resources** — the build file; shapes, kinds, solids carved and gathered, materials by use, species, effects.
 4. **Quality** — proportions, walls, composition.
 5. **Budget** — what one build and one place may bring; the check.
 6. **Interactivity** — particles, lights at night, behaviours, vehicles, scripts.
@@ -28,6 +28,19 @@ them, at real size outdoors and a third larger where the camera must get in; wha
 size. A door part's `size` is its frame's box and its opening is smaller: never a door box under 0.9 × 2.1 m.
 The table is in step 4 (Scale and proportions).
 
+**Carve, don't pile: carved blocks are preferred.** Whatever you build — a house, a bridge, a boat, a tower, a market stall,
+a well, a fence — it is a few kinds of form, and each has its recipe (recipes.md). A mass with hollows and openings in it is
+**one** `solid`: a box, its rooms and bays `cut`. A plate with holes is one. A frame of members — legs, posts, rails, rungs —,
+a run of the same at a step, the loose pieces of a room: **one** `solid` of bodies side by side (`"join": "none"`, `mirror`,
+`repeat`), never a part for each. What repeats far apart is an object and its clones; only what a solid cannot carry stays a
+part of its own (a door, anything with a behaviour, a light, a script, a tree). A carve has no seams where pieces meet;
+pieces do. So never leave **overlaps** (pieces of one surface laid across each other, as a wall's boxes at its corners),
+**boxes that touch round an opening** (a wall of boxes round a door or a window), **two faces in one plane** (they flicker:
+make the two one block, or offset one 1–2 cm), or **an open joint between a wall and its opening** (a gap or a lip: the door,
+window or arch is a kind whose box is exactly the `cut`). Every part is a record each peer signs, keeps and sends, and *fair* is a ceiling, not a target: count your own
+parts, clones aside, before you give the build, and say why any place keeps several boxes. Gather what is plain and measure
+what is textured: a gathered solid is a mesh of its own (budget.md).
+
 Beside this guide, in the same repository (`estebanrfp/ovgrid-skill`):
 
 - **catalog.json** — every shape, kind, behaviour, particle preset, material and tree species,
@@ -39,7 +52,8 @@ Beside this guide, in the same repository (`estebanrfp/ovgrid-skill`):
   brought as a glTF model, made the world's sculpted prims.
 
 All three run with Node 18+ or Bun. If you cannot run code, ask the person for their editor's survey
-(step 2) and keep to a few hundred parts, written carefully.
+(step 2) and carve rather than pile (below, and recipes.md): a few dozen parts, each form one `solid` of boxes and cuts,
+written carefully, since there is no check to catch what you get wrong.
 
 The quality of what you build comes from three things: the bank's materials, the rules here, and
 looking at it until it is right. The detail is the person's to ask for: a plan in a line gets a
@@ -67,7 +81,8 @@ Ask only what changes the plan; take sensible defaults for the rest and say whic
 In the build's frame — x right, y ahead, z up (right as seen from in front, looking back at it from +y; for whoever faces +y — a driver, someone walking in — +x is on the left), metres; the anchor's ground at z = 0 — list:
 
 1. **The pieces**: each building, the square, the ways, the fences, the groves, the lights and what
-   moves, each with its size, where it stands and which way it faces.
+   moves, each with its size, where it stands and which way it faces, its recipe (a carved solid, a gathered solid, a kind, an object and
+   clones: recipes.md) and its count of parts.
 2. **The ground under each**: flat enough, or a terrace, a footing, a bridge (site.md).
 3. **The palette**: one material for each role — walls, roofs, floors and paths, wood, metal,
    glass — the same across the houses, varied by colour, offsets and a few accents (composition.md).
@@ -84,7 +99,9 @@ for more — a city in one go, a hundred lit windows, a forest of ten thousand t
 everywhere — keep its spirit and make it fit, in this order:
 
 1. **Clone** what repeats: a street of alike houses is one house and its clones.
-2. **Kinds** instead of piles of prims: stairs, roofs, fences, doors, windows, columns, arches.
+2. **Solids and kinds** instead of piles of prims: a shell, a slab with its stairwell, a wall with its openings carved from one
+   block; furniture, railings and rows gathered side by side in one part (recipes.md); stairs, roofs, fences, doors, windows,
+   columns, arches as kinds.
 3. **Fewer, shorter lights**: light the ways and the rooms seen from them; glow (`range: 0`) for
    the rest; `"on": "night"` everywhere outdoors.
 4. **Sober particles**: one chimney in two smoking, one fire for a square, fog in one hollow.
@@ -455,6 +472,10 @@ Each `repeat`ed and `mirror`ed copy of either is made there too. A round one is 
 6, 9, 15 and 24 by level), so a wheel or a rail in one draws no more than its prim. What repeats round an axle is one
 body and its copies — a tyre's faces, a rim's, a wheel's spokes, the part turned so that its z is the axle —, a pair
 one body `mirror`ed across the part's middle: a few hundred characters where a body each took thousands.
+
+**Recipes by form, by hand** — a mass with hollows, a basin, a plate with holes, a frame of members, a run, the loose pieces of a
+room: each its recipe, with its JSON, and what never to leave (overlaps, boxes that touch round an opening, two faces in one
+plane, open joints between a wall and its opening): recipes.md.
 
 **Choosing a recipe** — what has made recipes lighter than the prims they replaced, and what has not, each measured:
 
@@ -1268,6 +1289,222 @@ it best: fabric and leather for upholstery, wood, stone, metal; glazed pottery i
   with dozens.
 
 
+## 3. Recipes by form: carve, gather, clone
+
+Whatever you build — a house, a bridge, a boat, a tower, a market stall, a well, a fence — it is a few kinds of form, and
+each form has its recipe. Name the form first, take its recipe, and never write one part for each plate, leg or rung. Every
+part is a record each peer signs, keeps and sends, and the budget's *fair* is a ceiling, not a target: a build is judged by
+how few parts hold its form (the reference village is 65 parts, rethought, where its prims were 535). None of these needs
+code, only boxes, cylinders and cuts; what is curved by more than a cylinder's sides — a dome, a hull — wants points packed
+by a program (format.md, *Bodies of their own points*). *Gather*, here, is format.md's: plates that meet nowhere, side by side in
+one part; it is not the rule's *never gathered*, which is old pieces copied as they were.
+
+**Carved blocks are preferred.** A carve has no seams where pieces meet; pieces do. So never leave:
+
+- **overlaps**: pieces of one surface laid across each other, as a wall's boxes at its corners or round its openings, whose
+  faces flicker where they meet (a post, a pier or a footing that runs into what it meets is no overlap: it hides the joint);
+- **boxes that touch round an opening**: a wall of boxes round a door, a window or an arch; cut the opening in one block;
+- **two faces in one plane**: they flicker; make the two one block, or offset one by 1–2 cm;
+- **open joints between a wall and its opening**: a gap or a lip where a door, a window or an arch meets its wall; the
+  kind's box is exactly the `cut`, and a `cut` reaches past both faces.
+
+| The form | Its recipe | Seen in | Parts |
+|---|---|---|---|
+| A mass with hollows in it and openings through it | **Carve** one `solid`: a box the size of the mass, its rooms, bays and openings `cut`, what the cuts leave a colour, what must stay `add`ed back after | a house, a tower, a gatehouse, a bridge's pier or abutment, a ship's cabin, a kiosk, a kiln | 1 |
+| A basin, a trough, a ring | carve it: a box minus a box, the cut's colour dressing its inside | a pool, a well, a planter, a fountain's basin, a moat | 1 |
+| A plate with holes in it | one box `solid` and its `cut`s (with code, an `extrude` with `holes`) | a wall with its windows, a floor round its stairwell, a gable, a deck with a hatch | 1 |
+| A frame of members: legs, posts, rails, rungs, struts | **Gather** it in one `solid` of `"join": "none"`: the members `add`ed side by side, `mirror` for the other side | a table, a chair, a bed, a stall, a pergola, a scaffold, a rack, a swing, a truss, a cart | 1 |
+| A run of the same at a step, or round a point | the same, one body `repeat`ed (`step`, or `around`) | a colonnade, balusters, a fence, steps, battlements, a row of windows, spokes, a ring of lamps | 1 |
+| The loose pieces of a room or a yard | the same: each a body, each look a colour | a rug, a table and pots; a row of planters; stepping stones | 1 a group |
+| Something turned about an axis | by hand a `cylinder`, `cone` or `ball` of `sides` (6 a hexagon, 16 round enough small); with code a `revolve` of its profile | a column, a barrel, a lamp, a tower, a vase | 1 |
+| Something along a path: a rail, a pipe, a beam, a bend | by hand short straight bodies turned at each bend; with code a `sweep` | a handrail, a pipe, a curved beam | 1 |
+| A curved shell along an axis | with code a `loft`; by hand faceted, a few boxes and wedges | a boat, a plane, a vault | 1 |
+| What has a kind | the **kinds**, in the openings the carve leaves | doors, windows, stairs, fences, roofs, columns, arches, rocks | 1 each |
+| What repeats far apart | one object and its **clones** | chairs round a table, alike houses, a lamp down a lane | 1 and a transform each |
+| What a solid cannot carry | a part of its own: a light with a range, a behaviour, a script, `phantom`, `climbable`, `bouncy`, a tree. A `seat` is a target on the gathered piece: `"seat": { "at": [x, y, z], "turn": 0 }`, the hips there, from the part's middle | | 1 |
+
+**How many.** What is built is a handful of parts — a cottage with its door and window is four —, what is furnished a part a
+piece or a part a room, a village of five houses 65. For one house with its furniture, past a hundred of your own, clones aside, something is piled: a wall of
+boxes round a gap, a part to a leg, a row of identical parts side by side. Count them before you give a build, and say why any
+place keeps several boxes.
+
+**Parts are not draws.** A gathered solid wearing textures is a mesh of its own, where prims of one shape share one (format.md,
+*Choosing a recipe*, per frame). So gather what is plain or of few looks, clone what repeats, and for a build of many gathered
+textured solids look at the check's *distinct meshes* and measure it (budget.md) before you give it.
+
+How a solid is dressed (every recipe below uses it):
+
+- Face 0 is the box's own: the outside. A body's `colour` (1–7) names the face it leaves: what a `cut` leaves inside is
+  colour 1, a floor plate `add`ed is colour 2. `colours` is the number of the last one used (0 one look, 2 three); `surface.faces` dresses each, as it
+  dresses a cube's. A body with no `colour` leaves the box's own look.
+- The part's own `faces`, a colour for each side of a box base in the order −x +x −y +y −z +z, dress one side alone:
+  `[0, 0, 0, 0, 1, 0]` is a slab with its underside colour 1, `[3, 3, 0, 0, 0, 0]` a block whose two ends are wood.
+- Bodies work one after another, each in metres about the part's middle: cut the rooms, cut the openings, `add` back what the
+  cut took. A `cut` reaches past the faces it cuts through (0.6 m through a wall 0.2 m thick); where a cut leaves a floor, a
+  skirting or a reveal its own look, cut it in a body of its own colour.
+- `mirror` copies a body across the part's middle (`"x"`: left to right); `repeat` makes `count` copies, each `step` on. A body
+  mirrored is mirrored across the *part's* middle: a leg mirrored makes the pair of a piece centred in its part.
+- A part's `size` is the box round its bodies. Gather what is seen together, a room's pieces or a yard's: a part is culled
+  whole.
+- At most 32 bodies and 3,072 characters written out to a solid: what does not fit one is two.
+
+### A mass, carved
+
+A cottage of 8 × 6 m: its box 4 m high, 0.8 m of it a footing under the ground, its room `cut` 7.6 × 5.6 × 2.8 m from 0.2 m
+over the ground (walls 0.2 m, a ceiling 2.8 m clear, 0.2 m of roof left in the block), the door's opening and the window's
+`cut` through the front wall (+y), a floor of boards `add`ed last. Colour 0, the outside, is concrete; colour 1, what the room's cut leaves, plaster; colour 2 the boards. The door
+and window kinds fill the openings, their boxes exactly the openings, turned 180° in a wall facing +y. The roof is a
+`cube` with its eaves, its underside (face 5) the soffit. Four parts, where boxes round each opening took many.
+
+```json
+{ "name": "cottage", "at": [0, 0, 0], "prims": [
+  { "name": "shell", "kind": "solid", "at": [0, 0, 1.2], "size": [8, 6, 4], "colours": 2, "material": "plaster/concrete/concrete-046",
+    "surface": { "faces": { "1": { "texture": "plaster/plaster/plaster-001" }, "2": { "texture": "wood/floor/wood-floor-051" } } },
+    "bodies": [
+      { "cut": "box", "at": [0, 0, 0.4], "size": [7.6, 5.6, 2.8], "colour": 1 },
+      { "cut": "box", "at": [0, 2.9, 0.2], "size": [1.2, 0.6, 2.4] },
+      { "cut": "box", "at": [-2.2, 2.9, 0.55], "size": [1.6, 0.6, 1.2] },
+      { "add": "box", "at": [0, 0, -0.99], "size": [7.6, 5.6, 0.02], "colour": 2 } ] },
+  { "name": "roof", "shape": "cube", "at": [0, 0, 3.325], "size": [9, 7, 0.25], "material": "plaster/concrete/concrete-046",
+    "surface": { "faces": { "5": { "texture": "wood/planks/japanese-cedar-planks" } } } },
+  { "name": "door", "kind": "door", "at": [0, 2.9, 1.4], "size": [1.2, 0.2, 2.4], "turn": [0, 0, 180], "style": "glazed", "hinge": "right",
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } },
+    "behaviour": { "type": "door", "trigger": "both", "reach": 2.5, "stay": 8 } },
+  { "name": "window", "kind": "window", "at": [-2.2, 2.9, 1.75], "size": [1.6, 0.2, 1.2], "turn": [0, 0, 180], "columns": 2, "rows": 1,
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } } } ] }
+```
+
+### Carve, then `add` back what the cut took
+
+A block of a storey (8.2 × 7 × 3 m) whose room is cut right through it, floor to roof and out through the front, so that
+the front is open for glass: the two cheeks of wood that stay at the corners are `add`ed back, and so is the boards' floor.
+Its two ends are wood by `faces`, its inside plaster by the cut's colour.
+
+```json
+{ "name": "upper block", "kind": "solid", "at": [-5.9, -2.5, 5.3], "size": [8.2, 7, 3], "colours": 3, "faces": [3, 3, 0, 0, 0, 0], "material": "plaster/concrete/concrete-046",
+  "surface": { "faces": { "1": { "texture": "plaster/plaster/plaster-001" }, "2": { "texture": "wood/floor/wood-floor-051" }, "3": { "texture": "wood/planks/japanese-cedar-planks" } } },
+  "bodies": [
+    { "cut": "box", "at": [0, 0.2, 0], "size": [7.6, 6.8, 3.2], "colour": 1 },
+    { "add": "box", "at": [-3.6, 3.35, 0], "size": [1, 0.3, 3], "colour": 3 },
+    { "add": "box", "at": [0, 0.1, -1.49], "size": [7.6, 6.6, 0.02], "colour": 2 } ] }
+```
+
+### A basin
+
+A pool, a well's curb, a planter: a box with a box `cut` from its top, the cut's colour the tiles that line it. Here 10.2 × 5 m
+with its coping, 9 × 4 m of basin, its floor 0.04 m over the ground; the water is a `cube` of its own, `phantom` to wade in.
+
+```json
+{ "name": "pool basin", "kind": "solid", "at": [-3.5, 8.6, -0.02], "size": [10.2, 5, 0.56], "colours": 1, "material": "paving/stone/travertine-009",
+  "surface": { "faces": { "1": { "texture": "paving/tiles/tiles-132a" } } },
+  "bodies": [ { "cut": "box", "at": [0, 0, 0.19], "size": [9, 4, 0.26], "colour": 1 } ] }
+```
+
+### A slab with its stairwell
+
+A slab of 8 × 6 × 0.4 m with a stairwell of 1.3 × 4.2 m `cut` through it, its underside (−z) colour 1, the soffit. Start
+the hole over the step where the stair's headroom under the slab falls below 2.1 m, and end it where the last tread meets
+the slab; leave 1.0 m clear at the stair's foot and at its top, or the way past it is lost.
+
+```json
+{ "name": "slab", "kind": "solid", "at": [0, 0, 3.6], "size": [8, 6, 0.4], "colours": 1, "faces": [0, 0, 0, 0, 1, 0], "material": "plaster/concrete/concrete-046",
+  "surface": { "faces": { "1": { "texture": "wood/planks/japanese-cedar-planks" } } },
+  "bodies": [ { "cut": "box", "at": [1.5, 0.5, 0], "size": [1.3, 4.2, 1] } ] }
+```
+
+### A frame of members, gathered
+
+A chair is its legs (two bodies, each `mirror`ed across x), its seat and its back, in one `join: "none"` solid; `seat` is a
+target on it, the hips 0.07 m over its middle. A sofa is its base, its back, one arm `mirror`ed and its cushion, a colour of
+its own. A table is its top and two legs `mirror`ed across x. Each piece is written in its own frame, front +y, floor at
+z = 0; the six chairs round a table are one chair and five clones.
+
+```json
+{ "name": "chair", "at": [0, 0, 0], "prims": [
+  { "name": "chair", "kind": "solid", "at": [0, 0, 0.5], "size": [0.45, 0.45, 1], "join": "none", "colours": 1, "material": "wood/planks/oak-veneer-03",
+    "surface": { "faces": { "1": { "texture": "metal/painted/metal-029" } } }, "seat": { "at": [0, 0, 0.07], "turn": 0 },
+    "bodies": [
+      { "add": "box", "at": [-0.19, -0.19, -0.3], "size": [0.04, 0.04, 0.4], "colour": 1, "mirror": "x" },
+      { "add": "box", "at": [-0.19, 0.19, -0.3], "size": [0.04, 0.04, 0.4], "colour": 1, "mirror": "x" },
+      { "add": "box", "at": [0, 0, -0.075], "size": [0.45, 0.45, 0.05] },
+      { "add": "box", "at": [0, -0.2, 0.2], "size": [0.45, 0.05, 0.5] } ] } ] }
+```
+
+```json
+{ "name": "sofa", "at": [0, 0, 0], "prims": [
+  { "name": "sofa", "kind": "solid", "at": [0, 0, 0.475], "size": [2.4, 0.95, 0.95], "join": "none", "colours": 1, "material": "fabric/cloth/terlenka",
+    "surface": { "faces": { "1": { "texture": "fabric/upholstery/fabric-0020" } } }, "seat": { "at": [0, 0.08, 0.2], "turn": 0 },
+    "bodies": [
+      { "add": "box", "at": [0, 0, -0.25], "size": [2.4, 0.95, 0.45] },
+      { "add": "box", "at": [0, -0.365, 0.225], "size": [2.4, 0.22, 0.5] },
+      { "add": "box", "at": [-1.09, 0, -0.165], "size": [0.22, 0.95, 0.62], "mirror": "x" },
+      { "add": "box", "at": [0, 0.08, 0.035], "size": [1.95, 0.7, 0.12], "colour": 1 } ] } ] }
+```
+
+```json
+{ "name": "table", "at": [0, 0, 0], "prims": [
+  { "name": "table", "kind": "solid", "at": [0, 0, 0.475], "size": [2.4, 1, 0.95], "join": "none", "colours": 1, "material": "wood/planks/walnut-veneer",
+    "surface": { "faces": { "1": { "texture": "metal/painted/metal-029" } } },
+    "bodies": [
+      { "add": "box", "at": [0, 0, 0.45], "size": [2.4, 1, 0.05] },
+      { "add": "box", "at": [-1.1, -0.4, -0.025], "size": [0.08, 0.08, 0.9], "colour": 1, "mirror": "x" },
+      { "add": "box", "at": [-1.1, 0.4, -0.025], "size": [0.08, 0.08, 0.9], "colour": 1, "mirror": "x" } ] } ] }
+```
+
+### A run, a row, a room's loose pieces
+
+A run of railing of 4 m: three rails the whole length and one post `repeat`ed five times, 0.9875 m apart. Its `at` is the
+middle of the run, 0.525 m over the floor it stands on; for a run along y, turn it `[0, 0, 90]`. Several runs that meet, or
+stand apart on one floor, are one part: more bodies, in a box that holds them all.
+
+```json
+{ "name": "railing", "kind": "solid", "at": [0, 0, 0.525], "size": [4, 0.06, 1.05], "join": "none", "material": "metal/painted/metal-029",
+  "bodies": [
+    { "add": "box", "at": [0, 0, 0.5], "size": [4, 0.05, 0.05] },
+    { "add": "box", "at": [0, 0, 0.12], "size": [4, 0.03, 0.03] },
+    { "add": "box", "at": [0, 0, -0.3], "size": [4, 0.03, 0.03] },
+    { "add": "box", "at": [-1.975, 0, 0], "size": [0.05, 0.05, 1.05], "repeat": { "count": 5, "step": [0.9875, 0, 0] } } ] }
+```
+
+Four recessed lights 2 m apart, one part: `emissive` with a `light` of `range: 0` glows at night and counts no light. Set
+them just under the ceiling, 1 cm below its face, not hanging from it.
+
+```json
+{ "name": "lights", "kind": "solid", "at": [0, 0, 0], "size": [6.14, 0.14, 0.02], "join": "none", "color": [1, 0.85, 0.6],
+  "surface": { "emissive": 0.9 }, "light": { "on": "night", "range": 0, "color": [1, 0.8, 0.5] },
+  "bodies": [ { "add": "cylinder", "at": [-3, 0, 0], "size": [0.14, 0.14, 0.02], "sides": 12, "repeat": { "count": 4, "step": [2, 0, 0] } } ] }
+```
+
+A rug, a coffee table and a pot, standing apart, are one part of three looks: the rug's colour 1, the pot's colour 2,
+the table the box's own.
+
+```json
+{ "name": "rug table pot", "kind": "solid", "at": [-6.725, -3.325, 4.07], "size": [5.05, 2.85, 0.5], "join": "none", "colours": 2, "material": "wood/planks/walnut-veneer",
+  "surface": { "faces": { "1": { "texture": "fabric/carpet/carpet-016" }, "2": { "texture": "plaster/concrete/concrete-025" } } },
+  "bodies": [
+    { "add": "box", "at": [0.725, 0.025, -0.24], "size": [3.6, 2.8, 0.02], "colour": 1 },
+    { "add": "box", "at": [0.725, 0.325, 0.13], "size": [1.2, 0.7, 0.04] },
+    { "add": "box", "at": [0.225, 0.325, -0.07], "size": [0.06, 0.6, 0.36] },
+    { "add": "box", "at": [1.225, 0.325, -0.07], "size": [0.06, 0.6, 0.36] },
+    { "add": "cylinder", "at": [-2.275, -1.175, 0], "size": [0.5, 0.5, 0.5], "sides": 16, "colour": 2 } ] }
+```
+
+A bookcase of 1.8 × 0.35 × 2.2 m: a box with five shelves `cut`, one cut `repeat`ed 0.4 m lower each time. The cut reaches
+past the front (+y), so the case opens there, and leaves 0.1 m at the sides and 0.075 m at the back.
+
+```json
+{ "name": "bookcase", "kind": "solid", "at": [0, 0, 1.1], "size": [1.8, 0.35, 2.2], "colours": 0, "material": "wood/planks/oak-veneer-03",
+  "bodies": [ { "cut": "box", "at": [0, 0.1, 0.85], "size": [1.6, 0.4, 0.34], "repeat": { "count": 5, "step": [0, 0, -0.4] } } ] }
+```
+
+### What repeats far apart
+
+What repeats far apart is one object and its clones, each a transform:
+
+```json
+{ "of": "chair", "at": [5.8, -0.15, 0.2], "turn": [0, 0, 180] }
+```
+
 ## 4. Quality: the frame, scale, walls with openings
 
 The rules that make a build look built rather than generated: real proportions, walls cut round
@@ -1330,47 +1567,36 @@ The same ruler for everything else you build, by how the avatar meets it:
 
 ### Walls with openings
 
-Cut a wall round its openings into boxes: full height between openings, and under and over each.
-Walk a building's walls **counter-clockwise seen from above**: each box's x along the wall, its face
-1 (−y) is then outside and face 3 (+y) inside — each may take its own material. Let the front and
-back walls run the full width and the side walls fit between them. Then fill each opening with its
-kind, its box exactly the opening: a door `[width, thickness, height]` at the wall's line, z = floor +
-height / 2; a window `[width, thickness, height]`, its sill standing out of the wall. A roof kind over
-the walls, its eaves out front and back, its gable ends (face 1) of the walls' material.
+Carved blocks are preferred. A wall with its openings is **one `solid`**: a box the size of the wall, each opening a `cut`
+that reaches past both faces, `colour` giving what the cut leaves (a reveal, the inside) its own look. A whole house is the
+same one size up: a box the size of its walls, floor and ceiling, its rooms `cut` out, its openings `cut` through (recipes.md,
+*A mass, carved*). Then fill each opening with its kind, its box exactly the opening: a door `[width, thickness, height]` at
+the wall's line, z = floor + height / 2, turned `[0, 0, 180]` in a wall facing +y; a window the same, its sill standing out
+of the wall. A roof over the block, its eaves out front and back, its underside (a cube's face 5) the soffit.
+
+Never build a wall as boxes round its openings: boxes that touch round a gap leave **overlaps**, **two faces in one plane**
+that flicker, and **open joints between the wall and its door or window**, which a carved block does not have.
 
 ### An example: the cottage, as a build
 
-The cottage these rules make — 7 × 6 m, plaster on stone, a clay-tiled gable roof, a door that opens on a click, four windows — as one build of one object, standing 0.2 m over the ground at its origin on a footing 0.8 m deep:
+The cottage these rules make — 8 × 6 m, concrete outside and plaster within, a flat roof with its wooden soffit, a door that opens on a click, a window — as one build of one object, carved from one block, four parts, standing on the ground at its origin on a footing 0.8 m deep:
 
 ```json
-{ "name": "Cottage", "objects": [{ "name": "cottage", "at": [0, 0, 0.2], "prims": [
-  {"name":"footing","shape":"cube","at":[0,0,-0.4],"size":[7.3,6.3,0.8],"material":"masonry/stone-blocks/rustic-stone-wall-02"},
-  {"name":"floor","shape":"cube","at":[0,0,-0.01],"size":[6.4,5.4,0.06],"material":"wood/floor/weathered-brown-planks"},
-  {"name":"front 1","shape":"cube","at":[3,2.85,1.5],"size":[1,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.5]},"3":{"offset":[0.833,0.5]}}}},
-  {"name":"front 2","shape":"cube","at":[2,2.85,0.475],"size":[1,0.3,0.95],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.5,0.158]},"3":{"offset":[0.5,0.158]}}}},
-  {"name":"front 3","shape":"cube","at":[2,2.85,2.575],"size":[1,0.3,0.85],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.5,0.858]},"3":{"offset":[0.5,0.858]}}}},
-  {"name":"front 4","shape":"cube","at":[1.025,2.85,1.5],"size":[0.95,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.825,0.5]},"3":{"offset":[0.175,0.5]}}}},
-  {"name":"front 5","shape":"cube","at":[0,2.85,2.65],"size":[1.1,0.3,0.7],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.883]},"3":{"offset":[0.833,0.883]}}}},
-  {"name":"front 6","shape":"cube","at":[-1.025,2.85,1.5],"size":[0.95,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.508,0.5]},"3":{"offset":[0.492,0.5]}}}},
-  {"name":"front 7","shape":"cube","at":[-2,2.85,0.475],"size":[1,0.3,0.95],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.833,0.158]},"3":{"offset":[0.167,0.158]}}}},
-  {"name":"front 8","shape":"cube","at":[-2,2.85,2.575],"size":[1,0.3,0.85],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.833,0.858]},"3":{"offset":[0.167,0.858]}}}},
-  {"name":"front 9","shape":"cube","at":[-3,2.85,1.5],"size":[1,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.5]},"3":{"offset":[0.833,0.5]}}}},
-  {"name":"left 1","shape":"cube","at":[-3.35,1.6,1.5],"size":[2.2,0.3,3],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.367,0.5]},"3":{"offset":[0.633,0.5]}}}},
-  {"name":"left 2","shape":"cube","at":[-3.35,0,0.475],"size":[1,0.3,0.95],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.9,0.158]},"3":{"offset":[0.1,0.158]}}}},
-  {"name":"left 3","shape":"cube","at":[-3.35,0,2.575],"size":[1,0.3,0.85],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.9,0.858]},"3":{"offset":[0.1,0.858]}}}},
-  {"name":"left 4","shape":"cube","at":[-3.35,-1.6,1.5],"size":[2.2,0.3,3],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.433,0.5]},"3":{"offset":[0.567,0.5]}}}},
-  {"name":"back 1","shape":"cube","at":[-2,-2.85,1.5],"size":[3,0.3,3],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.5,0.5]},"3":{"offset":[0.5,0.5]}}}},
-  {"name":"back 2","shape":"cube","at":[0,-2.85,0.475],"size":[1,0.3,0.95],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.158]},"3":{"offset":[0.833,0.158]}}}},
-  {"name":"back 3","shape":"cube","at":[0,-2.85,2.575],"size":[1,0.3,0.85],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.858]},"3":{"offset":[0.833,0.858]}}}},
-  {"name":"back 4","shape":"cube","at":[2,-2.85,1.5],"size":[3,0.3,3],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.833,0.5]},"3":{"offset":[0.167,0.5]}}}},
-  {"name":"right 1","shape":"cube","at":[3.35,0,1.5],"size":[5.4,0.3,3],"turn":[0,0,90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.9,0.5]},"3":{"offset":[0.1,0.5]}}}},
-  {"name":"door","kind":"door","at":[0,2.85,1.15],"size":[1.1,0.3,2.3],"turn":[0,0,180],"style":"panelled","material":"wood/planks/planks-brown-10","behaviour":{"type":"door","trigger":"both","reach":2.5,"stay":8}},
-  {"name":"window","kind":"window","at":[-2,2.85,1.55],"size":[1,0.3,1.2],"turn":[0,0,180],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"window","kind":"window","at":[2,2.85,1.55],"size":[1,0.3,1.2],"turn":[0,0,180],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"window","kind":"window","at":[0,-2.85,1.55],"size":[1,0.3,1.2],"turn":[0,0,0],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"window","kind":"window","at":[-3.35,0,1.55],"size":[1,0.3,1.2],"turn":[0,0,-90],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"roof","kind":"roof","type":"gable","at":[0,0,4.348],"size":[7.1,6.9,2.695],"material":"roofing/tiles/clay-roof-tiles-02","surface":{"faces":{"1":{"texture":"plaster/plaster/beige-wall-001"},"2":{"texture":"wood/planks/planks-brown-10"},"3":{"texture":"wood/planks/planks-brown-10"}}}}
-] }] }
+{ "name": "Cottage", "objects": [{ "name": "cottage", "at": [0, 0, 0], "prims": [
+  { "name": "shell", "kind": "solid", "at": [0, 0, 1.2], "size": [8, 6, 4], "colours": 2, "material": "plaster/concrete/concrete-046",
+    "surface": { "faces": { "1": { "texture": "plaster/plaster/plaster-001" }, "2": { "texture": "wood/floor/wood-floor-051" } } },
+    "bodies": [
+      { "cut": "box", "at": [0, 0, 0.4], "size": [7.6, 5.6, 2.8], "colour": 1 },
+      { "cut": "box", "at": [0, 2.9, 0.2], "size": [1.2, 0.6, 2.4] },
+      { "cut": "box", "at": [-2.2, 2.9, 0.55], "size": [1.6, 0.6, 1.2] },
+      { "add": "box", "at": [0, 0, -0.99], "size": [7.6, 5.6, 0.02], "colour": 2 } ] },
+  { "name": "roof", "shape": "cube", "at": [0, 0, 3.325], "size": [9, 7, 0.25], "material": "plaster/concrete/concrete-046",
+    "surface": { "faces": { "5": { "texture": "wood/planks/japanese-cedar-planks" } } } },
+  { "name": "door", "kind": "door", "at": [0, 2.9, 1.4], "size": [1.2, 0.2, 2.4], "turn": [0, 0, 180], "style": "glazed", "hinge": "right",
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } },
+    "behaviour": { "type": "door", "trigger": "both", "reach": 2.5, "stay": 8 } },
+  { "name": "window", "kind": "window", "at": [-2.2, 2.9, 1.75], "size": [1.6, 0.2, 1.2], "turn": [0, 0, 180], "columns": 2, "rows": 1,
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } } } ] }] }
 ```
 
 
@@ -1452,10 +1678,12 @@ ways through it, what stands along them, what grows round them, what lights them
   panelling), a ceiling (the roof's underside, face 2, or a slab), and one warm lamp.
 - **Furniture against walls**, a clear way from the door through the room (≥ 1 m — the avatar is
   0.6 m wide and everything is solid), and one focal piece: a hearth, a table, a bed, a counter.
-- **Recipes from boxes and cylinders**, bevelled where hands touch (`bevel` kind, `radius`
-  0.01–0.03): a table is a top 0.04 m and four legs; a chair a seat, four legs, a back; a bed a
-  frame, a mattress, a duvet, pillows (spheres); a shelf, a barrel (cylinder), a crate (box), a
-  rug (a box 1 cm thick, `fabric/carpet/…`), a hearth (a stone box, a dark opening, a log).
+- **Each piece of furniture one `solid`**, never a part a leg: its plates `add`ed side by side (`"join": "none"`), a leg
+  `mirror`ed, a row `repeat`ed, each look a colour. A table is its top 0.04 m and its legs, one part; a chair its frame
+  (legs, seat and back) one part, with its `seat` target; a bed its frame, mattress, duvet, pillows and headboard one part of
+  three looks; a shelf a box with its shelves `cut` (one cut `repeat`ed); a rug a box 1 cm thick (`fabric/carpet/…`); a hearth
+  a stone box with its opening `cut`; a barrel a cylinder. Bevel (`bevel` kind, `radius` 0.01–0.03) only where hands touch
+  and a plain edge shows (recipes.md).
 - **A hearth that burns**: embers with fire's particles under the flue, smoke on the chimney's cap
   outside (effects.md); a cold one, neither.
 - **The lamp** is a part of the house's object, under the ceiling or on a table:
@@ -1519,7 +1747,7 @@ night, and off `cut-out` ones for anything solid: they are for fences, grates an
    opening cut for it).
 5. A shut door the avatar cannot open: give it the `door` behaviour (or build it open).
 6. A roof that does not cover the walls, a gap under it, gables open to the sky.
-7. Two faces in one plane (a floor's top on a footing's top): they flicker. Offset 1–2 cm.
+7. Two faces in one plane (a floor's top on a footing's top): they flicker. Make the two one block, or offset 1–2 cm.
 8. A texture stretched or tiny: `scale` set by hand — leave it out.
 9. Spheres sized as boxes (their size is height, depth, width).
 10. Too many lights, all at 10 m; a room's lamp in an object of its own, lighting through walls.
@@ -1528,6 +1756,8 @@ night, and off `cut-out` ones for anything solid: they are for fences, grates an
 13. Paths straight up slopes, or floating over a bump (lay them in short legs).
 14. Trees on paths, in houses, crowns through roofs.
 15. Rooms the camera cannot get into.
+16. Overlapping pieces of one surface; boxes that touch round a door, a window or an arch; an open joint between a wall and its opening: carve the wall
+    as one block (method.md, recipes.md).
 
 ## 5. Limits and the budget
 
@@ -1615,6 +1845,14 @@ cube 12 / 12 / 48 / 108, cylinder 24 / 36 / 90 / 192, sphere 24 / 54 / 180 / 528
 The village's lights were not always so cheap: with twelve at 5–7 m, ten of them within 30 m of one
 another, its square by night once cost twice as much and took frames past 8.33 ms. Kept to ten at
 4–5 m, the renderer's cheaper path holds — the budget's `crowd`.
+
+### What to aim at
+
+*Fair* and *most* are ceilings: the editor refuses past *most*, and says so from *fair*. They are not what to aim at. Aim at what a
+rethought build weighs: the reference village is 65 parts for five houses and their furniture (535 as prims); a cottage with its
+door and window is four; a chair one or two. Count your own parts, clones aside: past a hundred for one house with its furniture,
+something is piled (recipes.md). Parts are not draws: a gathered solid wearing textures is a mesh of its own, so look at the
+check's *distinct meshes* and measure before you give a build of many.
 
 ### When it is over
 
@@ -2320,6 +2558,7 @@ a car or a bike, no route for a train, no seat; a bicycle with no crank, or a sa
   puts it where they point.
 - **What you simplified, and why** (plan.md), and what each part of it is: the person reads it
   before they place it.
+- **Your parts**: your own parts per object, clones aside, and, wherever several boxes remain, why they could not be one `solid`.
 
 ### How the person brings it in
 
@@ -2357,9 +2596,12 @@ wide, a step up of 0.3 m at most), from outside into every room, and fix what st
    (method.md, Walls with openings): a door set before an uncut wall blocks the way.
 2. **Every threshold, step or ledge** is 0.3 m at most, or stairs with risers of 0.2 m at most.
 3. **Headroom** 2.1 m under beams, lofts and stair landings; rooms at least 4 × 4 m with ceilings of 2.8 m.
-4. **A clear way** of 1 m from the door through each room: furniture against the walls.
+4. **A clear way** of 1 m from the door through each room, and past the foot and the top of every stair: furniture against the walls.
 5. **Every name** — kind, parameter, material, species — is in the guide or `catalog.json`, and no object has
    more than 256 parts.
+6. **Carve, don't pile.** Count your parts. Carved blocks are preferred: a wall of boxes round a gap, a part to a leg, a row of
+   identical parts side by side are each one `solid` (recipes.md). And no overlapping pieces of one surface, no boxes touching round an opening, no two
+   faces in one plane, no open joint between a wall and its opening. Redo them before you give it.
 
 ### Sharing it
 

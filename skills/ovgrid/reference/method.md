@@ -60,47 +60,36 @@ The same ruler for everything else you build, by how the avatar meets it:
 
 ## Walls with openings
 
-Cut a wall round its openings into boxes: full height between openings, and under and over each.
-Walk a building's walls **counter-clockwise seen from above**: each box's x along the wall, its face
-1 (−y) is then outside and face 3 (+y) inside — each may take its own material. Let the front and
-back walls run the full width and the side walls fit between them. Then fill each opening with its
-kind, its box exactly the opening: a door `[width, thickness, height]` at the wall's line, z = floor +
-height / 2; a window `[width, thickness, height]`, its sill standing out of the wall. A roof kind over
-the walls, its eaves out front and back, its gable ends (face 1) of the walls' material.
+Carved blocks are preferred. A wall with its openings is **one `solid`**: a box the size of the wall, each opening a `cut`
+that reaches past both faces, `colour` giving what the cut leaves (a reveal, the inside) its own look. A whole house is the
+same one size up: a box the size of its walls, floor and ceiling, its rooms `cut` out, its openings `cut` through (recipes.md,
+*A mass, carved*). Then fill each opening with its kind, its box exactly the opening: a door `[width, thickness, height]` at
+the wall's line, z = floor + height / 2, turned `[0, 0, 180]` in a wall facing +y; a window the same, its sill standing out
+of the wall. A roof over the block, its eaves out front and back, its underside (a cube's face 5) the soffit.
+
+Never build a wall as boxes round its openings: boxes that touch round a gap leave **overlaps**, **two faces in one plane**
+that flicker, and **open joints between the wall and its door or window**, which a carved block does not have.
 
 ## An example: the cottage, as a build
 
-The cottage these rules make — 7 × 6 m, plaster on stone, a clay-tiled gable roof, a door that opens on a click, four windows — as one build of one object, standing 0.2 m over the ground at its origin on a footing 0.8 m deep:
+The cottage these rules make — 8 × 6 m, concrete outside and plaster within, a flat roof with its wooden soffit, a door that opens on a click, a window — as one build of one object, carved from one block, four parts, standing on the ground at its origin on a footing 0.8 m deep:
 
 ```json
-{ "name": "Cottage", "objects": [{ "name": "cottage", "at": [0, 0, 0.2], "prims": [
-  {"name":"footing","shape":"cube","at":[0,0,-0.4],"size":[7.3,6.3,0.8],"material":"masonry/stone-blocks/rustic-stone-wall-02"},
-  {"name":"floor","shape":"cube","at":[0,0,-0.01],"size":[6.4,5.4,0.06],"material":"wood/floor/weathered-brown-planks"},
-  {"name":"front 1","shape":"cube","at":[3,2.85,1.5],"size":[1,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.5]},"3":{"offset":[0.833,0.5]}}}},
-  {"name":"front 2","shape":"cube","at":[2,2.85,0.475],"size":[1,0.3,0.95],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.5,0.158]},"3":{"offset":[0.5,0.158]}}}},
-  {"name":"front 3","shape":"cube","at":[2,2.85,2.575],"size":[1,0.3,0.85],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.5,0.858]},"3":{"offset":[0.5,0.858]}}}},
-  {"name":"front 4","shape":"cube","at":[1.025,2.85,1.5],"size":[0.95,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.825,0.5]},"3":{"offset":[0.175,0.5]}}}},
-  {"name":"front 5","shape":"cube","at":[0,2.85,2.65],"size":[1.1,0.3,0.7],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.883]},"3":{"offset":[0.833,0.883]}}}},
-  {"name":"front 6","shape":"cube","at":[-1.025,2.85,1.5],"size":[0.95,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.508,0.5]},"3":{"offset":[0.492,0.5]}}}},
-  {"name":"front 7","shape":"cube","at":[-2,2.85,0.475],"size":[1,0.3,0.95],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.833,0.158]},"3":{"offset":[0.167,0.158]}}}},
-  {"name":"front 8","shape":"cube","at":[-2,2.85,2.575],"size":[1,0.3,0.85],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.833,0.858]},"3":{"offset":[0.167,0.858]}}}},
-  {"name":"front 9","shape":"cube","at":[-3,2.85,1.5],"size":[1,0.3,3],"turn":[0,0,180],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.5]},"3":{"offset":[0.833,0.5]}}}},
-  {"name":"left 1","shape":"cube","at":[-3.35,1.6,1.5],"size":[2.2,0.3,3],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.367,0.5]},"3":{"offset":[0.633,0.5]}}}},
-  {"name":"left 2","shape":"cube","at":[-3.35,0,0.475],"size":[1,0.3,0.95],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.9,0.158]},"3":{"offset":[0.1,0.158]}}}},
-  {"name":"left 3","shape":"cube","at":[-3.35,0,2.575],"size":[1,0.3,0.85],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.9,0.858]},"3":{"offset":[0.1,0.858]}}}},
-  {"name":"left 4","shape":"cube","at":[-3.35,-1.6,1.5],"size":[2.2,0.3,3],"turn":[0,0,-90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.433,0.5]},"3":{"offset":[0.567,0.5]}}}},
-  {"name":"back 1","shape":"cube","at":[-2,-2.85,1.5],"size":[3,0.3,3],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.5,0.5]},"3":{"offset":[0.5,0.5]}}}},
-  {"name":"back 2","shape":"cube","at":[0,-2.85,0.475],"size":[1,0.3,0.95],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.158]},"3":{"offset":[0.833,0.158]}}}},
-  {"name":"back 3","shape":"cube","at":[0,-2.85,2.575],"size":[1,0.3,0.85],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.167,0.858]},"3":{"offset":[0.833,0.858]}}}},
-  {"name":"back 4","shape":"cube","at":[2,-2.85,1.5],"size":[3,0.3,3],"turn":[0,0,0],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.833,0.5]},"3":{"offset":[0.167,0.5]}}}},
-  {"name":"right 1","shape":"cube","at":[3.35,0,1.5],"size":[5.4,0.3,3],"turn":[0,0,90],"material":"plaster/plaster/beige-wall-001","surface":{"faces":{"1":{"offset":[0.9,0.5]},"3":{"offset":[0.1,0.5]}}}},
-  {"name":"door","kind":"door","at":[0,2.85,1.15],"size":[1.1,0.3,2.3],"turn":[0,0,180],"style":"panelled","material":"wood/planks/planks-brown-10","behaviour":{"type":"door","trigger":"both","reach":2.5,"stay":8}},
-  {"name":"window","kind":"window","at":[-2,2.85,1.55],"size":[1,0.3,1.2],"turn":[0,0,180],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"window","kind":"window","at":[2,2.85,1.55],"size":[1,0.3,1.2],"turn":[0,0,180],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"window","kind":"window","at":[0,-2.85,1.55],"size":[1,0.3,1.2],"turn":[0,0,0],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"window","kind":"window","at":[-3.35,0,1.55],"size":[1,0.3,1.2],"turn":[0,0,-90],"columns":2,"rows":2,"sill":0.06,"material":"wood/planks/planks-brown-10","surface":{"faces":{"2":{"texture":"glass/clear/old"}}}},
-  {"name":"roof","kind":"roof","type":"gable","at":[0,0,4.348],"size":[7.1,6.9,2.695],"material":"roofing/tiles/clay-roof-tiles-02","surface":{"faces":{"1":{"texture":"plaster/plaster/beige-wall-001"},"2":{"texture":"wood/planks/planks-brown-10"},"3":{"texture":"wood/planks/planks-brown-10"}}}}
-] }] }
+{ "name": "Cottage", "objects": [{ "name": "cottage", "at": [0, 0, 0], "prims": [
+  { "name": "shell", "kind": "solid", "at": [0, 0, 1.2], "size": [8, 6, 4], "colours": 2, "material": "plaster/concrete/concrete-046",
+    "surface": { "faces": { "1": { "texture": "plaster/plaster/plaster-001" }, "2": { "texture": "wood/floor/wood-floor-051" } } },
+    "bodies": [
+      { "cut": "box", "at": [0, 0, 0.4], "size": [7.6, 5.6, 2.8], "colour": 1 },
+      { "cut": "box", "at": [0, 2.9, 0.2], "size": [1.2, 0.6, 2.4] },
+      { "cut": "box", "at": [-2.2, 2.9, 0.55], "size": [1.6, 0.6, 1.2] },
+      { "add": "box", "at": [0, 0, -0.99], "size": [7.6, 5.6, 0.02], "colour": 2 } ] },
+  { "name": "roof", "shape": "cube", "at": [0, 0, 3.325], "size": [9, 7, 0.25], "material": "plaster/concrete/concrete-046",
+    "surface": { "faces": { "5": { "texture": "wood/planks/japanese-cedar-planks" } } } },
+  { "name": "door", "kind": "door", "at": [0, 2.9, 1.4], "size": [1.2, 0.2, 2.4], "turn": [0, 0, 180], "style": "glazed", "hinge": "right",
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } },
+    "behaviour": { "type": "door", "trigger": "both", "reach": 2.5, "stay": 8 } },
+  { "name": "window", "kind": "window", "at": [-2.2, 2.9, 1.75], "size": [1.6, 0.2, 1.2], "turn": [0, 0, 180], "columns": 2, "rows": 1,
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } } } ] }] }
 ```
 
 
