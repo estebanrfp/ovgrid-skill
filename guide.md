@@ -152,6 +152,7 @@ Never bring in its mesh or its textures.
    whose rooms are under 2.8 m clear or whose doors are under 2.2 m is built larger, all of it, just
    enough (never smaller, at most ×1.5). Furniture, lamps and rails keep their size, set where their
    floors stand grown. Stairs are laid again with risers of 0.2 m at most, wherever their run fits.
+   A vehicle is fitted so to the room its seated avatar takes (vehicles.md, Room for the avatar).
    Then fit the whole to the ground and the budget, and say what you simplified: a flat roof made a
    ridge, arches made straight, a railing raised to a real one's height.
 
@@ -2107,7 +2108,10 @@ then 0.07 ms of physics a frame on its driver's peer alone.
 
 - **The object** says what it is: `"vehicle": { "type": "car" }` — `car`, `bike`, `bicycle`, `boat`, `ship`,
   `submarine`, `helicopter`, `plane` or `train` — and its parameters, each held to its range (catalog.json →
-  `vehicles`): a car's `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg); a bike's the
+  `vehicles`): a car's `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg), and if it says so its `grip`
+  (×, 0.4–3: how hard its tyres hold the ground) and its `drive` (`all`, `front` or `rear`: the wheels its engine turns) —
+  left out, 2 and all —, its `brake`, `suspension`, `travel` and `steering` (each, and what it does to the feel, with the
+  values for each kind of car: «A car's handling»); a bike's the
   same; a bicycle's those — `power` its rider's push, `mass` with its rider — and `gear` (how many turns
   its back wheel makes for each of its pedals'); a boat's `power`, `speed`, `steer` (its rudder) and `mass`; a ship's `speed`, `accel` (m/s²),
   `turn` and `thrusters` (°/s); a submarine's those and `dive` (m/s) and `depth` (m); a helicopter's
@@ -2156,6 +2160,35 @@ A vehicle is looked at up close: boxes and black cylinders read as a toy. What t
   "softness": 0.5 } }`, a cone shining down the part's −z, which that turn points ahead. Unlit by
   day; at night the lens glows and the road ahead is lit.
 
+### Room for the avatar
+
+A vehicle people sit in is built round the body that sits there: the avatar, 1.8 m tall, measured in each seat's pose over
+the pose's whole loop, about its hips — where a sit target puts them —, x its left, y ahead, z up, in metres:
+
+| Pose | Its soles | Its seat | The top of its head | Its back | Out to a side | Ahead, at most |
+|---|---|---|---|---|---|---|
+| `quaternius/driving` | −0.57 | −0.18 | +0.91 | −0.21 | 0.28 | its knees 0.51 under the hips, its hands 0.43 at its shoulders; its grips (±0.135, 0.36, 0.34) |
+| `dcl/sitting-chair-1` | −0.65 | −0.21 | +0.92 | −0.16 | 0.33 | 0.60 under the hips (a foot crossed), 0.42 over them |
+| `quaternius/sitting-talking` | −0.56 | −0.18 | +0.89 | −0.15 | 0.34 | its hands 0.61 as it talks |
+
+So, seat by seat:
+
+- **Its floor** under the soles: the hips 0.58 m over it at the wheel, 0.66 m on a chair. **Its cushion's top** a little
+  over the seat's figure — 3 cm into the cushion —, **its back** behind the body's.
+- **Its roof**, inside, 0.95 m or more over the hips: 1.52 m clear over the floor at the wheel, 1.58 m on a chair.
+- **Across**, 0.33 m from each seat's middle to the inside of the side, at its shoulders' height (+0.45 m) and at its
+  head's — a glasshouse drawn in as it rises leaves less room up there —, and seats' middles 0.66 m apart or more.
+- **Ahead of the driver**: the dashboard's face 0.55 m from the hips, its underside 0.05 m over them (the knees go under
+  it), the footwell 0.70 m long; the steering wheel through the grips — its middle 0.33 m ahead of the hips and 0.27 m over
+  them, its rim 0.31 m across, tilted 25° from upright towards the driver (`"turn": [65, 0, 0]` on a part whose z is its
+  column), its column into the dashboard.
+- **Rows** 0.95 m or more apart: the seat ahead's back clear of a passenger's knees and hands.
+
+A real car is too small for it — a saloon of 1.45 m has no 1.52 m inside —: build cars ×1.2–1.4 a real one's, all of it
+alike. Low-poly packs often are so already: measure the model, and keep its scale where the room fits. One under the room
+is grown — never shrunk —, all of it, just enough (×1.5 at most, plan.md); a low sports car may instead take its floor down
+to its body's bottom.
+
 ### A car
 
 Its wheels are its parts that are **one cylinder lying across it**, its axle along the object's x —
@@ -2203,6 +2236,119 @@ roadster, 3.9 m long:
 
 Its power: 400–800 for a car people can drive round a village, more for a truck (and its `mass`
 with it).
+
+### A closed car
+
+A car with a roof and its windows' glass, its driver and passengers seen through them. Rethink it from its form (a model
+measured, SKILL.md), every seat by its room (above):
+
+- **In by its doors.** Each door is one part — its panel, its window's glass, its handle — and the seat behind it: `"seat":
+  { "at": [the hips, from the door's middle], "turn": 0, "pose": … }`, the driver's `quaternius/driving`, its passengers' a
+  chair's. A click on the driver's door sits one at the wheel (Drive), on another in its place (Ride); up — E, Esc —, one
+  stands beside that door, outside the car. A seat behind glass is never clicked: the glass is in the way.
+- **Its body one carved solid**: its lower body and its glasshouse, two hulls joined (`keep` the first, `add` the second);
+  its cabin cut 2 cm inside its skin; its windscreen, rear window and side windows cut between their pillars (an opening
+  drawn out of the skin and in, a hull of its outline); its doors' openings, a few millimetres larger than their panels (the
+  shut lines); its wheel arches, one cylinder round an axle mirrored and repeated; its grille sunk in.
+- **Glass within the skin**: 8 mm thick, 4 mm in from its outside, its edges 1 cm into the skin round its opening; a door's
+  window in the door's part, so that a click on it is a click on the door.
+- **What it drives as**: a hollow body is no part of what moves (only convex pieces move with a vehicle), so everything drawn
+  is `phantom`, and one `collisionOnly` solid of its two hulls side by side is what it collides as, driven and parked.
+- **Lights**: one light for its headlamps, between them, a little in front of its nose — its own body would stop a light
+  inside it —, on a part turned `[90, 0, 0]` so that its cone shines ahead; its rear lamps glow by night with `"range": 0`.
+  A car park of cars keeps within its lights so.
+- **Wheels with spokes**: what it runs on a plain cylinder across it, `collisionOnly` — the wheel the vehicle finds and Jolt
+  drives —, and drawn round it, `phantom`, turning with it as what lies within a wheel does, its tyre and rim one carved
+  solid: its tyre faceted, its dish sunk into its outer face, windows cut between its spokes, its hub; its outer face its
+  own +z, turned out on either side. 276 triangles at every distance; a bevelled cylinder rounded in two steps
+  (`"segments": 2`, 288 near, fewer far) where no spokes show.
+- **Its handling**: below, «A car's handling».
+
+Some 20 parts and 2,700 triangles near: a saloon of the pack rethought so is 19 parts (each wheel two), 2,724 triangles
+drawn near and 2,540 at 40 m.
+
+### A car's handling
+
+One way of driving for every car — W and S throttle and brake, A and D steer, Space its hand brake — and its numbers make
+it what it is, each held to its range, its default where it is left out (all but `power`, `speed`, `steer` and `mass` may
+be). **Its steering holds itself**: its wheels turn all the way while it is slow and, faster, only as far as its tyres hold
+at its speed — 85 % of it, tan δ = L · a / v², L its wheelbase and a what its `grip` holds across —, as in a driving game.
+So no lock is set by hand for a speed: `steer` is how tight it turns while slow, parking; how tight it turns at speed is
+its `grip`.
+
+| Parameter | Range | Default | What it does to the feel |
+|---|---|---|---|
+| `power` | 50–3,000 N·m | 500 | its engine's torque: how hard it gets going and climbs |
+| `speed` | 2–60 m/s | 25 | its top speed |
+| `steer` | 5–45 ° | 30 | its wheels' full lock: how tight it turns while slow |
+| `mass` | 50–5,000 kg | 1,000 | how heavy: slower to get going and to stop, steadier |
+| `grip` | 0.4–3 × | 2 | how hard its tyres hold: 2 as dry asphalt (the world's ground met at 0.98 of friction), 1 as snow (0.49), 0.4 as ice; at speed it turns as tight as its grip lets it |
+| `drive` | `all` / `front` / `rear` | `all` | the wheels its engine turns: `rear` holds best in a turn, its tail stepping out only when powered hard; `front` runs wide and, at the limit, spins |
+| `brake` | 0.25–3 × | 1 | how hard it brakes: 1 holds each wheel with 1,500 N·m, a family car's — its grip then stops it —; a heavy one wants about mass × wheel radius / (160 × its wheels), or it takes long to stop |
+| `suspension` | 0.8–4 Hz | 1.5 | its springs: low, soft and swaying over bumps; high, firm and flat in a turn |
+| `travel` | 0.1–1 m | 0.3 | how far its wheels go up and down: long for rough ground and jumps, short for a low car |
+| `steering` | `front` / `rear` / `all` | `front` | the wheels that steer: `rear` as a forklift's; `all`, its back ones the other way, turning half as wide while slow |
+
+Given its `suspension` or its `travel`, its wheels rest where they were built, its springs pressed by its load. Typical
+values for the kinds a collection of cars holds — each a start, tuned when its car is built (the family car's are measured:
+at full lock at its top speed it goes 2.5° off where it heads, powering out of a turn 5°):
+
+| Kind | `power` | `speed` | `steer` | `mass` | `grip` | `drive` | `brake` | `suspension` | `travel` | `steering` |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Family car (saloon, hatchback) | 700 | 26 | 32 | 1,400 | 2 | `rear` | 1 | 1.5 | 0.3 | `front` |
+| Taxi | 700 | 25 | 34 | 1,450 | 2 | `rear` | 1 | 1.5 | 0.3 | `front` |
+| Sports car | 1,100 | 40 | 30 | 1,200 | 2.4 | `rear` | 1.4 | 2.4 | 0.2 | `front` |
+| Muscle car | 1,400 | 36 | 30 | 1,600 | 1.8 | `rear` | 1.2 | 1.8 | 0.25 | `front` |
+| SUV | 1,000 | 28 | 32 | 2,000 | 2 | `all` | 1.3 | 1.3 | 0.35 | `front` |
+| Pickup | 1,100 | 27 | 32 | 2,200 | 1.9 | `all` | 1.4 | 1.2 | 0.4 | `front` |
+| Van | 900 | 24 | 34 | 2,400 | 2 | `rear` | 1.5 | 1.3 | 0.3 | `front` |
+| Ambulance | 1,000 | 26 | 34 | 2,800 | 2 | `rear` | 1.7 | 1.4 | 0.3 | `front` |
+| Limousine | 1,000 | 26 | 30 | 2,800 | 2 | `rear` | 1.7 | 1.2 | 0.3 | `front` |
+| Bus | 2,600 | 20 | 34 | 5,000 | 2 | `rear` | 3 | 1.2 | 0.25 | `front` |
+| Truck | 2,600 | 22 | 32 | 5,000 | 2 | `rear` | 2 | 1.2 | 0.3 | `front` |
+| Truck with trailer (one rigid body) | 3,000 | 20 | 30 | 5,000 | 2 | `rear` | 1.2 | 1.1 | 0.3 | `all` |
+| Monster truck | 2,400 | 24 | 30 | 3,500 | 2.2 | `all` | 3 | 0.9 | 0.8 | `all` |
+
+The other vehicles' numbers, each held to its range, its default where it is left out (what each does: «What makes one»):
+
+| Vehicle | Parameter | Range | Default |
+|---|---|---|---|
+| bike | `power` | 10–600 N·m | 150 |
+| bike | `speed` | 2–70 m/s | 30 |
+| bike | `steer` | 5–45 ° | 30 |
+| bike | `mass` | 50–5,000 kg | 250 |
+| bicycle | `power` | 5–200 N·m | 45 |
+| bicycle | `speed` | 1–20 m/s | 8 |
+| bicycle | `steer` | 5–45 ° | 30 |
+| bicycle | `mass` | 50–5,000 kg | 90 |
+| bicycle | `gear` | 1–5 | 2.8 |
+| boat | `power` | 50–5,000 | 600 |
+| boat | `speed` | 1–30 m/s | 8 |
+| boat | `steer` | 5–45 ° | 30 |
+| boat | `mass` | 50–5,000 kg | 800 |
+| ship | `speed` | 1–25 m/s | 10 |
+| ship | `accel` | 0.05–3 m/s² | 0.5 |
+| ship | `turn` | 1–30 °/s | 6 |
+| ship | `thrusters` | 0–10 °/s | 2 |
+| submarine | `speed` | 1–25 m/s | 6 |
+| submarine | `accel` | 0.05–3 m/s² | 0.6 |
+| submarine | `turn` | 1–30 °/s | 8 |
+| submarine | `thrusters` | 0–10 °/s | 3 |
+| submarine | `dive` | 0.2–5 m/s | 1 |
+| submarine | `depth` | 2–500 m | 60 |
+| helicopter | `speed` | 2–80 m/s | 25 |
+| helicopter | `accel` | 0.5–10 m/s² | 3 |
+| helicopter | `turn` | 5–120 °/s | 45 |
+| helicopter | `climb` | 0.5–20 m/s | 5 |
+| helicopter | `ceiling` | 10–3,000 m | 500 |
+| plane | `speed` | 20–300 m/s | 80 |
+| plane | `accel` | 0.5–15 m/s² | 4 |
+| plane | `lift` | 10–120 m/s | 40 |
+| plane | `turn` | 3–60 °/s | 15 |
+| plane | `climb` | 1–50 m/s | 10 |
+| plane | `ceiling` | 100–15,000 m | 3,000 |
+| train | `speed` | 1–60 m/s | 20 |
+| train | `accel` | 0.1–3 m/s² | 0.8 |
 
 ### A motorbike
 
@@ -2795,7 +2941,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
 
 ### Vehicles
 
-- **`car`** — Driven on its wheels — its cylinders lying across it — the front ones steering: W and S throttle and brake, A and D steer, Space the hand brake. `power` 50–3000 N·m (default 500), `speed` 2–60 m/s (default 25), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 1000).
+- **`car`** — Driven on its wheels — its cylinders lying across it — the front ones steering: W and S throttle and brake, A and D steer, Space the hand brake. `power` 50–3000 N·m (default 500), `speed` 2–60 m/s (default 25), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 1000), `grip` 0.4–3 × (default 2), `drive` `all` / `front` / `rear` (default all), `brake` 0.25–3 × (default 1), `suspension` 0.8–4 Hz (default 1.5), `travel` 0.1–1 m (default 0.3), `steering` `front` / `rear` / `all` (default front).
 - **`bike`** — Driven on its two wheels — its front and back cylinders lying across it — leaning into its turns: W and S throttle and brake, A and D steer. `power` 10–600 N·m (default 150), `speed` 2–70 m/s (default 30), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 250).
 - **`bicycle`** — Ridden on its two wheels as a motorbike is, leaning into its turns, and pedalled: W pedals, S brakes, A and D steer. A cylinder lying across it between its wheels is its crank: it turns, and what lies within it — its arms, its pedals —, as its rider pedals (the seat's pose Pedalling), Gear times slower than its back wheel. `power` 5–200 N·m (default 45), `speed` 1–20 m/s (default 8), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 90), `gear` 1–5 (default 2.8).
 - **`train`** — Along its route (Does: follows a route), its driver setting its speed: W faster, S slower and then back; left, it goes on with its timetable from there. `speed` 1–60 m/s (default 20), `accel` 0.1–3 m/s² (default 0.8).

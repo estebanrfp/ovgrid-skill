@@ -89,6 +89,7 @@ Never bring in its mesh or its textures.
    whose rooms are under 2.8 m clear or whose doors are under 2.2 m is built larger, all of it, just
    enough (never smaller, at most ×1.5). Furniture, lamps and rails keep their size, set where their
    floors stand grown. Stairs are laid again with risers of 0.2 m at most, wherever their run fits.
+   A vehicle is fitted so to the room its seated avatar takes (vehicles.md, Room for the avatar).
    Then fit the whole to the ground and the budget, and say what you simplified: a flat roof made a
    ridge, arches made straight, a railing raised to a real one's height.
 

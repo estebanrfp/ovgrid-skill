@@ -4819,6 +4819,13 @@ var wheelsOf = (parts, meshesOf = () => () => null) => parts.flatMap((part, inde
 
 // src/build/vehicles.js
 var MASS = { name: "mass", label: "Mass", min: 50, max: 5000, default: 1000, step: 10, unit: "kg", description: "How heavy it is (kg): heavier, it speeds up and stops more slowly." };
+var CAR_GRIP = 2;
+var GRIP = { name: "grip", label: "Grip", min: 0.4, max: 3, default: CAR_GRIP, step: 0.05, unit: "×", optional: true, description: "How hard its tyres hold the ground (×): 2 as dry asphalt; more, it turns where its front wheels point at more speed before it slides; less, it slides sooner (0.4 on ice)." };
+var DRIVE = { name: "drive", label: "Drive", options: ["all", "front", "rear"], default: "all", optional: true, description: "Which wheels its engine turns: all of them, its front ones (it runs wide at the limit) or its back ones (its tail may step out)." };
+var BRAKE = { name: "brake", label: "Brakes", min: 0.25, max: 3, default: 1, step: 0.05, unit: "×", optional: true, description: "How hard it brakes (×): 1 holds each wheel with 1,500 N·m; a heavy one wants more, or it takes long to stop." };
+var SUSPENSION = { name: "suspension", label: "Suspension", min: 0.8, max: 4, default: 1.5, step: 0.1, unit: "Hz", optional: true, description: "How stiff its springs are (Hz): low, soft and swaying over bumps, a monster truck's; high, firm and flat in a turn, a sports car's." };
+var TRAVEL = { name: "travel", label: "Travel", min: 0.1, max: 1, default: 0.3, step: 0.05, unit: "m", optional: true, description: "How far its wheels go up and down (m): long for rough ground and jumps, short for a low car." };
+var STEERING = { name: "steering", label: "Steering", options: ["front", "rear", "all"], default: "front", optional: true, description: "Which wheels steer: its front ones; its back ones, as a forklift's; or all, its back ones the other way, turning half as wide." };
 var VEHICLES = Object.freeze({
   car: {
     label: "Car",
@@ -4827,7 +4834,13 @@ var VEHICLES = Object.freeze({
       { name: "power", label: "Power", min: 50, max: 3000, default: 500, step: 10, unit: "N·m", description: "Its engine's torque (N·m): more, it speeds up faster and climbs steeper." },
       { name: "speed", label: "Top speed", min: 2, max: 60, default: 25, step: 1, unit: "m/s", description: "As fast as it goes (m/s)." },
       { name: "steer", label: "Steers", min: 5, max: 45, default: 30, step: 1, unit: "°", description: "How far its front wheels turn (°)." },
-      MASS
+      MASS,
+      GRIP,
+      DRIVE,
+      BRAKE,
+      SUSPENSION,
+      TRAVEL,
+      STEERING
     ]
   },
   bike: {
@@ -4926,6 +4939,8 @@ var PLANE_TILT = Object.freeze({ pitch: 20, bank: 35 });
 var vehicleType = (name) => typeof name === "string" && Object.hasOwn(VEHICLES, name) ? VEHICLES[name] : null;
 var decimals2 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001));
 var held = (param, value) => {
+  if (param.options)
+    return param.options.includes(value) ? value : param.default;
   if (!Number.isFinite(value))
     return param.default;
   const within4 = Math.min(Math.max(value, param.min), param.max);
@@ -4933,7 +4948,7 @@ var held = (param, value) => {
 };
 var vehicleOf = (value) => {
   const kind = vehicleType(value?.type);
-  return kind && { type: value.type, ...Object.fromEntries(kind.params.map((param) => [param.name, held(param, value[param.name])])) };
+  return kind && { type: value.type, ...Object.fromEntries(kind.params.flatMap((param) => param.optional && value[param.name] === undefined ? [] : [[param.name, held(param, value[param.name])]])) };
 };
 
 // src/build/seat.js
