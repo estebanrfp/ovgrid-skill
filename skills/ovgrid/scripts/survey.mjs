@@ -5038,8 +5038,27 @@ var init_vehicles = __esm(() => {
   PLANE_TILT = Object.freeze({ pitch: 20, bank: 35 });
 });
 
+// src/build/looks.js
+var SLOTS, MATERIAL, lookValue = (value) => {
+  if (Array.isArray(value) && value.length === 3 && value.every(Number.isFinite))
+    return value.map((v) => Math.min(Math.max(v, 0), 1));
+  return typeof value === "string" && value.length <= 96 && MATERIAL.test(value) ? value : null;
+}, looksOf = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return null;
+  const kept2 = SLOTS.flatMap((slot) => {
+    const look = lookValue(value[slot]);
+    return look === null ? [] : [[slot, look]];
+  });
+  return kept2.length ? Object.fromEntries(kept2) : null;
+};
+var init_looks = __esm(() => {
+  SLOTS = ["paint", "roof", "accent", "interior", "carpet", "rims"];
+  MATERIAL = /^[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+$/;
+});
+
 // src/build/seat.js
-var POSES, POSE, REACH4 = 64, DEG3, wrapTurn = (degrees) => {
+var POSES, POSE, REACH4 = 64, MOST_PLACES = 64, DEG3, wrapTurn = (degrees) => {
   const turn3 = (degrees % 360 + 360) % 360;
   return turn3 > 180 ? turn3 - 360 : turn3;
 }, heldTarget = ({ at, turn: turn3 = 0 }) => ({
@@ -5053,7 +5072,9 @@ var POSES, POSE, REACH4 = 64, DEG3, wrapTurn = (degrees) => {
     return {};
   const { at, turn: turn3 = 0, pose } = seat;
   const target = Array.isArray(at) && at.length === 3 && at.every(Number.isFinite) && Number.isFinite(turn3) ? heldTarget({ at, turn: turn3 }) : null;
-  return { seat: seatWith(target, POSE.has(pose) ? pose : null) };
+  const places = target && Array.isArray(seat.places) ? seat.places.filter((place) => Array.isArray(place) && place.length === 3 && place.every(Number.isFinite)).slice(0, MOST_PLACES).map((place) => heldTarget({ at: place }).at) : [];
+  const kept2 = seatWith(target, POSE.has(pose) ? pose : null);
+  return { seat: places.length ? { ...kept2, places } : kept2 };
 };
 var init_seat = __esm(() => {
   POSES = [
@@ -5353,14 +5374,14 @@ var DEG4, seedFor = (name, index) => {
   const objects = [];
   const parts = [];
   const names = new Map;
-  const addObject = (name, objectId, at, turn3, prims, behaviour, vehicle, origin2, marked, dry) => {
+  const addObject = (name, objectId, at, turn3, prims, behaviour, vehicle, origin2, marked, dry, looks) => {
     if (!prims?.length)
       return;
     const rotation = quatNormalize(quatMultiply(frame, turnOf(turn3)));
     const driven = vehicle === undefined ? null : vehicleOf(vehicle);
     if (vehicle !== undefined && !driven)
       warnings.push(`${name}: no vehicle "${vehicle?.type}"`);
-    objects.push({ type: "object", id: objectId, name, at, rotation, ...behaviour && { behaviour }, ...driven && { vehicle: driven }, ...dry === true && { dry: true }, ...origin2 && typeof origin2 === "object" && { origin: origin2 }, ...typeof marked === "string" && { package: marked } });
+    objects.push({ type: "object", id: objectId, name, at, rotation, ...behaviour && { behaviour }, ...driven && { vehicle: driven }, ...looksOf(looks) && { looks: looksOf(looks) }, ...dry === true && { dry: true }, ...origin2 && typeof origin2 === "object" && { origin: origin2 }, ...typeof marked === "string" && { package: marked } });
     parts.push(...partsOf(prims, { name: objectId === id ? spec.name : `${spec.name}#${name}`, objectId, materials, warnings, object: { at, rotation }, groundRadius }));
     names.set(name, objectId);
   };
@@ -5372,7 +5393,7 @@ var DEG4, seedFor = (name, index) => {
       throw new Error(`${spec.name}: an object without a name`);
     if (names.has(object.name) || objects.some(({ id: other }) => other === `${id}~${slug}`))
       throw new Error(`${spec.name}: two objects named ${object.name}`);
-    addObject(object.name, idOf(object.id, `${id}~${slug}`), placeOf2(object.at), object.turn, object.prims, object.behaviour, object.vehicle, object.origin, object.package ?? spec.package, object.dry);
+    addObject(object.name, idOf(object.id, `${id}~${slug}`), placeOf2(object.at), object.turn, object.prims, object.behaviour, object.vehicle, object.origin, object.package ?? spec.package, object.dry, object.looks);
   }
   const clones = (spec.clones ?? []).map((clone, n) => {
     if (!names.has(clone.of))
@@ -5421,6 +5442,7 @@ var init_import = __esm(() => {
   init_kinds();
   init_record();
   init_vehicles();
+  init_looks();
   init_seat();
   init_bouncy();
   init_live();

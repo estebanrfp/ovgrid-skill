@@ -61,6 +61,44 @@ A vehicle is looked at up close: boxes and black cylinders read as a toy. What t
   "softness": 0.5 } }`, a cone shining down the part's −z, which that turn points ahead. Unlit by
   day; at night the lens glows and the road ahead is lit.
 
+## Its colours
+
+Whoever may change a vehicle chooses its colours on its card's **Colours** tab — a row of swatches for each of them, a
+colour of one's own for a paint, and **Random**, one of the palettes whole, colours that go together —, each choice one
+step that everyone sees. A build gives it the slots it lets change, `looks` on its object, each a colour (linear RGB) or
+a material of the bank; its parts and faces that wear one name it, `"slot"` in their surface (what of a car's object and
+parts a slot needs, its shapes left out):
+
+```jsonc
+{ "name": "car", "vehicle": { "type": "car", "power": 700 },
+  "looks": { "paint": [0.565, 0.019, 0.012], "roof": [0.565, 0.019, 0.012], "interior": "fabric/cloth/poly-wool-herringbone",
+             "carpet": "fabric/carpet/carpet-004", "rims": "metal/bare/metal-061b" },
+  "prims": [
+    { "name": "body", "color": [0.565, 0.019, 0.012], "surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3, "slot": "paint",
+      "faces": { "1": { "texture": "fabric/carpet/carpet-004", "slot": "carpet" }, "3": { "color": [0.565, 0.019, 0.012], "slot": "roof" } } } },
+    { "name": "seats", "material": "fabric/cloth/poly-wool-herringbone", "surface": { "slot": "interior" } },
+    { "name": "tyre and rim", "material": "synthetic/rubber/rubber-001", "surface": { "faces": { "1": { "texture": "metal/bare/metal-061b", "slot": "rims" } } } }
+  ] }
+```
+
+- **The slots:** `paint`; `roof`, a second tone (a closed car's glasshouse, its pillars and its roof, a colour index of
+  its own — a paint chosen takes a roof of its own tone with it); `accent` (stripes, a trailer's box); `interior` (its
+  seats; a bicycle's saddle and grips); `carpet` (its floor and its doors' insides); `rims`.
+- **What a slot does:** a colour in place of the texture where it is named, or a material in place of the colour. A
+  face takes its part's texture where it has none of its own, so a slot on a face of a textured part — a rim on a
+  tyre's rubber — is given materials (metals for rims), not colours.
+- **As it is made:** the parts' own colours and materials are the `looks` it starts with, so that it looks the same
+  without them; a slot its object leaves out leaves them as they are. A livery — a taxi's, a police car's, an
+  ambulance's, a fire engine's — keeps its paint out of `looks`: Random and the swatches change its seats, floor and rims
+  alone.
+- **The palettes**: a car's, seventeen; a bicycle's, eight. Their seats are the bank's
+  leathers, cloth and vinyl (`fabric/leather/leather-009` black, `fabric/upholstery/leather-padded-001` black padded,
+  `fabric/leather/leather-035b` tan, `fabric/leather/leather-036b` red, `fabric/leather/leather-018` cream,
+  `fabric/leather/brown-leather`, `fabric/upholstery/vinyl-padded-001` navy, `fabric/cloth/poly-wool-herringbone`),
+  their floors its carpets, their rims its metals, each worn at its own size: no `scale` on them.
+- **By hand:** a part's colour or material chosen on its own card lets its slot go there, so that the vehicle's looks
+  no longer dress over it.
+
 ## Room for the avatar
 
 A vehicle people sit in is built round the body that sits there: the avatar, 1.8 m tall, measured in each seat's pose over
@@ -89,6 +127,26 @@ A real car is too small for it — a saloon of 1.45 m has no 1.52 m inside —: 
 alike. Low-poly packs often are so already: measure the model, and keep its scale where the room fits. One under the room
 is grown — never shrunk —, all of it, just enough (×1.5 at most, plan.md); a low sports car may instead take its floor down
 to its body's bottom.
+
+## Its places
+
+A seat with a target may hold places besides its own, `places`: where other hips go, in the same frame as its `at`, each
+turned and posed as it is, 64 at most. A bench is one part with a place for each body on it, a coach's rows one part with a
+place for each seat. A click sits one in the free place nearest where it touched; all of them taken, in the vehicle's free
+place nearest that; none free, nowhere — its hint says Full. Give each door a seat of its own, so that a click on it sits
+one there, and the interior's seat the rest; seats' middles 0.66 m apart, as the room above asks.
+
+A vehicle one walks in — a coach — is walked into as a helicopter is: its hull's parts `"behaviour": { "type": "passage",
+"way": "in", "x": 0, "y": 4.8, "z": 1.55 }`, where one stands in it (its aisle, on its floor), and its way in a door with
+`"way": "both"`, out from inside across its thinnest side. What it collides and drives as, collision only, is slabs round its
+cabin, each convex — the block under its floor, its sides, its ends, its roof, 8 cm thick and into one another —, not its
+solid outline, and its seats are solid (no `phantom`), so that one walks its aisle between them and stands up there.
+
+```jsonc
+// A bench for three across a van's box: one part, three places.
+{ "name": "rear bench", "shape": "cube", "at": [0, -2, 0.9], "size": [2, 0.5, 0.4],
+  "seat": { "at": [0.66, 0, 0.38], "turn": 0, "pose": "dcl/sitting-chair-1", "places": [[0, 0, 0.38], [-0.66, 0, 0.38]] } }
+```
 
 ## A car
 
@@ -174,8 +232,8 @@ One way of driving for every car — W and S throttle and brake, A and D steer, 
 it what it is, each held to its range, its default where it is left out (all but `power`, `speed`, `steer` and `mass` may
 be). **Its steering holds itself**: its wheels turn all the way while it is slow and, faster, only as far as its tyres hold
 at its speed — 85 % of it, tan δ = L · a / v², L its wheelbase and a what its `grip` holds across —, as in a driving game;
-or, where it would go over first, as far as keeps it on its wheels — a its track over twice its centre of mass's height,
-85 % of it again: a van, an ambulance, a bus, whose centre of mass stands high over a narrow track, turn wider at speed
+or, where it would go over first, as far as keeps it on its wheels — a then its track over twice its centre of mass's
+height, 85 % of it again: a van, an ambulance, a bus, whose centre of mass stands high over a narrow track, turn wider at speed
 than they could grip, and stay upright. So no lock is set by hand for a speed: `steer` is how tight it turns while slow,
 parking; how tight it turns at speed is its `grip`, or its height.
 
