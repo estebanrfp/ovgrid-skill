@@ -4757,7 +4757,7 @@ var init_record = __esm(() => {
 });
 
 // src/build/behaviours.js
-var TIME, STAY, TRIGGER, REACH3, along = (axis, fallback, what) => ({ name: axis, label: `Along ${axis}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `How far it ${what} along its own ${axis} (m).` }), HIGHEST = 1e5, BEHAVIOURS, MOVE_DEFAULTS, paths, timelines, airs, drawnPlaces, coasts, joins;
+var TIME, STAY, TRIGGER, REACH3, along = (axis, fallback, what) => ({ name: axis, label: `Along ${axis}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `How far it ${what} along its own ${axis} (m).` }), HIGHEST = 1e5, BEHAVIOURS, MOVE_DEFAULTS, paths, timelines, airs, drawnPlaces, coasts, joins, keptOver;
 var init_behaviours = __esm(() => {
   init_kinds();
   init_vehicles();
@@ -4892,6 +4892,7 @@ var init_behaviours = __esm(() => {
   drawnPlaces = new WeakMap;
   coasts = new WeakMap;
   joins = new WeakMap;
+  keptOver = new WeakMap;
 });
 
 // src/physics/colliders.js

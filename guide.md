@@ -2448,15 +2448,16 @@ The other vehicles' numbers, each held to its range, its default where it is lef
 
 ### A car's round
 
-A car drives itself too, on its object's route — a coach on its round, a shuttle: give the object
-`"behaviour": { "type": "route", "name": "Out and back", "mode": "back", "points": [[0, 2.5, 0], [0, 5, 0], [0, 7.5, 0],
-[0, 10, 0]], "speed": 4, "accel": 1, "stop": 5, "at": "ends", "face": "no", "held": true }` — its points in its frame along
-the ground, each z the ground's height there over where it is kept and a point every few metres so that it keeps to it —,
-held where it is kept till its Auto is set on. Aimed at its seat at the wheel, O is its Auto for whoever may drive it: it
-runs its route once and is off again where it is kept, its wheels turning as it goes, whoever is in it carried; sat at its
-wheel, one takes it from where it has got to. Its driver may record a route as he drives it, K at its wheel, as a
-helicopter's pilot does. Out and back facing as it is kept (`"face": "no"`) it comes back in reverse; round its points
-(`"mode": "round"`, `"face": "yes"`) it turns to its way, so leave it room to turn for its length.
+A car drives itself too, on its object's route — a coach round its car park, a shuttle: give the object
+`"behaviour": { "type": "route", "name": "Round the car park", "mode": "round", "points": [[0, 4, 0], …], "speed": 5,
+"accel": 1, "stop": 5, "at": "ends", "face": "yes", "held": true }` — its points in its own frame, a point every few metres
+along the way, round and back into where it is kept, its turns as wide as its length asks (a coach's 11–12 m) and clear of
+whatever stands near —, held where it is kept till its Auto is set on. It goes on the land under it wherever it is kept,
+read as it goes: its points' z are not its heights, so the same car on other land runs the same round over it. Aimed at its
+seat at the wheel, O is its Auto for whoever may drive it: its whole way is read first, and over water or land steeper than
+35 % it does not set off (its hint says so); else it runs its route once and is off again where it is kept, its wheels
+turning as it goes, whoever is in it carried; sat at its wheel, one takes it from where it has got to. Its driver may record
+a route as he drives it, K at its wheel, as a helicopter's pilot does.
 
 ### A motorbike
 
