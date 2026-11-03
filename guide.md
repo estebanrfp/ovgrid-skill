@@ -2200,7 +2200,10 @@ A vehicle is looked at up close: boxes and black cylinders read as a toy. What t
 
 Whoever may change a vehicle chooses its colours on its card's **Colours** tab — a row of swatches for each of them, a
 colour of one's own for a paint, and **Random**, one of the palettes whole, colours that go together —, each choice one
-step that everyone sees. A build gives it the slots it lets change, `looks` on its object, each a colour (linear RGB) or
+step that everyone sees. Its **Finish** row is its paint's shine — Gloss, Satin or Matte, `"finish": "gloss"` in its
+`looks` —, worn by the faces that wear its paint, its roof and its accent alone, never its glass, its rims or its lamps;
+said nothing, gloss (gloss 0.9, metal 0.5, reflect 0.3), as a car's paint is made. Random gives a finish too, gloss the
+most often; a livery's colours are its own, and it has no finish to change. A build gives it the slots it lets change, `looks` on its object, each a colour (linear RGB) or
 a material of the bank; its parts and faces that wear one name it, `"slot"` in their surface (what of a car's object and
 parts a slot needs, its shapes left out):
 

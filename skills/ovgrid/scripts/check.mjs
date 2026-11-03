@@ -4955,6 +4955,7 @@ var vehicleOf = (value) => {
 
 // src/build/looks.js
 var SLOTS = ["paint", "roof", "accent", "interior", "carpet", "rims"];
+var FINISHES = { gloss: { gloss: 0.9, metal: 0.5, reflect: 0.3 }, satin: { gloss: 0.25, metal: 0.3, reflect: 0.1 }, matte: { gloss: 0.05, metal: 0, reflect: 0 } };
 var MATERIAL = /^[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+$/;
 var lookValue = (value) => {
   if (Array.isArray(value) && value.length === 3 && value.every(Number.isFinite))
@@ -4968,6 +4969,8 @@ var looksOf = (value) => {
     const look = lookValue(value[slot]);
     return look === null ? [] : [[slot, look]];
   });
+  if (typeof value.finish === "string" && Object.hasOwn(FINISHES, value.finish))
+    kept2.push(["finish", value.finish]);
   return kept2.length ? Object.fromEntries(kept2) : null;
 };
 

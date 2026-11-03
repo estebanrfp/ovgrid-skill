@@ -5041,7 +5041,7 @@ var init_vehicles = __esm(() => {
 });
 
 // src/build/looks.js
-var SLOTS, MATERIAL, lookValue = (value) => {
+var SLOTS, FINISHES, MATERIAL, lookValue = (value) => {
   if (Array.isArray(value) && value.length === 3 && value.every(Number.isFinite))
     return value.map((v) => Math.min(Math.max(v, 0), 1));
   return typeof value === "string" && value.length <= 96 && MATERIAL.test(value) ? value : null;
@@ -5052,10 +5052,13 @@ var SLOTS, MATERIAL, lookValue = (value) => {
     const look = lookValue(value[slot]);
     return look === null ? [] : [[slot, look]];
   });
+  if (typeof value.finish === "string" && Object.hasOwn(FINISHES, value.finish))
+    kept2.push(["finish", value.finish]);
   return kept2.length ? Object.fromEntries(kept2) : null;
 };
 var init_looks = __esm(() => {
   SLOTS = ["paint", "roof", "accent", "interior", "carpet", "rims"];
+  FINISHES = { gloss: { gloss: 0.9, metal: 0.5, reflect: 0.3 }, satin: { gloss: 0.25, metal: 0.3, reflect: 0.1 }, matte: { gloss: 0.05, metal: 0, reflect: 0 } };
   MATERIAL = /^[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+$/;
 });
 
