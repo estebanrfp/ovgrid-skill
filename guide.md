@@ -59,6 +59,8 @@ The quality of what you build comes from three things: the bank's materials, the
 looking at it until it is right. The detail is the person's to ask for: a plan in a line gets a
 sound, plain build; a page of detail gets that detail, within the budget.
 
+*On this one page the references follow one another, step by step: where the text names a reference by its file — recipes.md, format.md, method.md… — it means that section below, which is also the file of that name in `skills/ovgrid/reference/`.*
+
 ## 1. From a request to a plan
 
 A person describes what they want — a fishing village on that cove, a bridge between those two
@@ -1339,13 +1341,18 @@ How a solid is dressed (every recipe below uses it):
   dresses a cube's. A body with no `colour` leaves the box's own look.
 - The part's own `faces`, a colour for each side of a box base in the order −x +x −y +y −z +z, dress one side alone:
   `[0, 0, 0, 0, 1, 0]` is a slab with its underside colour 1, `[3, 3, 0, 0, 0, 0]` a block whose two ends are wood.
+- Numbers, then looks: `colours`, a body's `colour`, the part's or a box body's `faces` and a body's `spots` only say which
+  colour number each face is; `surface.faces` says what each number looks like — its `texture`, its `emissive` —, as it does
+  for a cube's faces.
 - Bodies work one after another, each in metres about the part's middle: cut the rooms, cut the openings, `add` back what the
   cut took. A `cut` reaches past the faces it cuts through (0.6 m through a wall 0.2 m thick); where a cut leaves a floor, a
   skirting or a reveal its own look, cut it in a body of its own colour.
 - `mirror` copies a body across the part's middle (`"x"`: left to right); `repeat` makes `count` copies, each `step` on. A body
   mirrored is mirrored across the *part's* middle: a leg mirrored makes the pair of a piece centred in its part.
-- A part's `size` is the box round its bodies. Gather what is seen together, a room's pieces or a yard's: a part is culled
-  whole.
+- Keep every body inside its part's box, its `size`: the box round them all. What must reach past it is a part of its own.
+  Gather what is seen together, a room's pieces or a yard's: a part is culled whole.
+- In a `join: "none"` solid nothing is merged: two bodies that meet in one plane flicker there, as two parts would. Let them
+  meet edge to edge, or leave `join` out and they are joined into one surface.
 - At most 32 bodies and 3,072 characters written out to a solid: what does not fit one is two.
 
 ### A mass, carved
@@ -1381,7 +1388,7 @@ the front is open for glass: the two cheeks of wood that stay at the corners are
 Its two ends are wood by `faces`, its inside plaster by the cut's colour.
 
 ```json
-{ "name": "upper block", "kind": "solid", "at": [-5.9, -2.5, 5.3], "size": [8.2, 7, 3], "colours": 3, "faces": [3, 3, 0, 0, 0, 0], "material": "plaster/concrete/concrete-046",
+{ "name": "upper block", "kind": "solid", "at": [0, 0, 1.5], "size": [8.2, 7, 3], "colours": 3, "faces": [3, 3, 0, 0, 0, 0], "material": "plaster/concrete/concrete-046",
   "surface": { "faces": { "1": { "texture": "plaster/plaster/plaster-001" }, "2": { "texture": "wood/floor/wood-floor-051" }, "3": { "texture": "wood/planks/japanese-cedar-planks" } } },
   "bodies": [
     { "cut": "box", "at": [0, 0.2, 0], "size": [7.6, 6.8, 3.2], "colour": 1 },
@@ -1395,16 +1402,37 @@ A pool, a well's curb, a planter: a box with a box `cut` from its top, the cut's
 with its coping, 9 × 4 m of basin, its floor 0.04 m over the ground; the water is a `cube` of its own, `phantom` to wade in.
 
 ```json
-{ "name": "pool basin", "kind": "solid", "at": [-3.5, 8.6, -0.02], "size": [10.2, 5, 0.56], "colours": 1, "material": "paving/stone/travertine-009",
+{ "name": "pool basin", "kind": "solid", "at": [0, 0, -0.02], "size": [10.2, 5, 0.56], "colours": 1, "material": "paving/stone/travertine-009",
   "surface": { "faces": { "1": { "texture": "paving/tiles/tiles-132a" } } },
   "bodies": [ { "cut": "box", "at": [0, 0, 0.19], "size": [9, 4, 0.26], "colour": 1 } ] }
+```
+
+### A glass front with its door
+
+Floor-to-ceiling glass is the `window` kind, one to a bay: its box the bay (`[width, thickness, height]`), `columns` its
+mullions, `rows: 1`, `sill: 0`, its frame the part's material and its glass `surface.faces["2"]`. The door is the `door` kind
+in a bay of its own, at least 1.0 × 2.2 m, with a short `window` over it for the transom; the bays meet edge to edge in the
+opening the carve leaves, turned 180° in a front facing +y. Glass is seen through: one layer only — no glass railing in front
+of a glass wall, no pane behind a pane.
+
+```json
+{ "name": "glass front", "at": [0, 0, 0], "prims": [
+  { "name": "glass", "kind": "window", "at": [-2.4, 0, 1.6], "size": [3.6, 0.12, 3.2], "turn": [0, 0, 180], "frame": 0.05, "columns": 3, "rows": 1, "sill": 0,
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } } },
+  { "name": "door", "kind": "door", "at": [0, 0, 1.2], "size": [1.2, 0.12, 2.4], "turn": [0, 0, 180], "style": "glazed", "hinge": "right", "frame": 0.06,
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } },
+    "behaviour": { "type": "door", "trigger": "both", "reach": 2.5, "stay": 8 } },
+  { "name": "transom", "kind": "window", "at": [0, 0, 2.8], "size": [1.2, 0.12, 0.8], "turn": [0, 0, 180], "frame": 0.04, "columns": 1, "rows": 1, "sill": 0,
+    "material": "metal/painted/metal-029", "surface": { "faces": { "2": { "texture": "glass/clear/float" } } } } ] }
 ```
 
 ### A slab with its stairwell
 
 A slab of 8 × 6 × 0.4 m with a stairwell of 1.3 × 4.2 m `cut` through it, its underside (−z) colour 1, the soffit. Start
 the hole over the step where the stair's headroom under the slab falls below 2.1 m, and end it where the last tread meets
-the slab; leave 1.0 m clear at the stair's foot and at its top, or the way past it is lost.
+the slab; leave 1.0 m clear at the stair's foot and at its top, or the way past it is lost. Cut it the stair's width and the
+length of the run it rises through, along the way the stair is turned: its railing (face 4) stands above its box, up
+through the hole.
 
 ```json
 { "name": "slab", "kind": "solid", "at": [0, 0, 3.6], "size": [8, 6, 0.4], "colours": 1, "faces": [0, 0, 0, 0, 1, 0], "material": "plaster/concrete/concrete-046",
@@ -1479,7 +1507,7 @@ A rug, a coffee table and a pot, standing apart, are one part of three looks: th
 the table the box's own.
 
 ```json
-{ "name": "rug table pot", "kind": "solid", "at": [-6.725, -3.325, 4.07], "size": [5.05, 2.85, 0.5], "join": "none", "colours": 2, "material": "wood/planks/walnut-veneer",
+{ "name": "rug table pot", "kind": "solid", "at": [0, 0, 0.25], "size": [5.05, 2.85, 0.5], "join": "none", "colours": 2, "material": "wood/planks/walnut-veneer",
   "surface": { "faces": { "1": { "texture": "fabric/carpet/carpet-016" }, "2": { "texture": "plaster/concrete/concrete-025" } } },
   "bodies": [
     { "add": "box", "at": [0.725, 0.025, -0.24], "size": [3.6, 2.8, 0.02], "colour": 1 },
