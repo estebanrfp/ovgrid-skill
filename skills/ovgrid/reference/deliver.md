@@ -84,7 +84,12 @@ the panel says). Its parcel's keeper then chooses:
 - **Load here**: the same, into the parcel where the camera looks — moved to that parcel's centre, under
   new ids, its whole ground laid there. A smaller parcel that it would not fit refuses it.
 
-Either is one Ctrl+Z. To **rethink a land** (in recipes, say), keep its `parcel`, `anchor`, `chunks`,
+Either is one Ctrl+Z. **Reset land** (below the line in *Builds as JSON*, beside *Save land*) makes the
+parcel where the camera looks the planet's own again, its keeper alone, after a dialog that names it and what goes: their objects, clones and trees
+there taken away, its ground and sky the world's, its published land unpublished (its Gist stays); what is
+another's or locked is left. Also one Ctrl+Z.
+
+To **rethink a land** (in recipes, say), keep its `parcel`, `anchor`, `chunks`,
 `sky` and every `id` as they are; change the objects as you would a build's export (Changing it, above).
 An object left out is taken away when it is loaded in its place.
 
