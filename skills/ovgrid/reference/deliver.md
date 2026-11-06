@@ -62,7 +62,7 @@ can be placed by anyone who brings it in; what it becomes is theirs.
 
 ## A whole parcel: a land
 
-A **land** is a parcel (~300 m, the status's `F5:11145,19300 Hinterland`) saved whole — Second Life's
+A **land** is a parcel (~300 m, the status's `F5:11145,19300`) saved whole — Second Life's
 and OpenSim's region archive (OAR). It is a build file that names its parcel, so everything above holds
 for it, and it holds:
 
