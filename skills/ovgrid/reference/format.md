@@ -3,7 +3,7 @@
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
 materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
 name it may use — shapes, kinds and their parameters, behaviours, particles, the 3,091 materials,
-the 62 species of trees and plants — is in **catalog.json**, made from the world's own code, one entry a line.
+the 67 species of trees and plants — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json
 {
@@ -106,7 +106,9 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `roof` | all of it: width (along the ridge), depth, eaves to ridge | 0 roof, 1 ends (gables), 2 underside, 3 eaves | ridge along x; `shed` low at −y |
 | `stairs` | made by `steps`, `height`, `tread`, `width` | 0 treads, 1 risers, 2 sides, 3 underside, 4 railing | rises towards +y; the railing stands above the box |
 | `fence` | what its `points`, `thickness` and `height` make; or a `size`: a straight length along x | 0 posts, 1 rails, 2 pickets | a path of 2–32 `points`, a post on each and others every `spacing` m at most; the last on the first closes it round |
-| `road` | what its `points`, `width` and `depth` make | 0 surface, 1 sides, 2 underside | a ribbon along 2–32 `points` laid on the ground, its slab `depth` under it; under 2 m wide a path; the last point on the first closes it round |
+| `road` | what its `points`, `width`, `depth` and `lift` make | 0 surface, 1 sides, 2 underside | a ribbon along 2–32 `points` laid on the ground, its slab `depth` under it, its surface `lift` (0.1 m) over the ground; under 2 m wide a path; the last point on the first closes it round |
+| `bridge` | what its `points`, `width` and the ground under it make | 0 deck, 1 structure (logs, masonry), 2 rails (a stone parapet) | a straight deck from `points[0]` to `points[1]` (`[x, y]` on its two banks, laid on the ground once placed; 60 m at most), `style` `timber`, `stone`, `clapper`, `rope`, `girder` or `suspension`, `railing` `none`/`both`/`open`, for stone `arch` `round`/`pointed`/`segmental`, `lamps` `none`/`ends`/`piers`/`spaced` (`spacing`, `lights`), and a `look` to dress it in; its spans and piers across the gap are worked out from the ground — see *A bridge over a gap* |
+| `lantern` | its own: 0.3 × 0.3 × 0.46 m | 0 glass (it glows), 1 frame | a lamp's housing — a base, a box of glass, a pointed cap — whose middle is its flame, where a part's light sits: give it `"light": { "on": "night", "range": 8 }` and `"surface": { "emissive": 0.9 }` to light it; under a metre, so its light passes it as its own fixture. A bridge's `lamps` stand one on each of its posts |
 | `column` | plinth width, depth, height | 0 shaft, 1 base, 2 capital | upright |
 | `arch` | width, wall depth, height | 0 its two faces, 1 the opening, 2 outside, 3 feet | wall in x–z, opening through y |
 | `bevel` | its own | box: as a cube; cylinder: as a cylinder | `base` box or cylinder; `edge` round or chamfer, `radius` m |
@@ -337,8 +339,60 @@ is not quite where the samples say, no gap shows: on slopes, 0.4–0.6.
   "points": [[-3.6, -24.2], [-2.8, -16.8], [-4, -8.8], [-2.4, -0.8], [0, 7.2], [2, 15.2], [3.6, 24.2]] }] }
 ```
 
+Lane lines: a road 7.5 m wide dressed in the bank's two-lane road, `paving/roads/road-007` — white lines 0.55 m in from each edge and a dashed one down the middle —
+`"width": 7.5, "surface": { "faces": { "0": { "texture": "paving/roads/road-007", "offset": [-0.4333, 0] } } }`. A road's uvs are metres from its left edge, so the tile is slid
+to put its middle on the ribbon's; at another width the lines are not where a lane's would be.
+
+A roundabout is roads of this kind too: two half rings (31 points each, 6° apart, ends square and radial so that they meet edge to edge) with `lift` 0.25, and the roads that run into it go
+straight on under it to its middle, at the ordinary 0.1 — a ring that stands 15 cm over what runs into it does not fight it where they overlap (on a slope the two surfaces can differ by 10 cm); its
+island a closed ribbon inside, grass on its surface and stone on its sides, `lift` 0.4 and `depth` 0.7, the hole at its middle (a tenth of its radius) filled by a small cylinder. The editor's
+road tool lays it: a road of a width, a ring of a radius, the island in the middle.
+
 A longer way is several roads end to end. A road on something built — a bridge's deck — takes
 `[x, y, z]` points: it stays where they say.
+
+**A bridge over a gap, in one part**: its two `points` in its own frame — within 31.5 m of its `at`, so stand it at their
+middle — written `[x, y]` on the two banks: they are laid on the ground once placed (the ground sampled under the chord about every
+metre, the deck's height at each end that of the ground there). Choose the ends from a survey's profile (`--profile`) where the
+ground stands at one height either side, a metre or two back from where it falls away; the kind does the rest, the same for
+everyone who sees it: where the ground falls away from the deck (the gap), evenly spaced spans across it (none longer than the
+style's) and a pier between each two, let into the ground, railings both sides. `"style": "timber"` — logs: a deck of planks on
+stringers over bents of posts, spans up to 8 m, piers up to 10 m, a gap from 0.6 m deep — `"stone"` — arches: spans up to 12 m,
+piers up to 16 m, a gap 3 m deep at least, solid banks to either side — `"clapper"` — slabs of rough stone on piles of blocks, for a
+stream: spans up to 3 m, piles up to 2.5 m, a gap from 0.5 m, no railings, 3 m wide at the most — `"rope"` — planks hung on ropes between
+anchor posts, one span up to 60 m, no piers, 2 m wide at the most, a gap from 2 m, the deck hanging by a thirtieth of its length at
+the middle (never steeper than 1 in 8) — `"girder"` — a deck of concrete on girders over hammerhead piers: spans up to 20 m, piers up to
+18 m, a gap from 1 m — or `"suspension"` — a stiff deck hung from cables over a tower at each support, 4–10 m over the deck: spans up to 60 m, piers up to 25 m, a gap from 2 m —;
+a style that does not suit the ground says why (a pier too tall, too wide, too shallow); `width` 2–3 m for walkers, 4–6 for a lane (0.8–12);
+`"railing"`: `"none"`, `"both"` (the default: posts and two rails of logs, a parapet of stone, two ropes, steel posts and two rails) or `"open"` (posts and a rope,
+a low wall of stone, one rope, one steel rail); `rise`, how far the deck is raised in the middle by ramps of 1 in 8 — for a rope bridge, how much of its
+sag is taken out — over a lake, a stream or the sea it is
+set for you, so that its underside clears the water by 0.3 m (a rope bridge that even taut would be in the water is refused by the tool, which says it is too low; placed any other way it hangs as taut as it can). Its faces come dressed from the bank (planks or paving, logs or
+masonry, rails) unless it has a `material` or a `surface`.
+
+**Looks**: `"look": "granite"` dresses it in one of its style's sets of the bank's materials — logs: `oak` (the default), `dark`, `pine`
+(aged, silvered), `mossy`; stone: `rustic` (the default), `granite`, `sandstone`, `mossy` (limestone), `brick`; clapper: `granite`, `slate`, `mossy`,
+`sandstone`; rope: `hemp`, `dark`, `mossy`, `steel`; girder: `concrete`, `steel`, `rusted`, `white`; suspension: `orange`, `grey`, `white`, `planked`. A look its style has not is
+the style's first, said. It is a field of the part, like `material`, not of its recipe: the faces are what it keeps, so a look
+can be chosen on the card (its Look row shows the look the faces make, Custom where they were painted by hand).
+**Arches** of a stone bridge: `"arch": "round"` (the default; a semicircle where the ground leaves room for it), `"pointed"` (two arcs meeting at
+a crown, taller; where the ground leaves no room for the point it is the round one) or `"segmental"` (a flat quarter of the opening).
+**Lamps**: `"lamps": "ends"` (a post and a lantern each side of both ends), `"piers"` (the ends and the piers between them
+that leave 12 m, one in turn on each side) or `"spaced"` with `"spacing": 14` (m, 12–40, one in turn on each side), never more
+than 8 a bridge; `"lights": "night"` (the default: lit at night, 8 m round) or `"off"` (dark glass). The post is drawn with the
+bridge; its `lantern` is a part of its own that the importer adds beside the bridge — one written in the build at the post is kept
+as written, not doubled. Count them: a build's lights are budgeted, and the check counts an object's together, so a long crossing of
+several parts is an object each.
+
+```json
+{ "name": "creek", "at": [14, 6], "prims": [{ "name": "footbridge", "kind": "bridge", "style": "timber", "at": [0, 0, 0],
+  "width": 2.4, "points": [[-12, 0], [12, 0]] }] }
+```
+
+A part is 60 m at most (64 m a side): a longer crossing is two bridges that meet on a pier, each ending on half of it, their decks
+at one height there, written with `[x, y, z]` points and their `ground`.
+`node scripts/check.mjs` says what is wrong with a bridge: a step of more than 0.3 m up onto its deck, a deck buried, a rise in
+the way, a pier past its style's tallest, a deck steeper than 1 in 8.
 
 A kind's uvs are in metres: its material lies at real size on every face. A kind whose mesh
 depends on its size (door, window, roof, fence, arch, column, bevel) makes a mesh for each size
@@ -746,7 +800,9 @@ prims collide as their mesh, its hull when convex.
   a frame of its own. Nothing is copied: change the object and every clone changes. Use it for
   whatever repeats unchanged: lamps, benches, fence sections, identical houses.
 - **A tree** `{ "species": "oak", "at": [x, y], "scale": 1, "seed": 3, "turn": 40 }`: a species of
-  catalog.json → `species`; the variant drawn is `seed % 6` (each variant's height and crown are in the
+  catalog.json → `species`; one that `floats` there (the water lilies) stands at `[x, y]` on its
+  parcel's water — on the lake where the build's `land` digs below it, under the ground where it does
+  not: put them only over what is dug; the variant drawn is `seed % 6` (each variant's height and crown are in the
   catalog); `scale` 0.25–4; `turn` ° about z (none: one its seed gives); `seed` defaults to one from
   the build's name and the tree's place in the list; `key`, optional, what the build knows it by
   (letters, digits, dots, dashes): imported again, the tree is found by it, wherever the list now puts

@@ -283,7 +283,7 @@ The other vehicles' numbers, each held to its range, its default where it is lef
 | bike | `mass` | 50–5,000 kg | 250 |
 | bicycle | `power` | 5–200 N·m | 45 |
 | bicycle | `speed` | 1–20 m/s | 8 |
-| bicycle | `steer` | 5–45 ° | 30 |
+| bicycle | `steer` | 5–45 ° | 8 |
 | bicycle | `mass` | 50–5,000 kg | 90 |
 | bicycle | `gear` | 1–5 | 2.8 |
 | boat | `power` | 50–5,000 | 600 |

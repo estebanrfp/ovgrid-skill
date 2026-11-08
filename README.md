@@ -31,7 +31,7 @@ in the world, open the editor (Ctrl+B), then *Builds as JSON* → *Survey here*,
 | | |
 |---|---|
 | `guide.md` | The whole guide on one page: plan, place, resources, quality, budget, interactivity, delivery, verification; a cottage as JSON; the catalog in brief |
-| `catalog.json` | Every shape, kind, behaviour, particle preset, material (2,812) and species of trees and plants (45), one entry a line |
+| `catalog.json` | Every shape, kind, behaviour, particle preset, material (2,812) and species of trees and plants (67), one entry a line |
 | `skills/ovgrid/SKILL.md` | The skill: its walkthrough and rules |
 | `skills/ovgrid/reference/` | One page a step |
 | `skills/ovgrid/scripts/survey.mjs` | The ground round a place, from a URL or coordinates: JSON, SVG and PNG maps, profiles |

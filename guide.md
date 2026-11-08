@@ -264,12 +264,14 @@ The terrain is a function; what you build is not.
 - **Ways along the contours**: a path climbs at most 1 in 8 (7°); steeper ground takes it in
   zigzags, each leg along a contour line of the map, a landing at each turn; a lane follows a valley
   floor or a ridge. Each one a `road` laid on the ground (format.md).
-- **A bridge between two rises**: take the profile between the two rims (`--profile`): its length
-  is the span, its lowest point the depth to bridge. The deck a little over the higher rim, level or
-  gently sloped; its ends resting on abutments sunk into each rim (stone boxes down past the ground);
-  piers to the valley floor every 8–15 m for timber, or stone arches (the `arch` kind) 6–12 m wide;
-  each pier's foot 1 m under the lowest ground round it; railings both sides (the `fence` kind,
-  `balusters` or `rails`, 1.1 m); a lamp at each end. A deck 2–3 m wide for walkers, 4–6 m for a lane.
+- **A bridge between two rises**: the `bridge` kind (format.md), one part. Take the profile between the two rims
+  (`--profile`) and put its two `points` on the two banks where the ground stands at one height, a metre or two back from where it
+  falls away: the deck runs from bank to bank at that height, with evenly spaced spans across the gap — logs up to 8 m on piers up
+  to 10 m, stone arches up to 12 m on piers up to 16 m (a gap 3 m deep at least) —, a pier between each two let 0.4 m (stone, 1 m)
+  into the ground, railings both sides; over water the deck is raised to clear it. A deck 2–3 m wide for walkers, 4–6 m for a lane.
+  A part is 60 m at most: a longer crossing is two bridges that meet on a pier. Choose its `style` by the ground: logs and stone arches for a ravine or a river, a clapper bridge (slabs on piles, 3 m a span) for a stream or a gully, a rope bridge
+  for a gap of up to 60 m in one span (no piers; it hangs), a girder bridge or a suspension bridge for a long crossing. Dress it with a `look` (granite, sandstone, brick, mossy…), `arch`es
+  and `railing`s, and give it `lamps` (a post and a lantern lit at night: at the ends, the piers or spaced down the deck, 12 m apart at the least).
 - **Views**: a square, a bench, a tavern's terrace on a ridge or a rise, facing the open side;
   tall things (a tower, a mill) where they are seen against the sky; nothing tall between the
   place people arrive and what they came to see.
@@ -283,7 +285,7 @@ The terrain is a function; what you build is not.
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
 materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
 name it may use — shapes, kinds and their parameters, behaviours, particles, the 3,091 materials,
-the 62 species of trees and plants — is in **catalog.json**, made from the world's own code, one entry a line.
+the 67 species of trees and plants — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json
 {
@@ -386,7 +388,9 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `roof` | all of it: width (along the ridge), depth, eaves to ridge | 0 roof, 1 ends (gables), 2 underside, 3 eaves | ridge along x; `shed` low at −y |
 | `stairs` | made by `steps`, `height`, `tread`, `width` | 0 treads, 1 risers, 2 sides, 3 underside, 4 railing | rises towards +y; the railing stands above the box |
 | `fence` | what its `points`, `thickness` and `height` make; or a `size`: a straight length along x | 0 posts, 1 rails, 2 pickets | a path of 2–32 `points`, a post on each and others every `spacing` m at most; the last on the first closes it round |
-| `road` | what its `points`, `width` and `depth` make | 0 surface, 1 sides, 2 underside | a ribbon along 2–32 `points` laid on the ground, its slab `depth` under it; under 2 m wide a path; the last point on the first closes it round |
+| `road` | what its `points`, `width`, `depth` and `lift` make | 0 surface, 1 sides, 2 underside | a ribbon along 2–32 `points` laid on the ground, its slab `depth` under it, its surface `lift` (0.1 m) over the ground; under 2 m wide a path; the last point on the first closes it round |
+| `bridge` | what its `points`, `width` and the ground under it make | 0 deck, 1 structure (logs, masonry), 2 rails (a stone parapet) | a straight deck from `points[0]` to `points[1]` (`[x, y]` on its two banks, laid on the ground once placed; 60 m at most), `style` `timber`, `stone`, `clapper`, `rope`, `girder` or `suspension`, `railing` `none`/`both`/`open`, for stone `arch` `round`/`pointed`/`segmental`, `lamps` `none`/`ends`/`piers`/`spaced` (`spacing`, `lights`), and a `look` to dress it in; its spans and piers across the gap are worked out from the ground — see *A bridge over a gap* |
+| `lantern` | its own: 0.3 × 0.3 × 0.46 m | 0 glass (it glows), 1 frame | a lamp's housing — a base, a box of glass, a pointed cap — whose middle is its flame, where a part's light sits: give it `"light": { "on": "night", "range": 8 }` and `"surface": { "emissive": 0.9 }` to light it; under a metre, so its light passes it as its own fixture. A bridge's `lamps` stand one on each of its posts |
 | `column` | plinth width, depth, height | 0 shaft, 1 base, 2 capital | upright |
 | `arch` | width, wall depth, height | 0 its two faces, 1 the opening, 2 outside, 3 feet | wall in x–z, opening through y |
 | `bevel` | its own | box: as a cube; cylinder: as a cylinder | `base` box or cylinder; `edge` round or chamfer, `radius` m |
@@ -617,8 +621,60 @@ is not quite where the samples say, no gap shows: on slopes, 0.4–0.6.
   "points": [[-3.6, -24.2], [-2.8, -16.8], [-4, -8.8], [-2.4, -0.8], [0, 7.2], [2, 15.2], [3.6, 24.2]] }] }
 ```
 
+Lane lines: a road 7.5 m wide dressed in the bank's two-lane road, `paving/roads/road-007` — white lines 0.55 m in from each edge and a dashed one down the middle —
+`"width": 7.5, "surface": { "faces": { "0": { "texture": "paving/roads/road-007", "offset": [-0.4333, 0] } } }`. A road's uvs are metres from its left edge, so the tile is slid
+to put its middle on the ribbon's; at another width the lines are not where a lane's would be.
+
+A roundabout is roads of this kind too: two half rings (31 points each, 6° apart, ends square and radial so that they meet edge to edge) with `lift` 0.25, and the roads that run into it go
+straight on under it to its middle, at the ordinary 0.1 — a ring that stands 15 cm over what runs into it does not fight it where they overlap (on a slope the two surfaces can differ by 10 cm); its
+island a closed ribbon inside, grass on its surface and stone on its sides, `lift` 0.4 and `depth` 0.7, the hole at its middle (a tenth of its radius) filled by a small cylinder. The editor's
+road tool lays it: a road of a width, a ring of a radius, the island in the middle.
+
 A longer way is several roads end to end. A road on something built — a bridge's deck — takes
 `[x, y, z]` points: it stays where they say.
+
+**A bridge over a gap, in one part**: its two `points` in its own frame — within 31.5 m of its `at`, so stand it at their
+middle — written `[x, y]` on the two banks: they are laid on the ground once placed (the ground sampled under the chord about every
+metre, the deck's height at each end that of the ground there). Choose the ends from a survey's profile (`--profile`) where the
+ground stands at one height either side, a metre or two back from where it falls away; the kind does the rest, the same for
+everyone who sees it: where the ground falls away from the deck (the gap), evenly spaced spans across it (none longer than the
+style's) and a pier between each two, let into the ground, railings both sides. `"style": "timber"` — logs: a deck of planks on
+stringers over bents of posts, spans up to 8 m, piers up to 10 m, a gap from 0.6 m deep — `"stone"` — arches: spans up to 12 m,
+piers up to 16 m, a gap 3 m deep at least, solid banks to either side — `"clapper"` — slabs of rough stone on piles of blocks, for a
+stream: spans up to 3 m, piles up to 2.5 m, a gap from 0.5 m, no railings, 3 m wide at the most — `"rope"` — planks hung on ropes between
+anchor posts, one span up to 60 m, no piers, 2 m wide at the most, a gap from 2 m, the deck hanging by a thirtieth of its length at
+the middle (never steeper than 1 in 8) — `"girder"` — a deck of concrete on girders over hammerhead piers: spans up to 20 m, piers up to
+18 m, a gap from 1 m — or `"suspension"` — a stiff deck hung from cables over a tower at each support, 4–10 m over the deck: spans up to 60 m, piers up to 25 m, a gap from 2 m —;
+a style that does not suit the ground says why (a pier too tall, too wide, too shallow); `width` 2–3 m for walkers, 4–6 for a lane (0.8–12);
+`"railing"`: `"none"`, `"both"` (the default: posts and two rails of logs, a parapet of stone, two ropes, steel posts and two rails) or `"open"` (posts and a rope,
+a low wall of stone, one rope, one steel rail); `rise`, how far the deck is raised in the middle by ramps of 1 in 8 — for a rope bridge, how much of its
+sag is taken out — over a lake, a stream or the sea it is
+set for you, so that its underside clears the water by 0.3 m (a rope bridge that even taut would be in the water is refused by the tool, which says it is too low; placed any other way it hangs as taut as it can). Its faces come dressed from the bank (planks or paving, logs or
+masonry, rails) unless it has a `material` or a `surface`.
+
+**Looks**: `"look": "granite"` dresses it in one of its style's sets of the bank's materials — logs: `oak` (the default), `dark`, `pine`
+(aged, silvered), `mossy`; stone: `rustic` (the default), `granite`, `sandstone`, `mossy` (limestone), `brick`; clapper: `granite`, `slate`, `mossy`,
+`sandstone`; rope: `hemp`, `dark`, `mossy`, `steel`; girder: `concrete`, `steel`, `rusted`, `white`; suspension: `orange`, `grey`, `white`, `planked`. A look its style has not is
+the style's first, said. It is a field of the part, like `material`, not of its recipe: the faces are what it keeps, so a look
+can be chosen on the card (its Look row shows the look the faces make, Custom where they were painted by hand).
+**Arches** of a stone bridge: `"arch": "round"` (the default; a semicircle where the ground leaves room for it), `"pointed"` (two arcs meeting at
+a crown, taller; where the ground leaves no room for the point it is the round one) or `"segmental"` (a flat quarter of the opening).
+**Lamps**: `"lamps": "ends"` (a post and a lantern each side of both ends), `"piers"` (the ends and the piers between them
+that leave 12 m, one in turn on each side) or `"spaced"` with `"spacing": 14` (m, 12–40, one in turn on each side), never more
+than 8 a bridge; `"lights": "night"` (the default: lit at night, 8 m round) or `"off"` (dark glass). The post is drawn with the
+bridge; its `lantern` is a part of its own that the importer adds beside the bridge — one written in the build at the post is kept
+as written, not doubled. Count them: a build's lights are budgeted, and the check counts an object's together, so a long crossing of
+several parts is an object each.
+
+```json
+{ "name": "creek", "at": [14, 6], "prims": [{ "name": "footbridge", "kind": "bridge", "style": "timber", "at": [0, 0, 0],
+  "width": 2.4, "points": [[-12, 0], [12, 0]] }] }
+```
+
+A part is 60 m at most (64 m a side): a longer crossing is two bridges that meet on a pier, each ending on half of it, their decks
+at one height there, written with `[x, y, z]` points and their `ground`.
+`node skills/ovgrid/scripts/check.mjs` says what is wrong with a bridge: a step of more than 0.3 m up onto its deck, a deck buried, a rise in
+the way, a pier past its style's tallest, a deck steeper than 1 in 8.
 
 A kind's uvs are in metres: its material lies at real size on every face. A kind whose mesh
 depends on its size (door, window, roof, fence, arch, column, bevel) makes a mesh for each size
@@ -1026,7 +1082,9 @@ prims collide as their mesh, its hull when convex.
   a frame of its own. Nothing is copied: change the object and every clone changes. Use it for
   whatever repeats unchanged: lamps, benches, fence sections, identical houses.
 - **A tree** `{ "species": "oak", "at": [x, y], "scale": 1, "seed": 3, "turn": 40 }`: a species of
-  catalog.json → `species`; the variant drawn is `seed % 6` (each variant's height and crown are in the
+  catalog.json → `species`; one that `floats` there (the water lilies) stands at `[x, y]` on its
+  parcel's water — on the lake where the build's `land` digs below it, under the ground where it does
+  not: put them only over what is dug; the variant drawn is `seed % 6` (each variant's height and crown are in the
   catalog); `scale` 0.25–4; `turn` ° about z (none: one its seed gives); `seed` defaults to one from
   the build's name and the tree's place in the list; `key`, optional, what the build knows it by
   (letters, digits, dots, dashes): imported again, the tree is found by it, wherever the list now puts
@@ -1725,8 +1783,13 @@ ways through it, what stands along them, what grows round them, what lights them
   `fern`) at the edges and in gardens.
 - **Meadows, beds and borders**: a meadow is `meadowGrass` with `rudbeckia`, `daisy` or `poppy`
   sown loose through it; beds hold `lily`, `gladiolus`, `columbine`, `heather` or `sunflower`, a few
-  of a kind together; `sedge` and `papyrus` grow by water, `hosta`, `monstera`, `strelitzia` and
+  of a kind together; `hosta`, `monstera`, `strelitzia` and
   `cordyline` under palms in a hot garden. These are 0.3–1.3 m tall: 0.4–0.8 m apart, never one alone.
+- **Ponds and shores**: on a lake's water (the build's `land` dug below its parcel's water, site.md),
+  `waterLily` pads and `floweringWaterLily` blooms (`"params": { "flower": [r, g, b] }` for a colour of
+  your own) in loose drifts of 5–15, 0.5–1 m apart, away from the banks' steepest stretches; round the
+  water a band of `cattail` and `rush` where it is shallow and wet, `reed` (3–4 m) in stands of a few
+  dozen behind them, `sedge` and `papyrus` between; `willow` and `alder` further back.
 - **Spacing**: crowns may touch in a wood — 0.8–1.2 × the crown's width apart (twice its `reach`
   in catalog.json → `species`: an oak's ~7 m reach, 10–14 m apart in open woodland, 6–8 m in a dense
   wood); a row of poplars 5–6 m apart.
@@ -2418,7 +2481,7 @@ The other vehicles' numbers, each held to its range, its default where it is lef
 | bike | `mass` | 50–5,000 kg | 250 |
 | bicycle | `power` | 5–200 N·m | 45 |
 | bicycle | `speed` | 1–20 m/s | 8 |
-| bicycle | `steer` | 5–45 ° | 30 |
+| bicycle | `steer` | 5–45 ° | 8 |
 | bicycle | `mass` | 50–5,000 kg | 90 |
 | bicycle | `gear` | 1–5 | 2.8 |
 | boat | `power` | 50–5,000 | 600 |
@@ -3021,8 +3084,22 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
 - **`road`** — A road or path along points, on the ground: a ribbon as wide as asked, its edges mitred at each point, its surface on the heights of the ground sampled under it about every metre along it and every metre and a half across, a slab under it as deep as asked. Two points make a straight length; a last point on the first closes it round. Its box is what it makes. Faces: 0 surface, 1 sides, 2 underside. Size: what its points, width and depth make (m).
   - `width` 0.5–12, default 3: How wide it is (m).
   - `depth` 0.05–1, default 0.3: How far its slab goes down under its surface (m), so that where the ground is not quite where its samples say, no gap shows.
+  - `lift` 0.02–0.5, default 0.1: How far its surface stands over the ground (m): 10 cm, so that no bulge between two samples shows through; a ring that roads run into stands a little more over them, so that they do not fight.
   - `points` -31.5–31.5, default -4,0,0.1,4,0,0.1: The points it runs through: [x, y, z] in metres in its own frame, z the ground there; two at least; a last one on the first closes it round.
   - `ground` -31.5–31.5, default : The ground's height under it (m, in its own frame), as the editor that laid it measured it: at each place sampled along it, from its left edge to its right; none: straight between its points' heights.
+- **`bridge`** — A bridge from A to B over ground that falls away between them: its deck from bank to bank, evenly spaced spans across the gap on piers — of logs, of stone arches, of slabs laid on piles (clapper), of planks hung on ropes (rope), of a deck on girders or of a deck hung from cables between towers (suspension). It keeps its two points (their z the deck's height there), the ground under the chord, and how far the deck is raised over water; the bridge is worked out from them. One part, 60 m at most; a longer crossing is two bridges that meet on a pier. Its box is what it makes. Faces: 0 deck, 1 structure, 2 rails. Size: what its points, width and the ground under it make (m).
+  - `style` `timber` / `stone` / `clapper` / `rope` / `girder` / `suspension`, default `timber`: Logs: planks on stringers and bents of posts, spans to 8 m, piers to 10 m. Stone: arches, spans to 12 m, piers to 16 m. Clapper: slabs on piles of blocks over a stream, spans to 3 m, piles to 2.5 m, no railings. Rope: planks hung on ropes from an anchor post at each bank, one span to 60 m, no piers, 2 m wide at the most. Girder: a deck of concrete on girders over hammerhead piers, spans to 20 m, piers to 18 m. Suspension: a stiff deck hung from cables over a tower at each support, spans to 60 m, piers to 25 m.
+  - `width` 0.8–12, default 2.4: How wide the deck is, railings included (m): 2–3 for walkers, 4–6 for a lane.
+  - `railing` `none` / `both` / `open`, default `both`: Along both sides: none; both — posts and two rails of logs, a parapet of stone, a rope and a second below it, steel posts and two rails —; open — posts and a rope of logs, a low wall of stone, one rope, one steel rail. A clapper bridge has none.
+  - `arch` `round` / `pointed` / `segmental`, default `round`: The shape of the stone arches: round (a semicircle where there is room), pointed (two arcs meeting at a crown, taller; round where the ground leaves no room for the point) or segmental (a flat quarter of the opening).
+  - `lamps` `none` / `ends` / `piers` / `spaced`, default `none`: A post and a lantern on it: none; at the ends (a pair at each); at the piers and the ends, in turn on each side; or spaced down the deck, in turn on each side. Never more than 8. The lanterns are parts of their own (kind lantern), kept at their posts by the editor and added by the importer.
+  - `spacing` 12–40, default 16: How far apart spaced lamps stand down the deck (m): 12 at the least, so that the lights of a place stay within its budget.
+  - `lights` `off` / `night`, default `night`: Whether the lanterns are lit: off, dark glass; at night, glowing and lighting 8 m round them from dusk. Each lantern's own light can be changed on its card.
+  - `rise` 0–4, default 0: How far the deck is raised in the middle over the straight line between its ends (m), by ramps no steeper than 1 in 8: to clear water, or a hump. A deck hung from ropes (rope) is never raised: this takes the slack out of its sag instead, no more than its sag.
+  - `points` -31.5–31.5, default -4,0,0,4,0,0: Its two ends, A and B: [x, y, z] in metres in its own frame, z the deck's height there, where it meets the bank.
+  - `ground` -31.5–31.5, default : The ground under the chord (m, in its own frame), as the editor that laid it measured it: evenly from A to B, about every metre; none: nothing to cross.
+- **`lantern`** — The housing of a lamp's light: a base, a box of glass that glows, a pointed cap — in a small box whose middle is the flame, where the part's light sits. Give it a light (At night) or leave it dark; stand it on a post. Under a metre, so its light passes it as its own fixture. Faces: 0 glass, 1 frame. Size: its own, in metres.
+
 - **`sculpt`** — A sculpted prim, as Second Life and OpenSim have them: its surface a map of points (its sculpt map), stitched as a sphere, a torus, a plane or a cylinder. Never written by hand: a part written with "sculpt" — a lathe, a box, a loft, a sweep or a model — is made one by the sculpt tool, and an OpenSim import brings its own; its stitching, mirror and invert set on its card. Faces: 0 surface. Size: its own, in metres.
   - `stitch` `sphere` / `torus` / `plane` / `cylinder`, default `sphere`: How its map closes on itself: a sphere (poles pinched, round its columns), a torus (both ways round), a plane (open), a cylinder (round its columns).
   - `mirror` `no` / `yes`, default `no`: Whether its map is mirrored across its x.
@@ -3063,7 +3140,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
 
 - **`car`** — Driven on its wheels — its cylinders lying across it — the front ones steering: W and S throttle and brake, A and D steer, Space the hand brake. `power` 50–3000 N·m (default 500), `speed` 2–60 m/s (default 25), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 1000), `grip` 0.4–3 × (default 2), `drive` `all` / `front` / `rear` (default all), `brake` 0.25–3 × (default 1), `suspension` 0.8–4 Hz (default 1.5), `travel` 0.1–1 m (default 0.3), `steering` `front` / `rear` / `all` (default front).
 - **`bike`** — Driven on its two wheels — its front and back cylinders lying across it — leaning into its turns: W and S throttle and brake, A and D steer. `power` 10–600 N·m (default 150), `speed` 2–70 m/s (default 30), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 250).
-- **`bicycle`** — Ridden on its two wheels as a motorbike is, leaning into its turns, and pedalled: W pedals, S brakes, A and D steer. A cylinder lying across it between its wheels is its crank: it turns, and what lies within it — its arms, its pedals —, as its rider pedals (the seat's pose Pedalling), Gear times slower than its back wheel. `power` 5–200 N·m (default 45), `speed` 1–20 m/s (default 8), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 90), `gear` 1–5 (default 2.8).
+- **`bicycle`** — Ridden on its two wheels as a motorbike is, leaning into its turns, and pedalled: W pedals, S brakes, A and D steer. A cylinder lying across it between its wheels is its crank: it turns, and what lies within it — its arms, its pedals —, as its rider pedals (the seat's pose Pedalling), Gear times slower than its back wheel. `power` 5–200 N·m (default 45), `speed` 1–20 m/s (default 8), `steer` 5–45 ° (default 8), `mass` 50–5000 kg (default 90), `gear` 1–5 (default 2.8).
 - **`train`** — Along its route (Does: follows a route), its driver setting its speed: W faster, S slower and then back; left, it goes on with its timetable from there. `speed` 1–60 m/s (default 20), `accel` 0.1–3 m/s² (default 0.8).
 - **`boat`** — Afloat on the sea, its hull its parts: W and S ahead and astern, A and D its rudder. `power` 50–5000 (default 600), `speed` 1–30 m/s (default 8), `steer` 5–45 ° (default 30), `mass` 50–5000 kg (default 800).
 - **`ship`** — Afloat at its waterline — its frame's z = 0, as it was built to float, whatever its decks carry — and as heavy as the water it moves: slow to get going and to stop, turning wide on its rudder as it goes and slowly on its bow thrusters when it does not, never skidding sideways. W and S ahead and astern, A and D the helm. `speed` 1–25 m/s (default 10), `accel` 0.05–3 m/s² (default 0.5), `turn` 1–30 °/s (default 6), `thrusters` 0–10 °/s (default 2).
@@ -3122,7 +3199,7 @@ Every pattern takes `scale` 0.25–20 (default 2), `width` 0.01–0.3 (default 0
 
 ### Tree species
 
-`bush` Bush (plant, 2–2.7 m tall, crown 1.6–2 m); `oleander` Oleander (plant, 3.2–4 m tall, crown 2.1–2.7 m); `fern` Fern (plant, 0.7–0.8 m tall, crown 1.1–1.2 m); `agave` Agave (plant, 1.1–1.2 m tall, crown 1.1–1.3 m); `saguaro` Saguaro (plant, 5.6–6.6 m tall, crown 0.8–1 m); `bamboo` Bamboo (plant, 7.5–8.9 m tall, crown 3.7–4.2 m); `banana` Banana (plant, 3.4–4.6 m tall, crown 2.1–2.3 m); `joshua` Joshua tree (plant, 5.7–8.2 m tall, crown 2–3.4 m); `hosta` Hosta (plant, 0.3–0.4 m tall, crown 0.4–0.5 m); `monstera` Monstera (plant, 0.9–1.1 m tall, crown 1.1–1.3 m); `strelitzia` Bird of paradise (plant, 1.3–1.3 m tall, crown 0.9–1.1 m); `cordyline` Cordyline (plant, 2.1–3.7 m tall, crown 1.1–1.5 m); `sunflower` Sunflower (flower, 1.6–2 m tall, crown 1.2–1.5 m); `rudbeckia` Black-eyed Susan (flower, 0.6–0.8 m tall, crown 0.5–0.8 m); `daisy` Oxeye daisy (flower, 0.4–0.7 m tall, crown 0.4–0.6 m); `poppy` Poppy (flower, 0.6–0.7 m tall, crown 0.3–0.5 m); `lily` Lily (flower, 0.9–1.1 m tall, crown 0.3–0.4 m); `gladiolus` Gladiolus (flower, 1.2–1.4 m tall, crown 0.3–0.4 m); `columbine` Columbine (flower, 0.5–0.8 m tall, crown 0.3–0.4 m); `heather` Heather (flower, 0.5–0.6 m tall, crown 0.4–0.5 m); `pampas` Pampas grass (grass, 3.2–3.7 m tall, crown 1.4–2 m); `meadowGrass` Meadow grass (grass, 0.9–1.2 m tall, crown 0.6–0.6 m); `sedge` Sedge (grass, 0.7–0.8 m tall, crown 0.6–0.8 m); `papyrus` Papyrus (grass, 2.4–3.1 m tall, crown 1–1.5 m); `coconut` Coconut palm (palm, 12.8–16.3 m tall, crown 6.9–7.8 m); `date` Date palm (palm, 11.8–14.5 m tall, crown 4.1–4.4 m); `fanPalm` Fan palm (palm, 14.2–18.1 m tall, crown 2.9–3.3 m); `royal` Royal palm (palm, 15.6–16.4 m tall, crown 4.2–4.6 m); `bottle` Bottle palm (palm, 4.1–5.3 m tall, crown 2.2–2.4 m); `areca` Areca palm (palm, 4.7–6.3 m tall, crown 3.9–4.5 m); `sago` Sago palm (palm, 2.1–2.5 m tall, crown 1.4–1.6 m); `curvedCoconut` Curved coconut palm (palm, 10.9–14.6 m tall, crown 8.1–10.2 m); `dateClump` Clustered date palm (palm, 13–15.2 m tall, crown 10.8–13.5 m); `spindle` Spindle palm (palm, 7.6–11.8 m tall, crown 2.9–3.1 m); `christmas` Christmas palm (palm, 6.7–8.3 m tall, crown 3.6–4.7 m); `fir` Fir (conifer, 12.4–15.9 m tall, crown 5.1–7 m); `pine` Stone pine (conifer, 14.9–19.3 m tall, crown 5.8–9.6 m); `cypress` Cypress (conifer, 12.1–15.9 m tall, crown 1.3–1.5 m); `sugi` Japanese cedar (conifer, 18.7–25.1 m tall, crown 6.5–7.7 m); `redwood` Redwood (conifer, 25.5–32.9 m tall, crown 6.6–8 m); `dawnRedwood` Dawn redwood (conifer, 16.5–20.8 m tall, crown 6.4–7.7 m); `blackPine` Black pine (conifer, 14–17.6 m tall, crown 6.6–9.2 m); `oak` Oak (broadleaf, 13.5–17.9 m tall, crown 6.3–8.4 m); `birch` Birch (broadleaf, 15.6–18.2 m tall, crown 4.9–5.6 m); `poplar` Poplar (broadleaf, 15.5–18.9 m tall, crown 2.3–2.7 m); `acacia` Acacia (broadleaf, 11–15.3 m tall, crown 7.2–9.7 m); `maple` Maple (broadleaf, 12.4–15.1 m tall, crown 3.7–5.6 m); `cherry` Cherry blossom (broadleaf, 8–9.5 m tall, crown 6.4–7.6 m); `willow` Weeping willow (broadleaf, 10–12.4 m tall, crown 5.7–6.6 m); `olive` Olive (broadleaf, 8.6–9.6 m tall, crown 4.8–6.9 m); `baobab` Baobab (broadleaf, 14–19.3 m tall, crown 3.5–5.6 m); `eucalyptus` Eucalyptus (broadleaf, 19.7–26 m tall, crown 5.4–7.8 m); `plane` Plane tree (broadleaf, 18.5–26.4 m tall, crown 7.9–10.9 m); `zelkova` Zelkova (broadleaf, 16.1–20.3 m tall, crown 6.7–9.5 m); `camphor` Camphor tree (broadleaf, 11.9–16.2 m tall, crown 9.7–12.6 m); `hackberry` Hackberry (broadleaf, 14.6–17.5 m tall, crown 4.8–8.1 m); `chestnut` Sweet chestnut (broadleaf, 14.7–20.2 m tall, crown 7.9–9.3 m); `beech` Beech (broadleaf, 17.8–24.3 m tall, crown 6.6–9.5 m); `alder` Alder (broadleaf, 12.7–15 m tall, crown 4–6.1 m); `feverTree` Fever tree (broadleaf, 17.6–21.6 m tall, crown 9.9–11.1 m); `blueGum` Blue gum (broadleaf, 22.1–29.1 m tall, crown 6.7–9.5 m); `dead` Dead tree (broadleaf, 9.1–13.6 m tall, crown 3.2–5.1 m).
+`bush` Bush (plant, 2–2.7 m tall, crown 1.6–2 m); `oleander` Oleander (plant, 3.2–4 m tall, crown 2.1–2.7 m); `fern` Fern (plant, 0.7–0.8 m tall, crown 1.1–1.2 m); `agave` Agave (plant, 1.1–1.2 m tall, crown 1.1–1.3 m); `saguaro` Saguaro (plant, 5.6–6.6 m tall, crown 0.8–1 m); `bamboo` Bamboo (plant, 7.5–8.9 m tall, crown 3.7–4.2 m); `banana` Banana (plant, 3.4–4.6 m tall, crown 2.1–2.3 m); `joshua` Joshua tree (plant, 5.7–8.2 m tall, crown 2–3.4 m); `hosta` Hosta (plant, 0.3–0.4 m tall, crown 0.4–0.5 m); `monstera` Monstera (plant, 0.9–1.1 m tall, crown 1.1–1.3 m); `strelitzia` Bird of paradise (plant, 1.3–1.3 m tall, crown 0.9–1.1 m); `cordyline` Cordyline (plant, 2.1–3.7 m tall, crown 1.1–1.5 m); `sunflower` Sunflower (flower, 1.6–2 m tall, crown 1.2–1.5 m); `rudbeckia` Black-eyed Susan (flower, 0.6–0.8 m tall, crown 0.5–0.8 m); `daisy` Oxeye daisy (flower, 0.4–0.7 m tall, crown 0.4–0.6 m); `poppy` Poppy (flower, 0.6–0.7 m tall, crown 0.3–0.5 m); `lily` Lily (flower, 0.9–1.1 m tall, crown 0.3–0.4 m); `gladiolus` Gladiolus (flower, 1.2–1.4 m tall, crown 0.3–0.4 m); `columbine` Columbine (flower, 0.5–0.8 m tall, crown 0.3–0.4 m); `heather` Heather (flower, 0.5–0.6 m tall, crown 0.4–0.5 m); `pampas` Pampas grass (grass, 3.2–3.7 m tall, crown 1.4–2 m); `meadowGrass` Meadow grass (grass, 0.9–1.2 m tall, crown 0.6–0.6 m); `sedge` Sedge (grass, 0.7–0.8 m tall, crown 0.6–0.8 m); `papyrus` Papyrus (grass, 2.4–3.1 m tall, crown 1–1.5 m); `waterLily` Water lily (water, 0–0 m tall, crown 0.3–0.4 m); `floweringWaterLily` Water lily in flower (water, 0.1–0.1 m tall, crown 0.3–0.4 m); `cattail` Cattail (water, 1.9–2.4 m tall, crown 0.7–0.8 m); `reed` Common reed (water, 3–4 m tall, crown 1.3–1.7 m); `rush` Rush (water, 1.1–1.2 m tall, crown 0.3–0.3 m); `coconut` Coconut palm (palm, 12.8–16.3 m tall, crown 6.9–7.8 m); `date` Date palm (palm, 11.8–14.5 m tall, crown 4.1–4.4 m); `fanPalm` Fan palm (palm, 14.2–18.1 m tall, crown 2.9–3.3 m); `royal` Royal palm (palm, 15.6–16.4 m tall, crown 4.2–4.6 m); `bottle` Bottle palm (palm, 4.1–5.3 m tall, crown 2.2–2.4 m); `areca` Areca palm (palm, 4.7–6.3 m tall, crown 3.9–4.5 m); `sago` Sago palm (palm, 2.1–2.5 m tall, crown 1.4–1.6 m); `curvedCoconut` Curved coconut palm (palm, 10.9–14.6 m tall, crown 8.1–10.2 m); `dateClump` Clustered date palm (palm, 13–15.2 m tall, crown 10.8–13.5 m); `spindle` Spindle palm (palm, 7.6–11.8 m tall, crown 2.9–3.1 m); `christmas` Christmas palm (palm, 6.7–8.3 m tall, crown 3.6–4.7 m); `fir` Fir (conifer, 12.4–15.9 m tall, crown 5.1–7 m); `pine` Stone pine (conifer, 14.9–19.3 m tall, crown 5.8–9.6 m); `cypress` Cypress (conifer, 12.1–15.9 m tall, crown 1.3–1.5 m); `sugi` Japanese cedar (conifer, 18.7–25.1 m tall, crown 6.5–7.7 m); `redwood` Redwood (conifer, 25.5–32.9 m tall, crown 6.6–8 m); `dawnRedwood` Dawn redwood (conifer, 16.5–20.8 m tall, crown 6.4–7.7 m); `blackPine` Black pine (conifer, 14–17.6 m tall, crown 6.6–9.2 m); `oak` Oak (broadleaf, 13.5–17.9 m tall, crown 6.3–8.4 m); `birch` Birch (broadleaf, 15.6–18.2 m tall, crown 4.9–5.6 m); `poplar` Poplar (broadleaf, 15.5–18.9 m tall, crown 2.3–2.7 m); `acacia` Acacia (broadleaf, 11–15.3 m tall, crown 7.2–9.7 m); `maple` Maple (broadleaf, 12.4–15.1 m tall, crown 3.7–5.6 m); `cherry` Cherry blossom (broadleaf, 8–9.5 m tall, crown 6.4–7.6 m); `willow` Weeping willow (broadleaf, 10–12.4 m tall, crown 5.7–6.6 m); `olive` Olive (broadleaf, 8.6–9.6 m tall, crown 4.8–6.9 m); `baobab` Baobab (broadleaf, 14–19.3 m tall, crown 3.5–5.6 m); `eucalyptus` Eucalyptus (broadleaf, 19.7–26 m tall, crown 5.4–7.8 m); `plane` Plane tree (broadleaf, 18.5–26.4 m tall, crown 7.9–10.9 m); `zelkova` Zelkova (broadleaf, 16.1–20.3 m tall, crown 6.7–9.5 m); `camphor` Camphor tree (broadleaf, 11.9–16.2 m tall, crown 9.7–12.6 m); `hackberry` Hackberry (broadleaf, 14.6–17.5 m tall, crown 4.8–8.1 m); `chestnut` Sweet chestnut (broadleaf, 14.7–20.2 m tall, crown 7.9–9.3 m); `beech` Beech (broadleaf, 17.8–24.3 m tall, crown 6.6–9.5 m); `alder` Alder (broadleaf, 12.7–15 m tall, crown 4–6.1 m); `feverTree` Fever tree (broadleaf, 17.6–21.6 m tall, crown 9.9–11.1 m); `blueGum` Blue gum (broadleaf, 22.1–29.1 m tall, crown 6.7–9.5 m); `dead` Dead tree (broadleaf, 9.1–13.6 m tall, crown 3.2–5.1 m).
 
 ### Starter materials
 

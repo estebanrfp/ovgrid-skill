@@ -105,12 +105,14 @@ The terrain is a function; what you build is not.
 - **Ways along the contours**: a path climbs at most 1 in 8 (7°); steeper ground takes it in
   zigzags, each leg along a contour line of the map, a landing at each turn; a lane follows a valley
   floor or a ridge. Each one a `road` laid on the ground (format.md).
-- **A bridge between two rises**: take the profile between the two rims (`--profile`): its length
-  is the span, its lowest point the depth to bridge. The deck a little over the higher rim, level or
-  gently sloped; its ends resting on abutments sunk into each rim (stone boxes down past the ground);
-  piers to the valley floor every 8–15 m for timber, or stone arches (the `arch` kind) 6–12 m wide;
-  each pier's foot 1 m under the lowest ground round it; railings both sides (the `fence` kind,
-  `balusters` or `rails`, 1.1 m); a lamp at each end. A deck 2–3 m wide for walkers, 4–6 m for a lane.
+- **A bridge between two rises**: the `bridge` kind (format.md), one part. Take the profile between the two rims
+  (`--profile`) and put its two `points` on the two banks where the ground stands at one height, a metre or two back from where it
+  falls away: the deck runs from bank to bank at that height, with evenly spaced spans across the gap — logs up to 8 m on piers up
+  to 10 m, stone arches up to 12 m on piers up to 16 m (a gap 3 m deep at least) —, a pier between each two let 0.4 m (stone, 1 m)
+  into the ground, railings both sides; over water the deck is raised to clear it. A deck 2–3 m wide for walkers, 4–6 m for a lane.
+  A part is 60 m at most: a longer crossing is two bridges that meet on a pier. Choose its `style` by the ground: logs and stone arches for a ravine or a river, a clapper bridge (slabs on piles, 3 m a span) for a stream or a gully, a rope bridge
+  for a gap of up to 60 m in one span (no piers; it hangs), a girder bridge or a suspension bridge for a long crossing. Dress it with a `look` (granite, sandstone, brick, mossy…), `arch`es
+  and `railing`s, and give it `lamps` (a post and a lantern lit at night: at the ends, the piers or spaced down the deck, 12 m apart at the least).
 - **Views**: a square, a bench, a tavern's terrace on a ridge or a rise, facing the open side;
   tall things (a tower, a mill) where they are seen against the sky; nothing tall between the
   place people arrive and what they came to see.

@@ -15,6 +15,7 @@ var __export = (target, all) => {
     });
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
+var __promiseAll = (args) => Promise.all(args);
 
 // src/terrain-height.js
 var ROOT_SIZE = 12696000, NOISE_SCALE = 800, SEA_LEVEL = 0.5555556, ELEV_SCALE = 21600, layer = (type, octaves, ridgeExponent, warpStrength, hmin, hmax) => ({
@@ -1033,6 +1034,45 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
   return n[0] > 0 ? [y / across, z / up] : [-y / across, z / up];
 };
 var init_mesh = () => {};
+
+// src/build/kinds/ready.js
+var HERE, listeners, keys, kinds, told = false, flush = () => {
+  if (!told)
+    return;
+  const [recipes, names] = [keys, kinds];
+  keys = new Set;
+  kinds = new Set;
+  told = false;
+  for (const listener of listeners) {
+    try {
+      listener(recipes, names);
+    } catch (error) {
+      console.error("told what came:", error);
+    }
+  }
+}, soon = () => {
+  if (told)
+    return;
+  told = true;
+  if (globalThis.requestAnimationFrame && !HERE)
+    requestAnimationFrame(flush);
+  else
+    queueMicrotask(flush);
+}, tellRecipe = (key) => {
+  if (keys)
+    key === null ? keys = null : keys.add(key);
+  soon();
+}, tellKind = (name) => {
+  kinds.add(name);
+  told = true;
+  queueMicrotask(flush);
+};
+var init_ready = __esm(() => {
+  HERE = Boolean(globalThis.Bun || globalThis.process?.versions?.node);
+  listeners = new Set;
+  keys = new Set;
+  kinds = new Set;
+});
 
 // src/build/kinds/rock.js
 var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES, CRAG_SIDES, BAND_SIDES, STONE_SIDES, PRISM_SIDES, PRISMS_DRAWN, STONE_UNDER, PIECE_SIDES, FINEST = 3, DEG2, KEEP = 64, kept, keptAs = (key, make) => {
@@ -2500,7 +2540,7 @@ var LIFT = 0.1, EVERY = 1, ACROSS = 1.5, SAMPLES = 2048, STRIDES, MITRE = 3, len
   }
   return [...along].sort((a, b) => a - b).map((s) => {
     const heights = groundAt(params, lengths, total, columns, closed && s >= total - 0.000000001 ? 0 : s);
-    return { s, row: rowOf(sectionAt(lengths, closed, width, s), heights.length).map(([x, y], j) => [x, y, heights[j] + LIFT]) };
+    return { s, row: rowOf(sectionAt(lengths, closed, width, s), heights.length).map(([x, y], j) => [x, y, heights[j] + (params.lift ?? LIFT)]) };
   });
 }, footprintOf2, centreOf2 = (params) => {
   const { min, max } = footprintOf2(params);
@@ -2537,6 +2577,7 @@ var init_road = __esm(() => {
     params: [
       { name: "width", label: "Width", min: 0.5, max: 12, default: 3, step: 0.05, description: "How wide it is (m)." },
       { name: "depth", label: "Depth", min: 0.05, max: 1, default: 0.3, step: 0.01, description: "How far its slab goes down under its surface (m), so that where the ground is not quite where its samples say, no gap shows." },
+      { name: "lift", label: "Lift", min: 0.02, max: 0.5, default: LIFT, step: 0.01, optional: true, description: "How far its surface stands over the ground (m): 10 cm, so that no bulge between two samples shows through; a ring that roads run into stands a little more over them, so that they do not fight." },
       { name: "points", label: "Path", points: [2, 32], min: -31.5, max: 31.5, step: 0.001, default: [[-4, 0, 0.1], [4, 0, 0.1]], description: "The points it runs through: [x, y, z] in metres in its own frame, z the ground there; two at least; a last one on the first closes it round." },
       { name: "ground", label: "Ground", heights: [0, SAMPLES], min: -31.5, max: 31.5, step: 0.001, default: [], description: "The ground's height under it (m, in its own frame), as the editor that laid it measured it: at each place sampled along it, from its left edge to its right; none: straight between its points' heights." }
     ],
@@ -2602,6 +2643,161 @@ var init_road = __esm(() => {
       }).flat());
       return [{ type: "mesh", positions: Float32Array.from(positions), indices: Uint32Array.from(indices) }];
     }
+  });
+});
+
+// src/build/kinds/bridge.js
+var STYLES, STYLE_NAMES, MOST_SAMPLES = 128, LAMP_MODES, LEAST_SPACING = 12, LOOKS, LOOK_LABELS, LABELS, bridge;
+var init_bridge = __esm(() => {
+  STYLES = Object.freeze({
+    timber: Object.freeze({ label: "Logs", maxSpan: 8, maxPier: 10, least: 0.6, depth: 0.62, embed: 0.4, thick: Object.freeze({ least: 0.9, most: 0.9 }), lamp: Object.freeze({ inset: 0.16, post: 0.12 }), width: 2.4 }),
+    stone: Object.freeze({ label: "Stone arches", maxSpan: 12, maxPier: 16, least: 3, depth: 0.75, embed: 1, thick: Object.freeze({ share: 0.18, least: 0.8, most: 2.2, cap: 0.4 }), lamp: Object.freeze({ inset: 0.2, post: 0.3 }), width: 2.4 }),
+    clapper: Object.freeze({ label: "Clapper slabs", maxSpan: 3, maxPier: 2.5, least: 0.5, depth: 0.4, embed: 0.3, thick: Object.freeze({ least: 0.9, most: 0.9 }), lamp: Object.freeze({ inset: 0.2, post: 0.3 }), width: 1.8, widest: 3, railed: false }),
+    rope: Object.freeze({ label: "Rope and plank", maxSpan: 60, maxPier: 0, least: 2, depth: 0.1, embed: 0.5, thick: Object.freeze({ least: 0.4, most: 0.4 }), lamp: Object.freeze({ inset: 0.2, post: 0.14 }), width: 1.6, widest: 2, sag: 0.03, above: 1.8 }),
+    girder: Object.freeze({ label: "Girder", maxSpan: 20, maxPier: 18, least: 1, depth: 0.9, embed: 1, thick: Object.freeze({ least: 1, most: 1 }), lamp: Object.freeze({ inset: 0.12, post: 0.14 }), width: 3.6 }),
+    suspension: Object.freeze({ label: "Suspension", maxSpan: 60, maxPier: 25, least: 2, depth: 0.7, embed: 1, thick: Object.freeze({ least: 1.4, most: 1.4 }), lamp: Object.freeze({ inset: 0.12, post: 0.14 }), width: 3.2, tower: Object.freeze({ share: 0.16, least: 4, most: 10 }) })
+  });
+  STYLE_NAMES = Object.freeze(Object.keys(STYLES));
+  LAMP_MODES = Object.freeze(["none", "ends", "piers", "spaced"]);
+  LOOKS = Object.freeze({
+    timber: Object.freeze({
+      oak: Object.freeze(["wood/floor/weathered-brown-planks", "wood/logs/bark-brown-01", "wood/planks/brown-planks-03"]),
+      dark: Object.freeze(["wood/floor/weathered-planks", "wood/logs/bark-willow", "wood/planks/dark-planks"]),
+      pine: Object.freeze(["wood/floor/wood-planks-grey", "wood/logs/knotted-pine-bark", "wood/planks/rough-wood"]),
+      mossy: Object.freeze(["wood/planks/wooden-rough-planks", "wood/logs/jolcham-oak-bark-01", "wood/planks/wood-065"])
+    }),
+    stone: Object.freeze({
+      rustic: Object.freeze(["paving/cobblestone/cobblestone-pavement", "masonry/stone-blocks/rustic-stone-wall-02", "masonry/stone-blocks/medieval-blocks-03"]),
+      granite: Object.freeze(["paving/cobblestone/cobblestone-002", "masonry/stone-blocks/japanese-stone-wall", "masonry/stone-blocks/stone-tile-wall"]),
+      sandstone: Object.freeze(["paving/cobblestone/cobblestone-floor-13", "masonry/stone-blocks/sandstone-blocks-08", "masonry/stone-blocks/rock-wall-06"]),
+      mossy: Object.freeze(["paving/cobblestone/cobblestone-floor-08", "ground/rock/rock-040", "ground/rock/rock-046l"]),
+      brick: Object.freeze(["masonry/brick/red-brick-pavers", "masonry/brick/medieval-red-brick", "masonry/brick/red-brick"])
+    }),
+    clapper: Object.freeze({
+      granite: Object.freeze(["ground/rock/rock-001", "masonry/stone-blocks/stone-wall-04", "masonry/stone-blocks/defense-wall"]),
+      slate: Object.freeze(["paving/tiles/slab-tiles", "masonry/stone-blocks/volcanic-rock-tiles", "masonry/stone-blocks/rock-wall-16"]),
+      mossy: Object.freeze(["paving/cobblestone/cobblestone-floor-08", "masonry/rubble/rock-wall-02", "ground/rock/rock-046l"]),
+      sandstone: Object.freeze(["paving/stone/travertine-001", "masonry/stone-blocks/sandstone-blocks-08", "masonry/stone-blocks/rock-wall-06"])
+    }),
+    rope: Object.freeze({
+      hemp: Object.freeze(["wood/planks/rough-wood", "wood/logs/bark-brown-02", "fabric/cloth/rope-001"]),
+      dark: Object.freeze(["wood/planks/dark-planks", "wood/logs/bark-willow", "fabric/cloth/rope-003"]),
+      mossy: Object.freeze(["wood/planks/wooden-rough-planks", "wood/logs/jolcham-oak-bark-01", "fabric/cloth/rope-001"]),
+      steel: Object.freeze(["wood/floor/wood-planks-grey", "wood/logs/knotted-pine-bark", "fabric/cloth/rope-002"])
+    }),
+    girder: Object.freeze({
+      concrete: Object.freeze(["paving/asphalt/clean-asphalt", "plaster/concrete/concrete-slab-wall", "metal/bare/metal-046a"]),
+      steel: Object.freeze(["paving/asphalt/asphalt-02", "metal/bare/metal-039", "metal/bare/metal-046b"]),
+      rusted: Object.freeze(["metal/rusted/metal-plate-02", "metal/rusted/rusty-metal-05", "metal/rusted/rusty-metal-04"]),
+      white: Object.freeze(["plaster/concrete/concrete-floor-03", "metal/painted/metal-016", "metal/painted/painted-metal-012"])
+    }),
+    suspension: Object.freeze({
+      orange: Object.freeze(["paving/asphalt/clean-asphalt", "metal/painted/painted-metal-008", "metal/painted/painted-metal-008"]),
+      grey: Object.freeze(["paving/asphalt/asphalt-02", "metal/bare/metal-039", "metal/bare/metal-046a"]),
+      white: Object.freeze(["plaster/concrete/concrete-floor-03", "metal/painted/metal-016", "metal/painted/painted-metal-012"]),
+      planked: Object.freeze(["wood/floor/weathered-planks", "metal/painted/metal-027", "metal/painted/metal-027"])
+    })
+  });
+  LOOK_LABELS = Object.freeze({
+    oak: "Oak",
+    dark: "Dark wood",
+    pine: "Aged pine",
+    mossy: "Mossy",
+    rustic: "Rustic stone",
+    granite: "Granite",
+    sandstone: "Sandstone",
+    brick: "Red brick",
+    slate: "Slate",
+    hemp: "Hemp and pine",
+    steel: "Steel",
+    concrete: "Concrete",
+    rusted: "Rusted steel",
+    white: "White",
+    orange: "Orange",
+    grey: "Grey steel",
+    planked: "Plank deck"
+  });
+  LABELS = Object.freeze(["Log bridge", "Stone bridge", "Clapper bridge", "Rope bridge", "Girder bridge", "Suspension bridge"]);
+  bridge = Object.freeze({
+    name: "bridge",
+    label: "Bridge",
+    description: "A bridge from A to B over ground that falls away between them: its deck from bank to bank, evenly spaced spans across the gap on piers — of logs, of stone arches, of slabs laid on piles (clapper), of planks hung on ropes (rope), of a deck on girders or of a deck hung from cables between towers (suspension). It keeps its two points (their z the deck's height there), the ground under the chord, and how far the deck is raised over water; the bridge is worked out from them. One part, 60 m at most; a longer crossing is two bridges that meet on a pier. Its box is what it makes.",
+    faces: ["deck", "structure", "rails"],
+    shape: "cube",
+    sized: true,
+    size: [8, 2.4, 3],
+    sizeNote: "what its points, width and the ground under it make (m)",
+    labelOf: ({ style }) => LABELS[style] ?? "Bridge",
+    bed: true,
+    lookedBy: "style",
+    looks: LOOKS,
+    lookLabels: LOOK_LABELS,
+    params: [
+      { name: "style", label: "Style", min: 0, max: STYLE_NAMES.length - 1, default: 0, step: 1, options: STYLE_NAMES, labels: STYLE_NAMES.map((name) => STYLES[name].label), description: "Logs: planks on stringers and bents of posts, spans to 8 m, piers to 10 m. Stone: arches, spans to 12 m, piers to 16 m. Clapper: slabs on piles of blocks over a stream, spans to 3 m, piles to 2.5 m, no railings. Rope: planks hung on ropes from an anchor post at each bank, one span to 60 m, no piers, 2 m wide at the most. Girder: a deck of concrete on girders over hammerhead piers, spans to 20 m, piers to 18 m. Suspension: a stiff deck hung from cables over a tower at each support, spans to 60 m, piers to 25 m." },
+      { name: "width", label: "Width", min: 0.8, max: 12, default: 2.4, step: 0.05, description: "How wide the deck is, railings included (m): 2–3 for walkers, 4–6 for a lane." },
+      { name: "railing", label: "Railings", min: 0, max: 2, default: 1, step: 1, options: ["none", "both", "open"], when: (params) => STYLES[STYLE_NAMES[params.style]]?.railed !== false, description: "Along both sides: none; both — posts and two rails of logs, a parapet of stone, a rope and a second below it, steel posts and two rails —; open — posts and a rope of logs, a low wall of stone, one rope, one steel rail. A clapper bridge has none." },
+      { name: "arch", label: "Arch", min: 0, max: 2, default: 0, step: 1, options: ["round", "pointed", "segmental"], when: (params) => params.style === 1, description: "The shape of the stone arches: round (a semicircle where there is room), pointed (two arcs meeting at a crown, taller; round where the ground leaves no room for the point) or segmental (a flat quarter of the opening)." },
+      { name: "lamps", label: "Lamps", min: 0, max: LAMP_MODES.length - 1, default: 0, step: 1, options: LAMP_MODES, labels: ["None", "Ends", "Piers", "Spaced"], description: "A post and a lantern on it: none; at the ends (a pair at each); at the piers and the ends, in turn on each side; or spaced down the deck, in turn on each side. Never more than 8. The lanterns are parts of their own (kind lantern), kept at their posts by the editor and added by the importer." },
+      { name: "spacing", label: "Spacing", min: LEAST_SPACING, max: 40, default: 16, step: 1, when: (params) => params.lamps === 3, description: "How far apart spaced lamps stand down the deck (m): 12 at the least, so that the lights of a place stay within its budget." },
+      { name: "lights", label: "Lights", min: 0, max: 1, default: 1, step: 1, options: ["off", "night"], labels: ["Off", "At night"], when: (params) => params.lamps > 0, description: "Whether the lanterns are lit: off, dark glass; at night, glowing and lighting 8 m round them from dusk. Each lantern's own light can be changed on its card." },
+      { name: "rise", label: "Rise", min: 0, max: 4, default: 0, step: 0.01, description: "How far the deck is raised in the middle over the straight line between its ends (m), by ramps no steeper than 1 in 8: to clear water, or a hump. A deck hung from ropes (rope) is never raised: this takes the slack out of its sag instead, no more than its sag." },
+      { name: "points", label: "Path", points: [2, 2], min: -31.5, max: 31.5, step: 0.001, default: [[-4, 0, 0], [4, 0, 0]], description: "Its two ends, A and B: [x, y, z] in metres in its own frame, z the deck's height there, where it meets the bank." },
+      { name: "ground", label: "Ground", heights: [0, MOST_SAMPLES], min: -31.5, max: 31.5, step: 0.001, default: [], description: "The ground under the chord (m, in its own frame), as the editor that laid it measured it: evenly from A to B, about every metre; none: nothing to cross." }
+    ]
+  });
+});
+
+// src/build/kinds/lantern.js
+var BASE = 0.16, CAP = 0.3, GLASS = 0.78, lanternDressing = (lit) => ({
+  color: [1, 0.74, 0.45],
+  surface: {
+    ...lit && { emissive: 0.9, glow: 0.25 },
+    faces: {
+      0: { color: lit ? [1, 0.74, 0.45] : [0.32, 0.26, 0.17], ...!lit && { emissive: 0 } },
+      1: { texture: "metal/painted/metal-027", color: [0.027, 0.026, 0.035], emissive: 0, glow: 0 }
+    }
+  },
+  light: lit ? { on: "night", range: 8, color: [1, 0.72, 0.42], intensity: 0.85 } : { on: false }
+}), lantern;
+var init_lantern = __esm(() => {
+  init_mesh();
+  lantern = Object.freeze({
+    name: "lantern",
+    label: "Lantern",
+    description: "The housing of a lamp's light: a base, a box of glass that glows, a pointed cap — in a small box whose middle is the flame, where the part's light sits. Give it a light (At night) or leave it dark; stand it on a post. Under a metre, so its light passes it as its own fixture.",
+    faces: ["glass", "frame"],
+    shape: "cube",
+    sized: true,
+    size: [0.3, 0.3, 0.46],
+    params: [],
+    mesh: (params, seed, level, size) => {
+      const [hx, hy, hz] = size.map((v) => v / 2);
+      const mesh = createMesh(2);
+      const flat = (p, n) => boxUv(p, n, [-hx, -hy, -hz], 1, 1);
+      const box = (slot, min, max) => addBox(mesh, min, max, () => slot, flat);
+      if (level === 0) {
+        box(0, [-hx * GLASS, -hy * GLASS, -hz], [hx * GLASS, hy * GLASS, hz]);
+        return mesh.pack(size);
+      }
+      const base = -hz + size[2] * BASE;
+      const cap = hz - size[2] * CAP;
+      box(1, [-hx, -hy, -hz], [hx, hy, base]);
+      box(0, [-hx * GLASS, -hy * GLASS, base], [hx * GLASS, hy * GLASS, cap]);
+      const corners = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]].map(([x, y]) => [x, y, cap]);
+      const apex = [0, 0, hz];
+      const rise = hz - cap;
+      for (let k = 0;k < 4; k++) {
+        const [a, b] = [corners[k], corners[(k + 1) % 4]];
+        const out = [b[1] - a[1], a[0] - b[0]];
+        const side = Math.hypot(out[0], out[1]);
+        const run = (a[0] * out[0] + a[1] * out[1]) / side;
+        const slope = Math.hypot(run, rise);
+        mesh.polygon(1, [a, b, apex], [out[0] / side * (rise / slope), out[1] / side * (rise / slope), run / slope], flat);
+      }
+      mesh.polygon(1, [...corners].reverse(), [0, 0, -1], flat);
+      return mesh.pack(size);
+    },
+    collider: (params, seed, size) => [solidBox(size.map((v) => -v / 2), size.map((v) => v / 2))]
   });
 });
 
@@ -3667,12 +3863,12 @@ var setting = (key, values, fallback) => {
     }
   };
   let current = kept2() ?? fallback;
-  const listeners = new Set;
+  const listeners2 = new Set;
   const use = (value) => {
     if (!values.includes(value) || value === current)
       return false;
     current = value;
-    for (const listener of listeners)
+    for (const listener of listeners2)
       listener(value);
     return true;
   };
@@ -3688,8 +3884,8 @@ var setting = (key, values, fallback) => {
     },
     use,
     on: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+      listeners2.add(listener);
+      return () => listeners2.delete(listener);
     }
   };
 }, resolution, cloudQuality, volumetricLight, shadowQuality, frameCap, waterQuality, smoothQuality;
@@ -4080,30 +4276,13 @@ var init_solid_mesh = __esm(() => {
 });
 
 // src/build/kinds/solid.js
-var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SMOOTHING = 3, MOST_TRIANGLES = 5000, SIDES3 = 32, AXES, JOINS, GATHER = 1, MOST_CHARACTERS = 3072, REACH2 = 64, LEAST2 = 0.001, POINTS, ROUND_VERTICES = 38, HERE, engine = null, mesher = null, loading = null, listeners, back, told = false, tell = (key) => {
-  if (back)
-    key === null ? back = null : back.add(key);
-  if (told)
-    return;
-  told = true;
-  const flush = () => {
-    const keys = back;
-    back = new Set;
-    told = false;
-    for (const listener of listeners)
-      listener(keys);
-  };
-  if (globalThis.requestAnimationFrame && !HERE)
-    requestAnimationFrame(flush);
-  else
-    queueMicrotask(flush);
-}, loadSolids = () => loading ??= (async () => {
+var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SMOOTHING = 3, MOST_TRIANGLES = 5000, SIDES3 = 32, AXES, JOINS, GATHER = 1, MOST_CHARACTERS = 3072, REACH2 = 64, LEAST2 = 0.001, POINTS, ROUND_VERTICES = 38, engine = null, mesher = null, loading = null, loadSolids = () => loading ??= (async () => {
   const [{ default: Module }, mesh] = await Promise.all([import(MANIFOLD.href), HERE ? Promise.resolve().then(() => (init_solid_mesh(), exports_solid_mesh)) : null]);
   const wasm = await Module(HERE ? {} : { locateFile: (file) => new URL(file, MANIFOLD).href });
   wasm.setup();
   engine = wasm;
   mesher = mesh;
-  tell(null);
+  tellRecipe(null);
   return engine;
 })().catch((error) => {
   loading = null;
@@ -4114,7 +4293,7 @@ var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SM
   if (next === cap2)
     return;
   cap2 = next;
-  tell(null);
+  tellRecipe(null);
 }, FULL = 65535, unpackPoints = (text, dims) => gridOf(text, dims).map((point) => point.map((v) => v / FULL - 0.5)), gridOf = (text, dims) => {
   const raw = atob(text);
   const points = [];
@@ -4163,17 +4342,17 @@ var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SM
     return step && inOrder(value, { count, step });
   const at = pair(value.at) ? value.at.map((v) => round2(within2(v, -REACH2, REACH2)) || 0) : undefined;
   return inOrder(value, { count, ...step?.some((v) => v !== 0) && { step }, around, ...at?.some((v) => v !== 0) && { at } });
-}, FACES, CAP = 0.999, faceOf = (shape, [x, y, z]) => {
+}, FACES, CAP2 = 0.999, faceOf = (shape, [x, y, z]) => {
   if (shape === "extrude")
-    return z < -CAP ? 0 : z > CAP ? 1 : 2;
+    return z < -CAP2 ? 0 : z > CAP2 ? 1 : 2;
   const [ax, ay, az] = [Math.abs(x), Math.abs(y), Math.abs(z)];
   return ax >= ay && ax >= az ? x > 0 ? 1 : 0 : ay >= az ? y > 0 ? 3 : 2 : z > 0 ? 5 : 4;
-}, facesTone = (body, way, slots, back2) => {
+}, facesTone = (body, way, slots, back) => {
   const shape = body[way];
   if (!Array.isArray(body.faces) || !FACES[shape])
     return null;
   const inward = way === "cut" ? -1 : 1;
-  return (out) => Math.min(body.faces[faceOf(shape, back2(out).map((v) => v * inward))], slots - 1);
+  return (out) => Math.min(body.faces[faceOf(shape, back(out).map((v) => v * inward))], slots - 1);
 }, MOST_SPOTS = 64, same2 = (p) => p, spotsOf = (spots) => {
   if (!Array.isArray(spots))
     return null;
@@ -4449,17 +4628,17 @@ var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SM
   const own = placedBody(body, way, level);
   if (!own)
     return [];
-  return copiesOf(body).map(({ place, back: back2, undo, flip }) => ({ corners: own.corners.map(place), faces: flip ? own.faces.map(([a, b, c]) => [a, c, b]) : own.faces, place, back: back2, undo }));
+  return copiesOf(body).map(({ place, back, undo, flip }) => ({ corners: own.corners.map(place), faces: flip ? own.faces.map(([a, b, c]) => [a, c, b]) : own.faces, place, back, undo }));
 }, onPage = ({ bodies, join }) => join === GATHER && bodies.length > 0 && bodies.every((body) => madeHere(body, "add")), hullsSurface = ({ bodies }, size, slots, level) => {
   const origins = new Map;
   let id = 0;
   const lefts = bodies.flatMap((body) => {
     const matrix = body.turn ? matrixOf(body.turn) : null;
     const unturned = (out) => matrix ? [0, 1, 2].map((k) => matrix[0][k] * out[0] + matrix[1][k] * out[1] + matrix[2][k] * out[2]) : out;
-    return placedCopies(body, "add", level).map(({ corners, faces, place, back: back2 }) => {
+    return placedCopies(body, "add", level).map(({ corners, faces, place, back }) => {
       const vertProperties = Float64Array.from(corners.flat());
       const triVerts = Uint32Array.from(faces.flat());
-      const toneOf = facesTone(body, "add", slots, (out) => unturned(back2(out)));
+      const toneOf = facesTone(body, "add", slots, (out) => unturned(back(out)));
       const spots = placedSpots(body, slots, place);
       const own = id++;
       origins.set(own, { colour: Math.min(body.colour ?? 0, slots - 1), ...toneOf && { toneOf }, ...spots && { spots }, ...creaseOf(body) && { crease: creaseOf(body) } });
@@ -4486,7 +4665,7 @@ var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SM
   made3.set(key, surfaces);
   if (meshes.some(([, mesh]) => mesh))
     worked++;
-  tell(key);
+  tellRecipe(key);
 }, workersOf = () => workers ??= Array.from({ length: WORKERS }, () => Object.assign(new Worker(new URL("./solid-worker.js", import.meta.url), { type: "module" }), { onmessage: cameBack })), ask = (key, params, slots, size, wanted) => {
   const before = asked.get(key);
   const smoothings = [...new Set([...before?.smoothings ?? [], ...wanted])];
@@ -4555,6 +4734,7 @@ var init_solid = __esm(() => {
   init_mesh();
   init_solid_surface();
   init_settings();
+  init_ready();
   MANIFOLD = new URL("../../manifold/manifold.js", import.meta.url);
   SHAPES = ["box", "cylinder", "cone", "ball", "wedge"];
   FORMS2 = ["hull", "revolve", "extrude", "loft", "sweep"];
@@ -4562,9 +4742,6 @@ var init_solid = __esm(() => {
   AXES = ["x", "y", "z"];
   JOINS = ["union", "none"];
   POINTS = Object.freeze({ hull: [4, 32], profile: [3, 64], holes: 8, sections: [2, 32], path: [2, 32], repeat: [2, 32] });
-  HERE = Boolean(globalThis.Bun || globalThis.process?.versions?.node);
-  listeners = new Set;
-  back = new Set;
   cap2 = smoothQuality.get();
   smoothQuality.on(setSmoothing);
   FACES = Object.freeze({ box: 6, extrude: 3 });
@@ -4616,8 +4793,950 @@ var init_solid = __esm(() => {
   });
 });
 
+// src/build/kinds/bridge-fit.js
+var SAMPLE = 1, MOST_CHORD = 60, GRADE = 8, SEAT = 1.2, FREEBOARD = 0.3, BURIED = 0.3, RAIL2 = 1.05, STEP_UP = 0.3, BURIED_END = 1, round3 = (v, places = 3) => Math.round(v * 10 ** places) / 10 ** places, clamp3 = (v, least, most) => Math.min(Math.max(v, least), most), longestSpan = (plan) => plan.spans.length ? Math.max(...plan.spans.map((span) => span.s1 - span.s0)) : plan.length, thickOf = (style, each) => {
+  const { share = 0, least, most, cap: cap3 = 1 } = style.thick;
+  return clamp3(each * share, least, Math.max(least, Math.min(most, each * cap3)));
+}, towerOf = (plan) => plan.style.tower && plan.supports.length ? clamp3(plan.style.tower.share * longestSpan(plan), plan.style.tower.least, plan.style.tower.most) : 0, aboveOf = (plan) => plan.style.tower ? towerOf(plan) : plan.style.above ?? 0, chordOf = ([a, b]) => {
+  const length2 = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  return { length: length2, ux: length2 > 0.000000001 ? (b[0] - a[0]) / length2 : 1, uy: length2 > 0.000000001 ? (b[1] - a[1]) / length2 : 0 };
+}, sampleCount = (length2) => clamp3(Math.ceil(length2 / SAMPLE - 0.000000001) + 1, 2, MOST_SAMPLES), sitesOf = ({ points }) => {
+  const count = sampleCount(chordOf(points).length);
+  return Array.from({ length: count }, (_, i) => [points[0][0] + (points[1][0] - points[0][0]) * i / (count - 1), points[0][1] + (points[1][1] - points[0][1]) * i / (count - 1)]);
+}, readAt = (list, length2, s) => {
+  if (list.length === 1 || length2 <= 0)
+    return list[0];
+  const t = clamp3(s / length2, 0, 1) * (list.length - 1);
+  const k = Math.min(Math.floor(t), list.length - 2);
+  return list[k] + (list[k + 1] - list[k]) * (t - k);
+}, sagMaxOf = (params, length2) => {
+  const sag = (STYLES[STYLE_NAMES[params.style]] ?? STYLES.timber).sag ?? 0;
+  if (!sag || length2 <= 0)
+    return 0;
+  const drop = Math.abs(params.points[1][2] - params.points[0][2]) / length2;
+  return length2 * Math.min(sag, Math.max(1 / GRADE - drop, 0) / 4);
+}, deckAt = (params, length2, s) => {
+  const { points, rise } = params;
+  const line = length2 > 0 ? points[0][2] + (points[1][2] - points[0][2]) * s / length2 : points[0][2];
+  const sagMax = sagMaxOf(params, length2);
+  if (sagMax)
+    return line - Math.max(sagMax - rise, 0) * 4 * s * (length2 - s) / (length2 * length2);
+  return line + Math.min(rise, s / GRADE, (length2 - s) / GRADE);
+}, groundAt2 = (params, length2, s) => params.ground.length >= 2 ? readAt(params.ground, length2, s) : length2 > 0 ? params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2 : params.points[0][2], crossing = (positions, values, level, outside, inside) => {
+  const [a, b] = [values[outside] - level, values[inside] - level];
+  return a === b ? positions[inside] : positions[outside] + (positions[inside] - positions[outside]) * -a / (b - a);
+}, planOf, riseFor = (params, ground, water) => {
+  const style = STYLES[STYLE_NAMES[params.style]] ?? STYLES.timber;
+  const { length: length2 } = chordOf(params.points);
+  if (length2 < 0.5)
+    return { rise: 0, roomA: 0, roomB: 0, short: 0 };
+  let rise = 0, roomA = 0, roomB = 0, short = 0;
+  const sagMax = sagMaxOf(params, length2);
+  const reach = length2 / Math.max(ground.length - 1, 1);
+  ground.forEach((low, i) => {
+    const surface = water?.[i];
+    if (surface === null || surface === undefined || surface <= low + 0.01)
+      return;
+    const s = length2 * i / (ground.length - 1);
+    const line = params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2;
+    const target = surface + FREEBOARD + style.depth;
+    if (sagMax) {
+      const hang = 4 * s * (length2 - s) / (length2 * length2);
+      if (line < target) {
+        short = Math.max(short, target - line);
+        rise = sagMax;
+      } else if (hang > 0)
+        rise = Math.max(rise, Math.min(sagMax - (line - target) / hang, sagMax));
+      return;
+    }
+    const needed = Math.max(target - line, 0);
+    rise = Math.max(rise, needed);
+    roomA = Math.max(roomA, GRADE * needed - (s - reach));
+    roomB = Math.max(roomB, GRADE * needed - (length2 - s - reach));
+  });
+  return { rise: round3(Math.max(rise, 0), 2), roomA: round3(Math.max(roomA, 0), 1), roomB: round3(Math.max(roomB, 0), 1), short: round3(short, 1) };
+};
+var init_bridge_fit = __esm(() => {
+  init_mesh();
+  init_bridge();
+  planOf = remembered((params) => {
+    const style = STYLES[STYLE_NAMES[params.style]] ?? STYLES.timber;
+    const { length: length2 } = chordOf(params.points);
+    const own = { ...params, points: params.points.map((point) => [...point]), ground: [...params.ground] };
+    const deck = (s) => deckAt(own, length2, s);
+    const ground = (s) => groundAt2(own, length2, s);
+    const plan = { style, name: STYLE_NAMES[params.style] ?? "timber", length: length2, deck, ground, gap: null, supports: [], spans: [], ends: [{ bank: true }, { bank: true }], fills: [], reasons: [] };
+    const lowest2 = (from, to) => {
+      let low = Infinity;
+      for (let k = 0;k <= 8; k++)
+        low = Math.min(low, ground(from + (to - from) * k / 8));
+      return low;
+    };
+    const finish = () => {
+      const [from, to] = plan.gap ? [plan.gap.s0, plan.gap.s1] : [length2, length2];
+      plan.fills = [{ s0: 0, s1: from, foot: lowest2(0, from) - style.embed }, { s0: to, s1: length2, foot: lowest2(to, length2) - style.embed }];
+      if (!plan.gap)
+        plan.fills[0].s1 = length2;
+      return plan;
+    };
+    const count = params.ground.length;
+    if (length2 < 0.5)
+      return finish();
+    if (length2 > MOST_CHORD + 0.000001)
+      plan.reasons.push(`too long: ${round3(length2, 1)} m, a bridge is ${MOST_CHORD} m at most`);
+    if (style.widest && params.width > style.widest + 0.000001)
+      plan.reasons.push(`too wide: ${round3(params.width, 1)} m, ${style.label.toLowerCase()} are ${style.widest} m at most`);
+    const drop = Math.abs(params.points[1][2] - params.points[0][2]) / length2;
+    if (drop > 1 / GRADE + 0.000001)
+      plan.reasons.push(`too steep: 1 in ${round3(1 / drop, 1)}, at most 1 in ${GRADE}`);
+    if (count < 2)
+      return finish();
+    const positions = Array.from({ length: count }, (_, i) => length2 * i / (count - 1));
+    const clearance = positions.map((s, i) => deck(s) - params.ground[i]);
+    const buried = positions.reduce((worst, s, i) => s > SEAT && s < length2 - SEAT && -clearance[i] > worst.over ? { over: -clearance[i], s } : worst, { over: BURIED, s: 0 });
+    if (buried.over > BURIED)
+      plan.reasons.push(`a rise in the way: the ground stands ${round3(buried.over, 1)} m over the deck at ${round3(buried.s, 1)} m`);
+    [[0, "A"], [count - 1, "B"]].forEach(([i, name]) => {
+      if (clearance[i] >= style.least)
+        return;
+      if (clearance[i] > STEP_UP)
+        plan.reasons.push(`a step of ${round3(clearance[i], 1)} m up onto the deck at ${name}: at most ${STEP_UP} m`);
+      else if (clearance[i] < -BURIED_END)
+        plan.reasons.push(`the deck is buried ${round3(-clearance[i], 1)} m at ${name}`);
+    });
+    const first = clearance.findIndex((v) => v >= style.least);
+    const last = clearance.findLastIndex((v) => v >= style.least);
+    if (first < 0) {
+      const deepest = Math.max(...clearance);
+      plan.reasons.push(deepest >= 0.5 ? `too shallow for ${style.label.toLowerCase()}: the ground is ${round3(deepest, 1)} m under the deck at most, they need ${style.least} m` : "nothing to cross");
+      return finish();
+    }
+    const s0 = first === 0 ? 0 : crossing(positions, clearance, style.least, first - 1, first);
+    const s1 = last === count - 1 ? length2 : crossing(positions, clearance, style.least, last + 1, last);
+    plan.gap = { s0, s1 };
+    plan.ends = [{ bank: s0 > 0 }, { bank: s1 < length2 }];
+    const spans = Math.max(1, Math.ceil((s1 - s0) / style.maxSpan - 0.000000001));
+    const each = (s1 - s0) / spans;
+    const thick = thickOf(style, each);
+    plan.supports = Array.from({ length: spans + 1 }, (_, k) => {
+      const s = k === 0 ? s0 : k === spans ? s1 : s0 + each * k;
+      const edge = k === 0 ? -1 : k === spans ? 1 : 0;
+      const kind = k === 0 ? s0 > 0 ? "bank" : "joint" : k === spans ? s1 < length2 ? "bank" : "joint" : "pier";
+      const half = kind === "pier" ? thick / 2 : kind === "joint" ? thick / 2 : 0;
+      const [from, to] = kind === "bank" ? [Math.min(s, s + edge * SEAT), Math.max(s, s + edge * SEAT)] : kind === "joint" ? k === 0 ? [s, s + half] : [s - half, s] : [s - half, s + half];
+      return { s, kind, half, foot: lowest2(Math.max(from, 0), Math.min(to, length2)) - style.embed };
+    });
+    plan.spans = Array.from({ length: spans }, (_, k) => ({ s0: plan.supports[k].s, s1: plan.supports[k + 1].s }));
+    const tallest = Math.max(...plan.supports.filter((support) => support.kind !== "bank").map((support) => deck(support.s) - support.foot - style.embed), 0);
+    if (tallest > style.maxPier)
+      plan.reasons.push(`a pier ${round3(tallest, 1)} m tall: ${style.label.toLowerCase()} stand at most ${style.maxPier} m`);
+    return finish();
+  });
+});
+
+// src/build/kinds/bridge-parts.js
+var DECK = 0, STRUCTURE = 1, RAILS = 2, clamp4 = (v, least, most) => Math.min(Math.max(v, least), most), frameOf = ({ points }) => {
+  const [a] = points;
+  const { ux, uy } = chordOf(points);
+  const place = (s, t, z) => [a[0] + ux * s - uy * t, a[1] + uy * s + ux * t, z];
+  place.turn = ([s, t, z]) => [ux * s - uy * t, uy * s + ux * t, z];
+  place.angle = Math.atan2(uy, ux);
+  return place;
+}, breaksOf = (rise, length2, hung = false, step = 2.5) => {
+  if (hung) {
+    const count = Math.max(1, Math.ceil(length2 / step - 0.000000001));
+    return Array.from({ length: count + 1 }, (_, k) => Math.round(length2 * k / count * 1e6) / 1e6);
+  }
+  const ramp = Math.min(rise * GRADE, length2 / 2);
+  return [...new Set([0, ramp, length2 - ramp, length2].map((v) => Math.round(v * 1e6) / 1e6))].sort((a, b) => a - b);
+}, deckUv = (p, n) => Math.abs(n[2]) > 0.5 ? [p[1], p[0]] : Math.abs(n[1]) > 0.5 ? [p[0], p[2]] : [p[1], p[2]], addSlab = (mesh, deck, frame, [s0, s1], [t0, t1], [lo, hi], slot) => {
+  const [z0, z1] = [deck(s0), deck(s1)];
+  const place = ([x, y, z]) => frame(x, y, z + z0 + (z1 - z0) * (x - s0) / (s1 - s0));
+  addBox(mesh, [s0, t0, lo], [s1, t1, hi], () => slot, deckUv, place);
+}, addBlock = (mesh, frame, [s0, s1], [t0, t1], [z0, z1], slot) => addBox(mesh, [s0, t0, z0], [s1, t1, z1], () => slot, deckUv, ([x, y, z]) => frame(x, y, z)), noise2 = (a, b = 0) => {
+  let h = Math.imul(a | 0, 2654435761) ^ Math.imul(b + 1 | 0, 2246822507);
+  h = Math.imul(h ^ h >>> 15, 739982445);
+  h = Math.imul(h ^ h >>> 12, 695872825);
+  return ((h ^ h >>> 15) >>> 0) / 4294967296;
+}, addPost = (mesh, frame, [s, t], [z0, z1], width, slot) => {
+  const h = width / 2;
+  const corner = (ds, dt, z) => frame(s + ds, t + dt, z);
+  const ring = (z) => [corner(-h, -h, z), corner(h, -h, z), corner(h, h, z), corner(-h, h, z)];
+  const [low, high] = [ring(z0), ring(z1)];
+  const out = [[0, -1, 0], [1, 0, 0], [0, 1, 0], [-1, 0, 0]];
+  for (let k = 0;k < 4; k++) {
+    const next = (k + 1) % 4;
+    mesh.polygon(slot, [low[k], low[next], high[next], high[k]], frame.turn(out[k]), [[k * width, 0], [(k + 1) * width, 0], [(k + 1) * width, z1 - z0], [k * width, z1 - z0]]);
+  }
+  mesh.polygon(slot, high, [0, 0, 1], high.map((p) => [p[0], p[1]]));
+}, addLog = (mesh, slot, a, b, radius, sides) => {
+  const length2 = Math.hypot(...sub2(b, a));
+  if (length2 < 0.01)
+    return;
+  const along = unit2(sub2(b, a));
+  const side2 = unit2(cross3(along, Math.abs(along[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0]));
+  const over = cross3(along, side2);
+  const round4 = (p) => Array.from({ length: sides }, (_, k) => {
+    const angle = 2 * Math.PI * k / sides;
+    const [c, s] = [Math.cos(angle) * radius, Math.sin(angle) * radius];
+    return [p[0] + side2[0] * c + over[0] * s, p[1] + side2[1] * c + over[1] * s, p[2] + side2[2] * c + over[2] * s];
+  });
+  const [from, to] = [round4(a), round4(b)];
+  const arc = 2 * Math.PI * radius / sides;
+  for (let k = 0;k < sides; k++) {
+    const next = (k + 1) % sides;
+    const angle = 2 * Math.PI * (k + 0.5) / sides;
+    const out = [0, 1, 2].map((i) => side2[i] * Math.cos(angle) + over[i] * Math.sin(angle));
+    mesh.polygon(slot, [from[k], from[next], to[next], to[k]], out, [[k * arc, 0], [(k + 1) * arc, 0], [(k + 1) * arc, length2], [k * arc, length2]]);
+  }
+  const end = (ring, outward) => mesh.polygon(slot, ring, outward, ring.map((p) => [dot3(sub2(p, a), side2), dot3(sub2(p, a), over)]));
+  end(to, along);
+  end(from, along.map((v) => -v));
+}, sortedSet = (values) => [...new Set(values.map((v) => Math.round(v * 1e6) / 1e6))].sort((a, b) => a - b), boxPiece = (frame, at, size) => {
+  const piece = solidBox(size.map((v) => -v / 2), size.map((v) => v / 2), [0, 0, Math.sin(frame.angle / 2), Math.cos(frame.angle / 2)]);
+  return { ...piece, at };
+}, slabPiece = (deck, frame, [s0, s1], [t0, t1], [lo, hi]) => ({
+  type: "hull",
+  points: [s0, s1].flatMap((s) => [t0, t1].flatMap((t) => [lo, hi].flatMap((z) => frame(s, t, deck(s) + z))))
+}), addSlimRailing = (mesh, { params, level, frame, deck, breaks }, { inset = 0.05, reach = 3 } = {}) => {
+  if (!params.railing)
+    return;
+  const step = level >= 2 ? reach : reach * 2;
+  const rails = params.railing === 2 ? [[RAIL2 - 0.12, RAIL2 - 0.07]] : [[0.4, 0.45], [RAIL2 - 0.12, RAIL2 - 0.07]];
+  for (const side2 of [-1, 1]) {
+    const t = side2 * (params.width / 2 - inset);
+    for (let k = 0;k + 1 < breaks.length; k++) {
+      const [s0, s1] = [breaks[k], breaks[k + 1]];
+      for (const [lo, hi] of rails)
+        addSlab(mesh, deck, frame, [s0, s1], [t - 0.025, t + 0.025], [lo, hi], RAILS);
+      const bays = Math.max(1, Math.ceil((s1 - s0) / step));
+      for (let b = 0;b <= bays; b++) {
+        if (b === 0 && k > 0)
+          continue;
+        const s = s0 + (s1 - s0) * b / bays;
+        if (level >= 1 || b === 0 || b === bays)
+          addPost(mesh, frame, [s, t], [deck(s), deck(s) + RAIL2], 0.06, RAILS);
+      }
+    }
+  }
+};
+var init_bridge_parts = __esm(() => {
+  init_mesh();
+  init_bridge_fit();
+});
+
+// src/build/kinds/bridge-lamps.js
+var POST_TOP = 2.3, LANTERN_SIZE, MOST_LAMPS = 8, END = 0.6, PAIR = 1.6, staggered = (along, plan, edge) => along.map((s, k) => site(s, k % 2 ? -1 : 1, plan, edge)), site = (s, side2, plan, edge) => ({ s, side: side2, t: side2 * edge, z: plan.deck(s) }), thinned = (sites) => sites.length <= MOST_LAMPS ? sites : Array.from({ length: MOST_LAMPS }, (_, k) => sites[Math.round(k * (sites.length - 1) / (MOST_LAMPS - 1))]), lampSitesOf;
+var init_bridge_lamps = __esm(() => {
+  init_mesh();
+  init_bridge_fit();
+  init_bridge();
+  LANTERN_SIZE = Object.freeze([0.3, 0.3, 0.46]);
+  lampSitesOf = remembered((params) => {
+    const mode = LAMP_MODES[params.lamps] ?? "none";
+    if (mode === "none")
+      return [];
+    const plan = planOf(params);
+    const { length: length2 } = plan;
+    if (length2 < 2)
+      return [];
+    const edge = Math.max(params.width / 2 - plan.style.lamp.inset, 0);
+    if (mode === "ends")
+      return params.width < PAIR ? [site(END, 1, plan, edge), site(length2 - END, -1, plan, edge)] : [END, length2 - END].flatMap((s) => [site(s, -1, plan, edge), site(s, 1, plan, edge)]);
+    if (mode === "piers") {
+      const stations = [END];
+      for (const pier of plan.supports.filter((support) => support.kind === "pier").map((support) => support.s)) {
+        if (pier - stations.at(-1) >= LEAST_SPACING && length2 - END - pier >= LEAST_SPACING)
+          stations.push(pier);
+      }
+      return thinned(staggered([...stations, length2 - END], plan, edge));
+    }
+    const count = Math.max(1, Math.floor(length2 / Math.max(params.spacing, LEAST_SPACING)));
+    return thinned(staggered(Array.from({ length: count }, (_, k) => (k + 0.5) * length2 / count), plan, edge));
+  });
+});
+
+// src/build/kinds/bridge-timber.js
+var SIDES4, PLANKS = 0.12, CAP3 = 0.17, POST2 = 0.09, REACH3 = 5, ROPE = 0.025, HANDS = 0.95, SAG = 0.13, lanesOf = (width, radius) => {
+  const count = width <= 3.2 ? 2 : width <= 4.8 ? 3 : width <= 7 ? 4 : Math.ceil(width / 1.8);
+  const inset = radius + 0.1;
+  return Array.from({ length: count }, (_, k) => -width / 2 + inset + k * (width - 2 * inset) / (count - 1));
+}, stringerOf = (plan) => clamp4((plan.spans.length ? Math.max(...plan.spans.map((span) => span.s1 - span.s0)) : plan.length) / 32, 0.14, 0.25), timberBridge = (mesh, { params, plan, level, frame, deck, breaks }) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const sides = SIDES4[level];
+  const radius = stringerOf(plan);
+  const axis = (s) => deck(s) - PLANKS - radius;
+  for (let k = 0;k + 1 < breaks.length; k++)
+    addSlab(mesh, deck, frame, [breaks[k], breaks[k + 1]], [-width / 2, width / 2], [-PLANKS, 0], DECK);
+  const cuts = sortedSet([0, length2, ...breaks, ...supports.map((support) => support.s)]);
+  for (const t of lanesOf(width, radius)) {
+    for (let k = 0;k + 1 < cuts.length; k++)
+      addLog(mesh, STRUCTURE, frame(cuts[k], t, axis(cuts[k])), frame(cuts[k + 1], t, axis(cuts[k + 1])), radius, sides);
+  }
+  const ends = [...plan.ends[0].bank ? [0] : [], ...supports.filter((support) => support.kind === "bank").map((support) => support.s), ...plan.ends[1].bank ? [length2] : []];
+  for (const s of sortedSet(ends)) {
+    const z = Math.min(plan.ground(s) + 0.12, axis(s) - radius - 0.22);
+    addLog(mesh, STRUCTURE, frame(s, -width / 2 - 0.1, z), frame(s, width / 2 + 0.1, z), 0.22, sides);
+  }
+  const posts = width <= 3.6 ? 2 : width <= 5.4 ? 3 : 4;
+  const spread = Math.max(0.3, width / 2 - 0.35);
+  for (const support of supports) {
+    if (support.kind === "bank")
+      continue;
+    const s = support.kind === "joint" ? support.s < length2 / 2 ? 0.3 : length2 - 0.3 : support.s;
+    const cap3 = axis(s) - radius - CAP3;
+    const stands = cap3 - support.foot;
+    const thick = clamp4(0.14 + stands / 80, 0.14, 0.3);
+    const lanes = Array.from({ length: posts }, (_, k) => -spread + k * 2 * spread / (posts - 1));
+    for (const t of lanes)
+      addLog(mesh, STRUCTURE, frame(s, t, support.foot), frame(s, t, cap3), thick, sides);
+    addLog(mesh, STRUCTURE, frame(s, -width / 2 - 0.1, cap3), frame(s, width / 2 + 0.1, cap3), CAP3, 4);
+    if (stands >= 2.5 && level >= 1) {
+      const [low, high] = [support.foot + stands * 0.15, cap3 - stands * 0.15];
+      addLog(mesh, STRUCTURE, frame(s, -spread, low), frame(s, spread, high), 0.07, 4);
+      addLog(mesh, STRUCTURE, frame(s, spread, low), frame(s, -spread, high), 0.07, 4);
+    }
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    addPost(mesh, frame, [s, t], [z, z + POST_TOP], plan.style.lamp.post, RAILS);
+  if (!params.railing)
+    return;
+  const rope = params.railing === 2;
+  for (const side2 of [-1, 1]) {
+    const t = side2 * (width / 2 - POST2);
+    for (let k = 0;k + 1 < breaks.length; k++) {
+      const [s0, s1] = [breaks[k], breaks[k + 1]];
+      if (!rope)
+        for (const [lo, hi] of [[0.4, 0.5], [RAIL2 - 0.12, RAIL2 - 0.04]])
+          addSlab(mesh, deck, frame, [s0, s1], [t - 0.03, t + 0.03], [lo, hi], RAILS);
+      const bays = Math.max(1, Math.ceil((s1 - s0) / REACH3));
+      for (let b = 0;b <= bays; b++) {
+        const s = s0 + (s1 - s0) * b / bays;
+        if (rope && b < bays && level >= 2) {
+          const next = s0 + (s1 - s0) * (b + 1) / bays;
+          const hang = (at) => frame(at, t, deck(at) + HANDS);
+          if (level >= 3) {
+            const middle = (s + next) / 2;
+            addLog(mesh, RAILS, hang(s), frame(middle, t, deck(middle) + HANDS - SAG), ROPE, 3);
+            addLog(mesh, RAILS, frame(middle, t, deck(middle) + HANDS - SAG), hang(next), ROPE, 3);
+          } else
+            addLog(mesh, RAILS, hang(s), hang(next), ROPE, 3);
+        }
+        if (b === 0 && k > 0)
+          continue;
+        if (level >= 1 || b === 0 || b === bays)
+          addPost(mesh, frame, [s, t], [deck(s), deck(s) + RAIL2], POST2, RAILS);
+      }
+    }
+  }
+}, timberPieces = ({ params, plan, frame, deck, breaks }, centre) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const shifted = (p) => p.map((v, k) => v - centre[k]);
+  const pieces = [];
+  for (let k = 0;k + 1 < breaks.length; k++) {
+    const stretch = [breaks[k], breaks[k + 1]];
+    const slab = slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-0.4, 0]);
+    pieces.push({ ...slab, points: slab.points.map((v, i) => v - centre[i % 3]) });
+    if (params.railing)
+      for (const side2 of [-1, 1]) {
+        const rail = slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.1) - 0.08, side2 * (width / 2 - 0.1) + 0.08], [0, RAIL2]);
+        pieces.push({ ...rail, points: rail.points.map((v, i) => v - centre[i % 3]) });
+      }
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    pieces.push(boxPiece(frame, shifted(frame(s, t, z + POST_TOP / 2)), [plan.style.lamp.post, plan.style.lamp.post, POST_TOP]));
+  const radius = stringerOf(plan);
+  for (const support of supports) {
+    if (support.kind === "bank")
+      continue;
+    const s = support.kind === "joint" ? support.s < length2 / 2 ? 0.3 : length2 - 0.3 : support.s;
+    const top = deck(s) - PLANKS - 2 * radius;
+    const height = top - support.foot;
+    if (height > 0.5)
+      pieces.push(boxPiece(frame, shifted(frame(s, 0, support.foot + height / 2)), [0.5, width + 0.2, height]));
+  }
+  return pieces;
+};
+var init_bridge_timber = __esm(() => {
+  init_bridge_parts();
+  init_bridge_fit();
+  init_bridge_lamps();
+  SIDES4 = [4, 4, 5, 6];
+});
+
+// src/build/kinds/bridge-stone.js
+var ARCH, PARAPET = 0.35, HEIGHT = 0.9, LOW = 0.45, SPRING = 0.5, REACH4, curveOf = (left, right, spring, rise, n, pointed = false) => {
+  const half = (right - left) / 2;
+  const middle = (left + right) / 2;
+  if (pointed) {
+    const e = (rise * rise - half * half) / (2 * half);
+    const radius = half + e;
+    const crown = Math.atan2(rise, -e);
+    const arc = (centre2, from, to) => Array.from({ length: n / 2 + 1 }, (_, i) => {
+      const angle = from + (to - from) * i / (n / 2);
+      return [centre2 + radius * Math.cos(angle), spring + radius * Math.sin(angle)];
+    });
+    return [...arc(middle + e, Math.PI, crown), ...arc(middle - e, Math.PI - crown, 0).slice(1)];
+  }
+  const circle = (half * half + rise * rise) / (2 * rise);
+  const centre = [middle, spring + rise - circle];
+  const alpha = Math.asin(Math.min(half / circle, 1));
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const angle = Math.PI / 2 + alpha - 2 * alpha * i / n;
+    return [centre[0] + circle * Math.cos(angle), centre[1] + circle * Math.sin(angle)];
+  });
+}, solidsOf = (plan, deck, breaks, arch2 = 0) => {
+  const { supports, length: length2, fills } = plan;
+  const style = STYLES.stone;
+  const blocks2 = supports.length ? supports.map((support, k) => {
+    const first = k === 0, last = k === supports.length - 1;
+    return {
+      s0: first ? 0 : support.s - support.half,
+      s1: last ? length2 : support.s + support.half,
+      foot: support.kind === "bank" ? fills[first ? 0 : 1].foot : support.foot
+    };
+  }) : [{ s0: 0, s1: length2, foot: fills[0].foot }];
+  const openings = blocks2.slice(1).map((right, k) => {
+    const left = blocks2[k];
+    const [l, r] = [left.s1, right.s0];
+    const clear = r - l;
+    if (clear < 0.8)
+      return null;
+    let high = -Infinity;
+    for (let i = 0;i <= 8; i++)
+      high = Math.max(high, plan.ground(l + clear * i / 8));
+    const top = deck((l + r) / 2) - style.depth;
+    const spring = Math.max(top - clear * (REACH4[arch2] ?? REACH4[0]), high + SPRING, left.foot + 0.3, right.foot + 0.3);
+    const rise = top - spring;
+    return rise >= Math.max(0.5, clear / 8) ? { l, r, spring, rise, pointed: arch2 === 1 && rise > clear / 2 + 0.000001 } : null;
+  });
+  const runs = [];
+  blocks2.forEach((block, k) => {
+    if (k > 0 && !openings[k - 1]) {
+      const run = runs.at(-1);
+      run.s1 = block.s1;
+      run.foot = Math.min(run.foot, block.foot);
+    } else
+      runs.push({ ...block });
+  });
+  for (const run of runs)
+    run.foot = Math.min(run.foot, Math.min(deck(run.s0), deck(run.s1), ...breaks.filter((s) => s > run.s0 && s < run.s1).map(deck)) - 0.5);
+  return { blocks: blocks2, runs, arches: openings.filter(Boolean) };
+}, outlineOf = (plan, deck, breaks, level, arch2 = 0) => {
+  const { length: length2 } = plan;
+  const { runs, arches } = solidsOf(plan, deck, breaks, arch2);
+  const points = [];
+  const add2 = (s, z, onDeck = false) => {
+    const last = points.at(-1);
+    if (!last || Math.abs(last[0] - s) > 0.000001 || Math.abs(last[1] - z) > 0.000001)
+      points.push([s, z, onDeck]);
+  };
+  runs.forEach((run, k) => {
+    add2(run.s0, run.foot);
+    add2(run.s1, run.foot);
+    const opening = arches[k];
+    if (!opening)
+      return;
+    const curve = curveOf(opening.l, opening.r, opening.spring, opening.rise, ARCH[level], opening.pointed);
+    add2(opening.l, opening.spring);
+    for (const [s, z] of curve.slice(1))
+      add2(s, z);
+  });
+  add2(length2, deck(length2), true);
+  for (const s of breaks.slice(0, -1).reverse())
+    add2(s, deck(s), true);
+  if (points.length > 1 && Math.abs(points[0][0] - points.at(-1)[0]) < 0.000001 && Math.abs(points[0][1] - points.at(-1)[1]) < 0.000001)
+    points.pop();
+  return points;
+}, extrude = (mesh, frame, points, [t0, t1], width) => {
+  const place = ([s, z], t) => frame(s, t, z);
+  const side2 = (t, outward) => mesh.polygon(STRUCTURE, points.map((point) => place(point, t)), frame.turn([0, outward, 0]), points.map(([s, z]) => [s, z]));
+  side2(t1, 1);
+  side2(t0, -1);
+  let travelled = 0;
+  points.forEach((point, k) => {
+    const next = points[(k + 1) % points.length];
+    const [ds, dz] = [next[0] - point[0], next[1] - point[1]];
+    const length2 = Math.hypot(ds, dz);
+    if (length2 < 0.000000001)
+      return;
+    const out = frame.turn([dz / length2, 0, -ds / length2]);
+    const onDeck = point[2] && next[2];
+    const corners = [place(point, t0), place(next, t0), place(next, t1), place(point, t1)];
+    const uvs = onDeck ? [[0, point[0]], [0, next[0]], [width, next[0]], [width, point[0]]] : [[travelled, 0], [travelled + length2, 0], [travelled + length2, width], [travelled, width]];
+    mesh.polygon(onDeck ? DECK : STRUCTURE, corners, out, uvs);
+    travelled += length2;
+  });
+}, parapetOf = (params) => params.railing === 2 ? LOW : HEIGHT, stoneBridge = (mesh, { params, plan, level, frame, deck, breaks }) => {
+  const width = params.width;
+  extrude(mesh, frame, outlineOf(plan, deck, breaks, level, params.arch), [-width / 2, width / 2], width);
+  for (const { s, t, z } of lampSitesOf(params))
+    addPost(mesh, frame, [s, t], [z, z + POST_TOP], plan.style.lamp.post, RAILS);
+  if (!params.railing)
+    return;
+  const thick = Math.min(PARAPET, width / 4);
+  for (const side2 of [-1, 1]) {
+    const edge = side2 * width / 2;
+    for (let k = 0;k + 1 < breaks.length; k++)
+      addSlab(mesh, deck, frame, [breaks[k], breaks[k + 1]], side2 < 0 ? [edge, edge + thick] : [edge - thick, edge], [0, parapetOf(params)], RAILS);
+  }
+}, stonePieces = ({ params, plan, frame, deck, breaks }, centre) => {
+  const width = params.width;
+  const shifted = (p) => p.map((v, k) => v - centre[k]);
+  const moved = (piece) => ({ ...piece, points: piece.points.map((v, i) => v - centre[i % 3]) });
+  const pieces = [];
+  for (let k = 0;k + 1 < breaks.length; k++) {
+    const stretch = [breaks[k], breaks[k + 1]];
+    pieces.push(moved(slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-STYLES.stone.depth, 0])));
+    if (params.railing) {
+      const thick = Math.min(PARAPET, width / 4);
+      for (const side2 of [-1, 1])
+        pieces.push(moved(slabPiece(deck, frame, stretch, side2 < 0 ? [-width / 2, -width / 2 + thick] : [width / 2 - thick, width / 2], [0, parapetOf(params)])));
+    }
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    pieces.push(boxPiece(frame, shifted(frame(s, t, z + POST_TOP / 2)), [plan.style.lamp.post, plan.style.lamp.post, POST_TOP]));
+  for (const run of solidsOf(plan, deck, breaks, params.arch).runs) {
+    const top = Math.min(deck(run.s0), deck(run.s1)) - 0.45;
+    if (run.s1 - run.s0 > 0.05 && top - run.foot > 0.2)
+      pieces.push(boxPiece(frame, shifted(frame((run.s0 + run.s1) / 2, 0, (top + run.foot) / 2)), [run.s1 - run.s0, width, top - run.foot]));
+  }
+  return pieces;
+};
+var init_bridge_stone = __esm(() => {
+  init_bridge_parts();
+  init_bridge_fit();
+  init_bridge_lamps();
+  ARCH = [6, 8, 12, 16];
+  REACH4 = [0.5, 0.8, 0.25];
+});
+
+// src/build/kinds/bridge-girder.js
+var SLAB = 0.22, FLANGE = 0.05, CAP4 = 0.55, lanesOf2 = (width) => {
+  const count = width < 1.4 ? 1 : width <= 3.6 ? 2 : Math.ceil(width / 2.2);
+  return count === 1 ? [0] : Array.from({ length: count }, (_, k) => -width / 2 + 0.3 + k * (width - 0.6) / (count - 1));
+}, girderBridge = (mesh, { params, plan, level, frame, deck, breaks }) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const total = plan.style.depth;
+  const cuts = sortedSet([0, length2, ...breaks, ...supports.map((support) => support.s)]);
+  for (let k = 0;k + 1 < breaks.length; k++)
+    addSlab(mesh, deck, frame, [breaks[k], breaks[k + 1]], [-width / 2, width / 2], [-SLAB, 0], DECK);
+  for (const t of lanesOf2(width)) {
+    for (let k = 0;k + 1 < cuts.length; k++) {
+      const stretch = [cuts[k], cuts[k + 1]];
+      if (level >= 3) {
+        addSlab(mesh, deck, frame, stretch, [t - 0.15, t + 0.15], [-SLAB - FLANGE, -SLAB], STRUCTURE);
+        addSlab(mesh, deck, frame, stretch, [t - 0.025, t + 0.025], [-total + FLANGE, -SLAB - FLANGE], STRUCTURE);
+        addSlab(mesh, deck, frame, stretch, [t - 0.15, t + 0.15], [-total, -total + FLANGE], STRUCTURE);
+      } else
+        addSlab(mesh, deck, frame, stretch, [t - 0.12, t + 0.12], [-total, -SLAB], STRUCTURE);
+    }
+  }
+  const across = Math.min(Math.max(width * 0.5, 0.6), 2.4);
+  for (const support of supports) {
+    const top = deck(support.s) - total;
+    if (support.kind === "bank") {
+      const [s0, s1] = support.s < length2 / 2 ? [Math.max(support.s - 1, 0), support.s] : [support.s, Math.min(support.s + 1, length2)];
+      if (top - support.foot > 0.05)
+        addBlock(mesh, frame, [s0, s1], [-width / 2 - 0.1, width / 2 + 0.1], [support.foot, top], STRUCTURE);
+      continue;
+    }
+    const first = support.s < length2 / 2;
+    const along = (half) => support.kind === "joint" ? first ? [support.s, support.s + half] : [support.s - half, support.s] : [support.s - half, support.s + half];
+    const capped = top - CAP4 - support.foot > 0.15;
+    addBlock(mesh, frame, along(0.8), [-width / 2 + 0.05, width / 2 - 0.05], [capped ? top - CAP4 : Math.max(support.foot, top - CAP4), top], STRUCTURE);
+    if (capped)
+      addBlock(mesh, frame, along(support.half), [-across / 2, across / 2], [support.foot, top - CAP4], STRUCTURE);
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    addPost(mesh, frame, [s, t], [z, z + POST_TOP], plan.style.lamp.post, RAILS);
+  addSlimRailing(mesh, { params, level, frame, deck, breaks });
+}, girderPieces = ({ params, plan, frame, deck, breaks }, centre) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const total = plan.style.depth;
+  const shifted = (p) => p.map((v, k) => v - centre[k]);
+  const moved = (piece) => ({ ...piece, points: piece.points.map((v, i) => v - centre[i % 3]) });
+  const pieces = [];
+  for (let k = 0;k + 1 < breaks.length; k++) {
+    const stretch = [breaks[k], breaks[k + 1]];
+    pieces.push(moved(slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-0.4, 0])));
+    if (params.railing)
+      for (const side2 of [-1, 1])
+        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.05) - 0.06, side2 * (width / 2 - 0.05) + 0.06], [0, RAIL2])));
+  }
+  const across = Math.min(Math.max(width * 0.5, 0.6), 2.4);
+  for (const support of supports) {
+    const top = deck(support.s) - total;
+    const first = support.s < length2 / 2;
+    const box = ([s0, s1], [t0, t1], [z0, z1]) => {
+      if (z1 - z0 > 0.1 && s1 - s0 > 0.05)
+        pieces.push(boxPiece(frame, shifted(frame((s0 + s1) / 2, (t0 + t1) / 2, (z0 + z1) / 2)), [s1 - s0, t1 - t0, z1 - z0]));
+    };
+    if (support.kind === "bank") {
+      box(first ? [Math.max(support.s - 1, 0), support.s] : [support.s, Math.min(support.s + 1, length2)], [-width / 2 - 0.1, width / 2 + 0.1], [support.foot, top]);
+      continue;
+    }
+    const along = (half) => support.kind === "joint" ? first ? [support.s, support.s + half] : [support.s - half, support.s] : [support.s - half, support.s + half];
+    const capped = top - CAP4 - support.foot > 0.15;
+    box(along(0.8), [-width / 2 + 0.05, width / 2 - 0.05], [capped ? top - CAP4 : Math.max(support.foot, top - CAP4), top]);
+    if (capped)
+      box(along(support.half), [-across / 2, across / 2], [support.foot, top - CAP4]);
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    pieces.push(boxPiece(frame, shifted(frame(s, t, z + POST_TOP / 2)), [plan.style.lamp.post, plan.style.lamp.post, POST_TOP]));
+  return pieces;
+};
+var init_bridge_girder = __esm(() => {
+  init_bridge_parts();
+  init_bridge_fit();
+  init_bridge_lamps();
+});
+
+// src/build/kinds/bridge-clapper.js
+var BLOCK = 0.55, BANK = 0.9, slabOf = (plan) => clamp4((plan.spans.length ? Math.max(...plan.spans.map((span) => span.s1 - span.s0)) : plan.length) / 9, 0.25, 0.4), pile = (mesh, frame, [s0, s1], [t0, t1], [foot, top], seed, rough) => {
+  const height = top - foot;
+  if (height < 0.04)
+    return;
+  const count = rough ? Math.max(1, Math.round(height / BLOCK)) : 1;
+  for (let k = 0;k < count; k++) {
+    const draw = (side2) => 0.02 + 0.1 * noise2(seed * 31 + k, side2);
+    addBlock(mesh, frame, [s0 + draw(0), s1 - draw(1)], [t0 + draw(2), t1 - draw(3)], [foot + height * k / count, foot + height * (k + 1) / count + (k + 1 < count ? 0.01 : 0)], STRUCTURE);
+  }
+}, footing = (support, length2, width) => {
+  const first = support.s < length2 / 2;
+  const across = [-width / 2 - 0.1, width / 2 + 0.1];
+  if (support.kind === "bank")
+    return [first ? [Math.max(support.s - BANK, 0), support.s] : [support.s, Math.min(support.s + BANK, length2)], across];
+  if (support.kind === "joint")
+    return [first ? [support.s, support.s + support.half] : [support.s - support.half, support.s], across];
+  return [[support.s - support.half, support.s + support.half], across];
+}, clapperBridge = (mesh, { params, plan, level, frame, deck, breaks }) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const thick = slabOf(plan);
+  const cuts = sortedSet([0, length2, ...breaks, ...supports.map((support) => support.s)]);
+  for (let k = 0;k + 1 < cuts.length; k++)
+    addSlab(mesh, deck, frame, [cuts[k], cuts[k + 1]], [-width / 2, width / 2], [-thick, 0], DECK);
+  supports.forEach((support, index) => {
+    const [along, across] = footing(support, length2, width);
+    pile(mesh, frame, along, across, [support.foot, deck(support.s) - thick], index + 1, level >= 2);
+  });
+  for (const { s, t, z } of lampSitesOf(params))
+    addPost(mesh, frame, [s, t], [z, z + POST_TOP], plan.style.lamp.post, RAILS);
+}, clapperPieces = ({ params, plan, frame, deck, breaks }, centre) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const thick = slabOf(plan);
+  const shifted = (p) => p.map((v, k) => v - centre[k]);
+  const pieces = [];
+  const cuts = sortedSet([0, length2, ...breaks, ...supports.map((support) => support.s)]);
+  for (let k = 0;k + 1 < cuts.length; k++) {
+    const slab = slabPiece(deck, frame, [cuts[k], cuts[k + 1]], [-width / 2, width / 2], [-thick, 0]);
+    pieces.push({ ...slab, points: slab.points.map((v, i) => v - centre[i % 3]) });
+  }
+  for (const support of supports) {
+    const [[s0, s1], [t0, t1]] = footing(support, length2, width);
+    const [foot, top] = [support.foot, deck(support.s) - thick];
+    if (top - foot > 0.1)
+      pieces.push(boxPiece(frame, shifted(frame((s0 + s1) / 2, (t0 + t1) / 2, (foot + top) / 2)), [s1 - s0, t1 - t0, top - foot]));
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    pieces.push(boxPiece(frame, shifted(frame(s, t, z + POST_TOP / 2)), [plan.style.lamp.post, plan.style.lamp.post, POST_TOP]));
+  return pieces;
+};
+var init_bridge_clapper = __esm(() => {
+  init_bridge_parts();
+  init_bridge_lamps();
+});
+
+// src/build/kinds/bridge-suspension.js
+var SLAB2 = 0.25, BEAM = 0.45, LEG, OUT = 0.15, CABLE = 0.09, HANGER = 0.025, STAY = 0.07, CABLES, HANGERS, stands = (support, length2) => support.kind === "joint" ? support.s < length2 / 2 ? support.s + LEG[0] / 4 : support.s - LEG[0] / 4 : support.s, along = (support, length2) => {
+  const half = LEG[0] / 2;
+  if (support.kind !== "joint")
+    return [support.s - half, support.s + half];
+  return support.s < length2 / 2 ? [support.s, support.s + half] : [support.s - half, support.s];
+}, suspensionBridge = (mesh, { params, plan, level, frame, deck, breaks }) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const out = width / 2 + OUT;
+  const height = towerOf(plan);
+  for (let k = 0;k + 1 < breaks.length; k++) {
+    const stretch = [breaks[k], breaks[k + 1]];
+    addSlab(mesh, deck, frame, stretch, [-width / 2, width / 2], [-SLAB2, 0], DECK);
+    if (level >= 1)
+      for (const side2 of [-1, 1])
+        addSlab(mesh, deck, frame, stretch, side2 < 0 ? [-width / 2 - 0.3, -width / 2 + 0.1] : [width / 2 - 0.1, width / 2 + 0.3], [-BEAM - SLAB2, -SLAB2], STRUCTURE);
+  }
+  for (const support of supports) {
+    const [s0, s1] = along(support, length2);
+    const top = deck(support.s) + height;
+    for (const side2 of [-1, 1])
+      addBlock(mesh, frame, [s0, s1], [side2 * out - LEG[1] / 2, side2 * out + LEG[1] / 2], [support.foot, top - 0.45], STRUCTURE);
+    addBlock(mesh, frame, [s0, s1], [-out - LEG[1] / 2, out + LEG[1] / 2], [top - 0.45, top], STRUCTURE);
+    if (height >= 7)
+      addBlock(mesh, frame, [s0, s1], [-width / 2, width / 2], [deck(support.s) + 0.62 * height, deck(support.s) + 0.62 * height + 0.35], STRUCTURE);
+    if (support.kind !== "bank")
+      addBlock(mesh, frame, [s0, s1], [-out, out], [deck(support.s) - SLAB2 - BEAM - 0.5, deck(support.s) - SLAB2 - BEAM], STRUCTURE);
+  }
+  const point = (s, t, z) => frame(s, t, z);
+  plan.spans.forEach((span) => {
+    const [a, b] = [stands(supports.find((support) => support.s === span.s0), length2), stands(supports.find((support) => support.s === span.s1), length2)];
+    const [za, zb] = [deck(span.s0) + height - CABLE - 0.02, deck(span.s1) + height - CABLE - 0.02];
+    const run = b - a;
+    const middle = deck((a + b) / 2);
+    const dip = Math.min(Math.max(0.1 * run, 0.6), Math.max((za + zb) / 2 - middle - 1.3, 0.3));
+    const z = (u) => za + (zb - za) * u - 4 * dip * u * (1 - u);
+    for (const side2 of [-1, 1]) {
+      const t = side2 * out;
+      const count = CABLES[level];
+      for (let k = 0;k < count; k++)
+        addLog(mesh, STRUCTURE, point(a + run * k / count, t, z(k / count)), point(a + run * (k + 1) / count, t, z((k + 1) / count)), CABLE, 3);
+      if (!HANGERS[level])
+        continue;
+      const hangers = Math.max(1, Math.round(run / HANGERS[level]));
+      for (let k = 1;k < hangers; k++) {
+        const u = k / hangers;
+        const s = a + run * u;
+        addLog(mesh, STRUCTURE, point(s, t, z(u)), point(s, t, deck(s) - SLAB2 - 0.05), HANGER, 3);
+      }
+    }
+  });
+  for (const support of supports) {
+    if (support.kind !== "bank")
+      continue;
+    const end = support.s < length2 / 2 ? 0 : length2;
+    if (Math.abs(support.s - end) < 1)
+      continue;
+    for (const side2 of [-1, 1])
+      addLog(mesh, STRUCTURE, point(support.s, side2 * out, deck(support.s) + height - STAY - 0.02), point(end, side2 * out, deck(end) - 0.3), STAY, 3);
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    addPost(mesh, frame, [s, t], [z, z + POST_TOP], plan.style.lamp.post, RAILS);
+  addSlimRailing(mesh, { params, level, frame, deck, breaks }, { inset: 0.05, reach: 3 });
+}, suspensionPieces = ({ params, plan, frame, deck, breaks }, centre) => {
+  const { length: length2, supports } = plan;
+  const width = params.width;
+  const out = width / 2 + OUT;
+  const height = towerOf(plan);
+  const shifted = (p) => p.map((v, k) => v - centre[k]);
+  const moved = (piece) => ({ ...piece, points: piece.points.map((v, i) => v - centre[i % 3]) });
+  const pieces = [];
+  for (let k = 0;k + 1 < breaks.length; k++) {
+    const stretch = [breaks[k], breaks[k + 1]];
+    pieces.push(moved(slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-0.4, 0])));
+    if (params.railing)
+      for (const side2 of [-1, 1])
+        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.05) - 0.06, side2 * (width / 2 - 0.05) + 0.06], [0, RAIL2])));
+  }
+  for (const support of supports) {
+    const [s0, s1] = along(support, length2);
+    const top = deck(support.s) + height;
+    for (const side2 of [-1, 1]) {
+      if (top - support.foot > 0.1)
+        pieces.push(boxPiece(frame, shifted(frame((s0 + s1) / 2, side2 * out, (support.foot + top) / 2)), [s1 - s0, LEG[1], top - support.foot]));
+    }
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    pieces.push(boxPiece(frame, shifted(frame(s, t, z + POST_TOP / 2)), [plan.style.lamp.post, plan.style.lamp.post, POST_TOP]));
+  return pieces;
+};
+var init_bridge_suspension = __esm(() => {
+  init_bridge_parts();
+  init_bridge_fit();
+  init_bridge_lamps();
+  LEG = [0.5, 0.35];
+  CABLES = [4, 8, 12, 16];
+  HANGERS = [0, 10, 5, 3];
+});
+
+// src/build/kinds/bridge-rope.js
+var PLANKS2 = 0.07, OUT2 = 0.05, HAND = 1.05, MID = 0.55, ROPE2 = 0.035, TIE = 0.02, POST3 = 0.16, POST_OUT = 0.15, STRETCH, TIES, ropeBridge = (mesh, { params, plan, level, frame, deck, breaks }) => {
+  const { length: length2 } = plan;
+  const width = params.width;
+  for (let k = 0;k + 1 < breaks.length; k++)
+    addSlab(mesh, deck, frame, [breaks[k], breaks[k + 1]], [-width / 2, width / 2], [-PLANKS2, 0], DECK);
+  for (const s of [0, length2]) {
+    for (const side2 of [-1, 1])
+      addLog(mesh, STRUCTURE, frame(s, side2 * (width / 2 + POST_OUT), plan.ground(s) - plan.style.embed), frame(s, side2 * (width / 2 + POST_OUT), deck(s) + HAND + 0.75), POST3, level >= 2 ? 6 : 4);
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    addPost(mesh, frame, [s, t], [z, z + POST_TOP], plan.style.lamp.post, RAILS);
+  if (!params.railing)
+    return;
+  const stretches = Math.max(1, Math.ceil(length2 / STRETCH[level]));
+  const heights = params.railing === 1 ? [HAND, MID] : [HAND];
+  const ties = TIES[level] ? Math.max(1, Math.round(length2 / TIES[level])) : 0;
+  for (const side2 of [-1, 1]) {
+    const t = side2 * (width / 2 + OUT2);
+    for (const height of heights) {
+      for (let k = 0;k < stretches; k++) {
+        const [a, b] = [length2 * k / stretches, length2 * (k + 1) / stretches];
+        addLog(mesh, RAILS, frame(a, t, deck(a) + height), frame(b, t, deck(b) + height), ROPE2, 3);
+      }
+    }
+    for (let k = 1;k < ties; k++) {
+      const s = length2 * k / ties;
+      addLog(mesh, RAILS, frame(s, t, deck(s) + HAND), frame(s, t, deck(s)), TIE, 3);
+    }
+  }
+}, ropePieces = ({ params, plan, frame, deck, breaks }, centre) => {
+  const { length: length2 } = plan;
+  const width = params.width;
+  const shifted = (p) => p.map((v, k) => v - centre[k]);
+  const moved = (piece) => ({ ...piece, points: piece.points.map((v, i) => v - centre[i % 3]) });
+  const pieces = [];
+  for (let k = 0;k + 1 < breaks.length; k++) {
+    const stretch = [breaks[k], breaks[k + 1]];
+    pieces.push(moved(slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-0.2, 0])));
+    if (params.railing)
+      for (const side2 of [-1, 1])
+        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 + OUT2) - 0.05, side2 * (width / 2 + OUT2) + 0.05], [0, RAIL2])));
+  }
+  for (const s of [0, length2]) {
+    const [foot, top] = [plan.ground(s) - plan.style.embed, deck(s) + HAND + 0.75];
+    for (const side2 of [-1, 1])
+      if (top - foot > 0.1)
+        pieces.push(boxPiece(frame, shifted(frame(s, side2 * (width / 2 + POST_OUT), (foot + top) / 2)), [2 * POST3, 2 * POST3, top - foot]));
+  }
+  for (const { s, t, z } of lampSitesOf(params))
+    pieces.push(boxPiece(frame, shifted(frame(s, t, z + POST_TOP / 2)), [plan.style.lamp.post, plan.style.lamp.post, POST_TOP]));
+  return pieces;
+};
+var init_bridge_rope = __esm(() => {
+  init_bridge_parts();
+  init_bridge_fit();
+  init_bridge_lamps();
+  STRETCH = [20, 20, 10, 7.5];
+  TIES = [0, 0, 10, 7.5];
+});
+
+// src/build/kinds/bridge-gen.js
+var exports_bridge_gen = {};
+__export(exports_bridge_gen, {
+  default: () => bridge_gen_default
+});
+var upToMillimetre3 = (v) => Math.ceil(v * 1000 - 0.000001) / 1000, GENERATORS, generatorOf = (plan) => GENERATORS[plan.name] ?? GENERATORS.timber, STATION, footprintOf3, centreOf4 = (params) => {
+  const { min, max } = footprintOf3(params);
+  return min.map((v, k) => (v + max[k]) / 2);
+}, kitOf = (params, level) => {
+  const plan = planOf(params);
+  return { params, plan, level, frame: frameOf(params), deck: plan.deck, breaks: breaksOf(params.rise, plan.length, Boolean(plan.style.sag), STATION[level]) };
+}, bridge_gen_default;
+var init_bridge_gen = __esm(() => {
+  init_mesh();
+  init_bridge_fit();
+  init_bridge_parts();
+  init_bridge_timber();
+  init_bridge_stone();
+  init_bridge_girder();
+  init_bridge_clapper();
+  init_bridge_suspension();
+  init_bridge_rope();
+  init_bridge_lamps();
+  init_lantern();
+  GENERATORS = Object.freeze({
+    timber: [timberBridge, timberPieces],
+    stone: [stoneBridge, stonePieces],
+    clapper: [clapperBridge, clapperPieces],
+    rope: [ropeBridge, ropePieces],
+    girder: [girderBridge, girderPieces],
+    suspension: [suspensionBridge, suspensionPieces]
+  });
+  STATION = [7.5, 5, 2.5, 2.5];
+  footprintOf3 = remembered((params) => {
+    const plan = planOf(params);
+    const frame = frameOf(params);
+    const half = params.width / 2 + 0.35;
+    const corners = [[-0.3, -half], [plan.length + 0.3, -half], [plan.length + 0.3, half], [-0.3, half]].map(([s, t]) => frame(s, t, 0));
+    const decks = breaksOf(params.rise, plan.length, Boolean(plan.style.sag), STATION[3]).map(plan.deck);
+    const heights = [params.points[0][2], params.points[1][2], Math.max(...decks)];
+    const top = Math.max(...heights) + Math.max(params.railing && plan.style.railed !== false ? RAIL2 : 0.1, params.lamps ? POST_TOP : 0, aboveOf(plan));
+    const feet = [...plan.supports.map((support) => support.foot), ...plan.fills.map((fill) => fill.foot)];
+    const bottom = Math.min(...feet, Math.min(...decks) - 1.2);
+    return {
+      min: [Math.min(...corners.map((p) => p[0])), Math.min(...corners.map((p) => p[1])), bottom],
+      max: [Math.max(...corners.map((p) => p[0])), Math.max(...corners.map((p) => p[1])), top]
+    };
+  });
+  bridge_gen_default = Object.freeze({
+    footprint: footprintOf3,
+    companions: (params) => {
+      const sites = lampSitesOf(params);
+      if (!sites.length)
+        return [];
+      const frame = frameOf(params);
+      const centre = centreOf4(params);
+      const dressing = lanternDressing(params.lights === 1);
+      return sites.map(({ s, t, z }) => ({
+        kind: "lantern",
+        size: [...LANTERN_SIZE],
+        yaw: frame.angle,
+        at: frame(s, t, z + POST_TOP + LANTERN_SIZE[2] / 2).map((v, k) => v - centre[k]),
+        ...dressing
+      }));
+    },
+    settle: (params, heightAt, indices, waterAt) => {
+      const sites = sitesOf(params);
+      const ground = sites.map(([x, y]) => heightAt(x, y));
+      const points = params.points.map((point, k) => [point[0], point[1], ground[k ? ground.length - 1 : 0]]);
+      const water = waterAt ? sites.map(([x, y]) => waterAt(x, y)) : null;
+      const rise = water ? Math.max(params.rise, riseFor({ ...params, points }, ground, water).rise) : params.rise;
+      return { ...params, points, ground, rise };
+    },
+    fit: (params) => {
+      const { min, max } = footprintOf3(params);
+      return max.map((v, k) => upToMillimetre3(v - min[k]));
+    },
+    resize: (params) => params,
+    reasons: (params) => planOf(params).reasons,
+    mesh: (params, seed, level, size) => {
+      const mesh = createMesh(3);
+      const kit = kitOf(params, level);
+      if (kit.plan.length >= 0.5)
+        generatorOf(kit.plan)[0](mesh, kit);
+      return mesh.pack(size, centreOf4(params));
+    },
+    collider: (params) => {
+      const kit = kitOf(params, 3);
+      if (kit.plan.length < 0.5)
+        return null;
+      return generatorOf(kit.plan)[1](kit, centreOf4(params));
+    }
+  });
+});
+
 // src/build/kinds/index.js
-var KINDS, MIN_SIZE = 0.01, MAX_SIZE = 64, kindOf = (name) => typeof name === "string" && Object.hasOwn(KINDS, name) ? KINDS[name] : null, decimals = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001)), constrain = (param, value) => {
+var DECLARED, LATER, RETRY = 5000, TRIES = 6, loaded, loading2, failed, held = null, KINDS, MIN_SIZE = 0.01, MAX_SIZE = 64, kindOf = (name) => typeof name === "string" && Object.hasOwn(DECLARED, name) ? loaded.get(name) ?? DECLARED[name] : null, kindReady = (name) => Object.hasOwn(DECLARED, name) && (!Object.hasOwn(LATER, name) || loaded.has(name)), loadKind = (name) => {
+  if (!Object.hasOwn(DECLARED, name))
+    return Promise.resolve(null);
+  if (kindReady(name))
+    return Promise.resolve(kindOf(name));
+  if (!loading2.has(name)) {
+    const { file, load } = LATER[name];
+    const tries = failed.get(name)?.tries ?? 0;
+    loading2.set(name, (held ?? Promise.resolve()).then(() => tries ? import(`${file}?retry=${tries}`) : load()).then(({ default: generator }) => {
+      if (!generator || typeof generator !== "object")
+        throw new Error(`${file} has no default export: the kind's generator`);
+      loaded.set(name, Object.freeze({ ...DECLARED[name], ...generator }));
+      clearTimeout(failed.get(name)?.timer);
+      failed.delete(name);
+      tellKind(name);
+      return loaded.get(name);
+    }).catch((error) => {
+      const wait = RETRY * 2 ** Math.min(tries, 4);
+      const timer = tries < TRIES ? setTimeout(() => loadKind(name).catch(() => {}), wait) : null;
+      timer?.unref?.();
+      failed.set(name, { until: performance.now() + wait, tries: tries + 1, timer });
+      console.error(`kind ${name} unavailable (asked for again in ${wait / 1000} s):`, error);
+      throw error;
+    }).finally(() => loading2.delete(name)));
+  }
+  return loading2.get(name);
+}, loadKinds = (names) => Promise.all([...new Set(names)].map(loadKind)), decimals = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001)), constrain = (param, value) => {
   const given = typeof value === "string" && param.options ? param.options.indexOf(value) : value;
   if (!Number.isFinite(given) || param.options && given < 0)
     return param.default;
@@ -4628,7 +5747,7 @@ var KINDS, MIN_SIZE = 0.01, MAX_SIZE = 64, kindOf = (name) => typeof name === "s
   const kept2 = (Array.isArray(value) ? value : []).filter(Number.isFinite).slice(0, param.heights[1]).map((v) => constrain(param, v));
   return kept2.length >= param.heights[0] ? kept2 : defaultOf(param);
 }, pointsWithin = (value, { least = 0, most = Infinity, min, max, step, horizontal = false, handles = false }) => {
-  const held = { min, max, step };
+  const held2 = { min, max, step };
   const points = [];
   for (const point of Array.isArray(value) ? value : []) {
     if (points.length === most)
@@ -4636,7 +5755,7 @@ var KINDS, MIN_SIZE = 0.01, MAX_SIZE = 64, kindOf = (name) => typeof name === "s
     const handled = handles && point?.length === 6;
     if (!Array.isArray(point) || point.length < 2 || point.length > 3 && !handled || !point.every(Number.isFinite))
       continue;
-    const kept2 = (handled ? point : [point[0], point[1], point[2] ?? 0]).map((v) => constrain(held, v));
+    const kept2 = (handled ? point : [point[0], point[1], point[2] ?? 0]).map((v) => constrain(held2, v));
     const last = points.at(-1);
     if (!last || last[0] !== kept2[0] || last[1] !== kept2[1] || !horizontal && last[2] !== kept2[2])
       points.push(kept2);
@@ -4658,6 +5777,8 @@ var KINDS, MIN_SIZE = 0.01, MAX_SIZE = 64, kindOf = (name) => typeof name === "s
   const given = params && typeof params === "object" ? params : {};
   const errors = Object.keys(given).filter((key) => !kind.params.some((param) => param.name === key)).map((key) => `${name}: no parameter ${key}`);
   const values = Object.fromEntries(kind.params.flatMap((param) => {
+    if (param.optional && given[param.name] === undefined)
+      return [];
     const value = given[param.name] === undefined ? defaultOf(param) : param.points ? constrainPoints(param, given[param.name]) : param.heights ? constrainHeights(param, given[param.name]) : param.list ? param.keep(given[param.name]) ?? defaultOf(param) : param.bytes ? constrainBytes(param, given[param.name]) : constrain(param, given[param.name]);
     const as = param.options && typeof given[param.name] === "string" ? param.options[value] : value;
     const changed = param.points || param.heights || param.list ? JSON.stringify(as) !== JSON.stringify(param.list ? given[param.name] : written(given[param.name])) : as !== given[param.name];
@@ -4668,6 +5789,14 @@ var KINDS, MIN_SIZE = 0.01, MAX_SIZE = 64, kindOf = (name) => typeof name === "s
     return [[param.name, value]];
   }));
   return { params: values, errors };
+}, looksOfKind = (name, params) => {
+  const kind = kindOf(name);
+  const by = kind?.looks && kind.params.find((param) => param.name === kind.lookedBy);
+  const own = by && kind.looks[by.options[constrainKind(name, params).params[by.name]]];
+  return own ? Object.entries(own).map(([look, materials]) => ({ name: look, label: kind.lookLabels?.[look] ?? look, materials })) : [];
+}, materialsOf = (name, params, look = null) => {
+  const looks = looksOfKind(name, params);
+  return (looks.find((each) => each.name === look) ?? looks[0])?.materials ?? null;
 }, seedOf = (seed) => Number.isInteger(seed) ? Math.abs(seed) % 2147483648 : 0, within3 = (size) => size.map((v) => Math.min(Math.max(v, MIN_SIZE), MAX_SIZE)), clean = (size) => size.map((v) => Math.round(v * 1e6) / 1e6), resolve = (value, params) => typeof value === "function" ? value(params) : value, fitSize = ({ kind, params, size }) => {
   const type = kindOf(kind);
   return type?.fit ? clean(within3(type.fit(constrainKind(kind, params).params, size))) : [...size];
@@ -4690,9 +5819,10 @@ var KINDS, MIN_SIZE = 0.01, MAX_SIZE = 64, kindOf = (name) => typeof name === "s
   const type = kindOf(kind);
   return [...PRESETS[type ? resolve(type.shape, constrainKind(kind, params).params) : "cube"].shape];
 }, wholes;
-var init_kinds = __esm(() => {
+var init_kinds = __esm(async () => {
   init_params();
   init_mesh();
+  init_ready();
   init_rock();
   init_bevel();
   init_stairs();
@@ -4703,12 +5833,59 @@ var init_kinds = __esm(() => {
   init_arch();
   init_fence();
   init_road();
+  init_bridge();
+  init_lantern();
   init_sculpt2();
   init_blocks();
   init_outline();
   init_solid();
-  KINDS = Object.freeze({ rock, bevel, stairs, door, window: windowKind, roof, column, arch, fence, road, sculpt, blocks, outline, solid });
+  DECLARED = { rock, bevel, stairs, door, window: windowKind, roof, column, arch, fence, road, bridge, lantern, sculpt, blocks, outline, solid };
+  LATER = Object.freeze({
+    bridge: { file: "./bridge-gen.js", load: () => Promise.resolve().then(() => (init_bridge_gen(), exports_bridge_gen)) }
+  });
+  loaded = new Map;
+  loading2 = new Map;
+  failed = new Map;
+  KINDS = Object.freeze(Object.defineProperties({}, Object.fromEntries(Object.keys(DECLARED).map((name) => [name, { enumerable: true, get: () => loaded.get(name) ?? DECLARED[name] }]))));
   wholes = new Map;
+  if (HERE)
+    await loadKinds(Object.keys(LATER));
+});
+
+// src/build/edit/companions.js
+var companionsOf = (record) => {
+  const kind = record?.kind && kindOf(record.kind);
+  if (!kind?.companions)
+    return [];
+  return kind.companions(record.params).map(({ kind: name, at, yaw = 0, size, color, surface, light }) => ({
+    kind: name,
+    params: {},
+    size,
+    color,
+    surface,
+    light,
+    at: add(record.at, quatRotate(record.rotation, at)),
+    rotation: quatNormalize(quatMultiply(record.rotation, quatAxisAngle([0, 0, 1], yaw)))
+  }));
+}, recordOfCompanion = (wanted, id, object = null) => {
+  const part = { kind: wanted.kind, params: wanted.params };
+  return {
+    type: "prim",
+    id,
+    ...object && { object },
+    kind: wanted.kind,
+    params: wanted.params,
+    shape: fallbackShape(part),
+    size: fitSize({ ...part, size: wanted.size }),
+    at: wanted.at,
+    rotation: wanted.rotation,
+    color: wanted.color,
+    surface: structuredClone(wanted.surface),
+    light: structuredClone(wanted.light)
+  };
+};
+var init_companions = __esm(async () => {
+  await init_kinds();
 });
 
 // src/vegetation/record.js
@@ -4756,17 +5933,1392 @@ var init_record = __esm(() => {
   WHOLE = new Set(["branches", "twigs", "trunks"]);
 });
 
+// src/tree-generator.js
+var DEG3, GOLDEN, barks = (...names) => names.map((name) => `wood/logs/${name}`), SPECIES, scale4 = (a, s) => [a[0] * s, a[1] * s, a[2] * s], normalize2 = (a) => scale4(a, 1 / (Math.hypot(a[0], a[1], a[2]) || 1)), PHI, ICOSAHEDRON_VERTICES;
+var init_tree_generator = __esm(() => {
+  DEG3 = Math.PI / 180;
+  GOLDEN = Math.PI * (3 - Math.sqrt(5));
+  SPECIES = {
+    bush: {
+      name: "Bush",
+      group: "plant",
+      shape: "spherical",
+      baseSize: 0.2,
+      scale: 1.5,
+      scaleV: 0.3,
+      ratio: 0.025,
+      ratioPower: 1.2,
+      attractionUp: 0.3,
+      stems: { count: 5, angle: 34, angleV: 10, spread: 0.12 },
+      wind: 2,
+      bark: [0.32, 0.26, 0.2],
+      leaf: [[0.2, 0.36, 0.12], [0.24, 0.4, 0.14], [0.18, 0.31, 0.11]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.15, taper: 1, curveRes: 3, curve: -18, curveV: 20, sides: 3 },
+        { branches: 4, length: 0.55, lengthV: 0.15, downAngle: 42, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 2, curve: 0, curveV: 30, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 2, size: 0.42, sizeV: 0.1, squash: [1, 0.85, 1] }
+    },
+    oleander: {
+      name: "Oleander",
+      group: "plant",
+      shape: "spherical",
+      baseSize: 0.3,
+      scale: 2.6,
+      scaleV: 0.4,
+      ratio: 0.014,
+      ratioPower: 1.2,
+      attractionUp: 0.5,
+      stems: { count: 6, angle: 18, angleV: 8, spread: 0.2 },
+      wind: 1.6,
+      bark: [0.36, 0.33, 0.25],
+      leaf: [[0.18, 0.32, 0.12], [0.21, 0.36, 0.13]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.15, taper: 1, curveRes: 3, curve: 10, curveV: 16, sides: 3 },
+        { branches: 4, length: 0.4, lengthV: 0.12, downAngle: 32, downAngleV: 12, rotate: 140, rotateV: 30, curveRes: 2, curve: 0, curveV: 20, sides: 3 }
+      ],
+      leaves: [
+        { type: "cluster", count: 1, size: 0.42, sizeV: 0.1, squash: [0.9, 0.9, 0.9] },
+        { type: "cluster", at: "tip", count: 1, size: 0.24, sizeV: 0.06, out: 0.45, color: [[0.86, 0.36, 0.52], [0.92, 0.52, 0.64]], ao: 0.08 }
+      ]
+    },
+    fern: {
+      name: "Fern",
+      group: "plant",
+      wind: 2.5,
+      leaf: [[0.22, 0.42, 0.12], [0.26, 0.46, 0.14]],
+      leafJitter: 0.08,
+      leaves: { type: "frond", at: "base", count: 13, length: 1.3, lengthV: 0.2, width: 0.22, rise: [1.4, 3.4], droop: 2.2, segments: 8, pinnate: 0.55 }
+    },
+    agave: {
+      name: "Agave",
+      group: "plant",
+      wind: 0.3,
+      leaf: [[0.4, 0.52, 0.46], [0.36, 0.48, 0.42]],
+      leafJitter: 0.06,
+      leaves: { type: "blade", at: "base", count: 22, length: 1.15, lengthV: 0.2, width: 0.17, rise: [0.25, 3.5], droop: 0.35, keel: 0.6, segments: 3 }
+    },
+    saguaro: {
+      name: "Saguaro",
+      group: "plant",
+      shape: "cylindrical",
+      baseSize: 0.4,
+      scale: 6.5,
+      scaleV: 1.2,
+      ratio: 0.055,
+      ratioPower: 0.4,
+      wind: 0,
+      bark: [0.3, 0.44, 0.22],
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.12, curveRes: 4, curve: 0, curveV: 4, sides: 10, flute: 0.12, dome: true },
+        { branches: 3, start: 0.35, end: 0.6, length: 0.45, lengthV: 0.1, downAngle: 90, downAngleV: 4, rotate: 140, rotateV: 40, taper: 0.12, curveRes: 6, curve: -90, curveBack: 0, curveV: 6, sides: 8, flute: 0.12, dome: true }
+      ]
+    },
+    bamboo: {
+      name: "Bamboo",
+      group: "plant",
+      shape: "cylindrical",
+      baseSize: 0.5,
+      scale: 7.5,
+      scaleV: 1.2,
+      ratio: 0.008,
+      ratioPower: 1,
+      attractionUp: -0.4,
+      stems: { count: 9, angle: 7, angleV: 5, spread: 0.6 },
+      wind: 1.8,
+      bark: [0.5, 0.56, 0.22],
+      leaf: [[0.3, 0.46, 0.13], [0.36, 0.52, 0.16]],
+      leafJitter: 0.1,
+      levels: [
+        { length: 1, lengthV: 0.18, taper: 0.6, curveRes: 7, curve: 10, curveV: 8, sides: 5, rings: { lip: 1.15, shade: 0.86 } },
+        { branches: 5, length: 0.13, lengthV: 0.04, downAngle: 55, downAngleV: 12, rotate: 140, rotateV: 30, curveRes: 2, curve: 20, curveV: 20, sides: 3 }
+      ],
+      leaves: { type: "tuft", count: 3, size: 0.4, sizeV: 0.1, squash: [0.35, 0.1, 1.4] }
+    },
+    banana: {
+      name: "Banana",
+      group: "plant",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 2.4,
+      scaleV: 0.4,
+      ratio: 0.05,
+      ratioPower: 1,
+      stems: { count: 2, angle: 6, angleV: 4, spread: 0.35 },
+      wind: 1.4,
+      bark: [0.42, 0.5, 0.24],
+      leaf: [[0.3, 0.52, 0.14], [0.34, 0.56, 0.16]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.22, taper: 0.4, curveRes: 3, curve: 0, curveV: 6, sides: 6 }],
+      leaves: { type: "frond", count: 7, length: 2.2, lengthV: 0.3, width: 0.45, rise: 2.2, droop: 1.6, segments: 5, outline: "paddle", keel: 0.12 }
+    },
+    joshua: {
+      name: "Joshua tree",
+      group: "plant",
+      shape: "cylindrical",
+      baseSize: 0.6,
+      scale: 4,
+      scaleV: 0.8,
+      ratio: 0.08,
+      ratioPower: 1.1,
+      attractionUp: 0.4,
+      wind: 0.4,
+      bark: [0.44, 0.37, 0.29],
+      barkTexture: barks("palm-bark"),
+      leaf: [[0.42, 0.5, 0.24], [0.38, 0.46, 0.22]],
+      leafJitter: 0.08,
+      levels: [
+        { length: 1, lengthV: 0.1, taper: 0.4, curveRes: 4, curve: 0, curveV: 16, sides: 6, flute: 0.1 },
+        { branches: 4, start: 0.6, length: 0.6, lengthV: 0.15, downAngle: 48, downAngleV: 12, rotate: 137.5, rotateV: 40, curveRes: 3, curve: -18, curveV: 30, sides: 5, flute: 0.1 },
+        { branches: 2, start: 0.82, length: 0.75, lengthV: 0.15, downAngle: 38, downAngleV: 10, rotate: 180, rotateV: 30, curveRes: 3, curve: -20, curveV: 30, sides: 4 }
+      ],
+      leaves: { type: "blade", axis: "stem", count: 22, length: 0.5, lengthV: 0.08, width: 0.05, rise: [-0.5, 2.6], droop: 0.15, keel: 0.4, segments: 2 }
+    },
+    hosta: {
+      name: "Hosta",
+      group: "plant",
+      wind: 1.2,
+      leaf: [[0.2, 0.38, 0.16], [0.24, 0.42, 0.18], [0.3, 0.46, 0.24]],
+      leafJitter: 0.06,
+      leaves: { type: "frond", at: "base", count: 14, length: 0.5, lengthV: 0.08, width: 0.11, outline: "heart", stalk: 0.4, rise: [0.7, 3], droop: 1.4, segments: 5, keel: 0.3 }
+    },
+    monstera: {
+      name: "Monstera",
+      group: "plant",
+      wind: 0.8,
+      leaf: [[0.1, 0.28, 0.1], [0.12, 0.31, 0.11], [0.15, 0.34, 0.12]],
+      leafJitter: 0.06,
+      leaves: { type: "frond", at: "base", count: 9, length: 1.3, lengthV: 0.25, width: 0.24, outline: "heart", stalk: 0.5, pinnate: 0.55, rise: [0.8, 3.2], droop: 1.3, segments: 8, keel: 0.12 }
+    },
+    strelitzia: {
+      name: "Bird of paradise",
+      group: "plant",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 1.3,
+      scaleV: 0.15,
+      ratio: 0.012,
+      ratioPower: 1,
+      stems: { count: 3, angle: 12, angleV: 6, spread: 0.12 },
+      wind: 0.9,
+      bark: [0.3, 0.42, 0.24],
+      leaf: [[0.26, 0.4, 0.26], [0.3, 0.44, 0.3]],
+      leafJitter: 0.06,
+      levels: [{ length: 1, lengthV: 0.12, taper: 0.3, curveRes: 4, curve: 0, curveBack: 75, curveV: 8, sides: 4 }],
+      leaves: [
+        { type: "blade", at: "tip", axis: "stem", count: 1, length: 0.19, width: 0.022, rise: 20, droop: 0, keel: 0.5, segments: 2, color: [0.36, 0.26, 0.34] },
+        { type: "blade", at: "tip", count: 3, length: 0.13, width: 0.014, rise: [3, 5], droop: -0.4, keel: 0.4, segments: 2, color: [0.98, 0.5, 0.06] },
+        { type: "blade", at: "tip", count: 1, length: 0.1, width: 0.009, rise: 1.4, droop: 0, keel: 0.4, segments: 2, color: [0.22, 0.3, 0.8] },
+        { type: "frond", at: "base", count: 10, length: 1.3, lengthV: 0.2, width: 0.12, outline: "paddle", stalk: 0.5, rise: [2.2, 5], droop: 0.7, segments: 5, keel: 0.15 }
+      ]
+    },
+    cordyline: {
+      name: "Cordyline",
+      group: "plant",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 2.2,
+      scaleV: 0.5,
+      ratio: 0.018,
+      ratioPower: 1,
+      stems: { count: 3, angle: 9, angleV: 6, spread: 0.12 },
+      wind: 1.2,
+      bark: [0.42, 0.36, 0.28],
+      leaf: [[0.2, 0.38, 0.14], [0.24, 0.42, 0.16], [0.28, 0.46, 0.18]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.35, taper: 0.35, curveRes: 4, curve: 6, curveV: 12, sides: 5 }],
+      leaves: { type: "blade", count: 16, length: 0.55, lengthV: 0.1, width: 0.03, rise: [-0.6, 3], droop: 0.8, keel: 0.4, segments: 3 }
+    },
+    sunflower: {
+      name: "Sunflower",
+      group: "flower",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 1.9,
+      scaleV: 0.25,
+      ratio: 0.014,
+      ratioPower: 1,
+      stems: { count: 3, angle: 7, angleV: 4, spread: 0.3 },
+      wind: 2,
+      bark: [0.3, 0.44, 0.16],
+      leaf: [0.24, 0.42, 0.12],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.12, taper: 0.3, curveRes: 4, curve: 0, curveBack: 70, curveV: 6, sides: 4 }],
+      leaves: [
+        { type: "flower", size: 0.13, petals: 13, petal: 0.12, color: [0.95, 0.7, 0.08], centre: [0.28, 0.17, 0.07] },
+        { type: "frond", at: "along", count: 4, length: 0.32, width: 0.13, rise: 0.3, droop: 1.1, segments: 3, outline: "paddle", keel: 0.1 }
+      ]
+    },
+    rudbeckia: {
+      name: "Black-eyed Susan",
+      group: "flower",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 0.7,
+      scaleV: 0.15,
+      ratio: 0.008,
+      ratioPower: 1,
+      stems: { count: 8, angle: 16, angleV: 8, spread: 0.1 },
+      wind: 2,
+      bark: [0.3, 0.42, 0.16],
+      leaf: [[0.24, 0.38, 0.12], [0.28, 0.42, 0.14]],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.18, taper: 0.5, curveRes: 2, curve: 30, curveV: 14, sides: 3 }],
+      leaves: [
+        { type: "flower", size: 0.012, petals: 12, petal: 0.028, cup: -0.3, cone: 0.7, color: [[0.96, 0.7, 0.06], [0.97, 0.62, 0.05], [0.95, 0.76, 0.1]], centre: [0.17, 0.09, 0.04] },
+        { type: "frond", at: "base", count: 9, length: 0.2, lengthV: 0.04, width: 0.035, rise: [0.4, 1.6], droop: 0.8, segments: 3, keel: 0.2 },
+        { type: "frond", at: "along", count: 1, length: 0.09, width: 0.018, rise: 0.5, droop: 0.4, segments: 2 }
+      ]
+    },
+    daisy: {
+      name: "Oxeye daisy",
+      group: "flower",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 0.55,
+      scaleV: 0.12,
+      ratio: 0.008,
+      ratioPower: 1,
+      stems: { count: 7, angle: 14, angleV: 8, spread: 0.08 },
+      wind: 2,
+      bark: [0.32, 0.44, 0.17],
+      leaf: [[0.22, 0.38, 0.12], [0.26, 0.42, 0.14]],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.2, taper: 0.5, curveRes: 2, curve: 26, curveV: 14, sides: 3 }],
+      leaves: [
+        { type: "flower", size: 0.009, petals: 14, petal: 0.024, cup: -0.1, cone: 0.4, color: [0.96, 0.96, 0.93], centre: [0.95, 0.72, 0.1] },
+        { type: "frond", at: "base", count: 10, length: 0.14, lengthV: 0.03, width: 0.025, rise: [0.3, 1.4], droop: 0.6, segments: 3, pinnate: 0.35 }
+      ]
+    },
+    poppy: {
+      name: "Poppy",
+      group: "flower",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 0.6,
+      scaleV: 0.12,
+      ratio: 0.007,
+      ratioPower: 1,
+      stems: { count: 6, angle: 14, angleV: 9, spread: 0.08 },
+      wind: 2.2,
+      bark: [0.36, 0.46, 0.22],
+      leaf: [[0.3, 0.42, 0.18], [0.34, 0.46, 0.2]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.22, taper: 0.5, curveRes: 3, curve: 4, curveV: 22, sides: 3 }],
+      leaves: [
+        { type: "flower", size: 0.01, petals: 4, petal: 0.038, round: true, cup: 0.45, cone: 0.6, color: [[0.86, 0.1, 0.06], [0.8, 0.07, 0.05]], centre: [0.1, 0.08, 0.07] },
+        { type: "frond", at: "base", count: 8, length: 0.18, lengthV: 0.04, width: 0.03, rise: [0.3, 1.2], droop: 0.7, segments: 4, pinnate: 0.55 }
+      ]
+    },
+    lily: {
+      name: "Lily",
+      group: "flower",
+      shape: "cylindrical",
+      baseSize: 0.86,
+      scale: 0.9,
+      scaleV: 0.15,
+      ratio: 0.009,
+      ratioPower: 1,
+      stems: { count: 3, angle: 7, angleV: 5, spread: 0.08 },
+      wind: 1.6,
+      bark: [0.26, 0.4, 0.14],
+      leaf: [[0.22, 0.4, 0.12], [0.26, 0.44, 0.14]],
+      leafJitter: 0.08,
+      levels: [
+        { length: 1, lengthV: 0.15, taper: 0.4, curveRes: 3, curve: 0, curveV: 8, sides: 3 },
+        { branches: 3, start: 0.86, length: 0.13, lengthV: 0.03, downAngle: 65, downAngleV: 10, rotate: 137.5, rotateV: 20, curveRes: 2, curve: -20, curveV: 10, sides: 3 }
+      ],
+      leaves: [
+        { type: "flower", size: 0.014, petals: 6, petal: 0.06, cup: 0.7, color: [[0.96, 0.48, 0.1], [0.94, 0.56, 0.62], [0.97, 0.66, 0.2]], centre: [0.62, 0.3, 0.1] },
+        { type: "frond", at: "along", level: 0, count: 8, length: 0.11, lengthV: 0.02, width: 0.014, rise: 0.8, droop: 0.6, segments: 2 }
+      ]
+    },
+    gladiolus: {
+      name: "Gladiolus",
+      group: "flower",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 1.1,
+      scaleV: 0.15,
+      ratio: 0.008,
+      ratioPower: 1,
+      stems: { count: 3, angle: 6, angleV: 4, spread: 0.1 },
+      wind: 1.4,
+      bark: [0.28, 0.44, 0.16],
+      leaf: [[0.26, 0.44, 0.16], [0.3, 0.48, 0.18]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.12, taper: 0.4, curveRes: 3, curve: 6, curveV: 8, sides: 3 }],
+      leaves: [
+        { type: "flower", at: "along", count: 6, size: 0.012, petals: 6, petal: 0.035, round: true, cup: 0.35, rise: 0.5, color: [[0.88, 0.16, 0.18], [0.94, 0.48, 0.58], [0.98, 0.62, 0.42]], centre: [0.96, 0.9, 0.72] },
+        { type: "blade", at: "base", count: 8, length: 0.65, lengthV: 0.1, width: 0.022, rise: [2.5, 6], droop: 0.2, keel: 0.5, segments: 3 }
+      ]
+    },
+    columbine: {
+      name: "Columbine",
+      group: "flower",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 0.55,
+      scaleV: 0.1,
+      ratio: 0.008,
+      ratioPower: 1,
+      stems: { count: 3, angle: 12, angleV: 6, spread: 0.06 },
+      wind: 2,
+      bark: [0.36, 0.4, 0.3],
+      leaf: [[0.32, 0.46, 0.38], [0.36, 0.5, 0.42]],
+      leafJitter: 0.06,
+      levels: [
+        { length: 1, lengthV: 0.15, taper: 0.5, curveRes: 3, curve: 0, curveV: 12, sides: 3 },
+        { branches: 3, start: 0.55, length: 0.3, lengthV: 0.06, downAngle: 40, downAngleV: 10, rotate: 137.5, rotateV: 25, curveRes: 3, curve: 50, curveV: 10, sides: 3 }
+      ],
+      leaves: [
+        { type: "flower", size: 0.01, petals: 5, petal: 0.026, cup: 0.6, color: [[0.46, 0.3, 0.72], [0.78, 0.36, 0.56], [0.4, 0.46, 0.8], [0.92, 0.9, 0.94]], centre: [0.96, 0.88, 0.52] },
+        { type: "frond", at: "base", count: 10, length: 0.2, lengthV: 0.04, width: 0.05, rise: [0.4, 1.8], droop: 1, segments: 4, pinnate: 0.5 }
+      ]
+    },
+    heather: {
+      name: "Heather",
+      group: "flower",
+      shape: "spherical",
+      baseSize: 0.2,
+      scale: 0.4,
+      scaleV: 0.08,
+      ratio: 0.03,
+      ratioPower: 1.2,
+      stems: { count: 8, angle: 38, angleV: 12, spread: 0.08 },
+      wind: 1.5,
+      bark: [0.3, 0.24, 0.2],
+      leaf: [[0.2, 0.3, 0.14], [0.24, 0.34, 0.16]],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.2, taper: 1, curveRes: 2, curve: -14, curveV: 18, sides: 3 }],
+      leaves: [
+        { type: "cluster", count: 1, size: 0.07, sizeV: 0.015, squash: [1, 0.75, 1] },
+        { type: "tuft", count: 2, size: 0.045, sizeV: 0.01, squash: [0.55, 0.55, 1.6], color: [[0.78, 0.4, 0.64], [0.7, 0.34, 0.6], [0.84, 0.52, 0.72]], ao: 0.12 }
+      ]
+    },
+    pampas: {
+      name: "Pampas grass",
+      group: "grass",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 2.6,
+      scaleV: 0.3,
+      ratio: 0.006,
+      ratioPower: 1,
+      stems: { count: 9, angle: 13, angleV: 6, spread: 0.18 },
+      wind: 3,
+      bark: [0.66, 0.62, 0.46],
+      leaf: [0.4, 0.48, 0.24],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.15, taper: 0.5, curveRes: 3, curve: 12, curveV: 10, sides: 3 }],
+      leaves: [
+        { type: "tuft", at: "tip", count: 1, size: 0.26, sizeV: 0.04, squash: [0.4, 0.4, 2.2], color: [0.92, 0.86, 0.72], ao: 0 },
+        { type: "blade", at: "base", count: 34, length: 1.3, lengthV: 0.3, width: 0.045, rise: [0.6, 2.8], droop: 1.6, keel: 0.4, segments: 3 }
+      ]
+    },
+    meadowGrass: {
+      name: "Meadow grass",
+      group: "grass",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 0.9,
+      scaleV: 0.2,
+      ratio: 0.005,
+      ratioPower: 1,
+      stems: { count: 6, angle: 12, angleV: 7, spread: 0.07 },
+      wind: 3,
+      bark: [0.62, 0.62, 0.42],
+      leaf: [[0.36, 0.48, 0.18], [0.42, 0.52, 0.22], [0.48, 0.52, 0.26]],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.2, taper: 0.6, curveRes: 3, curve: 14, curveV: 14, sides: 3 }],
+      leaves: [
+        { type: "tuft", at: "tip", count: 1, size: 0.05, sizeV: 0.01, squash: [0.4, 0.4, 2.2], color: [[0.8, 0.74, 0.52], [0.72, 0.68, 0.46]], ao: 0 },
+        { type: "blade", at: "base", count: 20, length: 0.55, lengthV: 0.15, width: 0.014, rise: [0.7, 3.2], droop: 1.5, keel: 0.4, segments: 3 }
+      ]
+    },
+    sedge: {
+      name: "Sedge",
+      group: "grass",
+      wind: 2.5,
+      leaf: [[0.26, 0.4, 0.14], [0.32, 0.45, 0.17], [0.38, 0.47, 0.2]],
+      leafJitter: 0.08,
+      leaves: { type: "blade", at: "base", count: 30, length: 0.75, lengthV: 0.2, width: 0.011, rise: [0.9, 5], droop: 1.3, keel: 0.5, segments: 3 }
+    },
+    papyrus: {
+      name: "Papyrus",
+      group: "grass",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 2.2,
+      scaleV: 0.4,
+      ratio: 0.007,
+      ratioPower: 1,
+      stems: { count: 10, angle: 10, angleV: 8, spread: 0.18 },
+      wind: 1.8,
+      bark: [0.34, 0.5, 0.2],
+      leaf: [[0.38, 0.55, 0.18], [0.44, 0.58, 0.2]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.25, taper: 0.5, curveRes: 3, curve: 6, curveV: 10, sides: 3 }],
+      leaves: { type: "blade", at: "tip", count: 12, length: 0.3, lengthV: 0.06, width: 0.012, rise: [0.3, 2.5], droop: 1.3, keel: 0.2, segments: 2 }
+    },
+    waterLily: {
+      name: "Water lily",
+      group: "water",
+      floats: true,
+      wind: 0.2,
+      leaf: [[0.16, 0.34, 0.12], [0.2, 0.38, 0.14], [0.24, 0.4, 0.16]],
+      leafJitter: 0.06,
+      leaves: { type: "fan", at: "base", count: 7, radius: 0.16, petiole: 0.16, rise: 0, droop: 0, ribs: 12, spread: 330, pleat: 0, drop: -0.07 }
+    },
+    floweringWaterLily: {
+      name: "Water lily in flower",
+      group: "water",
+      floats: true,
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 0.09,
+      scaleV: 0.02,
+      ratio: 0.08,
+      ratioPower: 1,
+      wind: 0.2,
+      bark: [0.24, 0.36, 0.14],
+      leaf: [[0.16, 0.34, 0.12], [0.2, 0.38, 0.14], [0.24, 0.4, 0.16]],
+      leafJitter: 0.06,
+      levels: [{ length: 1, lengthV: 0.1, taper: 0.5, curveRes: 2, curve: 0, curveV: 4, sides: 4 }],
+      leaves: [
+        { type: "flower", size: 0.025, petals: 14, petal: 0.06, cup: 0.55, cone: 0.5, color: [[0.97, 0.95, 0.92], [0.95, 0.58, 0.72], [0.98, 0.86, 0.36]], centre: [0.96, 0.78, 0.18] },
+        { type: "fan", at: "base", count: 7, radius: 0.16, petiole: 0.16, rise: 0, droop: 0, ribs: 12, spread: 330, pleat: 0, drop: -0.07 }
+      ]
+    },
+    cattail: {
+      name: "Cattail",
+      group: "water",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 1.9,
+      scaleV: 0.3,
+      ratio: 0.005,
+      ratioPower: 1,
+      stems: { count: 5, angle: 5, angleV: 4, spread: 0.12 },
+      wind: 1.8,
+      bark: [0.38, 0.46, 0.22],
+      leaf: [[0.3, 0.44, 0.16], [0.36, 0.48, 0.2], [0.42, 0.5, 0.24]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.12, taper: 0.7, curveRes: 3, curve: 0, curveV: 5, sides: 3 }],
+      leaves: [
+        { type: "tuft", at: "tip", count: 1, size: 0.075, sizeV: 0.01, out: -0.17, squash: [0.3, 0.3, 2.2], color: [[0.34, 0.2, 0.1], [0.3, 0.18, 0.09]], ao: 0 },
+        { type: "blade", at: "base", count: 16, length: 1.7, lengthV: 0.3, width: 0.02, rise: [2.6, 7], droop: 0.5, keel: 0.5, segments: 4 }
+      ]
+    },
+    reed: {
+      name: "Common reed",
+      group: "water",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 3,
+      scaleV: 0.5,
+      ratio: 0.004,
+      ratioPower: 1,
+      stems: { count: 12, angle: 7, angleV: 5, spread: 0.3 },
+      wind: 2.4,
+      bark: [0.52, 0.54, 0.3],
+      leaf: [[0.32, 0.46, 0.2], [0.38, 0.5, 0.24]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.15, taper: 0.7, curveRes: 4, curve: 10, curveV: 8, sides: 3, rings: { lip: 1.06, shade: 0.9 } }],
+      leaves: [
+        { type: "tuft", at: "tip", count: 1, size: 0.16, sizeV: 0.03, squash: [0.45, 0.45, 2], color: [[0.56, 0.44, 0.4], [0.62, 0.52, 0.44]], ao: 0 },
+        { type: "blade", at: "along", count: 4, length: 0.4, lengthV: 0.08, width: 0.013, rise: 0.25, droop: 0.9, keel: 0.4, segments: 3 }
+      ]
+    },
+    rush: {
+      name: "Rush",
+      group: "water",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 0.9,
+      scaleV: 0.15,
+      ratio: 0.005,
+      ratioPower: 1,
+      stems: { count: 22, angle: 8, angleV: 5, spread: 0.07 },
+      wind: 1.6,
+      bark: [0.26, 0.42, 0.18],
+      leaf: [0.3, 0.44, 0.18],
+      leafJitter: 0.06,
+      levels: [{ length: 1, lengthV: 0.2, taper: 1, curveRes: 2, curve: 0, curveV: 4, sides: 3 }],
+      leaves: { type: "cluster", at: "tip", count: 1, size: 0.016, sizeV: 0.004, out: -0.12, squash: [0.8, 1.3, 0.8], color: [0.42, 0.3, 0.16], ao: 0 }
+    },
+    coconut: {
+      name: "Coconut palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 12,
+      scaleV: 2,
+      ratio: 0.017,
+      ratioPower: 1,
+      flare: 0.5,
+      wind: 1.4,
+      bark: [0.5, 0.43, 0.33],
+      barkTexture: barks("palm-tree-bark"),
+      leaf: [[0.24, 0.42, 0.13], [0.28, 0.46, 0.15]],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.05, taper: 0.4, curveRes: 9, curve: 28, curveV: 10, sides: 6, rings: { lip: 1.05, shade: 0.86 } }],
+      leaves: [
+        { type: "frond", count: 14, length: 4.6, width: 0.9, rise: 0.5, droop: 1.3, segments: 8, pinnate: 0.45, tiers: 2 },
+        { type: "fruit", count: 5, size: 0.17, drop: 0.35, spread: 0.3, color: [0.34, 0.3, 0.13] }
+      ]
+    },
+    date: {
+      name: "Date palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 10,
+      scaleV: 1.5,
+      ratio: 0.034,
+      ratioPower: 1,
+      flare: 0.3,
+      wind: 1.1,
+      bark: [0.46, 0.38, 0.28],
+      barkTexture: barks("palm-bark"),
+      leaf: [[0.38, 0.48, 0.32], [0.34, 0.44, 0.29]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.05, taper: 0.12, curveRes: 12, curve: 0, curveV: 6, sides: 7, rings: { lip: 1.16, shade: 0.8 } }],
+      leaves: [
+        { type: "frond", count: 26, length: 4, width: 0.5, rise: 0.6, droop: 1, segments: 8, pinnate: 0.6, tiers: 3 },
+        { type: "fruit", count: 4, size: 0.2, drop: 0.55, spread: 0.45, squash: [0.6, 1.8, 0.6], color: [0.8, 0.46, 0.1] }
+      ]
+    },
+    fanPalm: {
+      name: "Fan palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 14,
+      scaleV: 2,
+      ratio: 0.022,
+      ratioPower: 1,
+      flare: 0.5,
+      wind: 1.1,
+      bark: [0.44, 0.38, 0.3],
+      barkTexture: barks("palm-bark"),
+      leaf: [[0.24, 0.42, 0.16], [0.28, 0.46, 0.18]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.05, taper: 0.3, curveRes: 8, curve: 0, curveV: 5, sides: 6, rings: { lip: 1.03, shade: 0.9 } }],
+      leaves: [
+        { type: "fan", count: 18, radius: 1.6, petiole: 1.4, rise: 0.6, droop: 0.4, ribs: 12, spread: 220, pleat: 0.1, tiers: 3 },
+        { type: "fan", count: 12, radius: 1, petiole: 0.5, rise: -3, droop: 0.05, ribs: 8, spread: 140, pleat: 0.08, drop: 0.7, color: [0.5, 0.4, 0.25] }
+      ]
+    },
+    royal: {
+      name: "Royal palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 15,
+      scaleV: 2,
+      ratio: 0.03,
+      ratioPower: 1,
+      flare: 0.25,
+      wind: 1.2,
+      swell: { at: 0.45, amount: 0.22, width: 0.22 },
+      crownshaft: { from: 0.82, color: [0.3, 0.48, 0.18] },
+      bark: [0.68, 0.66, 0.62],
+      barkTexture: barks("palm-tree-bark"),
+      leaf: [[0.22, 0.42, 0.13], [0.26, 0.46, 0.15]],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.05, taper: 0.35, curveRes: 10, curve: 0, curveV: 4, sides: 7, rings: { lip: 1, shade: 0.97 } }],
+      leaves: { type: "frond", count: 15, length: 4.3, width: 0.7, rise: 0.75, droop: 1.6, segments: 8, pinnate: 0.45, tiers: 2 }
+    },
+    bottle: {
+      name: "Bottle palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 3.6,
+      scaleV: 0.5,
+      ratio: 0.07,
+      ratioPower: 1,
+      flare: 0.1,
+      wind: 1,
+      swell: { at: 0.3, amount: 0.9, width: 0.3 },
+      crownshaft: { from: 0.72, color: [0.36, 0.5, 0.24] },
+      bark: [0.6, 0.57, 0.5],
+      barkTexture: barks("palm-tree-bark"),
+      leaf: [0.26, 0.45, 0.15],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.06, taper: 0.55, curveRes: 8, curve: 0, curveV: 4, sides: 8, rings: { lip: 1.02, shade: 0.94 } }],
+      leaves: { type: "frond", count: 6, length: 2.4, width: 0.42, rise: 1.5, droop: 1.6, segments: 7, pinnate: 0.4 }
+    },
+    areca: {
+      name: "Areca palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 4.5,
+      scaleV: 0.8,
+      ratio: 0.013,
+      ratioPower: 1,
+      wind: 1.6,
+      stems: { count: 6, angle: 14, angleV: 6, spread: 0.25 },
+      bark: [0.55, 0.58, 0.3],
+      leaf: [[0.4, 0.55, 0.16], [0.44, 0.58, 0.18]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.2, taper: 0.4, curveRes: 6, curve: 14, curveV: 10, sides: 5, rings: { lip: 1.05, shade: 0.85 } }],
+      leaves: { type: "frond", count: 6, length: 2, width: 0.38, rise: 1, droop: 1.5, segments: 7, pinnate: 0.5 }
+    },
+    sago: {
+      name: "Sago palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 1.2,
+      scaleV: 0.25,
+      ratio: 0.22,
+      ratioPower: 1,
+      wind: 0.5,
+      bark: [0.4, 0.34, 0.26],
+      barkTexture: barks("palm-bark"),
+      leaf: [[0.14, 0.3, 0.1], [0.16, 0.33, 0.11]],
+      leafJitter: 0.06,
+      levels: [{ length: 1, lengthV: 0.1, taper: 0.35, curveRes: 4, curve: 0, curveV: 6, sides: 7, rings: { lip: 1.12, shade: 0.8 } }],
+      leaves: { type: "frond", count: 16, length: 1.5, width: 0.3, rise: 0.7, droop: 0.6, segments: 6, pinnate: 0.6, tiers: 2 }
+    },
+    curvedCoconut: {
+      name: "Curved coconut palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 12,
+      scaleV: 2,
+      ratio: 0.02,
+      ratioPower: 1,
+      flare: 0.6,
+      wind: 1.4,
+      stems: { count: 1, angle: 66, angleV: 6, spread: 0 },
+      bark: [0.5, 0.43, 0.33],
+      barkTexture: barks("palm-tree-bark"),
+      leaf: [[0.24, 0.42, 0.13], [0.28, 0.46, 0.15]],
+      leafJitter: 0.1,
+      levels: [{ length: 1, lengthV: 0.06, taper: 0.45, curveRes: 12, curve: -48, curveBack: -10, curveV: 6, sides: 6, rings: { lip: 1.05, shade: 0.86 } }],
+      leaves: [
+        { type: "frond", count: 14, length: 4.6, width: 0.9, rise: 0.5, droop: 1.3, segments: 8, pinnate: 0.45, tiers: 2 },
+        { type: "fruit", count: 5, size: 0.17, drop: 0.35, spread: 0.3, color: [0.34, 0.3, 0.13] }
+      ]
+    },
+    dateClump: {
+      name: "Clustered date palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 13,
+      scaleV: 2,
+      ratio: 0.026,
+      ratioPower: 1,
+      flare: 0.4,
+      wind: 1.1,
+      stems: { count: [2, 5], angle: 36, angleV: 14, spread: 0.6 },
+      bark: [0.46, 0.38, 0.28],
+      barkTexture: barks("palm-bark"),
+      leaf: [[0.38, 0.48, 0.32], [0.34, 0.44, 0.29]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.18, taper: 0.7, curveRes: 12, curve: -14, curveV: 8, sides: 7, rings: { lip: 1.16, shade: 0.8 } }],
+      leaves: [
+        { type: "frond", count: 18, length: 3.6, width: 0.5, rise: 0.6, droop: 1, segments: 8, pinnate: 0.6, tiers: 3 },
+        { type: "fruit", count: 3, size: 0.2, drop: 0.55, spread: 0.45, squash: [0.6, 1.8, 0.6], color: [0.8, 0.46, 0.1] }
+      ]
+    },
+    spindle: {
+      name: "Spindle palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 9,
+      scaleV: 2.5,
+      ratio: 0.045,
+      ratioPower: 1,
+      flare: 0.3,
+      wind: 1.1,
+      swell: [{ at: 0.08, amount: 0.4, width: 0.14 }, { at: 0.82, amount: 0.95, width: 0.09 }],
+      crownshaft: { from: 0.92, color: [0.34, 0.48, 0.24] },
+      bark: [0.62, 0.58, 0.5],
+      barkTexture: barks("palm-tree-bark"),
+      leaf: [[0.24, 0.44, 0.15], [0.28, 0.48, 0.17]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.12, taper: 0.45, curveRes: 16, curve: 0, curveV: 6, sides: 8, rings: { lip: 1.02, shade: 0.94 } }],
+      leaves: { type: "frond", count: 8, length: 3, width: 0.5, rise: 1.2, droop: 1.5, segments: 8, pinnate: 0.45 }
+    },
+    christmas: {
+      name: "Christmas palm",
+      group: "palm",
+      shape: "cylindrical",
+      baseSize: 1,
+      scale: 7,
+      scaleV: 1.2,
+      ratio: 0.024,
+      ratioPower: 1,
+      flare: 0.9,
+      wind: 1.4,
+      stems: { count: 3, angle: 13, angleV: 4, spread: 0.3 },
+      swell: { at: 0.02, amount: 0.8, width: 0.06 },
+      crownshaft: { from: 0.86, color: [0.4, 0.54, 0.22] },
+      bark: [0.56, 0.52, 0.44],
+      barkTexture: barks("palm-tree-bark"),
+      leaf: [[0.26, 0.46, 0.15], [0.3, 0.5, 0.17]],
+      leafJitter: 0.08,
+      levels: [{ length: 1, lengthV: 0.1, taper: 0.6, curveRes: 8, curve: 0, curveV: 6, sides: 6, rings: { lip: 1.03, shade: 0.9 } }],
+      leaves: { type: "frond", count: 9, length: 2.2, width: 0.42, rise: 1, droop: 1.6, segments: 7, pinnate: 0.5 }
+    },
+    fir: {
+      name: "Fir",
+      group: "conifer",
+      shape: "conical",
+      baseSize: 0.1,
+      scale: 14,
+      scaleV: 2,
+      ratio: 0.017,
+      ratioPower: 1.1,
+      flare: 0.5,
+      wind: 0.55,
+      bark: [0.24, 0.18, 0.14],
+      barkTexture: barks("bark-014"),
+      leaf: [0.09, 0.22, 0.12],
+      leafJitter: 0.14,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 1, curveRes: 4, curve: 0, curveV: 4, sides: 6 },
+        { branches: 40, length: 0.3, lengthV: 0.05, downAngle: 96, downAngleV: 8, rotate: 137.5, rotateV: 15, curveRes: 3, curve: -18, curveV: 10, sides: 3 }
+      ],
+      leaves: { type: "tuft", count: 2, size: 0.9, sizeV: 0.2, squash: [0.75, 0.32, 1.5] }
+    },
+    pine: {
+      name: "Stone pine",
+      group: "conifer",
+      shape: "inverseConical",
+      baseSize: 0.6,
+      scale: 13,
+      scaleV: 2,
+      ratio: 0.022,
+      ratioPower: 1.2,
+      flare: 0.4,
+      attractionUp: 0.5,
+      wind: 0.8,
+      bark: [0.42, 0.3, 0.22],
+      barkTexture: barks("pine-bark"),
+      leaf: [[0.14, 0.27, 0.12], [0.16, 0.3, 0.13]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.9, curveRes: 5, curve: 10, curveV: 16, sides: 6 },
+        { branches: 9, length: 0.5, lengthV: 0.1, downAngle: 42, downAngleV: 10, rotate: 137.5, rotateV: 25, curveRes: 4, curve: 18, curveBack: -18, curveV: 20, sides: 4 },
+        { branches: 6, length: 0.45, lengthV: 0.1, downAngle: 55, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 2, curve: 0, curveV: 30, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 1.05, sizeV: 0.25, squash: [1.4, 0.42, 1.4] }
+    },
+    cypress: {
+      name: "Cypress",
+      group: "conifer",
+      shape: "flame",
+      baseSize: 0.06,
+      scale: 13,
+      scaleV: 2,
+      ratio: 0.016,
+      ratioPower: 1.2,
+      flare: 0.3,
+      attractionUp: 0.8,
+      wind: 0.6,
+      bark: [0.32, 0.26, 0.2],
+      barkTexture: barks("bark-015"),
+      leaf: [0.1, 0.2, 0.1],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 1, curveRes: 4, curve: 0, curveV: 5, sides: 5 },
+        { branches: 26, length: 0.14, lengthV: 0.03, downAngle: 18, downAngleV: 6, rotate: 137.5, rotateV: 20, curveRes: 2, curve: -5, curveV: 10, sides: 3 }
+      ],
+      leaves: { type: "tuft", count: 1, size: 0.95, sizeV: 0.15, squash: [0.6, 0.6, 1.3] }
+    },
+    sugi: {
+      name: "Japanese cedar",
+      group: "conifer",
+      shape: "conical",
+      baseSize: 0.18,
+      scale: 22,
+      scaleV: 3,
+      ratio: 0.018,
+      ratioPower: 1.1,
+      flare: 0.6,
+      wind: 0.5,
+      bark: [0.3, 0.22, 0.15],
+      barkTexture: barks("japanese-cedar-bark"),
+      leaf: [[0.13, 0.27, 0.12], [0.15, 0.3, 0.13]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 1, curveRes: 5, curve: 0, curveV: 4, sides: 6 },
+        { branches: 42, length: 0.24, lengthV: 0.05, downAngle: 82, downAngleV: 10, rotate: 137.5, rotateV: 15, curveRes: 3, curve: 14, curveV: 10, sides: 3 }
+      ],
+      leaves: { type: "tuft", count: 2, size: 0.95, sizeV: 0.2, squash: [0.8, 0.45, 1.4] }
+    },
+    redwood: {
+      name: "Redwood",
+      group: "conifer",
+      shape: "conical",
+      baseSize: 0.32,
+      scale: 28,
+      scaleV: 4,
+      ratio: 0.024,
+      ratioPower: 1.1,
+      flare: 1.1,
+      wind: 0.4,
+      bark: [0.38, 0.26, 0.18],
+      barkTexture: barks("chinese-cedar-bark"),
+      leaf: [[0.1, 0.24, 0.1], [0.12, 0.27, 0.11]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 1, curveRes: 5, curve: 0, curveV: 3, sides: 8, flute: 0.08 },
+        { branches: 46, length: 0.18, lengthV: 0.05, downAngle: 100, downAngleV: 10, rotate: 137.5, rotateV: 15, curveRes: 3, curve: 20, curveV: 12, sides: 3 }
+      ],
+      leaves: { type: "tuft", count: 2, size: 1.1, sizeV: 0.25, squash: [0.8, 0.4, 1.3] }
+    },
+    dawnRedwood: {
+      name: "Dawn redwood",
+      group: "conifer",
+      shape: "conical",
+      baseSize: 0.12,
+      scale: 18,
+      scaleV: 2.5,
+      ratio: 0.022,
+      ratioPower: 1.1,
+      flare: 1,
+      wind: 0.7,
+      bark: [0.35, 0.24, 0.17],
+      barkTexture: barks("metasequoia-bark"),
+      leaf: [[0.32, 0.5, 0.2], [0.36, 0.54, 0.22]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 1, curveRes: 5, curve: 0, curveV: 4, sides: 7, flute: 0.14 },
+        { branches: 36, length: 0.3, lengthV: 0.06, downAngle: 70, downAngleV: 10, rotate: 137.5, rotateV: 15, curveRes: 3, curve: 10, curveV: 10, sides: 3 }
+      ],
+      leaves: { type: "tuft", count: 2, size: 0.9, sizeV: 0.2, squash: [0.9, 0.35, 1.3] }
+    },
+    blackPine: {
+      name: "Black pine",
+      group: "conifer",
+      shape: "conical",
+      baseSize: 0.35,
+      scale: 16,
+      scaleV: 2.5,
+      ratio: 0.022,
+      ratioPower: 1.2,
+      flare: 0.5,
+      attractionUp: 0.35,
+      wind: 0.7,
+      bark: [0.3, 0.27, 0.2],
+      barkTexture: barks("knotted-pine-bark"),
+      leaf: [[0.1, 0.22, 0.1], [0.12, 0.25, 0.11]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.95, curveRes: 5, curve: 0, curveV: 10, sides: 6 },
+        { branches: 16, length: 0.4, lengthV: 0.1, downAngle: 70, downAngleV: 12, rotate: 137.5, rotateV: 25, curveRes: 4, curve: 22, curveV: 20, sides: 4 },
+        { branches: 5, length: 0.45, lengthV: 0.1, downAngle: 50, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 2, curve: 0, curveV: 30, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.95, sizeV: 0.25, squash: [1.2, 0.55, 1.2] }
+    },
+    oak: {
+      name: "Oak",
+      group: "broadleaf",
+      shape: "spherical",
+      baseSize: 0.3,
+      scale: 12,
+      scaleV: 2,
+      ratio: 0.026,
+      ratioPower: 1.3,
+      flare: 0.7,
+      attractionUp: 0.35,
+      wind: 1,
+      bark: [0.3, 0.25, 0.2],
+      barkTexture: barks("jolcham-oak-bark-01", "bark-012", "bark-brown-02", "bark-008"),
+      leaf: [0.22, 0.36, 0.12],
+      leafJitter: 0.22,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.85, curveRes: 5, curve: 0, curveV: 22, sides: 6 },
+        { branches: 16, length: 0.55, lengthV: 0.1, downAngle: 58, downAngleV: 14, rotate: 140, rotateV: 25, curveRes: 4, curve: -28, curveBack: 18, curveV: 50, sides: 5 },
+        { branches: 4, length: 0.45, lengthV: 0.12, downAngle: 42, downAngleV: 16, rotate: 140, rotateV: 30, curveRes: 3, curve: -12, curveV: 60, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.85, sizeV: 0.25, squash: [1, 0.7, 1] }
+    },
+    birch: {
+      name: "Birch",
+      group: "broadleaf",
+      shape: "tendFlame",
+      baseSize: 0.38,
+      scale: 15,
+      scaleV: 2,
+      ratio: 0.013,
+      ratioPower: 1.2,
+      flare: 0.3,
+      attractionUp: -0.15,
+      wind: 1.1,
+      bark: [0.86, 0.85, 0.8],
+      barkTexture: barks("bark-009"),
+      leaf: [0.4, 0.52, 0.17],
+      leafJitter: 0.18,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 0.95, curveRes: 5, curve: 0, curveV: 12, sides: 6 },
+        { branches: 18, length: 0.3, lengthV: 0.08, downAngle: 48, downAngleV: 12, rotate: 140, rotateV: 25, curveRes: 3, curve: 20, curveBack: 10, curveV: 40, sides: 4 },
+        { branches: 5, length: 0.5, lengthV: 0.12, downAngle: 55, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: 25, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.6, sizeV: 0.2, squash: [1, 0.8, 1] }
+    },
+    poplar: {
+      name: "Poplar",
+      group: "broadleaf",
+      shape: "flame",
+      baseSize: 0.12,
+      scale: 17,
+      scaleV: 2,
+      ratio: 0.014,
+      ratioPower: 1.2,
+      flare: 0.4,
+      attractionUp: 0.6,
+      wind: 0.8,
+      bark: [0.4, 0.37, 0.31],
+      barkTexture: barks("bark-004", "bark-007"),
+      leaf: [0.21, 0.38, 0.13],
+      leafJitter: 0.18,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 0.95, curveRes: 5, curve: 0, curveV: 8, sides: 6 },
+        { branches: 28, length: 0.24, lengthV: 0.06, downAngle: 24, downAngleV: 8, rotate: 140, rotateV: 25, curveRes: 3, curve: -6, curveV: 20, sides: 3 },
+        { branches: 3, length: 0.5, lengthV: 0.1, downAngle: 32, downAngleV: 10, rotate: 140, rotateV: 30, curveRes: 2, curve: 0, curveV: 30, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.72, sizeV: 0.2, squash: [0.85, 1.15, 0.85] }
+    },
+    acacia: {
+      name: "Acacia",
+      group: "broadleaf",
+      shape: "inverseConical",
+      baseSize: 0.42,
+      scale: 9,
+      scaleV: 1.5,
+      ratio: 0.03,
+      ratioPower: 1.3,
+      flare: 0.6,
+      attractionUp: 0.9,
+      wind: 1,
+      bark: [0.36, 0.29, 0.22],
+      barkTexture: barks("bark-002"),
+      leaf: [0.3, 0.38, 0.15],
+      leafJitter: 0.2,
+      levels: [
+        { length: 1, lengthV: 0.06, taper: 0.8, curveRes: 4, curve: 12, curveV: 26, sides: 6 },
+        { branches: 9, length: 0.8, lengthV: 0.12, downAngle: 50, downAngleV: 10, rotate: 137.5, rotateV: 30, curveRes: 4, curve: 22, curveBack: -10, curveV: 30, sides: 5 },
+        { branches: 6, length: 0.5, lengthV: 0.12, downAngle: 55, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 2, curve: 10, curveV: 30, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 1.05, sizeV: 0.25, squash: [1.45, 0.38, 1.45] }
+    },
+    maple: {
+      name: "Maple",
+      group: "broadleaf",
+      shape: "tendFlame",
+      baseSize: 0.25,
+      scale: 11,
+      scaleV: 1.5,
+      ratio: 0.022,
+      ratioPower: 1.25,
+      flare: 0.5,
+      attractionUp: 0.5,
+      wind: 1,
+      bark: [0.35, 0.31, 0.27],
+      barkTexture: barks("trident-maple-bark"),
+      leaf: [[0.78, 0.25, 0.08], [0.86, 0.44, 0.1], [0.68, 0.15, 0.07], [0.88, 0.6, 0.16]],
+      leafJitter: 0.1,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.9, curveRes: 5, curve: 0, curveV: 14, sides: 6 },
+        { branches: 14, length: 0.5, lengthV: 0.1, downAngle: 45, downAngleV: 12, rotate: 140, rotateV: 25, curveRes: 4, curve: -20, curveV: 40, sides: 4 },
+        { branches: 5, length: 0.45, lengthV: 0.1, downAngle: 40, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: -8, curveV: 50, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.85, sizeV: 0.25, squash: [1, 0.75, 1] }
+    },
+    cherry: {
+      name: "Cherry blossom",
+      group: "broadleaf",
+      shape: "hemispherical",
+      baseSize: 0.28,
+      scale: 7,
+      scaleV: 1,
+      ratio: 0.035,
+      ratioPower: 1.3,
+      flare: 0.5,
+      attractionUp: 0.25,
+      wind: 1,
+      bark: [0.3, 0.22, 0.2],
+      barkTexture: barks("sakura-bark"),
+      leaf: [[0.9, 0.52, 0.64], [0.94, 0.64, 0.74], [0.84, 0.44, 0.58]],
+      leafJitter: 0.05,
+      levels: [
+        { length: 1, lengthV: 0.06, taper: 0.8, curveRes: 4, curve: 0, curveV: 26, sides: 6 },
+        { branches: 9, length: 0.75, lengthV: 0.12, downAngle: 52, downAngleV: 12, rotate: 137.5, rotateV: 30, curveRes: 4, curve: 18, curveBack: -14, curveV: 30, sides: 5 },
+        { branches: 6, length: 0.5, lengthV: 0.12, downAngle: 45, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: -10, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.8, sizeV: 0.22, squash: [1.1, 0.75, 1.1] }
+    },
+    willow: {
+      name: "Weeping willow",
+      group: "broadleaf",
+      shape: "spherical",
+      baseSize: 0.3,
+      scale: 10,
+      scaleV: 1.5,
+      ratio: 0.035,
+      ratioPower: 1.3,
+      flare: 0.6,
+      attractionUp: -0.9,
+      wind: 1.3,
+      bark: [0.33, 0.29, 0.22],
+      barkTexture: barks("bark-willow", "bark-willow-02", "bark-013"),
+      leaf: [[0.42, 0.55, 0.2], [0.38, 0.51, 0.18]],
+      leafJitter: 0.1,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.85, curveRes: 4, curve: 0, curveV: 16, sides: 6 },
+        { branches: 12, length: 0.6, lengthV: 0.1, downAngle: 40, downAngleV: 10, rotate: 140, rotateV: 25, curveRes: 4, curve: 40, curveV: 20, sides: 4 },
+        { branches: 6, length: 0.7, lengthV: 0.15, downAngle: 60, downAngleV: 20, rotate: 140, rotateV: 30, curveRes: 3, curve: 50, curveV: 20, sides: 3 }
+      ],
+      leaves: { type: "strand", count: 2, length: 2.6, lengthV: 0.6, width: 0.22, segments: 3, keel: 0.3 }
+    },
+    olive: {
+      name: "Olive",
+      group: "broadleaf",
+      shape: "spherical",
+      baseSize: 0.35,
+      scale: 6,
+      scaleV: 1,
+      ratio: 0.05,
+      ratioPower: 1.4,
+      flare: 0.6,
+      attractionUp: 0.3,
+      stems: { count: 2, angle: 16, angleV: 6, spread: 0.1 },
+      wind: 0.9,
+      bark: [0.38, 0.35, 0.3],
+      barkTexture: barks("bark-001", "bark-006"),
+      leaf: [[0.42, 0.47, 0.33], [0.36, 0.42, 0.3], [0.48, 0.52, 0.4]],
+      leafJitter: 0.08,
+      levels: [
+        { length: 1, lengthV: 0.08, taper: 0.7, curveRes: 5, curve: 0, curveV: 45, sides: 7, flute: 0.18 },
+        { branches: 8, length: 0.7, lengthV: 0.15, downAngle: 48, downAngleV: 15, rotate: 137.5, rotateV: 40, curveRes: 4, curve: -10, curveV: 50, sides: 4 },
+        { branches: 5, length: 0.5, lengthV: 0.15, downAngle: 45, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: 0, curveV: 50, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.75, sizeV: 0.2, squash: [1.1, 0.6, 1.1] }
+    },
+    baobab: {
+      name: "Baobab",
+      group: "broadleaf",
+      shape: "inverseConical",
+      baseSize: 0.82,
+      scale: 11,
+      scaleV: 1.5,
+      ratio: 0.12,
+      ratioPower: 1.6,
+      flare: 0.15,
+      swell: { at: 0.4, amount: 0.25, width: 0.35 },
+      attractionUp: 0.6,
+      wind: 0.5,
+      bark: [0.55, 0.48, 0.42],
+      barkTexture: barks("bark-003"),
+      leaf: [0.3, 0.42, 0.16],
+      leafJitter: 0.15,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.35, curveRes: 5, curve: 0, curveV: 6, sides: 9, flute: 0.06 },
+        { branches: 7, length: 0.5, lengthV: 0.1, downAngle: 70, downAngleV: 12, rotate: 137.5, rotateV: 30, curveRes: 3, curve: -50, curveV: 30, sides: 5 },
+        { branches: 3, length: 0.6, lengthV: 0.15, downAngle: 40, downAngleV: 15, rotate: 140, rotateV: 40, curveRes: 2, curve: -10, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.7, sizeV: 0.2, squash: [1.2, 0.55, 1.2] }
+    },
+    eucalyptus: {
+      name: "Eucalyptus",
+      group: "broadleaf",
+      shape: "tendFlame",
+      baseSize: 0.45,
+      scale: 20,
+      scaleV: 3,
+      ratio: 0.016,
+      ratioPower: 1.2,
+      flare: 0.5,
+      attractionUp: -0.3,
+      wind: 1.1,
+      bark: [0.8, 0.77, 0.68],
+      barkTexture: barks("eucalyptus-bark"),
+      leaf: [[0.35, 0.45, 0.36], [0.3, 0.4, 0.33]],
+      leafJitter: 0.1,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.95, curveRes: 6, curve: 0, curveV: 18, sides: 6 },
+        { branches: 13, length: 0.35, lengthV: 0.1, downAngle: 38, downAngleV: 12, rotate: 140, rotateV: 30, curveRes: 4, curve: -12, curveV: 40, sides: 4 },
+        { branches: 4, length: 0.55, lengthV: 0.15, downAngle: 50, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: 20, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.8, sizeV: 0.25, squash: [0.9, 0.9, 0.9] }
+    },
+    plane: {
+      name: "Plane tree",
+      group: "broadleaf",
+      shape: "spherical",
+      baseSize: 0.32,
+      scale: 17,
+      scaleV: 2.5,
+      ratio: 0.024,
+      ratioPower: 1.3,
+      flare: 0.6,
+      attractionUp: 0.3,
+      wind: 1,
+      bark: [0.48, 0.43, 0.38],
+      barkTexture: barks("bark-platanus", "japanese-sycamore"),
+      leaf: [[0.3, 0.44, 0.15], [0.34, 0.48, 0.17]],
+      leafJitter: 0.15,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.85, curveRes: 5, curve: 0, curveV: 14, sides: 7 },
+        { branches: 15, length: 0.6, lengthV: 0.1, downAngle: 52, downAngleV: 12, rotate: 140, rotateV: 25, curveRes: 4, curve: -20, curveBack: 12, curveV: 40, sides: 5 },
+        { branches: 5, length: 0.45, lengthV: 0.12, downAngle: 42, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: -10, curveV: 50, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.95, sizeV: 0.25, squash: [1.05, 0.75, 1.05] }
+    },
+    zelkova: {
+      name: "Zelkova",
+      group: "broadleaf",
+      shape: "tendFlame",
+      baseSize: 0.22,
+      scale: 14,
+      scaleV: 2,
+      ratio: 0.024,
+      ratioPower: 1.3,
+      flare: 0.5,
+      attractionUp: 0.6,
+      wind: 1,
+      bark: [0.61, 0.52, 0.44],
+      barkTexture: barks("japanese-zelkova-bark"),
+      leaf: [[0.26, 0.42, 0.14], [0.3, 0.46, 0.16]],
+      leafJitter: 0.15,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.9, curveRes: 4, curve: 0, curveV: 10, sides: 6 },
+        { branches: 12, length: 0.7, lengthV: 0.12, downAngle: 30, downAngleV: 8, rotate: 137.5, rotateV: 25, curveRes: 4, curve: 12, curveBack: -6, curveV: 30, sides: 5 },
+        { branches: 5, length: 0.5, lengthV: 0.12, downAngle: 40, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: 8, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.8, sizeV: 0.22, squash: [1.1, 0.7, 1.1] }
+    },
+    camphor: {
+      name: "Camphor tree",
+      group: "broadleaf",
+      shape: "hemispherical",
+      baseSize: 0.25,
+      scale: 13,
+      scaleV: 2,
+      ratio: 0.034,
+      ratioPower: 1.35,
+      flare: 0.7,
+      attractionUp: 0.25,
+      wind: 0.9,
+      bark: [0.64, 0.53, 0.44],
+      barkTexture: barks("japanese-camphor-bark"),
+      leaf: [[0.16, 0.32, 0.1], [0.2, 0.36, 0.12]],
+      leafJitter: 0.12,
+      levels: [
+        { length: 1, lengthV: 0.06, taper: 0.8, curveRes: 4, curve: 0, curveV: 22, sides: 7 },
+        { branches: 11, length: 0.75, lengthV: 0.12, downAngle: 55, downAngleV: 12, rotate: 137.5, rotateV: 30, curveRes: 4, curve: 14, curveBack: -14, curveV: 30, sides: 5 },
+        { branches: 6, length: 0.5, lengthV: 0.12, downAngle: 45, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: -10, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 1, sizeV: 0.25, squash: [1.15, 0.72, 1.15] }
+    },
+    hackberry: {
+      name: "Hackberry",
+      group: "broadleaf",
+      shape: "spherical",
+      baseSize: 0.3,
+      scale: 12,
+      scaleV: 2,
+      ratio: 0.025,
+      ratioPower: 1.3,
+      flare: 0.5,
+      attractionUp: 0.35,
+      wind: 1,
+      bark: [0.42, 0.36, 0.26],
+      barkTexture: barks("chinese-hackberry-bark", "japanese-hackberry-bark"),
+      leaf: [[0.28, 0.42, 0.15], [0.32, 0.46, 0.17]],
+      leafJitter: 0.16,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.85, curveRes: 5, curve: 0, curveV: 18, sides: 6 },
+        { branches: 14, length: 0.55, lengthV: 0.1, downAngle: 50, downAngleV: 14, rotate: 140, rotateV: 25, curveRes: 4, curve: -18, curveBack: 10, curveV: 45, sides: 5 },
+        { branches: 5, length: 0.45, lengthV: 0.12, downAngle: 42, downAngleV: 16, rotate: 140, rotateV: 30, curveRes: 3, curve: -10, curveV: 55, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.85, sizeV: 0.25, squash: [1, 0.75, 1] }
+    },
+    chestnut: {
+      name: "Sweet chestnut",
+      group: "broadleaf",
+      shape: "spherical",
+      baseSize: 0.28,
+      scale: 14,
+      scaleV: 2,
+      ratio: 0.032,
+      ratioPower: 1.35,
+      flare: 0.8,
+      attractionUp: 0.3,
+      wind: 0.9,
+      bark: [0.46, 0.38, 0.23],
+      barkTexture: barks("bark-brown-01"),
+      leaf: [[0.24, 0.38, 0.12], [0.28, 0.42, 0.14]],
+      leafJitter: 0.18,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.85, curveRes: 5, curve: 0, curveV: 20, sides: 7 },
+        { branches: 14, length: 0.6, lengthV: 0.1, downAngle: 60, downAngleV: 14, rotate: 140, rotateV: 25, curveRes: 4, curve: -26, curveBack: 16, curveV: 50, sides: 5 },
+        { branches: 5, length: 0.45, lengthV: 0.12, downAngle: 42, downAngleV: 16, rotate: 140, rotateV: 30, curveRes: 3, curve: -12, curveV: 60, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.9, sizeV: 0.25, squash: [1, 0.72, 1] }
+    },
+    beech: {
+      name: "Beech",
+      group: "broadleaf",
+      shape: "tendFlame",
+      baseSize: 0.3,
+      scale: 16,
+      scaleV: 2.5,
+      ratio: 0.02,
+      ratioPower: 1.25,
+      flare: 0.5,
+      attractionUp: 0.3,
+      wind: 1,
+      bark: [0.59, 0.58, 0.49],
+      barkTexture: barks("bark-010", "bark-011"),
+      leaf: [[0.26, 0.42, 0.13], [0.3, 0.46, 0.15]],
+      leafJitter: 0.14,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.9, curveRes: 5, curve: 0, curveV: 12, sides: 6 },
+        { branches: 16, length: 0.5, lengthV: 0.1, downAngle: 48, downAngleV: 12, rotate: 140, rotateV: 25, curveRes: 4, curve: -16, curveV: 40, sides: 4 },
+        { branches: 5, length: 0.45, lengthV: 0.1, downAngle: 40, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: -8, curveV: 50, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.9, sizeV: 0.25, squash: [1, 0.78, 1] }
+    },
+    alder: {
+      name: "Alder",
+      group: "broadleaf",
+      shape: "conical",
+      baseSize: 0.25,
+      scale: 13,
+      scaleV: 2,
+      ratio: 0.017,
+      ratioPower: 1.2,
+      flare: 0.4,
+      attractionUp: 0.4,
+      wind: 1.1,
+      bark: [0.33, 0.34, 0.27],
+      barkTexture: barks("bark-005"),
+      leaf: [[0.16, 0.32, 0.12], [0.19, 0.35, 0.13]],
+      leafJitter: 0.14,
+      levels: [
+        { length: 1, lengthV: 0.04, taper: 0.95, curveRes: 5, curve: 0, curveV: 8, sides: 6 },
+        { branches: 22, length: 0.35, lengthV: 0.08, downAngle: 55, downAngleV: 10, rotate: 140, rotateV: 25, curveRes: 3, curve: -10, curveV: 30, sides: 4 },
+        { branches: 4, length: 0.45, lengthV: 0.12, downAngle: 45, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 2, curve: 0, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.7, sizeV: 0.2, squash: [1, 0.8, 1] }
+    },
+    feverTree: {
+      name: "Fever tree",
+      group: "broadleaf",
+      shape: "inverseConical",
+      baseSize: 0.4,
+      scale: 12,
+      scaleV: 2,
+      ratio: 0.026,
+      ratioPower: 1.3,
+      flare: 0.4,
+      attractionUp: 0.8,
+      wind: 1,
+      bark: [0.52, 0.56, 0.3],
+      barkTexture: barks("fever-tree-bark"),
+      leaf: [[0.36, 0.48, 0.18], [0.4, 0.52, 0.2]],
+      leafJitter: 0.15,
+      levels: [
+        { length: 1, lengthV: 0.06, taper: 0.8, curveRes: 4, curve: 8, curveV: 22, sides: 6 },
+        { branches: 9, length: 0.8, lengthV: 0.12, downAngle: 48, downAngleV: 10, rotate: 137.5, rotateV: 30, curveRes: 4, curve: 20, curveBack: -10, curveV: 30, sides: 5 },
+        { branches: 6, length: 0.5, lengthV: 0.12, downAngle: 55, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 2, curve: 10, curveV: 30, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.95, sizeV: 0.25, squash: [1.4, 0.42, 1.4] }
+    },
+    blueGum: {
+      name: "Blue gum",
+      group: "broadleaf",
+      shape: "tendFlame",
+      baseSize: 0.45,
+      scale: 22,
+      scaleV: 3,
+      ratio: 0.017,
+      ratioPower: 1.2,
+      flare: 0.6,
+      attractionUp: -0.3,
+      wind: 1.1,
+      bark: [0.4, 0.36, 0.31],
+      barkTexture: barks("bark-bluegum"),
+      leaf: [[0.32, 0.42, 0.4], [0.28, 0.38, 0.36]],
+      leafJitter: 0.1,
+      levels: [
+        { length: 1, lengthV: 0.05, taper: 0.95, curveRes: 6, curve: 0, curveV: 18, sides: 6 },
+        { branches: 13, length: 0.35, lengthV: 0.1, downAngle: 40, downAngleV: 12, rotate: 140, rotateV: 30, curveRes: 4, curve: -12, curveV: 40, sides: 4 },
+        { branches: 4, length: 0.55, lengthV: 0.15, downAngle: 50, downAngleV: 15, rotate: 140, rotateV: 30, curveRes: 3, curve: 20, curveV: 40, sides: 3 }
+      ],
+      leaves: { type: "cluster", count: 1, size: 0.8, sizeV: 0.25, squash: [0.85, 0.95, 0.85] }
+    },
+    dead: {
+      name: "Dead tree",
+      group: "broadleaf",
+      shape: "spherical",
+      baseSize: 0.25,
+      scale: 9,
+      scaleV: 2,
+      ratio: 0.03,
+      ratioPower: 1.3,
+      flare: 0.6,
+      attractionUp: 0.2,
+      wind: 0.3,
+      bark: [0.36, 0.33, 0.3],
+      barkTexture: barks("tree-bark-03"),
+      levels: [
+        { length: 1, lengthV: 0.06, taper: 0.9, curveRes: 5, curve: 0, curveV: 30, sides: 6 },
+        { branches: 9, length: 0.55, lengthV: 0.12, downAngle: 50, downAngleV: 15, rotate: 140, rotateV: 40, curveRes: 4, curve: -20, curveV: 60, sides: 4 },
+        { branches: 4, length: 0.5, lengthV: 0.15, downAngle: 40, downAngleV: 15, rotate: 140, rotateV: 40, curveRes: 3, curve: -5, curveV: 70, sides: 3 }
+      ]
+    }
+  };
+  PHI = (1 + Math.sqrt(5)) / 2;
+  ICOSAHEDRON_VERTICES = [
+    [-1, PHI, 0],
+    [1, PHI, 0],
+    [-1, -PHI, 0],
+    [1, -PHI, 0],
+    [0, -1, PHI],
+    [0, 1, PHI],
+    [0, -1, -PHI],
+    [0, 1, -PHI],
+    [PHI, 0, -1],
+    [PHI, 0, 1],
+    [-PHI, 0, -1],
+    [-PHI, 0, 1]
+  ].map(normalize2);
+});
+
+// src/vegetation/species.js
+var floatsOn = (species, recordOf) => Boolean((SPECIES[species] ?? SPECIES[recordOf?.(species)?.base])?.floats);
+var init_species = __esm(() => {
+  init_tree_generator();
+});
+
 // src/build/behaviours.js
-var TIME, STAY, TRIGGER, REACH3, along = (axis, fallback, what) => ({ name: axis, label: `Along ${axis}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `How far it ${what} along its own ${axis} (m).` }), HIGHEST = 1e5, BEHAVIOURS, MOVE_DEFAULTS, paths, timelines, airs, drawnPlaces, coasts, joins, keptOver;
-var init_behaviours = __esm(() => {
-  init_kinds();
-  init_vehicles();
+var TIME, STAY2, TRIGGER, REACH5, along2 = (axis, fallback, what) => ({ name: axis, label: `Along ${axis}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `How far it ${what} along its own ${axis} (m).` }), HIGHEST = 1e5, BEHAVIOURS, MOVE_DEFAULTS, paths, timelines, airs, drawnPlaces, coasts, joins, keptOver;
+var init_behaviours = __esm(async () => {
   init_survey();
   init_terrain_height();
+  await __promiseAll([
+    init_kinds(),
+    init_vehicles()
+  ]);
   TIME = { name: "time", label: "Time", min: 0.2, max: 5, default: 1, step: 0.1, unit: "s", description: "How long it takes to open, and to shut (s)." };
-  STAY = { name: "stay", label: "Stays open", min: 0, max: 60, default: 5, step: 0.5, unit: "s", description: "How long it stays open after a click before it shuts by itself (s); 0, until clicked again." };
+  STAY2 = { name: "stay", label: "Stays open", min: 0, max: 60, default: 5, step: 0.5, unit: "s", description: "How long it stays open after a click before it shuts by itself (s); 0, until clicked again." };
   TRIGGER = { name: "trigger", label: "Opens on", min: 0, max: 2, default: 0, step: 1, options: ["click", "near", "both"], description: "What opens it: a click; someone coming near — it shuts once they have all gone; or either." };
-  REACH3 = { name: "reach", label: "Near", min: 0.5, max: 10, default: 2.5, step: 0.5, unit: "m", description: "How near someone comes before it opens by itself (m)." };
+  REACH5 = { name: "reach", label: "Near", min: 0.5, max: 10, default: 2.5, step: 0.5, unit: "m", description: "How near someone comes before it opens by itself (m)." };
   BEHAVIOURS = Object.freeze({
     spin: {
       label: "Turns",
@@ -4782,9 +7334,9 @@ var init_behaviours = __esm(() => {
       label: "Goes and comes back",
       description: "Goes from where it is to a point and back, waiting at either end: an elevator, a moving platform.",
       params: [
-        along("x", 0, "goes"),
-        along("y", 0, "goes"),
-        { ...along("z", 3, "goes"), max: HIGHEST, wide: true, description: "How far it goes along its own z (m), up to 100 km." },
+        along2("x", 0, "goes"),
+        along2("y", 0, "goes"),
+        { ...along2("z", 3, "goes"), max: HIGHEST, wide: true, description: "How far it goes along its own z (m), up to 100 km." },
         { name: "speed", label: "Speed", min: 0.1, max: 20, default: 1, step: 0.1, unit: "m/s", description: "How fast it goes (m/s): smoothly, on average over its way; accelerating, at its fastest." },
         { name: "ease", label: "Starts and stops", min: 0, max: 1, default: 0, step: 1, options: ["smooth", "accel"], labels: ["Smoothly", "Accelerating"], description: "Smoothly, easing in and out over its whole way, as ever; or accelerating: speeding up and slowing down as fast as Speeds up and Slows down say, on at its speed between." },
         { name: "accel", label: "Speeds up", min: 0.01, max: 20, default: 1, step: 0.01, unit: "m/s²", wide: true, when: ({ ease }) => ease === 1, description: "How fast it speeds up as it sets off from either end (m/s²), accelerating." },
@@ -4823,7 +7375,7 @@ var init_behaviours = __esm(() => {
       prim: true,
       params: [
         { ...TRIGGER, label: "Switched by", description: "What switches its lights: a click, on or off; someone coming near — a presence detector: on while anyone is near, off once all have gone — or either." },
-        { ...REACH3, default: 4, when: ({ trigger }) => trigger >= 1, description: "How far across under it it senses someone (m): standing on its own floor, up to 3.5 m under it." },
+        { ...REACH5, default: 4, when: ({ trigger }) => trigger >= 1, description: "How far across under it it senses someone (m): standing on its own floor, up to 3.5 m under it." },
         { name: "stay", label: "Stays on", min: 0, max: 600, default: 30, step: 1, unit: "s", when: ({ trigger }) => trigger >= 1, description: "How long its lights stay on once everyone near has gone (s)." }
       ],
       zones: { name: "zones", most: 16, description: "Which of its object's lights it switches: those whose light's `zone` is one of these names (a room's, a floor's), or 'all' — every light of its object in a zone." },
@@ -4839,16 +7391,16 @@ var init_behaviours = __esm(() => {
         { name: "angle", label: "Opens", min: -170, max: 170, default: 90, step: 1, unit: "°", description: "How far it swings open (°); below 0, the other way. A door of the door kind opens up to 110°." },
         { name: "hinge", label: "Hinges", min: 0, max: 1, default: 0, step: 1, options: ["left", "right"], description: "The side it hangs on, seen from its front (−y): its −x side or its +x side." },
         TRIGGER,
-        REACH3,
+        REACH5,
         TIME,
-        STAY
+        STAY2
       ]
     },
     slide: {
       label: "Slides",
       description: "Slides aside on a click or as someone comes near, and back by itself: a sliding door, a window, a hatch.",
       touch: true,
-      params: [along("x", 1, "slides"), along("y", 0, "slides"), along("z", 0, "slides"), TRIGGER, REACH3, TIME, STAY]
+      params: [along2("x", 1, "slides"), along2("y", 0, "slides"), along2("z", 0, "slides"), TRIGGER, REACH5, TIME, STAY2]
     },
     belt: {
       label: "Conveyor",
@@ -4897,9 +7449,9 @@ var init_behaviours = __esm(() => {
 
 // src/physics/colliders.js
 var CUBE, CYLINDER, SPHERE, normals, convexity;
-var init_colliders = __esm(() => {
+var init_colliders = __esm(async () => {
   init_params();
-  init_kinds();
+  await init_kinds();
   CUBE = PRESETS.cube.shape.join(",");
   CYLINDER = PRESETS.cylinder.shape.join(",");
   SPHERE = PRESETS.sphere.shape.join(",");
@@ -4908,7 +7460,7 @@ var init_colliders = __esm(() => {
 });
 
 // src/build/vehicles.js
-var MASS, CAR_GRIP = 2, GRIP, DRIVE, BRAKE, SUSPENSION, TRAVEL, STEERING, VEHICLES, TILT, PLANE_TILT, vehicleType = (name) => typeof name === "string" && Object.hasOwn(VEHICLES, name) ? VEHICLES[name] : null, decimals2 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001)), held = (param, value) => {
+var MASS, CAR_GRIP = 2, GRIP, DRIVE, BRAKE, SUSPENSION, TRAVEL, STEERING, VEHICLES, TILT, PLANE_TILT, vehicleType = (name) => typeof name === "string" && Object.hasOwn(VEHICLES, name) ? VEHICLES[name] : null, decimals2 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001)), held2 = (param, value) => {
   if (param.options)
     return param.options.includes(value) ? value : param.default;
   if (!Number.isFinite(value))
@@ -4917,11 +7469,13 @@ var MASS, CAR_GRIP = 2, GRIP, DRIVE, BRAKE, SUSPENSION, TRAVEL, STEERING, VEHICL
   return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals2(param.step)));
 }, vehicleOf = (value) => {
   const kind = vehicleType(value?.type);
-  return kind && { type: value.type, ...Object.fromEntries(kind.params.flatMap((param) => param.optional && value[param.name] === undefined ? [] : [[param.name, held(param, value[param.name])]])) };
+  return kind && { type: value.type, ...Object.fromEntries(kind.params.flatMap((param) => param.optional && value[param.name] === undefined ? [] : [[param.name, held2(param, value[param.name])]])) };
 };
-var init_vehicles = __esm(() => {
-  init_behaviours();
-  init_colliders();
+var init_vehicles = __esm(async () => {
+  await __promiseAll([
+    init_behaviours(),
+    init_colliders()
+  ]);
   MASS = { name: "mass", label: "Mass", min: 50, max: 5000, default: 1000, step: 10, unit: "kg", description: "How heavy it is (kg): heavier, it speeds up and stops more slowly." };
   GRIP = { name: "grip", label: "Grip", min: 0.4, max: 3, default: CAR_GRIP, step: 0.05, unit: "×", optional: true, description: "How hard its tyres hold the ground (×): 2 as dry asphalt; more, it turns where its front wheels point at more speed before it slides; less, it slides sooner (0.4 on ice)." };
   DRIVE = { name: "drive", label: "Drive", options: ["all", "front", "rear"], default: "all", optional: true, description: "Which wheels its engine turns: all of them, its front ones (it runs wide at the limit) or its back ones (its tail may step out)." };
@@ -4963,7 +7517,7 @@ var init_vehicles = __esm(() => {
       params: [
         { name: "power", label: "Pedals", min: 5, max: 200, default: 45, step: 1, unit: "N·m", description: "How hard its rider pushes on its back wheel (N·m)." },
         { name: "speed", label: "Top speed", min: 1, max: 20, default: 8, step: 0.5, unit: "m/s", description: "As fast as it is pedalled (m/s)." },
-        { name: "steer", label: "Steers", min: 5, max: 45, default: 30, step: 1, unit: "°", description: "How far its front wheel turns (°)." },
+        { name: "steer", label: "Steers", min: 5, max: 45, default: 8, step: 1, unit: "°", description: "How far its front wheel turns (°)." },
         { ...MASS, default: 90, description: "How heavy it is with its rider (kg)." },
         { name: "gear", label: "Gear", min: 1, max: 5, default: 2.8, step: 0.1, unit: "", description: "How many turns its back wheel makes for each of its pedals: higher, its rider pedals more slowly for the same speed." }
       ]
@@ -5063,11 +7617,11 @@ var init_looks = __esm(() => {
 });
 
 // src/build/seat.js
-var POSES, POSE, REACH4 = 64, MOST_PLACES = 64, DEG3, wrapTurn = (degrees) => {
+var POSES, POSE, REACH6 = 64, MOST_PLACES = 64, DEG4, wrapTurn = (degrees) => {
   const turn3 = (degrees % 360 + 360) % 360;
   return turn3 > 180 ? turn3 - 360 : turn3;
 }, heldTarget = ({ at, turn: turn3 = 0 }) => ({
-  at: at.map((v) => Math.round(Math.min(Math.max(v, -REACH4), REACH4) * 1000) / 1000 || 0),
+  at: at.map((v) => Math.round(Math.min(Math.max(v, -REACH6), REACH6) * 1000) / 1000 || 0),
   turn: Math.round(wrapTurn(turn3) * 10) / 10 || 0
 }), seatWith = (target, pose) => target || pose ? { ...target, ...pose && { pose } } : true, seatOf = (value) => {
   const seat = value?.seat;
@@ -5097,11 +7651,11 @@ var init_seat = __esm(() => {
     { clip: "mixamo/swing-dancing", name: "Swing dancing", rests: "feet" }
   ];
   POSE = new Map(POSES.map((pose) => [pose.clip, pose]));
-  DEG3 = Math.PI / 180;
+  DEG4 = Math.PI / 180;
 });
 
 // src/build/bouncy.js
-var BOUNCY, decimals3 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001)), held2 = (param, value) => {
+var BOUNCY, decimals3 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001)), held3 = (param, value) => {
   const given = typeof value === "string" && param.options ? param.options.indexOf(value) : value;
   if (!Number.isFinite(given) || param.options && given < 0)
     return param.default;
@@ -5109,7 +7663,7 @@ var BOUNCY, decimals3 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.00
   return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals3(param.step)));
 }, bouncyOf = (value) => {
   const given = value === true ? {} : value && typeof value === "object" && !Array.isArray(value) ? value : null;
-  return given && Object.fromEntries(BOUNCY.params.map((param) => [param.name, held2(param, given[param.name])]));
+  return given && Object.fromEntries(BOUNCY.params.map((param) => [param.name, held3(param, given[param.name])]));
 };
 var init_bouncy = __esm(() => {
   BOUNCY = Object.freeze({
@@ -5252,29 +7806,35 @@ var exports_import = {};
 __export(exports_import, {
   slugOf: () => slugOf,
   placedAgain: () => placedAgain,
-  placeBuild: () => placeBuild
+  placeBuild: () => placeBuild,
+  kindsIn: () => kindsIn,
+  kindsFor: () => kindsFor,
+  floatsIn: () => floatsIn
 });
-var DEG4, seedFor = (name, index) => {
+var DEG5, seedFor = (name, index) => {
   let hash3 = 2166136261;
   for (const char of `${name}#${index}`)
     hash3 = Math.imul(hash3 ^ char.charCodeAt(0), 16777619);
   return seedOf(hash3 >>> 0);
 }, turnOf = (degrees) => {
-  const [x, y, z] = (degrees ?? [0, 0, 0]).map((value) => value * DEG4);
+  const [x, y, z] = (degrees ?? [0, 0, 0]).map((value) => value * DEG5);
   return quatMultiply(quatAxisAngle([0, 0, 1], z), quatMultiply(quatAxisAngle([0, 1, 0], y), quatAxisAngle([1, 0, 0], x)));
 }, slugOf = (name) => String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), kindPart = (prim, name, index) => {
   const kind = kindOf(prim.kind);
   if (!kind)
     throw new Error(`${name}: no kind ${prim.kind}`);
+  if (!kindReady(prim.kind))
+    throw Object.assign(new Error(`${name}: the ${prim.kind} kind is not loaded yet`), { name: "KindNotLoaded" });
   const given = { ...prim.params, ...Object.fromEntries(kind.params.filter((param) => prim[param.name] !== undefined).map((param) => [param.name, prim[param.name]])) };
-  const { params: held3, errors } = constrainKind(prim.kind, given);
-  const sized = prim.size && kind.resize ? constrainKind(prim.kind, { ...resizeParams({ kind: prim.kind, params: held3, size: prim.size }), ...given }).params : held3;
+  const { params: held4, errors } = constrainKind(prim.kind, given);
+  const sized = prim.size && kind.resize ? constrainKind(prim.kind, { ...resizeParams({ kind: prim.kind, params: held4, size: prim.size }), ...given }).params : held4;
   const { params, shift } = recentred({ kind: prim.kind, params: sized });
   const part = { kind: prim.kind, params, ...kind.seeded && { seed: Number.isInteger(prim.seed) ? seedOf(prim.seed) : seedFor(name, index) } };
   const lies = Boolean(kind.settle) && kind.params.some((param) => param.points && Array.isArray(given[param.name]) && given[param.name].every((point) => Array.isArray(point) && point.length === 2));
   return { part: { ...part, shape: fallbackShape(part), size: fitSize({ ...part, size: prim.size ?? kind.size }) }, shift, lies, errors };
-}, laidOnGround = (part, at, turn3, object, groundRadius) => {
+}, laidOnGround = (part, at, turn3, object, groundRadius, waterRadius, landRadius) => {
   const type = kindOf(part.kind);
+  const ground = type.bed ? landRadius : groundRadius;
   const rotation = quatMultiply(object.rotation, turn3);
   const place = add(object.at, quatRotate(object.rotation, at));
   const up = quatRotate(rotation, [0, 0, 1]);
@@ -5282,9 +7842,14 @@ var DEG4, seedFor = (name, index) => {
   const centre = min.map((v, k) => (v + max[k]) / 2);
   const heightAt = (x, y) => {
     const dir = normalize(add(place, quatRotate(rotation, [x - centre[0], y - centre[1], 0])));
-    return dot2(sub(scale(dir, groundRadius(dir)), place), up) + centre[2];
+    return dot2(sub(scale(dir, ground(dir)), place), up) + centre[2];
   };
-  const { params, shift } = recentred({ kind: part.kind, params: type.settle(part.params, heightAt) });
+  const waterAt = (x, y) => {
+    const dir = normalize(add(place, quatRotate(rotation, [x - centre[0], y - centre[1], 0])));
+    const water = waterRadius?.(dir) ?? null;
+    return water !== null && water > ground(dir) + 0.01 ? dot2(sub(scale(dir, water), place), up) + centre[2] : null;
+  };
+  const { params, shift } = recentred({ kind: part.kind, params: type.settle(part.params, heightAt, undefined, waterAt) });
   return { params, at: add(at, quatRotate(turn3, shift)), size: fitSize({ ...part, params }) };
 }, shapeOf = (shape, name, warnings) => {
   if (typeof shape === "string")
@@ -5301,7 +7866,7 @@ var DEG4, seedFor = (name, index) => {
   if (errors.length)
     warnings.push(`${name}: shape ${errors.join(", ")} held to range`);
   return { shape: encodeShape(params), rez: PRESETS[shape.preset].rezRotation };
-}, partsOf = (prims, { name, objectId, materials, warnings, object, groundRadius }) => prims.map((prim, index) => {
+}, partsOf = (prims, { name, objectId, materials, warnings, object, groundRadius, waterRadius, landRadius }) => prims.map((prim, index) => {
   const kind = prim.kind === undefined ? null : kindPart(prim, name, index);
   const preset2 = kind ? null : shapeOf(prim.shape, prim.name ?? `part ${index}`, warnings);
   if (!kind && !preset2 && prim.sculpt !== undefined)
@@ -5311,10 +7876,14 @@ var DEG4, seedFor = (name, index) => {
   if (kind)
     warnings.push(...kind.errors.map((error) => `${prim.name ?? `part ${index}`}: ${error}`));
   const texture = prim.material ?? (prim.surface?.texture ? undefined : kind && kindOf(prim.kind).material);
-  let surface = texture || prim.surface ? { ...texture && { texture }, ...prim.surface } : null;
+  const looks = kind ? looksOfKind(prim.kind, kind.part.params) : [];
+  if (prim.look !== undefined && looks.length && !looks.some((each) => each.name === prim.look))
+    warnings.push(`${prim.name ?? `part ${index}`}: no look ${JSON.stringify(prim.look)}, this style has ${looks.map((each) => each.name).join(", ")}`);
+  const dressed = kind && !texture && !prim.surface?.texture && !prim.surface?.faces ? materialsOf(prim.kind, kind.part.params, prim.look) : null;
+  let surface = texture || prim.surface || dressed ? { ...texture && { texture }, ...dressed && { faces: Object.fromEntries(dressed.map((id2, face2) => [face2, { texture: id2 }])) }, ...prim.surface } : null;
   const turn3 = turnOf(prim.turn);
   const at = kind ? add(prim.at, quatRotate(turn3, kind.shift)) : [...prim.at];
-  const laid = kind?.lies ? laidOnGround(kind.part, at, turn3, object, groundRadius) : null;
+  const laid = kind?.lies ? laidOnGround(kind.part, at, turn3, object, groundRadius, waterRadius, landRadius) : null;
   if (laid)
     Object.assign(kind.part, { params: laid.params, size: laid.size });
   const id = `${objectId}-${index}`;
@@ -5343,7 +7912,7 @@ var DEG4, seedFor = (name, index) => {
     ...prim.script && { script: typeof prim.script === "string" ? { source: prim.script } : prim.script },
     ...live && { live }
   };
-}), placedAgain = (record, standing, moved = [0, 0, 0]) => {
+}), companionParts = (made4, objectId) => made4.flatMap((part) => companionsOf(part).flatMap((wanted, k) => made4.some((other) => other.kind === wanted.kind && Math.hypot(...sub(other.at, wanted.at)) < 0.05) ? [] : [recordOfCompanion(wanted, `${part.id}~lamp-${k}`, objectId)])), placedAgain = (record, standing, moved = [0, 0, 0]) => {
   if (!standing || standing.type !== record.type)
     return record;
   if (record.type === "tree")
@@ -5351,11 +7920,11 @@ var DEG4, seedFor = (name, index) => {
   if (record.behaviour?.type === "route")
     return { ...record, at: add(record.at, moved) };
   return { ...record, at: standing.at, rotation: standing.rotation };
-}, placeBuild = (spec, { groundRadius, bareRadius = groundRadius, materials, id }) => {
+}, placeBuild = (spec, { groundRadius, bareRadius = groundRadius, waterRadius = () => null, landRadius = groundRadius, materials, id }) => {
   const up = normalize(spec.anchor.at);
   const north = normalize(sub([0, 1, 0], scale(up, up[1])));
   const east = cross2(north, up);
-  const heading = spec.anchor.heading * DEG4;
+  const heading = spec.anchor.heading * DEG5;
   const ahead = add(scale(north, Math.cos(heading)), scale(east, Math.sin(heading)));
   const right = cross2(ahead, up);
   const origin = spec.anchor.exact ? [...spec.anchor.at] : scale(up, (spec.land || spec.anchor.bare ? bareRadius : groundRadius)(up));
@@ -5375,6 +7944,12 @@ var DEG4, seedFor = (name, index) => {
     const dir = normalize(level);
     return scale(dir, groundRadius(dir));
   };
+  const floatOf = (at) => {
+    if (at.length !== 2)
+      return placeOf2(at);
+    const dir = normalize(add(origin, add(scale(right, at[0]), scale(ahead, at[1]))));
+    return scale(dir, waterRadius(dir) ?? groundRadius(dir));
+  };
   const warnings = [];
   const objects = [];
   const parts = [];
@@ -5387,7 +7962,8 @@ var DEG4, seedFor = (name, index) => {
     if (vehicle !== undefined && !driven)
       warnings.push(`${name}: no vehicle "${vehicle?.type}"`);
     objects.push({ type: "object", id: objectId, name, at, rotation, ...behaviour && { behaviour }, ...driven && { vehicle: driven }, ...looksOf(looks) && { looks: looksOf(looks) }, ...dry === true && { dry: true }, ...origin2 && typeof origin2 === "object" && { origin: origin2 }, ...typeof marked === "string" && { package: marked } });
-    parts.push(...partsOf(prims, { name: objectId === id ? spec.name : `${spec.name}#${name}`, objectId, materials, warnings, object: { at, rotation }, groundRadius }));
+    const made4 = partsOf(prims, { name: objectId === id ? spec.name : `${spec.name}#${name}`, objectId, materials, warnings, object: { at, rotation }, groundRadius, waterRadius, landRadius });
+    parts.push(...made4, ...companionParts(made4, objectId));
     names.set(name, objectId);
   };
   if (spec.prims?.length)
@@ -5430,7 +8006,7 @@ var DEG4, seedFor = (name, index) => {
       id: idOf(tree.id, `${id}~tree-${key ?? n}`),
       species: tree.species,
       seed,
-      at: placeOf2(tree.at),
+      at: (floatsOn(tree.species) ? floatOf : placeOf2)(tree.at),
       yaw: wrapYaw(spec.anchor.heading - turn3),
       scale: size,
       ...Object.keys(params).length && { params },
@@ -5441,17 +8017,21 @@ var DEG4, seedFor = (name, index) => {
   });
   const own = objects.find((object) => object.id === id) ?? null;
   return { object: own, parts: parts.filter((part) => part.object === id), records: [...objects, ...parts, ...clones, ...trees], warnings, frame: { origin, right, ahead, up } };
-};
-var init_import = __esm(() => {
+}, kindsIn = (spec) => [...new Set([...spec.prims ?? [], ...(spec.objects ?? []).flatMap((object) => object.prims ?? [])].flatMap((prim) => typeof prim?.kind === "string" ? [prim.kind] : []))], kindsFor = (spec) => loadKinds(kindsIn(spec)), floatsIn = (spec) => (spec.trees ?? []).some((tree) => floatsOn(tree.species));
+var init_import = __esm(async () => {
   init_params();
-  init_kinds();
   init_record();
-  init_vehicles();
+  init_species();
   init_looks();
   init_seat();
   init_bouncy();
   init_live();
-  DEG4 = Math.PI / 180;
+  await __promiseAll([
+    init_kinds(),
+    init_companions(),
+    init_vehicles()
+  ]);
+  DEG5 = Math.PI / 180;
 });
 
 // tools/build-survey.js
@@ -5495,7 +8075,7 @@ if (!/^[a-z0-9-]+$/i.test(name))
 var records = [];
 var builds = option("--builds", "")?.split(",").filter(Boolean) ?? [];
 if (builds.length) {
-  const { placeBuild: placeBuild2 } = await Promise.resolve().then(() => (init_import(), exports_import));
+  const { placeBuild: placeBuild2 } = await init_import().then(() => exports_import);
   const groundRadius = (dir) => RADIUS + Math.max(groundElevation(dir), SEA);
   for (const build of builds)
     records.push(...placeBuild2(readJson(buildPath(build)), { groundRadius, materials: new Map, id: `local:${build.replace(/\W+/g, "-")}` }).records);

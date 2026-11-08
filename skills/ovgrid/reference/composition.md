@@ -57,8 +57,13 @@ ways through it, what stands along them, what grows round them, what lights them
   `fern`) at the edges and in gardens.
 - **Meadows, beds and borders**: a meadow is `meadowGrass` with `rudbeckia`, `daisy` or `poppy`
   sown loose through it; beds hold `lily`, `gladiolus`, `columbine`, `heather` or `sunflower`, a few
-  of a kind together; `sedge` and `papyrus` grow by water, `hosta`, `monstera`, `strelitzia` and
+  of a kind together; `hosta`, `monstera`, `strelitzia` and
   `cordyline` under palms in a hot garden. These are 0.3–1.3 m tall: 0.4–0.8 m apart, never one alone.
+- **Ponds and shores**: on a lake's water (the build's `land` dug below its parcel's water, site.md),
+  `waterLily` pads and `floweringWaterLily` blooms (`"params": { "flower": [r, g, b] }` for a colour of
+  your own) in loose drifts of 5–15, 0.5–1 m apart, away from the banks' steepest stretches; round the
+  water a band of `cattail` and `rush` where it is shallow and wet, `reed` (3–4 m) in stands of a few
+  dozen behind them, `sedge` and `papyrus` between; `willow` and `alder` further back.
 - **Spacing**: crowns may touch in a wood — 0.8–1.2 × the crown's width apart (twice its `reach`
   in catalog.json → `species`: an oak's ~7 m reach, 10–14 m apart in open woodland, 6–8 m in a dense
   wood); a row of poplars 5–6 m apart.
