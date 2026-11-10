@@ -424,6 +424,783 @@ var init_ready = __esm(() => {
   kinds = new Set;
 });
 
+// src/build/kinds/road-level.js
+var exports_road_level = {};
+__export(exports_road_level, {
+  structureOf: () => structureOf,
+  standOf: () => standOf,
+  smoothLine: () => smoothLine,
+  reliefOf: () => reliefOf,
+  postSide: () => postSide,
+  pinsAlong: () => pinsAlong,
+  levelRoad: () => levelRoad,
+  barrierAt: () => barrierAt,
+  archAt: () => archAt,
+  STEP: () => STEP,
+  SPAN: () => SPAN,
+  RESIDUAL_SCALE: () => RESIDUAL_SCALE,
+  RAMP: () => RAMP,
+  RAIL: () => RAIL2,
+  HOLD: () => HOLD,
+  HEADROOM: () => HEADROOM,
+  GUARDRAIL: () => GUARDRAIL,
+  GUARD: () => GUARD,
+  GENTLE: () => GENTLE,
+  FREEBOARD: () => FREEBOARD,
+  EASE: () => EASE,
+  BARRIER: () => BARRIER,
+  AMPLITUDE_MOST: () => AMPLITUDE_MOST,
+  AMPLITUDE_LEAST: () => AMPLITUDE_LEAST,
+  AMPLITUDE_FLAT: () => AMPLITUDE_FLAT
+});
+var RESIDUAL_SCALE = 0.12, AMPLITUDE_LEAST = 0.08, AMPLITUDE_MOST = 1.5, AMPLITUDE_FLAT = 0.1, FINER = 3, PASSES = 4, EPSILON = 0.000000001, LEAN_SMOOTH = 12, EASE = 12, STEP = 0.3, FREEBOARD = 0.3, HOLD = 10, NEAR = 0.01, GENTLE = 0.125, SLOPE_REACH = 2, HEADROOM = 1.8, RAIL2 = 1.05, BARRIER = 0.25, GUARD = 3, SPAN = 8, EMBED = 0.3, LEAST_POST = 0.5, RAMP = 4, BARRIER_GAP, ROUND_SIDES = 12, ROUND_SIDES_FAR = 6, GUARDRAIL, FINE = 2, DECK_LEAST, ARCHES, pierOf = (each) => Math.min(Math.max(each * ARCHES.share, ARCHES.least), Math.max(ARCHES.least, Math.min(ARCHES.most, each * ARCHES.cap))), archAt = ({ l, r, spring, rise }, s) => {
+  const [half, middle] = [(r - l) / 2, (l + r) / 2];
+  const radius = (half * half + rise * rise) / (2 * rise);
+  return spring + rise - radius + Math.sqrt(Math.max(radius * radius - (s - middle) * (s - middle), 0));
+}, reliefOf = (slope) => RESIDUAL_SCALE * FINER * Math.max(AMPLITUDE_FLAT, Math.min(AMPLITUDE_MOST, 2 * slope - 0.5)), postSide = (width) => Math.min(0.9, Math.max(0.3, width / 8)), solve = (diag, next, after, right) => {
+  const n = diag.length;
+  const d = new Float64Array(n), a = new Float64Array(n), b = new Float64Array(n), y = new Float64Array(n);
+  for (let k = 0;k < n; k++) {
+    d[k] = diag[k] - (k >= 1 ? a[k - 1] ** 2 * d[k - 1] : 0) - (k >= 2 ? b[k - 2] ** 2 * d[k - 2] : 0);
+    a[k] = k + 1 < n ? (next[k] - (k >= 1 ? b[k - 1] * a[k - 1] * d[k - 1] : 0)) / d[k] : 0;
+    b[k] = k + 2 < n ? after[k] / d[k] : 0;
+    y[k] = right[k] - (k >= 1 ? a[k - 1] * y[k - 1] : 0) - (k >= 2 ? b[k - 2] * y[k - 2] : 0);
+  }
+  const x = new Float64Array(n);
+  for (let k = n - 1;k >= 0; k--)
+    x[k] = y[k] / d[k] - (k + 1 < n ? a[k] * x[k + 1] : 0) - (k + 2 < n ? b[k] * x[k + 2] : 0);
+  return x;
+}, smoothLine = ({ s, target, data = 1, bending, fixed = new Map, floor = null, ceiling = null }) => {
+  const n = s.length;
+  const within = (v, k) => Math.max(Math.min(v, ceiling?.[k] ?? Infinity), floor?.[k] ?? -Infinity);
+  if (n < 3 || bending <= 0)
+    return Float64Array.from(target, (v, k) => fixed.get(k) ?? within(v, k));
+  const h = Float64Array.from({ length: n - 1 }, (_, k) => Math.max(s[k + 1] - s[k], 0.000001));
+  const weight = Float64Array.from({ length: n }, (_, k) => ((k ? h[k - 1] : 0) + (k < n - 1 ? h[k] : 0)) / 2);
+  const diag = new Float64Array(n), next = new Float64Array(n), after = new Float64Array(n), right = new Float64Array(n);
+  for (let k = 0;k < n; k++) {
+    diag[k] = data * weight[k];
+    right[k] = data * weight[k] * target[k];
+  }
+  for (let k = 1;k < n - 1; k++) {
+    const [p, q] = [h[k - 1], h[k]];
+    const coefficients = [2 / (p * (p + q)), -2 / (p * q), 2 / (q * (p + q))];
+    const scale3 = bending * weight[k];
+    for (let i = 0;i < 3; i++) {
+      diag[k - 1 + i] += scale3 * coefficients[i] ** 2;
+      if (i < 2)
+        next[k - 1 + i] += scale3 * coefficients[i] * coefficients[i + 1];
+    }
+    after[k - 1] += scale3 * coefficients[0] * coefficients[2];
+  }
+  const solveHolding = (held) => {
+    const [d, e, f, r] = [Float64Array.from(diag), Float64Array.from(next), Float64Array.from(after), Float64Array.from(right)];
+    for (const [k, value] of held) {
+      if (k >= 2 && !held.has(k - 2))
+        r[k - 2] -= after[k - 2] * value;
+      if (k >= 1 && !held.has(k - 1))
+        r[k - 1] -= next[k - 1] * value;
+      if (k + 1 < n && !held.has(k + 1))
+        r[k + 1] -= next[k] * value;
+      if (k + 2 < n && !held.has(k + 2))
+        r[k + 2] -= after[k] * value;
+    }
+    for (const [k, value] of held) {
+      if (k >= 2)
+        f[k - 2] = 0;
+      if (k >= 1)
+        e[k - 1] = 0;
+      e[k] = 0;
+      f[k] = 0;
+      d[k] = 1;
+      r[k] = value;
+    }
+    return solve(d, e, f, r);
+  };
+  const gradient = (x, k) => diag[k] * x[k] + (k >= 1 ? next[k - 1] * x[k - 1] : 0) + (k + 1 < n ? next[k] * x[k + 1] : 0) + (k >= 2 ? after[k - 2] * x[k - 2] : 0) + (k + 2 < n ? after[k] * x[k + 2] : 0) - right[k];
+  if (!floor && !ceiling)
+    return solveHolding(fixed);
+  const under = (line2, k) => floor ? floor[k] - line2[k] : -Infinity;
+  const over = (line2, k) => ceiling ? line2[k] - ceiling[k] : -Infinity;
+  const [low, high] = [new Map, new Map];
+  let line = null;
+  for (let pass = 0;pass < PASSES * n; pass++) {
+    const held = new Map([...fixed, ...low, ...high]);
+    line = solveHolding(held);
+    let taken = false;
+    for (let k = 0;k < n; ) {
+      const past = held.has(k) ? null : under(line, k) > EPSILON ? under : over(line, k) > EPSILON ? over : null;
+      if (!past) {
+        k++;
+        continue;
+      }
+      let furthest = k;
+      for (;k < n && !held.has(k) && past(line, k) > EPSILON; k++)
+        if (past(line, k) > past(line, furthest))
+          furthest = k;
+      if (past === under)
+        low.set(furthest, floor[furthest]);
+      else
+        high.set(furthest, ceiling[furthest]);
+      taken = true;
+    }
+    if (taken)
+      continue;
+    let letGo = -1, most = EPSILON, from = null;
+    for (const k of low.keys())
+      if (-gradient(line, k) > most)
+        [letGo, most, from] = [k, -gradient(line, k), low];
+    for (const k of high.keys())
+      if (gradient(line, k) > most)
+        [letGo, most, from] = [k, gradient(line, k), high];
+    if (letGo < 0)
+      break;
+    from.delete(letGo);
+  }
+  return line.map((v, k) => fixed.has(k) ? v : within(v, k));
+}, envelopes = ({ s, floor, ceiling, fixed, cap }) => {
+  const n = s.length;
+  const low = Float64Array.from(floor), high = Float64Array.from(ceiling);
+  for (const [k, v] of fixed)
+    [low[k], high[k]] = [v, v];
+  for (let k = 1;k < n; k++) {
+    const rise = cap[k] * (s[k] - s[k - 1]);
+    low[k] = Math.max(low[k], low[k - 1] - rise);
+    high[k] = Math.min(high[k], high[k - 1] + rise);
+  }
+  for (let k = n - 2;k >= 0; k--) {
+    const rise = cap[k + 1] * (s[k + 1] - s[k]);
+    low[k] = Math.max(low[k], low[k + 1] - rise);
+    high[k] = Math.min(high[k], high[k + 1] + rise);
+  }
+  return { low, high, fits: low.every((v, k) => v <= high[k] + 0.000000001) };
+}, forcedOf = ({ s, floor, fixed }) => {
+  const n = s.length;
+  const y = Float64Array.from(floor);
+  for (const [k, v] of fixed)
+    y[k] = v;
+  const hull = [];
+  for (let k = 0;k < n; k++) {
+    while (hull.length >= 2) {
+      const [a, b] = hull.slice(-2);
+      if (fixed.has(b) || (y[b] - y[a]) * (s[k] - s[a]) > (y[k] - y[a]) * (s[b] - s[a]))
+        break;
+      hull.pop();
+    }
+    hull.push(k);
+  }
+  const grade = new Float64Array(n);
+  for (let i = 1;i < hull.length; i++) {
+    const [a, b] = [hull[i - 1], hull[i]];
+    grade.fill((y[b] - y[a]) / (s[b] - s[a]), a + 1, b + 1);
+  }
+  return grade;
+}, cappedLine = ({ s, floor, ceiling, fixed, cap }) => {
+  const n = s.length;
+  const { low, high } = envelopes({ s, floor, ceiling, fixed, cap });
+  const x = smoothLine({ s, target: low, data: 0, bending: 1, fixed, floor: low, ceiling: high });
+  for (let k = 1;k < n; k++) {
+    if (fixed.has(k))
+      continue;
+    const rise = cap[k] * (s[k] - s[k - 1]);
+    x[k] = Math.min(Math.max(x[k], low[k], x[k - 1] - rise), high[k], x[k - 1] + rise);
+  }
+  return x;
+}, levelRoad = ({ ground, columns, s, half, lift, fill, fall, ends = [null, null], width, grade = null, depth = 0.3, water = null }) => {
+  const n = s.length;
+  const total = s[n - 1] - s[0];
+  const across = (k, j) => half[k] * (1 - 2 * j / (columns - 1));
+  const at = (k, j) => ground[k * columns + j];
+  const middleOf2 = (k) => {
+    let sum = 0;
+    for (let j = 0;j < columns; j++)
+      sum += at(k, j);
+    return sum / columns;
+  };
+  const groundMiddle = Float64Array.from({ length: n }, (_, k) => middleOf2(k));
+  const leanOf = (k) => {
+    let top = 0, bottom = 0;
+    for (let j = 0;j < columns; j++) {
+      const x = across(k, j);
+      top += x * (at(k, j) - groundMiddle[k]);
+      bottom += x * x;
+    }
+    return Math.max(-fall, Math.min(fall, bottom > 0 ? top / bottom : 0));
+  };
+  const pinned = new Map;
+  ends.forEach((pin, end) => {
+    if (Array.isArray(pin))
+      pinned.set(end ? n - 1 : 0, pin);
+  });
+  const leanFixed = new Map([...pinned].map(([k, pin]) => [k, pin[2]]));
+  const lean = smoothLine({ s, target: Float64Array.from({ length: n }, (_, k) => leanOf(k)), bending: (LEAN_SMOOTH / Math.PI) ** 4, fixed: leanFixed }).map((v) => Math.max(-fall, Math.min(fall, v)));
+  for (const [k, pin] of pinned)
+    lean[k] = pin[2];
+  const slopeAt = (k, j) => {
+    const [k0, k1] = [Math.max(k - 1, 0), Math.min(k + 1, n - 1)];
+    const [j0, j1] = [Math.max(j - 1, 0), Math.min(j + 1, columns - 1)];
+    const along = k1 > k0 ? (at(k1, j) - at(k0, j)) / (s[k1] - s[k0]) : 0;
+    const side = j1 > j0 ? (at(k, j0) - at(k, j1)) / (across(k, j0) - across(k, j1)) : 0;
+    return Math.hypot(along, side);
+  };
+  const floor = Float64Array.from({ length: n }, (_, k) => {
+    let low = -Infinity;
+    for (let j = 0;j < columns; j++)
+      low = Math.max(low, at(k, j) + lift + reliefOf(slopeAt(k, j)) - lean[k] * across(k, j));
+    return low;
+  });
+  if (water && grade !== null) {
+    for (let k = 0;k < n; k++) {
+      let lowest2 = Infinity;
+      for (let j = 0;j < columns; j++)
+        lowest2 = Math.min(lowest2, at(k, j));
+      if (water[k] > lowest2 + 0.01)
+        floor[k] = Math.max(floor[k], water[k] + FREEBOARD + depth + Math.abs(lean[k]) * half[k]);
+    }
+  }
+  const fixed = new Map;
+  for (const [k, [rise, slope]] of pinned) {
+    fixed.set(k, groundMiddle[k] + rise);
+    const next = k ? k - 1 : 1;
+    if (n > 2)
+      fixed.set(next, groundMiddle[k] + rise + slope * (s[next] - s[k]));
+  }
+  if (grade !== null) {
+    const { middle: middle2, steep, lies } = levelCapped({ s, floor, fill, fixed, free: ends.map((pin) => !Array.isArray(pin)), cap: grade });
+    return { middle: middle2, lean, share: shareOf({ s, ends, width, n, total }), ground: groundMiddle, steep, lies };
+  }
+  const ceiling = floor.map((v) => v + fill);
+  ends.forEach((pin, end) => {
+    if (!Array.isArray(pin))
+      fixed.set(end ? n - 1 : 0, floor[end ? n - 1 : 0]);
+  });
+  const middle = smoothLine({ s, target: floor, data: 0, bending: 1, fixed, floor, ceiling });
+  return { middle, lean, share: shareOf({ s, ends, width, n, total }), ground: groundMiddle, steep: null };
+}, levelCapped = ({ s, floor, fill, fixed, free, cap: asked }) => {
+  const n = s.length;
+  const none = new Float64Array(n).fill(Infinity);
+  let cap = Float64Array.from(forcedOf({ s, floor, fixed }), (v) => Math.min(asked, Math.max(GENTLE, Math.abs(v))));
+  if (!envelopes({ s, floor, ceiling: none, fixed, cap }).fits) {
+    const even = (c) => new Float64Array(n).fill(c);
+    let [low2, high] = [asked, Math.max(asked, 1)];
+    while (!envelopes({ s, floor, ceiling: none, fixed, cap: even(high) }).fits && high < 64)
+      high *= 2;
+    for (let i = 0;i < 40; i++) {
+      const middle = (low2 + high) / 2;
+      if (envelopes({ s, floor, ceiling: none, fixed, cap: even(middle) }).fits)
+        high = middle;
+      else
+        low2 = middle;
+    }
+    cap = even(high);
+  }
+  const { low } = envelopes({ s, floor, ceiling: none, fixed, cap });
+  const held = new Map(fixed);
+  const raised = free.map((isFree, end) => {
+    const k = end ? n - 1 : 0;
+    if (!isFree || held.has(k))
+      return 0;
+    held.set(k, low[k]);
+    return low[k] - floor[k];
+  });
+  let steep = null;
+  raised.forEach((rise, end) => {
+    if (rise <= STEP || rise <= (steep?.rise ?? -Infinity))
+      return;
+    const k = end ? n - 1 : 0;
+    let worst = k;
+    for (let j = 0;j < n; j++)
+      if (floor[j] - asked * Math.abs(s[j] - s[k]) > floor[worst] - asked * Math.abs(s[worst] - s[k]))
+        worst = j;
+    const [climb, length2] = [floor[worst] - floor[k], Math.abs(s[worst] - s[k])];
+    steep = { rise, climb, length: length2, from: Math.min(s[worst], s[k]) - s[0], needs: climb / asked };
+  });
+  const most = Math.max(...cap);
+  if (!steep && most > asked + 0.000000001)
+    steep = { rise: 0, climb: most * (s[n - 1] - s[0]), length: s[n - 1] - s[0], from: 0, needs: most / asked * (s[n - 1] - s[0]) };
+  const lowest2 = envelopes({ s, floor, ceiling: none, fixed: held, cap }).low;
+  const ceiling = Float64Array.from(floor, (v) => v + fill);
+  const off = (k) => lowest2[k] > floor[k] + NEAR;
+  const over = (k) => lowest2[k] > floor[k] + fill + NEAR;
+  const steeper = (k) => {
+    const [a, b] = [Math.max(k - SLOPE_REACH, 0), Math.min(k + SLOPE_REACH, n - 1)];
+    let rise = 0;
+    for (let j = a + 1;j <= b; j++)
+      rise += cap[j] * (s[j] - s[j - 1]);
+    return Math.abs(floor[b] - floor[a]) > rise + 0.000000001;
+  };
+  for (let k = 0;k < n; k++) {
+    if (!off(k))
+      continue;
+    let to = k;
+    while (to + 1 < n && off(to + 1))
+      to++;
+    let needed = false;
+    for (let i = k;i <= to && !needed; i++)
+      needed = over(i) && (steeper(i) || fixed.has(i));
+    if (needed)
+      for (let i = Math.max(k - 1, 0);i <= Math.min(to + 1, n - 1); i++)
+        ceiling[i] = floor[i] + HOLD;
+    k = to;
+  }
+  const band = deepest({ s, floor, ceiling, fixed: held, cap });
+  let deep = 0, at = 0;
+  for (let k = 0;k < n; k++)
+    if (band[k] === Infinity && lowest2[k] - floor[k] > Math.max(deep, HOLD))
+      [deep, at] = [lowest2[k] - floor[k], k];
+  if (!steep && deep > 0)
+    steep = { rise: 0, deep, grade: cap[Math.max(at, 1)], from: s[at] - s[0], climb: 0, length: 0, needs: 0 };
+  const lies = Uint8Array.from(ceiling, (v, k) => v < floor[k] + HOLD - 0.000000001 ? 1 : 0);
+  return { middle: cappedLine({ s, floor, ceiling: band, fixed: held, cap }), steep, lies };
+}, deepest = ({ s, floor, ceiling, fixed, cap }) => {
+  const lowest2 = envelopes({ s, floor, ceiling: new Float64Array(s.length).fill(Infinity), fixed, cap }).low;
+  return Float64Array.from(ceiling, (v, k) => lowest2[k] > v + 0.000000001 ? Infinity : v);
+}, shareOf = ({ s, ends, width, n, total }) => {
+  const hold = width / 2;
+  return Float64Array.from({ length: n }, (_, k) => {
+    let least = 1;
+    ends.forEach((pin, end) => {
+      if (pin !== "ground")
+        return;
+      const room = Array.isArray(ends[1 - end]) ? total - hold : Infinity;
+      const [held, ease] = room > 0.000001 ? [hold, Math.min(Math.max(EASE, width), room)] : [0, total];
+      const from = end ? s[n - 1] - s[k] : s[k] - s[0];
+      const t = Math.min(Math.max((from - held) / ease, 0), 1);
+      least = Math.min(least, t * t * (3 - 2 * t));
+    });
+    return total > 0 ? least : 1;
+  });
+}, pinsAlong = ({ pieces, ends, lift, fill, fall, width, grade = null, depth = 0.3, circuit = false }) => {
+  const columns = pieces[0].columns;
+  const alone = () => pieces.map((_, i) => [i ? null : ends[0], i === pieces.length - 1 ? ends[1] : null]);
+  if (pieces.some((piece) => piece.columns !== columns) || pieces.length < 2 && grade === null)
+    return { pins: alone(), steep: null, at: [] };
+  const ground = [], s = [], half = [], water = [], joints = [];
+  const wet = pieces.some((piece) => piece.water);
+  pieces.forEach((piece, i) => {
+    const from = i ? 1 : 0;
+    const offset = s.length ? s.at(-1) - piece.s[0] : -piece.s[0];
+    if (i)
+      joints.push(s.length - 1);
+    for (let k = from;k < piece.s.length; k++) {
+      s.push(piece.s[k] + offset);
+      half.push(piece.half[k]);
+      const row = piece.ground.slice(k * columns, (k + 1) * columns);
+      ground.push(...row);
+      if (wet)
+        water.push(piece.water?.[k] ?? Math.min(...row));
+    }
+  });
+  const { middle, lean, ground: groundMiddle, steep, lies } = levelRoad({ ground, columns, s, half, lift, fill, fall, ends, width, grade, depth, water: wet ? water : null });
+  const round = (v) => Math.round(v * 1000) / 1000;
+  const stand = grade === null ? null : standOf({ ground, columns, s, half, middle, lean, depth, width, water: wet ? water : null, ends, lies, fill });
+  const pinAt = (k, grade2) => [round(middle[k] - groundMiddle[k]), round(grade2), round(lean[k]), ...stand ? [0, 1].map((side) => round(barrierAt(stand, side, s[k] - s[0]))) : []];
+  const pins = joints.map((k) => pinAt(k, (middle[k + 1] - middle[k - 1]) / (s[k + 1] - s[k - 1])));
+  const n = s.length;
+  if (circuit && n > 3) {
+    const [d1, d2] = [s[1] - s[0], s[n - 1] - s[n - 2]];
+    const g = (middle[1] - middle[n - 2]) / (d1 + d2);
+    const h = Math.max(middle[0], middle[n - 1], middle[1] - g * d1) + 0.002;
+    const shares = stand ? [0, 1].map((side) => round(Math.max(barrierAt(stand, side, 0), barrierAt(stand, side, s[n - 1] - s[0])))) : [];
+    const joint = [round(h - groundMiddle[0]), round(g), round((lean[0] + lean[n - 1]) / 2), ...shares];
+    return pinsAlong({ pieces, ends: [joint, joint], lift, fill, fall, width, grade, depth });
+  }
+  const at = [pinAt(0, (middle[1] - middle[0]) / (s[1] - s[0])), pinAt(n - 1, (middle[n - 1] - middle[n - 2]) / (s[n - 1] - s[n - 2]))];
+  return { pins: pieces.map((_, i) => [i ? pins[i - 1] : ends[0], i < pieces.length - 1 ? pins[i] : ends[1]]), steep, at };
+}, standOf = ({ ground, columns, s, half, middle, lean, depth, width, water = null, ends = [null, null], lies = null, fill = 0, arches = false }) => {
+  const n = s.length, last = columns - 1, total = s[n - 1] - s[0];
+  const lowest2 = (k) => {
+    let least = Infinity;
+    for (let j = 0;j < columns; j++)
+      least = Math.min(least, ground[k * columns + j]);
+    return least;
+  };
+  const wet = (k) => water !== null && water[k] > lowest2(k) + 0.01;
+  const edge = (k, side2) => middle[k] + lean[k] * half[k] * (side2 ? -1 : 1);
+  const beneath = (k, side2) => ground[k * columns + (side2 ? last : 0)];
+  const decked = (k) => wet(k) || [0, 1].some((side2) => edge(k, side2) - depth - beneath(k, side2) > HEADROOM + (lies?.[k] ? fill : 0));
+  const drop = (k, side2) => edge(k, side2) - Math.max(beneath(k, side2), wet(k) ? water[k] : -Infinity);
+  const from = (k) => (k ? (s[k - 1] + s[k]) / 2 : s[0]) - s[0];
+  const to = (k) => (k < n - 1 ? (s[k] + s[k + 1]) / 2 : s[n - 1]) - s[0];
+  const runsOf = (test) => {
+    const runs = [];
+    for (let k = 0;k < n; k++) {
+      if (!test(k))
+        continue;
+      if (runs.length && runs.at(-1)[1] >= from(k) - 0.000000001)
+        runs.at(-1)[1] = to(k);
+      else
+        runs.push([from(k), to(k)]);
+    }
+    return runs;
+  };
+  const decks = runsOf(decked).reduce((joined, run) => {
+    if (joined.length && run[0] - joined.at(-1)[1] < SPAN)
+      joined.at(-1)[1] = run[1];
+    else
+      joined.push(run);
+    return joined;
+  }, []).filter(([a, b]) => b - a >= DECK_LEAST || s.some((at, k) => at - s[0] >= a && at - s[0] <= b && wet(k)));
+  const boundary = ends.map((pin, end) => {
+    if (!Array.isArray(pin))
+      return null;
+    const k = end ? n - 1 : 0;
+    return [0, 1].map((side2) => pin.length >= 5 ? pin[3 + side2] : decked(k) && drop(k, side2) > RAIL2 ? 1 : 0);
+  });
+  const full = (end, side2) => (boundary[end]?.[side2] ?? 0) >= 1 - 0.000001;
+  const barriers = [], heights = [];
+  for (const side2 of [0, 1]) {
+    const runs = decks.filter(([a, b]) => s.some((at, k) => at - s[0] >= a - 0.000001 && at - s[0] <= b + 0.000001 && drop(k, side2) > RAIL2)).map((run) => [...run]);
+    if (full(0, side2) && !(runs[0]?.[0] <= 0.000001))
+      runs.unshift([0, 0]);
+    if (full(1, side2) && !(runs.at(-1)?.[1] >= total - 0.000001))
+      runs.push([total, total]);
+    runs.splice(0, runs.length, ...runs.reduce((joined, run) => {
+      if (joined.length && run[0] - joined.at(-1)[1] < BARRIER_GAP)
+        joined.at(-1)[1] = run[1];
+      else
+        joined.push(run);
+      return joined;
+    }, []));
+    const pieces = runs.map(([a, b]) => {
+      const knots = [];
+      if (a <= 0.000001 && full(0, side2))
+        knots.push([0, 1]);
+      else
+        knots.push([Math.max(a - RAMP, 0), Math.max(1 - a / RAMP, 0)], [a, 1]);
+      if (b >= total - 0.000001 && full(1, side2))
+        knots.push([total, 1]);
+      else
+        knots.push([b, 1], [Math.min(b + RAMP, total), Math.max(1 - (total - b) / RAMP, 0)]);
+      return knots.filter(([at], i) => i === 0 || at > knots[i - 1][0] + 0.000000001);
+    });
+    boundary.forEach((h, end) => {
+      const share = h?.[side2] ?? 0;
+      if (share <= 0.000001 || share >= 1 - 0.000001)
+        return;
+      pieces.push(end ? [[total - share * RAMP, 0], [total, share]] : [[0, share], [share * RAMP, 0]]);
+    });
+    const merged = mergedOf(pieces);
+    barriers.push(merged.map((knots) => [knots[0][0], knots.at(-1)[0]]));
+    heights.push(merged);
+  }
+  const station = (at) => {
+    const t = Math.min(Math.max(at / total, 0), 1) * (n - 1);
+    const k = Math.min(Math.floor(t), n - 2);
+    return [k, t - k];
+  };
+  const read = (values, at) => {
+    const [k, f] = station(at);
+    return values[k] * (1 - f) + values[k + 1] * f;
+  };
+  const groundAt = (at, across) => {
+    const [k, f] = station(at);
+    const j = Math.min(Math.max((1 - across / read(half, at)) * last / 2, 0), last);
+    const [i, g] = [Math.min(Math.floor(j), last - 1), j - Math.min(Math.floor(j), last - 1)];
+    const cell = (kk, jj) => ground[kk * columns + jj];
+    return (cell(k, i) * (1 - g) + cell(k, i + 1) * g) * (1 - f) + (cell(k + 1, i) * (1 - g) + cell(k + 1, i + 1) * g) * f;
+  };
+  const side = postSide(width);
+  const posts = [];
+  const arcade = [];
+  for (const [a, b] of decks) {
+    const [first, end] = [a <= 0.000001 && ends[0] === null, b >= total - 0.000001 && (ends[1] === null || Array.isArray(ends[1]))];
+    const [start, stop] = [first ? a + side / 2 : a, end ? Array.isArray(ends[1]) ? b : b - side / 2 : b];
+    const count = Math.max(1, Math.ceil((stop - start) / SPAN - 0.000000001));
+    if (arches)
+      arcade.push(arcadeOf({ a, b, first, end, places: Array.from({ length: (end ? count : count - 1) - (first ? 0 : 1) + 1 }, (_, i) => start + (stop - start) * (i + (first ? 0 : 1)) / count), each: (stop - start) / count, groundAt, read, middle, lean, half, depth, water: water && ((at) => read(water, at)) }));
+    for (let i = first ? 0 : 1;i <= (end ? count : count - 1); i++) {
+      const at = start + (stop - start) * i / count;
+      const reach = read(half, at) - side / 2 - 0.1;
+      for (const t of [reach, -reach]) {
+        const top = read(middle, at) + read(lean, at) * t - depth;
+        if (top - groundAt(at, t) < LEAST_POST)
+          continue;
+        const foot = Math.min(...[-1, 1].flatMap((u) => [-1, 1].map((v) => groundAt(Math.min(Math.max(at + u * side / 2, 0), total), t + v * side / 2)))) - EMBED;
+        posts.push({ s: at, t, side, top: top + 0.05, foot });
+      }
+    }
+  }
+  return { decks, barriers, heights, posts, ...arches && { arcade } };
+}, arcadeOf = ({ a, b, first, end, places, each, groundAt, read, middle, lean, half, depth, water }) => {
+  const thick = pierOf(each);
+  const ground = (from, to) => {
+    let [lowest2, highest] = [Infinity, -Infinity];
+    for (let i = 0;i <= 8; i++) {
+      const at = from + (to - from) * i / 8;
+      const reach = read(half, at);
+      for (let j = -2;j <= 2; j++) {
+        const z = groundAt(at, reach * j / 2);
+        lowest2 = Math.min(lowest2, z);
+        highest = Math.max(highest, z, water?.(at) ?? -Infinity);
+      }
+    }
+    return { lowest: lowest2, highest };
+  };
+  const supports = places.map((at, i) => {
+    const [s0, s1] = first && i === 0 ? [a, a + thick] : end && i === places.length - 1 ? [b - thick, b] : [at - thick / 2, at + thick / 2];
+    return { kind: "pier", s0: Math.max(s0, a), s1: Math.min(s1, b) };
+  });
+  if (!first)
+    supports.unshift({ kind: "wall", s0: a, s1: a });
+  if (!end)
+    supports.push({ kind: "wall", s0: b, s1: b });
+  for (const support of supports)
+    support.foot = ground(support.s0, Math.max(support.s1, support.s0 + 0.01)).lowest - EMBED;
+  const pieces = [];
+  supports.forEach((support, k) => {
+    if (support.kind === "pier")
+      pieces.push(support);
+    const next = supports[k + 1];
+    if (!next || next.s0 - support.s1 < 0.000001)
+      return;
+    const [l, r] = [support.s1, next.s0];
+    const { lowest: lowest2, highest } = ground(l, r);
+    const top = Math.min(...[1, -1].map((sign) => read(middle, (l + r) / 2) + read(lean, (l + r) / 2) * read(half, (l + r) / 2) * sign)) - Math.max(ARCHES.crown, depth);
+    const spring = Math.max(top - (r - l) * ARCHES.reach, highest + ARCHES.spring, support.foot + EMBED, next.foot + EMBED);
+    const rise = top - spring;
+    pieces.push(r - l >= ARCHES.clear && rise >= Math.max(ARCHES.rise, (r - l) / 8) ? { kind: "arch", l, r, spring, rise } : { kind: "solid", s0: l, s1: r, foot: lowest2 - EMBED });
+  });
+  return { a, b, thick, pieces };
+}, mergedOf = (pieces) => {
+  const sorted = pieces.filter((knots) => knots.length > 1 && knots.at(-1)[0] - knots[0][0] > 0.000001).sort((a, b) => a[0][0] - b[0][0]);
+  return sorted.reduce((runs, knots) => {
+    const before = runs.at(-1);
+    if (!before || knots[0][0] > before.at(-1)[0] + 0.000001)
+      return [...runs, knots];
+    const at = [...new Set([...before, ...knots].map(([s]) => Math.round(s * 1e6) / 1e6))].sort((a, b) => a - b);
+    runs[runs.length - 1] = at.map((s) => [s, Math.max(shareIn(before, s), shareIn(knots, s))]);
+    return runs;
+  }, []);
+}, shareIn = (knots, at) => {
+  if (at < knots[0][0] - 0.000000001 || at > knots.at(-1)[0] + 0.000000001)
+    return 0;
+  const i = Math.max(knots.findIndex(([s]) => s >= at - 0.000000001), 1);
+  const [[s0, h0], [s1, h1]] = [knots[i - 1], knots[i]];
+  return s1 - s0 > 0.000000001 ? h0 + (h1 - h0) * (at - s0) / (s1 - s0) : Math.max(h0, h1);
+}, barrierAt = (stand, side, at) => Math.max(0, ...stand.heights[side].map((knots) => shareIn(knots, at))), sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], unit3 = (a) => {
+  const length2 = Math.hypot(...a);
+  return length2 > 0 ? a.map((v) => v / length2) : a;
+}, structureOf = ({ params, sections, stand, ends, polygon, placeAt, level = 3, rail: height = RAIL2, ramped = true }) => {
+  const { depth, width, points } = params;
+  const closed = points.length > 3 && points[0][0] === points.at(-1)[0] && points[0][1] === points.at(-1)[1];
+  const last = sections[0].row.length - 1;
+  const decked = (at) => stand.decks.some(([a, b]) => at > a - 0.000001 && at < b + 0.000001);
+  const deckOf = (k) => decked((sections[Math.min(k, sections.length - 2)].s + sections[Math.min(k, sections.length - 2) + 1].s) / 2);
+  const foot = (deck, section, [x, y, z]) => [x, y, deck ? z - depth : section.bottom];
+  const side = (a, b) => cross3(sub3(b, a), [0, 0, 1]);
+  for (let k = 0;k + 1 < sections.length; k++) {
+    const [a, b] = [sections[k], sections[k + 1]];
+    const deck = deckOf(k);
+    const [aLeft, aRight, bLeft, bRight] = [a.row[0], a.row[last], b.row[0], b.row[last]];
+    const [aLow, bLow, bLowRight, aLowRight] = [foot(deck, a, aLeft), foot(deck, b, bLeft), foot(deck, b, bRight), foot(deck, a, aRight)];
+    polygon(2, [aLow, bLow, bLowRight, aLowRight], [0, 0, -1], [[0, a.s], [0, b.s], [width, b.s], [width, a.s]]);
+    polygon(1, [aLeft, aLow, bLow, bLeft], side(aLeft, bLeft).map((v) => -v), [[a.s, 0], [a.s, aLow[2] - aLeft[2]], [b.s, bLow[2] - bLeft[2]], [b.s, 0]]);
+    polygon(1, [aRight, bRight, bLowRight, aLowRight], side(aRight, bRight), [[a.s, 0], [b.s, 0], [b.s, bLowRight[2] - bRight[2]], [a.s, aLowRight[2] - aRight[2]]]);
+  }
+  for (let k = 1;k + 1 < sections.length; k++) {
+    if (deckOf(k - 1) === deckOf(k))
+      continue;
+    const section = sections[k];
+    const { row } = section;
+    const outward = side(row[last], row[0]).map((v) => v * (deckOf(k) ? 1 : -1));
+    const outline = [foot(true, section, row[0]), foot(true, section, row[last]), foot(false, section, row[last]), foot(false, section, row[0])];
+    polygon(1, outline, outward, outline.map(([, , z], j) => [j === 1 || j === 2 ? width : 0, z - row[0][2]]));
+  }
+  if (!closed) {
+    for (const [k, sign, end] of [[0, -1, 0], [sections.length - 1, 1, 1]]) {
+      if (!ends[end])
+        continue;
+      const section = sections[k];
+      const { row } = section;
+      const deck = deckOf(k ? k - 1 : 0);
+      const outline = [...row, foot(deck, section, row[last]), foot(deck, section, row[0])];
+      polygon(1, outline, side(row[last], row[0]).map((v) => v * sign), outline.map(([, , z], j) => [j < row.length ? width * j / last : j === row.length ? width : 0, z - row[0][2]]));
+    }
+  }
+  if (params.columns === 2 && stand.arcade)
+    arcadeDrawn({ arcade: stand.arcade, sections, polygon, depth, width, level, last });
+  for (const { s, t, side: breadth, top, foot: base } of params.columns === 2 && stand.arcade ? [] : stand.posts) {
+    const { middle, offset } = placeAt(s);
+    const left = unit3([offset[0], offset[1], 0]);
+    const along = [left[1], -left[0], 0];
+    const centre = [middle[0] + left[0] * t, middle[1] + left[1] * t];
+    if (params.columns === 1) {
+      const r = breadth / 2;
+      const sides = level >= FINE ? ROUND_SIDES : ROUND_SIDES_FAR;
+      const way = (angle) => [along[0] * Math.cos(angle) + left[0] * Math.sin(angle), along[1] * Math.cos(angle) + left[1] * Math.sin(angle)];
+      for (let i = 0;i < sides; i++) {
+        const [a, b] = [i, i + 1].map((n) => 2 * Math.PI * n / sides);
+        const [p, q, mid] = [way(a), way(b), way((a + b) / 2)];
+        const [u0, u1] = [r * a, r * b];
+        polygon(1, [[centre[0] + p[0] * r, centre[1] + p[1] * r, base], [centre[0] + q[0] * r, centre[1] + q[1] * r, base], [centre[0] + q[0] * r, centre[1] + q[1] * r, top], [centre[0] + p[0] * r, centre[1] + p[1] * r, top]], [mid[0], mid[1], 0], [[u0, 0], [u1, 0], [u1, top - base], [u0, top - base]]);
+      }
+      continue;
+    }
+    const corner = (u, v, z) => [centre[0] + (along[0] * u + left[0] * v) * (breadth / 2), centre[1] + (along[1] * u + left[1] * v) * (breadth / 2), z];
+    for (const [u0, v0, u1, v1] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) {
+      const [a, b] = [corner(u0, v0, base), corner(u1, v1, base)];
+      const outward = [(u0 + u1) * along[0] + (v0 + v1) * left[0], (u0 + u1) * along[1] + (v0 + v1) * left[1], 0];
+      polygon(1, [a, b, [b[0], b[1], top], [a[0], a[1], top]], outward, [[0, 0], [breadth, 0], [breadth, top - base], [0, top - base]]);
+    }
+  }
+  const style = params.barrier ?? 0;
+  const face = params.barrier === undefined ? 1 : 3;
+  if (style === 2)
+    return;
+  stand.barriers.forEach((runs, which) => {
+    const edge = which ? last : 0;
+    runs.forEach(([from, to], r) => {
+      const knots = stand.heights?.[which]?.[r];
+      const along = sections.filter(({ s }) => s > from - 0.000001 && s < to + 0.000001);
+      if (along.length < 2)
+        return;
+      if (style === 1 && ramped)
+        return guardrailOf({ along, edge, last, knots, polygon, face, from, to, posts: level >= FINE });
+      const lines = along.map(({ s, row }) => {
+        const [outer, other] = [row[edge], row[last - edge]];
+        const inward = unit3(sub3(other, outer));
+        const inner = outer.map((v, k) => v + inward[k] * BARRIER);
+        const rise = height * (ramped && knots ? shareIn(knots, s) : 1);
+        const up = (point) => [point[0], point[1], point[2] + rise];
+        return { s, outer, inner, outerTop: up(outer), innerTop: up(inner), inward, rise };
+      });
+      for (let k = 0;k + 1 < lines.length; k++) {
+        const [a, b] = [lines[k], lines[k + 1]];
+        if (a.rise < 0.001 && b.rise < 0.001)
+          continue;
+        polygon(face, [a.outer, b.outer, b.outerTop, a.outerTop], a.inward.map((v) => -v), [[a.s, 0], [b.s, 0], [b.s, b.rise], [a.s, a.rise]]);
+        polygon(face, [a.outerTop, b.outerTop, b.innerTop, a.innerTop], [0, 0, 1], [[a.s, 0], [b.s, 0], [b.s, BARRIER], [a.s, BARRIER]]);
+        polygon(face, [a.inner, a.innerTop, b.innerTop, b.inner], a.inward, [[a.s, 0], [a.s, a.rise], [b.s, b.rise], [b.s, 0]]);
+      }
+      for (const [line, beside] of [[lines[0], lines[1]], [lines.at(-1), lines.at(-2)]]) {
+        if (line.rise < 0.001)
+          continue;
+        const outward = sub3(line.outer, beside.outer);
+        polygon(face, [line.outer, line.inner, line.innerTop, line.outerTop], outward, [[0, 0], [BARRIER, 0], [BARRIER, line.rise], [0, line.rise]]);
+      }
+    });
+  });
+}, arcadeDrawn = ({ arcade, sections, polygon, depth, width, level, last }) => {
+  const segments = ARCHES.segments[level] ?? ARCHES.segments.at(-1);
+  const edgesAt = (at) => {
+    const found = sections.findIndex(({ s }) => s >= at - 0.000000001);
+    const k = found < 0 ? sections.length - 1 : Math.max(found, 1);
+    const [p, q] = [sections[k - 1], sections[k]];
+    const f = q.s - p.s > 0.000000001 ? Math.min(Math.max((at - p.s) / (q.s - p.s), 0), 1) : 0;
+    const mix = (u, v) => u.map((x, i) => x + (v[i] - x) * f);
+    return [mix(p.row[0], q.row[0]), mix(p.row[last], q.row[last])];
+  };
+  const side = (a, b) => cross3(sub3(b, a), [0, 0, 1]);
+  const across = (at, low, high, way) => {
+    const [left, right] = edgesAt(at);
+    const [topLeft, topRight] = high === null ? [left[2] - depth, right[2] - depth] : [high, high];
+    polygon(1, [[left[0], left[1], low], [right[0], right[1], low], [right[0], right[1], topRight], [left[0], left[1], topLeft]], way, [[0, 0], [width, 0], [width, topRight - low], [0, topLeft - low]]);
+  };
+  for (const { a, b, pieces } of arcade) {
+    const way = (from, to) => {
+      const [p, q] = [edgesAt(from)[0], edgesAt(to)[0]];
+      return [q[0] - p[0], q[1] - p[1], 0];
+    };
+    pieces.forEach((piece, k) => {
+      const arch2 = piece.kind === "arch";
+      const [s0, s1] = arch2 ? [piece.l, piece.r] : [piece.s0, piece.s1];
+      if (s1 - s0 < 0.000001)
+        return;
+      const at = new Set([s0, s1, ...sections.map(({ s }) => s).filter((s) => s > s0 + 0.000001 && s < s1 - 0.000001)]);
+      if (arch2)
+        for (let i = 1;i < segments; i++)
+          at.add(s0 + (s1 - s0) * i / segments);
+      const lines = [...at].sort((p, q) => p - q).map((s) => {
+        const [left, right] = edgesAt(s);
+        return { s, left, right, low: arch2 ? archAt(piece, s) : piece.foot };
+      });
+      for (let i = 0;i + 1 < lines.length; i++) {
+        const [p, q] = [lines[i], lines[i + 1]];
+        const [pl, ql, pr, qr] = [p.left, q.left, p.right, q.right];
+        polygon(1, [[pl[0], pl[1], pl[2] - depth], [pl[0], pl[1], p.low], [ql[0], ql[1], q.low], [ql[0], ql[1], ql[2] - depth]], side(pl, ql).map((v) => -v), [[p.s, -depth], [p.s, p.low - pl[2]], [q.s, q.low - ql[2]], [q.s, -depth]]);
+        polygon(1, [[pr[0], pr[1], pr[2] - depth], [qr[0], qr[1], qr[2] - depth], [qr[0], qr[1], q.low], [pr[0], pr[1], p.low]], side(pr, qr), [[p.s, -depth], [q.s, -depth], [q.s, q.low - qr[2]], [p.s, p.low - pr[2]]]);
+        if (arch2)
+          polygon(1, [[pl[0], pl[1], p.low], [pr[0], pr[1], p.low], [qr[0], qr[1], q.low], [ql[0], ql[1], q.low]], [0, 0, -1], [[0, p.s], [width, p.s], [width, q.s], [0, q.s]]);
+      }
+      if (!arch2)
+        return;
+      const [before, after] = [pieces[k - 1], pieces[k + 1]];
+      if (before)
+        across(piece.l, before.foot, piece.spring, way(piece.l, piece.r));
+      if (after)
+        across(piece.r, after.foot, piece.spring, way(piece.r, piece.l));
+    });
+    const [first, final] = [pieces[0], pieces.at(-1)];
+    if (first?.kind === "pier" && first.s0 <= a + 0.000001)
+      across(a, first.foot, null, way(Math.min(a + 1, b), a));
+    if (final?.kind === "pier" && final.s1 >= b - 0.000001)
+      across(b, final.foot, null, way(Math.max(b - 1, a), b));
+  }
+}, guardrailOf = ({ along, edge, last, knots, polygon, face, from, to, posts }) => {
+  const { top, beam, thick, post, gap } = GUARDRAIL;
+  const shareAt = (s) => knots ? shareIn(knots, s) : 1;
+  const lineAt = (s) => {
+    const k = Math.min(Math.max(along.findIndex(({ s: at2 }) => at2 >= s - 0.000000001), 1), along.length - 1);
+    const [a, b] = [along[k - 1], along[k]];
+    const f = b.s - a.s > 0.000000001 ? Math.min(Math.max((s - a.s) / (b.s - a.s), 0), 1) : 0;
+    const [outerA, outerB] = [a.row[edge], b.row[edge]];
+    const outer = outerA.map((v, i) => v + (outerB[i] - v) * f);
+    const inward = unit3(sub3(a.row[last - edge], outerA));
+    return { outer, inward, along: unit3(sub3(outerB, outerA)) };
+  };
+  const at = ({ outer, inward }, across, up) => [outer[0] + inward[0] * across, outer[1] + inward[1] * across, outer[2] + up];
+  const [back, front] = [BARRIER - thick, BARRIER];
+  for (let k = 0;k + 1 < along.length; k++) {
+    const [sa, sb] = [along[k].s, along[k + 1].s];
+    const [ha, hb] = [shareAt(sa), shareAt(sb)];
+    if (ha < 0.001 && hb < 0.001)
+      continue;
+    const [a, b] = [lineAt(sa), lineAt(sb)];
+    const corner = (line, across, share, high) => at(line, across, (high ? top : top - beam) * share);
+    const [aBackLow, aBackHigh, aFrontLow, aFrontHigh] = [corner(a, back, ha, false), corner(a, back, ha, true), corner(a, front, ha, false), corner(a, front, ha, true)];
+    const [bBackLow, bBackHigh, bFrontLow, bFrontHigh] = [corner(b, back, hb, false), corner(b, back, hb, true), corner(b, front, hb, false), corner(b, front, hb, true)];
+    const inward = a.inward;
+    polygon(face, [aFrontLow, bFrontLow, bFrontHigh, aFrontHigh], inward, [[sa, 0], [sb, 0], [sb, beam], [sa, beam]]);
+    polygon(face, [aBackLow, aBackHigh, bBackHigh, bBackLow], inward.map((v) => -v), [[sa, 0], [sa, beam], [sb, beam], [sb, 0]]);
+    polygon(face, [aBackHigh, aFrontHigh, bFrontHigh, bBackHigh], [0, 0, 1], [[sa, 0], [sa, thick], [sb, thick], [sb, 0]]);
+    polygon(face, [aBackLow, bBackLow, bFrontLow, aFrontLow], [0, 0, -1], [[sa, 0], [sb, 0], [sb, thick], [sa, thick]]);
+  }
+  for (const [k, beside] of [[0, 1], [along.length - 1, along.length - 2]]) {
+    const share = shareAt(along[k].s);
+    if (share < 0.001)
+      continue;
+    const line = lineAt(along[k].s);
+    const end = (across, high) => at(line, across, (high ? top : top - beam) * share);
+    polygon(face, [end(back, false), end(front, false), end(front, true), end(back, true)], sub3(along[k].row[edge], along[beside].row[edge]), [[0, 0], [thick, 0], [thick, beam * share], [0, beam * share]]);
+  }
+  if (!posts)
+    return;
+  const count = Math.max(1, Math.ceil((to - from) / gap - 0.000000001));
+  for (let i = 0;i <= count; i++) {
+    const s = from + (to - from) * i / count;
+    const share = shareAt(s);
+    if (share < 0.05)
+      continue;
+    const line = lineAt(s);
+    const height = top * share;
+    const [u, v] = [line.along, line.inward];
+    const centre = at(line, back - post / 2, 0);
+    const corner = (du, dv, z) => [centre[0] + (u[0] * du + v[0] * dv) * (post / 2), centre[1] + (u[1] * du + v[1] * dv) * (post / 2), centre[2] + z];
+    for (const [u0, v0, u1, v1] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) {
+      const outward = [(u0 + u1) * u[0] + (v0 + v1) * v[0], (u0 + u1) * u[1] + (v0 + v1) * v[1], 0];
+      polygon(face, [corner(u0, v0, 0), corner(u1, v1, 0), corner(u1, v1, height), corner(u0, v0, height)], outward, [[0, 0], [post, 0], [post, height], [0, height]]);
+    }
+    polygon(face, [corner(-1, -1, height), corner(1, -1, height), corner(1, 1, height), corner(-1, 1, height)], [0, 0, 1], [[0, 0], [post, 0], [post, post], [0, post]]);
+  }
+};
+var init_road_level = __esm(() => {
+  BARRIER_GAP = 2 * RAMP;
+  GUARDRAIL = Object.freeze({ top: 0.75, beam: 0.32, thick: 0.05, post: 0.15, gap: 2 });
+  DECK_LEAST = SPAN / 2;
+  ARCHES = Object.freeze({ share: 0.18, least: 0.8, most: 2.2, cap: 0.4, crown: 0.75, reach: 0.5, spring: 0.5, rise: 0.5, clear: 0.8, segments: Object.freeze([6, 8, 12, 16]) });
+});
+
 // src/build/kinds/bridge.js
 var STYLES, STYLE_NAMES, MOST_SAMPLES = 128, LAMP_MODES, LEAST_SPACING = 12, LOOKS, LOOK_LABELS, LABELS, bridge;
 var init_bridge = __esm(() => {
@@ -808,7 +1585,7 @@ var exports_solid_mesh = {};
 __export(exports_solid_mesh, {
   meshSolid: () => meshSolid
 });
-var SHARP = 52.5, ROUND_SIDES = 12, ACROSS2, MITRE2 = 4, FACING = 0.7, TINY2 = 0.000000001, FOLD = 0.0005, MIRRORS, signedArea = (points) => points.reduce((sum, [x, y], i) => {
+var SHARP2 = 52.5, ROUND_SIDES2 = 12, ACROSS2, MITRE2 = 4, FACING = 0.7, TINY2 = 0.000000001, FOLD = 0.0005, MIRRORS, signedArea = (points) => points.reduce((sum, [x, y], i) => {
   const [u, v] = points[(i + 1) % points.length];
   return sum + x * v - u * y;
 }, 0) / 2, ccw = (points) => signedArea(points) < 0 ? [...points].reverse() : points, unturn = (m, p) => [0, 1, 2].map((k) => m[0][k] * p[0] + m[1][k] * p[1] + m[2][k] * p[2]), normalOf = ([a, b, c]) => {
@@ -881,7 +1658,7 @@ var SHARP = 52.5, ROUND_SIDES = 12, ACROSS2, MITRE2 = 4, FACING = 0.7, TINY2 = 0
 }, hullOf2 = (body, wasm, keep) => {
   const { Manifold } = wasm;
   const points = unpackPoints(body.points, 3).map((p) => p.map((v, k) => v * body.size[k]));
-  const ball = body.round ? keep(Manifold.sphere(body.round, ROUND_SIDES)) : null;
+  const ball = body.round ? keep(Manifold.sphere(body.round, ROUND_SIDES2)) : null;
   const outer = keep(Manifold.hull(ball ? points.map((p) => keep(ball.translate(p))) : points));
   if (!body.hollow || !outer.numTri())
     return outer;
@@ -1137,7 +1914,7 @@ var SHARP = 52.5, ROUND_SIDES = 12, ACROSS2, MITRE2 = 4, FACING = 0.7, TINY2 = 0
   let n = level + 1;
   while (n > 1 && left.numTri() * n * n > MOST_TRIANGLES)
     n--;
-  return n > 1 ? keep(keep(left.smoothOut(SHARP)).refine(n)) : left;
+  return n > 1 ? keep(keep(left.smoothOut(SHARP2)).refine(n)) : left;
 }, meshSolid = ({ base, sides, bodies, join, faces, spots }, size, slots, wasm, smoothing = MOST_SMOOTHING) => {
   const made3 = [];
   const keep = (manifold) => (made3.push(manifold), manifold);
@@ -1389,7 +2166,7 @@ var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SM
       scale: [...size]
     }));
   });
-}, CONVEX, ROUND3, LEVEL_SIDES, COLLIDES = 1, ROUND_CREASE, FLAT2, creaseOf = (body) => body.flat ? FLAT2 : ROUND3.has(body.add) ? ROUND_CREASE : undefined, convexBody = (body, way) => body[way] === "hull" ? !body.round && !body.hollow : CONVEX.has(body[way]), plainBody = (body, way) => !body.repeat && !body.mirror && convexBody(body, way), copiesOf = ({ repeat, mirror }) => {
+}, CONVEX, ROUND4, LEVEL_SIDES, COLLIDES = 1, ROUND_CREASE, FLAT2, creaseOf = (body) => body.flat ? FLAT2 : ROUND4.has(body.add) ? ROUND_CREASE : undefined, convexBody = (body, way) => body[way] === "hull" ? !body.round && !body.hollow : CONVEX.has(body[way]), plainBody = (body, way) => !body.repeat && !body.mirror && convexBody(body, way), copiesOf = ({ repeat, mirror }) => {
   const copies = (repeat ? Array.from({ length: repeat.count }, (_, k) => {
     if (!k)
       return { place: same2, back: same2, undo: same2 };
@@ -1600,7 +2377,7 @@ var MANIFOLD, SHAPES, FORMS2, WAYS, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_SM
     drawn.add(recipe);
     const surfaces2 = made3.get(recipe) ?? new Map;
     made3.set(recipe, surfaces2);
-    const at = params.bodies.some((body) => ROUND3.has(body.add)) ? level : 3;
+    const at = params.bodies.some((body) => ROUND4.has(body.add)) ? level : 3;
     if (!surfaces2.has(at))
       surfaces2.set(at, hullsSurface(params, size, slots, at) ?? boxOf(size, slots));
     return surfaces2.get(at);
@@ -1650,7 +2427,7 @@ var init_solid = __esm(() => {
   smoothQuality.on(setSmoothing);
   FACES = Object.freeze({ box: 6, extrude: 3 });
   CONVEX = new Set(["box", "cylinder", "cone", "wedge"]);
-  ROUND3 = new Set(["cylinder", "cone"]);
+  ROUND4 = new Set(["cylinder", "cone"]);
   LEVEL_SIDES = [1 / 4, 3 / 8, 5 / 8, 1];
   ROUND_CREASE = Math.cos(70 * Math.PI / 180);
   FLAT2 = Math.cos(Math.PI / 180);
@@ -1698,7 +2475,7 @@ var init_solid = __esm(() => {
 });
 
 // src/build/kinds/bridge-fit.js
-var SAMPLE = 1, MOST_CHORD = 60, GRADE = 8, SEAT = 1.2, FREEBOARD = 0.3, BURIED = 0.3, RAIL2 = 1.05, STEP_UP = 0.3, BURIED_END = 1, round2 = (v, places = 3) => Math.round(v * 10 ** places) / 10 ** places, clamp3 = (v, least, most) => Math.min(Math.max(v, least), most), longestSpan = (plan) => plan.spans.length ? Math.max(...plan.spans.map((span) => span.s1 - span.s0)) : plan.length, thickOf = (style, each) => {
+var SAMPLE = 1, MOST_CHORD = 60, GRADE2 = 8, SEAT = 1.2, FREEBOARD2 = 0.3, BURIED = 0.3, RAIL3 = 1.05, STEP_UP = 0.3, BURIED_END = 1, round2 = (v, places = 3) => Math.round(v * 10 ** places) / 10 ** places, clamp3 = (v, least, most) => Math.min(Math.max(v, least), most), longestSpan = (plan) => plan.spans.length ? Math.max(...plan.spans.map((span) => span.s1 - span.s0)) : plan.length, thickOf = (style, each) => {
   const { share = 0, least, most, cap: cap3 = 1 } = style.thick;
   return clamp3(each * share, least, Math.max(least, Math.min(most, each * cap3)));
 }, towerOf = (plan) => plan.style.tower && plan.supports.length ? clamp3(plan.style.tower.share * longestSpan(plan), plan.style.tower.least, plan.style.tower.most) : 0, aboveOf = (plan) => plan.style.tower ? towerOf(plan) : plan.style.above ?? 0, chordOf = ([a, b]) => {
@@ -1718,14 +2495,14 @@ var SAMPLE = 1, MOST_CHORD = 60, GRADE = 8, SEAT = 1.2, FREEBOARD = 0.3, BURIED 
   if (!sag || length2 <= 0)
     return 0;
   const drop = Math.abs(params.points[1][2] - params.points[0][2]) / length2;
-  return length2 * Math.min(sag, Math.max(1 / GRADE - drop, 0) / 4);
+  return length2 * Math.min(sag, Math.max(1 / GRADE2 - drop, 0) / 4);
 }, deckAt = (params, length2, s) => {
   const { points, rise } = params;
   const line = length2 > 0 ? points[0][2] + (points[1][2] - points[0][2]) * s / length2 : points[0][2];
   const sagMax = sagMaxOf(params, length2);
   if (sagMax)
     return line - Math.max(sagMax - rise, 0) * 4 * s * (length2 - s) / (length2 * length2);
-  return line + Math.min(rise, s / GRADE, (length2 - s) / GRADE);
+  return line + Math.min(rise, s / GRADE2, (length2 - s) / GRADE2);
 }, groundAt2 = (params, length2, s) => params.ground.length >= 2 ? readAt(params.ground, length2, s) : length2 > 0 ? params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2 : params.points[0][2], crossing = (positions, values, level, outside, inside) => {
   const [a, b] = [values[outside] - level, values[inside] - level];
   return a === b ? positions[inside] : positions[outside] + (positions[inside] - positions[outside]) * -a / (b - a);
@@ -1743,7 +2520,7 @@ var SAMPLE = 1, MOST_CHORD = 60, GRADE = 8, SEAT = 1.2, FREEBOARD = 0.3, BURIED 
       return;
     const s = length2 * i / (ground.length - 1);
     const line = params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2;
-    const target = surface + FREEBOARD + style.depth;
+    const target = surface + FREEBOARD2 + style.depth;
     if (sagMax) {
       const hang = 4 * s * (length2 - s) / (length2 * length2);
       if (line < target) {
@@ -1755,8 +2532,8 @@ var SAMPLE = 1, MOST_CHORD = 60, GRADE = 8, SEAT = 1.2, FREEBOARD = 0.3, BURIED 
     }
     const needed = Math.max(target - line, 0);
     rise = Math.max(rise, needed);
-    roomA = Math.max(roomA, GRADE * needed - (s - reach));
-    roomB = Math.max(roomB, GRADE * needed - (length2 - s - reach));
+    roomA = Math.max(roomA, GRADE2 * needed - (s - reach));
+    roomB = Math.max(roomB, GRADE2 * needed - (length2 - s - reach));
   });
   return { rise: round2(Math.max(rise, 0), 2), roomA: round2(Math.max(roomA, 0), 1), roomB: round2(Math.max(roomB, 0), 1), short: round2(short, 1) };
 };
@@ -1791,8 +2568,8 @@ var init_bridge_fit = __esm(() => {
     if (style.widest && params.width > style.widest + 0.000001)
       plan.reasons.push(`too wide: ${round2(params.width, 1)} m, ${style.label.toLowerCase()} are ${style.widest} m at most`);
     const drop = Math.abs(params.points[1][2] - params.points[0][2]) / length2;
-    if (drop > 1 / GRADE + 0.000001)
-      plan.reasons.push(`too steep: 1 in ${round2(1 / drop, 1)}, at most 1 in ${GRADE}`);
+    if (drop > 1 / GRADE2 + 0.000001)
+      plan.reasons.push(`too steep: 1 in ${round2(1 / drop, 1)}, at most 1 in ${GRADE2}`);
     if (count < 2)
       return finish();
     const positions = Array.from({ length: count }, (_, i) => length2 * i / (count - 1));
@@ -1811,8 +2588,8 @@ var init_bridge_fit = __esm(() => {
     const first = clearance.findIndex((v) => v >= style.least);
     const last = clearance.findLastIndex((v) => v >= style.least);
     if (first < 0) {
-      const deepest = Math.max(...clearance);
-      plan.reasons.push(deepest >= 0.5 ? `too shallow for ${style.label.toLowerCase()}: the ground is ${round2(deepest, 1)} m under the deck at most, they need ${style.least} m` : "nothing to cross");
+      const deepest2 = Math.max(...clearance);
+      plan.reasons.push(deepest2 >= 0.5 ? `too shallow for ${style.label.toLowerCase()}: the ground is ${round2(deepest2, 1)} m under the deck at most, they need ${style.least} m` : "nothing to cross");
       return finish();
     }
     const s0 = first === 0 ? 0 : crossing(positions, clearance, style.least, first - 1, first);
@@ -1851,7 +2628,7 @@ var DECK = 0, STRUCTURE = 1, RAILS = 2, clamp4 = (v, least, most) => Math.min(Ma
     const count = Math.max(1, Math.ceil(length2 / step - 0.000000001));
     return Array.from({ length: count + 1 }, (_, k) => Math.round(length2 * k / count * 1e6) / 1e6);
   }
-  const ramp = Math.min(rise * GRADE, length2 / 2);
+  const ramp = Math.min(rise * GRADE2, length2 / 2);
   return [...new Set([0, ramp, length2 - ramp, length2].map((v) => Math.round(v * 1e6) / 1e6))].sort((a, b) => a - b);
 }, deckUv = (p, n) => Math.abs(n[2]) > 0.5 ? [p[1], p[0]] : Math.abs(n[1]) > 0.5 ? [p[0], p[2]] : [p[1], p[2]], addSlab = (mesh, deck, frame, [s0, s1], [t0, t1], [lo, hi], slot) => {
   const [z0, z1] = [deck(s0), deck(s1)];
@@ -1906,7 +2683,7 @@ var DECK = 0, STRUCTURE = 1, RAILS = 2, clamp4 = (v, least, most) => Math.min(Ma
   if (!params.railing)
     return;
   const step = level >= 2 ? reach : reach * 2;
-  const rails = params.railing === 2 ? [[RAIL2 - 0.12, RAIL2 - 0.07]] : [[0.4, 0.45], [RAIL2 - 0.12, RAIL2 - 0.07]];
+  const rails = params.railing === 2 ? [[RAIL3 - 0.12, RAIL3 - 0.07]] : [[0.4, 0.45], [RAIL3 - 0.12, RAIL3 - 0.07]];
   for (const side2 of [-1, 1]) {
     const t = side2 * (params.width / 2 - inset);
     for (let k = 0;k + 1 < breaks.length; k++) {
@@ -1919,7 +2696,7 @@ var DECK = 0, STRUCTURE = 1, RAILS = 2, clamp4 = (v, least, most) => Math.min(Ma
           continue;
         const s = s0 + (s1 - s0) * b / bays;
         if (level >= 1 || b === 0 || b === bays)
-          addPost(mesh, frame, [s, t], [deck(s), deck(s) + RAIL2], 0.06, RAILS);
+          addPost(mesh, frame, [s, t], [deck(s), deck(s) + RAIL3], 0.06, RAILS);
       }
     }
   }
@@ -2012,7 +2789,7 @@ var SIDES4, PLANKS = 0.12, CAP3 = 0.17, POST2 = 0.09, REACH2 = 5, ROPE = 0.025, 
     for (let k = 0;k + 1 < breaks.length; k++) {
       const [s0, s1] = [breaks[k], breaks[k + 1]];
       if (!rope)
-        for (const [lo, hi] of [[0.4, 0.5], [RAIL2 - 0.12, RAIL2 - 0.04]])
+        for (const [lo, hi] of [[0.4, 0.5], [RAIL3 - 0.12, RAIL3 - 0.04]])
           addSlab(mesh, deck, frame, [s0, s1], [t - 0.03, t + 0.03], [lo, hi], RAILS);
       const bays = Math.max(1, Math.ceil((s1 - s0) / REACH2));
       for (let b = 0;b <= bays; b++) {
@@ -2030,7 +2807,7 @@ var SIDES4, PLANKS = 0.12, CAP3 = 0.17, POST2 = 0.09, REACH2 = 5, ROPE = 0.025, 
         if (b === 0 && k > 0)
           continue;
         if (level >= 1 || b === 0 || b === bays)
-          addPost(mesh, frame, [s, t], [deck(s), deck(s) + RAIL2], POST2, RAILS);
+          addPost(mesh, frame, [s, t], [deck(s), deck(s) + RAIL3], POST2, RAILS);
       }
     }
   }
@@ -2045,7 +2822,7 @@ var SIDES4, PLANKS = 0.12, CAP3 = 0.17, POST2 = 0.09, REACH2 = 5, ROPE = 0.025, 
     pieces.push({ ...slab, points: slab.points.map((v, i) => v - centre[i % 3]) });
     if (params.railing)
       for (const side2 of [-1, 1]) {
-        const rail = slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.1) - 0.08, side2 * (width / 2 - 0.1) + 0.08], [0, RAIL2]);
+        const rail = slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.1) - 0.08, side2 * (width / 2 - 0.1) + 0.08], [0, RAIL3]);
         pieces.push({ ...rail, points: rail.points.map((v, i) => v - centre[i % 3]) });
       }
   }
@@ -2270,7 +3047,7 @@ var SLAB = 0.22, FLANGE = 0.05, CAP4 = 0.55, lanesOf2 = (width) => {
     pieces.push(moved(slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-0.4, 0])));
     if (params.railing)
       for (const side2 of [-1, 1])
-        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.05) - 0.06, side2 * (width / 2 - 0.05) + 0.06], [0, RAIL2])));
+        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.05) - 0.06, side2 * (width / 2 - 0.05) + 0.06], [0, RAIL3])));
   }
   const across = Math.min(Math.max(width * 0.5, 0.6), 2.4);
   for (const support of supports) {
@@ -2434,7 +3211,7 @@ var SLAB2 = 0.25, BEAM = 0.45, LEG, OUT = 0.15, CABLE = 0.09, HANGER = 0.025, ST
     pieces.push(moved(slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-0.4, 0])));
     if (params.railing)
       for (const side2 of [-1, 1])
-        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.05) - 0.06, side2 * (width / 2 - 0.05) + 0.06], [0, RAIL2])));
+        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 - 0.05) - 0.06, side2 * (width / 2 - 0.05) + 0.06], [0, RAIL3])));
   }
   for (const support of supports) {
     const [s0, s1] = along(support, length2);
@@ -2498,7 +3275,7 @@ var PLANKS2 = 0.07, OUT2 = 0.05, HAND = 1.05, MID = 0.55, ROPE2 = 0.035, TIE = 0
     pieces.push(moved(slabPiece(deck, frame, stretch, [-width / 2, width / 2], [-0.2, 0])));
     if (params.railing)
       for (const side2 of [-1, 1])
-        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 + OUT2) - 0.05, side2 * (width / 2 + OUT2) + 0.05], [0, RAIL2])));
+        pieces.push(moved(slabPiece(deck, frame, stretch, [side2 * (width / 2 + OUT2) - 0.05, side2 * (width / 2 + OUT2) + 0.05], [0, RAIL3])));
   }
   for (const s of [0, length2]) {
     const [foot, top] = [plan.ground(s) - plan.style.embed, deck(s) + HAND + 0.75];
@@ -2558,7 +3335,7 @@ var init_bridge_gen = __esm(() => {
     const corners = [[-0.3, -half], [plan.length + 0.3, -half], [plan.length + 0.3, half], [-0.3, half]].map(([s, t]) => frame(s, t, 0));
     const decks = breaksOf(params.rise, plan.length, Boolean(plan.style.sag), STATION[3]).map(plan.deck);
     const heights = [params.points[0][2], params.points[1][2], Math.max(...decks)];
-    const top = Math.max(...heights) + Math.max(params.railing && plan.style.railed !== false ? RAIL2 : 0.1, params.lamps ? POST_TOP : 0, aboveOf(plan));
+    const top = Math.max(...heights) + Math.max(params.railing && plan.style.railed !== false ? RAIL3 : 0.1, params.lamps ? POST_TOP : 0, aboveOf(plan));
     const feet = [...plan.supports.map((support) => support.foot), ...plan.fills.map((fill) => fill.foot)];
     const bottom = Math.min(...feet, Math.min(...decks) - 1.2);
     return {
@@ -4252,12 +5029,39 @@ var fence = Object.freeze({
 
 // src/build/kinds/road.js
 init_mesh();
+init_ready();
 var LIFT = 0.1;
 var EVERY = 1;
 var ACROSS = 1.5;
 var SAMPLES = 2048;
 var STRIDES = [8, 4, 2, 1];
 var MITRE = 3;
+var FILL = 2;
+var FALL = 2;
+var GUARDRAIL_STEEL = "metal/bare/metal-0025";
+var GRADE = 30;
+var PIN_RISE = 32;
+var PIN_SLOPE = 2;
+var leveller = null;
+var levelling = null;
+var whenLevelled = () => levelling ??= Promise.resolve().then(() => (init_road_level(), exports_road_level)).then((module) => {
+  leveller = module;
+  if (!HERE)
+    tellKind("road");
+  return module;
+}, (error) => {
+  levelling = null;
+  console.error("levelled roads unavailable (asked for again when one is drawn):", error);
+  throw error;
+});
+if (HERE)
+  await whenLevelled();
+var levelledOf = (params) => params.level > 0 && params.ground.length > 0;
+var keepPin = (pin) => pin === "ground" ? pin : Array.isArray(pin) && (pin.length === 3 || pin.length === 5) && pin.every(Number.isFinite) && Math.abs(pin[0]) <= PIN_RISE && Math.abs(pin[1]) <= PIN_SLOPE && Math.abs(pin[2]) <= PIN_SLOPE && pin.slice(3).every((v) => v >= 0 && v <= 1) ? pin.map((v) => Math.round(v * 1000) / 1000) : null;
+var keepEnds = (value) => {
+  const ends = Array.isArray(value) && value.length === 2 ? value.map(keepPin) : [];
+  return ends.some(Boolean) ? ends : [];
+};
 var lengthsOf = (points) => {
   let travelled = 0;
   return points.slice(1).map((to, i) => {
@@ -4269,6 +5073,57 @@ var lengthsOf = (points) => {
   });
 };
 var closedOf = (points) => points.length > 3 && points[0][0] === points.at(-1)[0] && points[0][1] === points.at(-1)[1];
+var ROUND3 = 6;
+var ARC = 8 * Math.PI / 180;
+var SHARP = 15 * Math.PI / 180;
+var roundCorners = (points, width, { least = 0.02, heightAt = null } = {}) => {
+  if (points.length < 3)
+    return points;
+  const radius = Math.max(ROUND3, 2 * width);
+  const out = [points[0]];
+  for (let i = 1;i < points.length - 1; i++) {
+    const [before, corner, after] = [points[i - 1], points[i], points[i + 1]];
+    const [l1, l2] = [Math.hypot(corner[0] - before[0], corner[1] - before[1]), Math.hypot(after[0] - corner[0], after[1] - corner[1])];
+    if (l1 < 0.000001 || l2 < 0.000001) {
+      out.push(corner);
+      continue;
+    }
+    const [u1, u2] = [[(corner[0] - before[0]) / l1, (corner[1] - before[1]) / l1], [(after[0] - corner[0]) / l2, (after[1] - corner[1]) / l2]];
+    const turn2 = Math.atan2(u1[0] * u2[1] - u1[1] * u2[0], u1[0] * u2[0] + u1[1] * u2[1]);
+    if (Math.abs(turn2) < least) {
+      out.push(corner);
+      continue;
+    }
+    const tangent = Math.min(radius * Math.tan(Math.abs(turn2) / 2), 0.45 * l1, 0.45 * l2);
+    const r = tangent / Math.tan(Math.abs(turn2) / 2);
+    const start = [corner[0] - u1[0] * tangent, corner[1] - u1[1] * tangent];
+    const side = Math.sign(turn2);
+    const centre = [start[0] - u1[1] * r * side, start[1] + u1[0] * r * side];
+    const from = Math.atan2(start[1] - centre[1], start[0] - centre[0]);
+    const steps = Math.max(2, Math.ceil(Math.abs(turn2) / ARC));
+    const [z0, z1] = [corner[2] + (before[2] - corner[2]) * tangent / l1, corner[2] + (after[2] - corner[2]) * tangent / l2];
+    for (let k = 0;k <= steps; k++) {
+      const [x, y] = [centre[0] + r * Math.cos(from + turn2 * k / steps), centre[1] + r * Math.sin(from + turn2 * k / steps)];
+      out.push([x, y, heightAt ? heightAt(x, y) : z0 + (z1 - z0) * k / steps]);
+    }
+  }
+  out.push(points.at(-1));
+  return out;
+};
+var roundsOf = (params) => params.round > 0 || params.grade !== undefined;
+var roundedOf = remembered(({ points, width }) => {
+  const path = roundCorners(points, width, { least: SHARP });
+  return path.length === points.length ? null : path;
+});
+var totalOf = (points) => points.slice(1).reduce((sum, to, i) => sum + Math.hypot(to[0] - points[i][0], to[1] - points[i][1]), 0);
+var pathOf = (params) => {
+  const path = roundsOf(params) ? roundedOf({ points: params.points, width: params.width }) : null;
+  if (!path)
+    return params.points;
+  if (!params.ground?.length)
+    return path;
+  return columnsOf(params, totalOf(path)) || !columnsOf(params, totalOf(params.points)) ? path : params.points;
+};
 var samplesAcross = (width) => Math.min(9, Math.max(3, Math.ceil(width / ACROSS) + 1));
 var samplesAlong = (total, across) => Math.min(Math.floor(SAMPLES / across), Math.max(2, Math.round(total / EVERY) + 1));
 var leftOf = ([x, y]) => [-y, x];
@@ -4296,7 +5151,9 @@ var rowOf = ({ middle, offset }, columns) => Array.from({ length: columns }, (_,
   const t = 1 - 2 * j / (columns - 1);
   return [middle[0] + offset[0] * t, middle[1] + offset[1] * t];
 });
-var groundSites = ({ points, width }) => {
+var groundSites = (params) => {
+  const points = pathOf(params);
+  const { width } = params;
   const lengths = lengthsOf(points);
   const closed = closedOf(points);
   const total = lengths.at(-1).start + lengths.at(-1).length;
@@ -4327,8 +5184,42 @@ var cornersOf = (lengths, closed, width) => lengths.flatMap((after, i) => {
   const cut2 = Math.min(width / 2 * turn2, MITRE * (width / 2));
   return i === 0 ? [{ at: 0, cut: cut2 }, { at: after.start + lengths.reduce((sum, { length: length2 }) => sum + length2, 0), cut: cut2 }] : [{ at: after.start, cut: cut2 }];
 });
+var levelOf = remembered((params) => {
+  const samples = levelledOf(params) && leveller ? samplesOf(params) : null;
+  if (!samples)
+    return null;
+  const ends = params.ends?.length === 2 ? params.ends : [null, null];
+  const grade = params.grade === undefined ? null : params.grade / 100;
+  const levelled = leveller.levelRoad({
+    ...samples,
+    width: params.width,
+    lift: params.lift ?? LIFT,
+    fill: params.fill ?? FILL,
+    fall: (params.fall ?? FALL) / 100,
+    ends,
+    grade,
+    depth: params.depth
+  });
+  const stand = grade === null ? null : leveller.standOf({ ...samples, middle: levelled.middle, lean: levelled.lean, lies: levelled.lies, fill: params.fill ?? FILL, depth: params.depth, width: params.width, ends, arches: params.columns === 2 });
+  return { ...levelled, stand };
+});
+var samplesOf = (params) => {
+  const points = pathOf(params);
+  const { width } = params;
+  const lengths = lengthsOf(points);
+  const closed = closedOf(points);
+  const total = lengths.at(-1).start + lengths.at(-1).length;
+  const columns = columnsOf(params, total);
+  if (!columns)
+    return null;
+  const count = params.ground.length / columns;
+  const s = Array.from({ length: count }, (_, k) => total * k / (count - 1));
+  const water = params.water?.length === count ? params.water : null;
+  return { ground: params.ground, columns, s, half: s.map((at) => Math.hypot(...sectionAt(lengths, closed, width, at).offset)), water };
+};
 var sectionsOf = (params, level) => {
-  const { points, width } = params;
+  const points = pathOf(params);
+  const { width } = params;
   const lengths = lengthsOf(points);
   const closed = closedOf(points);
   const total = lengths.at(-1).start + lengths.at(-1).length;
@@ -4342,23 +5233,60 @@ var sectionsOf = (params, level) => {
     if (corners.every(({ at, cut: cut2 }) => Math.abs(s - at) > cut2 + 0.000001))
       along.add(s);
   }
+  const levelled = columns && levelledOf(params) ? levelOf(params) : null;
+  for (const at of levelled?.stand ? [...levelled.stand.decks.flat(), ...levelled.stand.heights.flat(2).map(([s]) => s)] : []) {
+    if (corners.every(({ at: corner, cut: cut2 }) => Math.abs(at - corner) > cut2 + 0.000001) && [...along].every((each) => Math.abs(each - at) > 0.001))
+      along.add(at);
+  }
+  const lift = params.lift ?? LIFT;
   return [...along].sort((a, b) => a - b).map((s) => {
-    const heights = groundAt(params, lengths, total, columns, closed && s >= total - 0.000000001 ? 0 : s);
-    return { s, row: rowOf(sectionAt(lengths, closed, width, s), heights.length).map(([x, y], j) => [x, y, heights[j] + (params.lift ?? LIFT)]) };
+    const at = closed && s >= total - 0.000000001 ? 0 : s;
+    const heights = groundAt({ points, ground: params.ground }, lengths, total, columns, at);
+    const section = sectionAt(lengths, closed, width, s);
+    const row = rowOf(section, heights.length);
+    if (!levelled)
+      return { s, row: row.map(([x, y], j) => [x, y, heights[j] + lift]) };
+    const stations = levelled.middle.length;
+    const t = Math.min(Math.max(at / total, 0), 1) * (stations - 1);
+    const k = Math.min(Math.floor(t), stations - 2), f = t - k;
+    const [middle, lean, share] = [levelled.middle, levelled.lean, levelled.share].map((values) => values[k] * (1 - f) + values[k + 1] * f);
+    const half = Math.hypot(...section.offset);
+    const last = heights.length - 1;
+    return {
+      s,
+      row: row.map(([x, y], j) => [x, y, (1 - share) * (heights[j] + lift) + share * (middle + lean * half * (1 - 2 * j / last))]),
+      bottom: Math.min(...heights) + lift - params.depth
+    };
   });
+};
+var standingOf = (params) => levelledOf(params) && leveller ? levelOf(params)?.stand ?? null : null;
+var placerOf = (params) => {
+  const points = pathOf(params);
+  const { width } = params;
+  const [lengths, closed] = [lengthsOf(points), closedOf(points)];
+  return (s) => sectionAt(lengths, closed, width, s);
 };
 var footprintOf2 = remembered((params) => {
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
-  for (const { row } of sectionsOf(params, 3)) {
+  const stand = standingOf(params);
+  const barred = (s) => (params.barrier !== 2 && stand?.barriers.some((runs) => runs.some(([a, b]) => s > a - 0.000001 && s < b + 0.000001))) ?? false;
+  const barrier = () => params.barrier === 1 ? leveller.GUARDRAIL.top : leveller.RAIL;
+  for (const { s, row, bottom } of sectionsOf(params, 3)) {
     for (const [x, y, z] of row) {
       [x, y].forEach((v, k) => {
         min[k] = Math.min(min[k], v);
         max[k] = Math.max(max[k], v);
       });
-      min[2] = Math.min(min[2], z - params.depth);
-      max[2] = Math.max(max[2], z);
+      min[2] = Math.min(min[2], bottom ?? z - params.depth);
+      max[2] = Math.max(max[2], z + (barred(s) ? barrier() : 0));
     }
   }
+  for (const { foot } of stand?.posts ?? [])
+    min[2] = Math.min(min[2], foot);
+  for (const { pieces } of stand?.arcade ?? [])
+    for (const { foot } of pieces)
+      if (foot !== undefined)
+        min[2] = Math.min(min[2], foot);
   return { min, max };
 });
 var centreOf2 = (params) => {
@@ -4369,8 +5297,8 @@ var upToMillimetre2 = (v) => Math.ceil(v * 1000 - 0.000001) / 1000;
 var road = Object.freeze({
   name: "road",
   label: "Road",
-  description: "A road or path along points, on the ground: a ribbon as wide as asked, its edges mitred at each point, its surface on the heights of the ground sampled under it about every metre along it and every metre and a half across, a slab under it as deep as asked. Two points make a straight length; a last point on the first closes it round. Its box is what it makes.",
-  faces: ["surface", "sides", "underside"],
+  description: "A road or path along points, on the ground: a ribbon as wide as asked, its edges mitred at each point, its surface on the heights of the ground sampled under it about every metre along it and every metre and a half across, a slab under it as deep as asked. Levelled over the land, its surface is straight across and along it the smoothest line between its ends, never under the ground and no more than its fill over it — its rises gone over, its dips filled, its low side and its ends raised on walls down to the ground —, the land left as it is. Two points make a straight length; a last point on the first closes it round. Its box is what it makes.",
+  faces: (params) => params.barrier !== undefined ? ["surface", "sides", "underside", "barriers"] : ["surface", "sides", "underside"],
   shape: "cube",
   sized: true,
   size: [8, 3, 0.3],
@@ -4381,17 +5309,60 @@ var road = Object.freeze({
     { name: "width", label: "Width", min: 0.5, max: 12, default: 3, step: 0.05, description: "How wide it is (m)." },
     { name: "depth", label: "Depth", min: 0.05, max: 1, default: 0.3, step: 0.01, description: "How far its slab goes down under its surface (m), so that where the ground is not quite where its samples say, no gap shows." },
     { name: "lift", label: "Lift", min: 0.02, max: 0.5, default: LIFT, step: 0.01, optional: true, description: "How far its surface stands over the ground (m): 10 cm, so that no bulge between two samples shows through; a ring that roads run into stands a little more over them, so that they do not fight." },
+    { name: "level", label: "Levelling", min: 0, max: 1, default: 0, step: 1, options: ["none", "over"], labels: ["None: as the ground", "Over the land"], optional: true, description: "Whether its surface lies on the ground as it is (none) or is levelled over the land: straight across within its cross-fall, and along it as straight as it can be between its ends — bent only where the ground or its fill makes it —, never under the ground — a dip filled, its low side and its ends raised on walls —, the land itself left as it is." },
+    { name: "fill", label: "Fill", min: 0, max: 8, default: FILL, step: 0.1, optional: true, when: (params) => params.level > 0, description: "Levelled, how far over its ground it may stand to keep level (m), over the highest of the ground across it: a dip filled up to so much, its walls as much taller; a valley deeper it goes down into, so much over it; 0 keeps every rise and dip of it." },
+    { name: "grade", label: "Steepest grade", min: 1, max: 100, default: GRADE, step: 0.5, optional: true, when: (params) => params.level > 0, description: "Levelled, the most it may ever climb or fall along (%): 30 as the road tool lays it. It keeps to 12.5 % (a bridge's grade) wherever its ends and the ground let it, steeper only where they force it — the taut line over the ground between its ends —; on the ground within its fill where its walls keep it so, raised on columns up to 10 m over the ground where they cannot (a valley deeper it goes down into), a barrier along each deck on a side that drops more than a barrier stands, none along its walls. None: as steep as its fill makes it, on its walls." },
+    { name: "fall", label: "Cross-fall", min: 0, max: 100, default: FALL, step: 0.5, optional: true, when: (params) => params.level > 0, description: "Levelled, how much it may lean across (%): as the ground leans, but no more; where the ground leans more, its low side stands raised on a wall. 2 % is a real road's; 0 level from edge to edge." },
+    { name: "round", label: "Corners", min: 0, max: 1, default: 0, step: 1, options: ["sharp", "rounded"], labels: ["As its points", "Rounded"], optional: true, description: "Whether it rounds its own corners — every point it turns more than 15° at — as the road tool rounds a road it lays: arcs of 6 m or twice its width, a tangent no more than 45 % of a straight, a point every 8°, whatever made its points (the tool, a point dragged in the editor, a file). Rounded, it no longer runs through the point at a corner. A road with a grade rounds them too; one written with neither runs through its points as they are." },
+    { name: "columns", label: "Columns", min: 0, max: 2, default: 0, step: 1, options: ["square", "round", "arches"], labels: ["Square", "Round", "Arches"], optional: true, when: (params) => params.level > 0 && params.grade !== undefined, description: "Under a grade, what holds it up where it stands on a deck: square columns, an eighth of its width a side (as the road tool laid them before it had this), round ones as wide, or arches as a stone bridge's — a pier across the road at each column's place, between each two an arch, a semicircle where the ground leaves room and flatter where it is near, solid stone where too low —, open under it: what walks or drives under passes through. Of what it stands on (its sides' face)." },
+    { name: "barrier", label: "Barriers", min: 0, max: 2, default: 0, step: 1, options: ["parapet", "guardrail", "none"], labels: ["A parapet", "A steel guardrail", "None"], optional: true, when: (params) => params.level > 0 && params.grade !== undefined, description: "Under a grade, what bars its decks where they drop: a parapet 1.05 m tall and 0.25 m thick, a steel guardrail (a beam 0.75 m over the road on posts 2 m apart) or none. Said, its barriers wear a face of their own (its fourth); a road written without it barred with a parapet of what it stands on. Whatever it is drawn as, a barrier collides as a wall 3 m tall; none collides as nothing." },
     { name: "points", label: "Path", points: [2, 32], min: -31.5, max: 31.5, step: 0.001, default: [[-4, 0, 0.1], [4, 0, 0.1]], description: "The points it runs through: [x, y, z] in metres in its own frame, z the ground there; two at least; a last one on the first closes it round." },
-    { name: "ground", label: "Ground", heights: [0, SAMPLES], min: -31.5, max: 31.5, step: 0.001, default: [], description: "The ground's height under it (m, in its own frame), as the editor that laid it measured it: at each place sampled along it, from its left edge to its right; none: straight between its points' heights." }
+    { name: "ground", label: "Ground", heights: [0, SAMPLES], min: -31.5, max: 31.5, step: 0.001, default: [], description: "The ground's height under it (m, in its own frame), as the editor that laid it measured it: at each place sampled along it, from its left edge to its right; none: straight between its points' heights." },
+    { name: "water", label: "Water", heights: [0, SAMPLES], min: -31.5, max: 31.5, step: 0.001, default: [], optional: true, description: "The water's surface over it (m, in its own frame), as the editor that laid it measured it, at each place sampled along it: where water stands over the ground there; else the lowest of the ground across it. None: dry. Levelled under a grade, its underside stands 0.3 m over the water and it is a deck there, on columns down to the bed." },
+    { name: "ends", label: "Ends", list: true, optional: true, fixed: true, min: -PIN_RISE, max: PIN_RISE, step: 0.001, default: [], keep: keepEnds, description: `Levelled, its start and its end as the road tool levelled the whole road through them, so that its parts meet as one whichever is levelled again: each [rise, grade, lean] — its middle over the ground there (m), how much it rises along it and to its left across it (m a m) —, under a grade with two more, its barrier's height there on its left and its right (a share of it, 0–1: so that a barrier goes on into the next part as one), "ground" where it runs under a ring (on the ground there, as the ring is), or null: free, level across as the rest of it, resting on the highest of its ground.` }
   ],
   footprint: footprintOf2,
-  settle: (params, heightAt) => {
-    const points = params.points.map(([x, y]) => [x, y, heightAt(x, y)]);
-    return { ...params, points, ground: groundSites({ ...params, points }).map(([x, y]) => heightAt(x, y)) };
+  overhead: (params) => {
+    if (levelledOf(params) && !leveller)
+      return null;
+    const stand = standingOf(params);
+    return { sections: sectionsOf(params, 3).map(({ s, row }) => ({ s, row })), depth: params.depth, ...stand && { decks: stand.decks, posts: stand.posts, arcade: params.columns === 2 ? stand.arcade ?? null : null } };
   },
-  fit: (params) => {
+  redress: (params, name, faces) => name !== "barrier" || params.barrier === 2 ? null : { 3: params.barrier === 1 ? GUARDRAIL_STEEL : faces[1]?.texture ?? null },
+  settle: (params, heightAt, indices, waterAt) => {
+    const points = params.points.map(([x, y]) => [x, y, heightAt(x, y)]);
+    const sites = groundSites({ ...params, points, ground: [] });
+    const ground = sites.map(([x, y]) => heightAt(x, y));
+    const { ends, water: _, ...settled } = { ...params, points, ground };
+    const across = samplesAcross(params.width);
+    const wet = waterAt ? sites.map(([x, y], k) => {
+      const surface = waterAt(x, y);
+      return surface !== null && surface > ground[k] + 0.01 ? surface : null;
+    }) : [];
+    if (wet.some((v) => v !== null)) {
+      settled.water = Array.from({ length: sites.length / across }, (_2, k) => {
+        const row = wet.slice(k * across, (k + 1) * across).filter((v) => v !== null);
+        return row.length ? Math.max(...row) : Math.min(...ground.slice(k * across, (k + 1) * across));
+      });
+    }
+    const last = params.points.length - 1;
+    const kept2 = ends?.length === 2 ? ends.map((pin, end) => Array.isArray(indices) && indices.includes(end ? last : 0) ? null : pin) : [];
+    return kept2.some(Boolean) ? { ...settled, ends: kept2 } : settled;
+  },
+  fit: (params, size) => {
+    if (levelledOf(params) && !leveller && size)
+      return [...size];
     const { min, max } = footprintOf2(params);
     return max.map((v, k) => upToMillimetre2(v - min[k]));
+  },
+  prepare: () => {
+    whenLevelled().catch(() => {});
+  },
+  waiting: (params) => {
+    if (!levelledOf(params) || leveller)
+      return false;
+    whenLevelled().catch(() => {});
+    return true;
   },
   resize: (params, size) => {
     const spread = [0, 1].map((k) => Math.max(...params.points.map((p) => p[k])) - Math.min(...params.points.map((p) => p[k])));
@@ -4402,10 +5373,11 @@ var road = Object.freeze({
     return { ...params, width, depth, points: params.points.map(([x, y, z]) => [x * scale3[0], y * scale3[1], z]) };
   },
   mesh: (params, seed, level, size) => {
-    const mesh = createMesh(3);
+    const mesh = createMesh(params.barrier !== undefined ? 4 : 3);
     const closed = closedOf(params.points);
     const sections = sectionsOf(params, level);
-    const down = ([x, y, z]) => [x, y, z - params.depth];
+    const down = ({ bottom }, [x, y, z]) => [x, y, bottom ?? z - params.depth];
+    const drop = ({ bottom }, [, , z]) => bottom === undefined ? -params.depth : bottom - z;
     const columns = sections[0].row.length;
     const last = columns - 1;
     const u = (j) => params.width * j / last;
@@ -4419,23 +5391,31 @@ var road = Object.freeze({
     for (let k = 0;k + 1 < sections.length; k++)
       for (let j = 0;j < last; j++)
         mesh.quad(0, top[k][j], top[k][j + 1], top[k + 1][j + 1], top[k + 1][j]);
+    const stand = standingOf(params);
+    if (stand) {
+      leveller.structureOf({ params, sections, stand, ends: [true, true], polygon: mesh.polygon, placeAt: placerOf(params), level });
+      return mesh.pack(size, centreOf2(params));
+    }
     for (let k = 0;k + 1 < sections.length; k++) {
       const [a, b] = [sections[k], sections[k + 1]];
       const [aLeft, aRight, bLeft, bRight] = [a.row[0], a.row[last], b.row[0], b.row[last]];
-      mesh.polygon(2, [down(aLeft), down(bLeft), down(bRight), down(aRight)], [0, 0, -1], [[0, a.s], [0, b.s], [params.width, b.s], [params.width, a.s]]);
-      mesh.polygon(1, [aLeft, down(aLeft), down(bLeft), bLeft], cross2(sub2(bLeft, aLeft), [0, 0, 1]).map((v) => -v), [[a.s, 0], [a.s, -params.depth], [b.s, -params.depth], [b.s, 0]]);
-      mesh.polygon(1, [aRight, bRight, down(bRight), down(aRight)], cross2(sub2(bRight, aRight), [0, 0, 1]), [[a.s, 0], [b.s, 0], [b.s, -params.depth], [a.s, -params.depth]]);
+      mesh.polygon(2, [down(a, aLeft), down(b, bLeft), down(b, bRight), down(a, aRight)], [0, 0, -1], [[0, a.s], [0, b.s], [params.width, b.s], [params.width, a.s]]);
+      mesh.polygon(1, [aLeft, down(a, aLeft), down(b, bLeft), bLeft], cross2(sub2(bLeft, aLeft), [0, 0, 1]).map((v) => -v), [[a.s, 0], [a.s, drop(a, aLeft)], [b.s, drop(b, bLeft)], [b.s, 0]]);
+      mesh.polygon(1, [aRight, bRight, down(b, bRight), down(a, aRight)], cross2(sub2(bRight, aRight), [0, 0, 1]), [[a.s, 0], [b.s, 0], [b.s, drop(b, bRight)], [a.s, drop(a, aRight)]]);
     }
     if (!closed) {
-      for (const [{ row }, sign] of [[sections[0], -1], [sections.at(-1), 1]]) {
+      for (const [section, sign] of [[sections[0], -1], [sections.at(-1), 1]]) {
+        const { row } = section;
         const outward = cross2(sub2(row[0], row[last]), [0, 0, 1]).map((v) => v * sign);
-        const outline = [...row, down(row[last]), down(row[0])];
-        mesh.polygon(1, outline, outward, [...row.map((point, j) => [u(j), point[2] - row[0][2]]), [params.width, row[last][2] - row[0][2] - params.depth], [0, -params.depth]]);
+        const outline = [...row, down(section, row[last]), down(section, row[0])];
+        mesh.polygon(1, outline, outward, [...row.map((point, j) => [u(j), point[2] - row[0][2]]), [params.width, row[last][2] - row[0][2] + drop(section, row[last])], [0, drop(section, row[0])]]);
       }
     }
     return mesh.pack(size, centreOf2(params));
   },
   collider: (params) => {
+    if (levelledOf(params) && !leveller)
+      return [];
     const centre = centreOf2(params);
     const sections = sectionsOf(params, 3);
     const columns = sections[0].row.length;
@@ -4444,6 +5424,47 @@ var road = Object.freeze({
       const [a, b] = [k * columns + j, (k + 1) * columns + j];
       return [a, a + 1, b + 1, a, b + 1, b];
     }).flat());
+    const stand = standingOf(params);
+    if (stand) {
+      leveller.structureOf({ params, sections, stand, ends: [0, 1].map((end) => !params.ends?.[end]), placeAt: placerOf(params), rail: leveller.GUARD, ramped: false, polygon: (face, points, outward) => {
+        const first = positions.length / 3;
+        for (const point of points)
+          positions.push(point[0] - centre[0], point[1] - centre[1], point[2] - centre[2]);
+        const hub = points.length - 1;
+        for (let i = 0;i + 1 < hub; i++) {
+          const normal = cross2(sub2(points[i], points[hub]), sub2(points[i + 1], points[hub]));
+          const turned2 = normal[0] * outward[0] + normal[1] * outward[1] + normal[2] * outward[2] < 0;
+          indices.push(first + hub, first + (turned2 ? i + 1 : i), first + (turned2 ? i : i + 1));
+        }
+      } });
+    } else if (sections[0].bottom !== undefined) {
+      const foot = positions.length / 3;
+      for (const { row, bottom } of sections)
+        for (const j of [0, columns - 1])
+          positions.push(row[j][0] - centre[0], row[j][1] - centre[1], bottom - centre[2]);
+      sections.slice(1).forEach((_, k) => {
+        const [left, right] = [[k * columns, (k + 1) * columns, foot + 2 * k, foot + 2 * k + 2], [k * columns + columns - 1, (k + 1) * columns + columns - 1, foot + 2 * k + 1, foot + 2 * k + 3]];
+        indices.push(left[0], left[3], left[2], left[0], left[1], left[3], right[0], right[2], right[3], right[0], right[3], right[1]);
+      });
+      if (!closedOf(params.points)) {
+        for (const [k, beside, end] of [[0, 1, 0], [sections.length - 1, sections.length - 2, 1]]) {
+          if (params.ends?.[end])
+            continue;
+          const { row, bottom } = sections[k];
+          const feet = positions.length / 3;
+          for (const [x, y] of row)
+            positions.push(x - centre[0], y - centre[1], bottom - centre[2]);
+          const middleOf2 = ({ row: points }) => [(points[0][0] + points[columns - 1][0]) / 2, (points[0][1] + points[columns - 1][1]) / 2, 0];
+          const outward = sub2(middleOf2(sections[k]), middleOf2(sections[beside]));
+          const facing = cross2(sub2(row[1], row[0]), [0, 0, -1]);
+          const flip = facing[0] * outward[0] + facing[1] * outward[1] < 0;
+          for (let j = 0;j < columns - 1; j++) {
+            const [top, nextTop, base, nextBase] = [k * columns + j, k * columns + j + 1, feet + j, feet + j + 1];
+            indices.push(...flip ? [top, nextBase, nextTop, top, base, nextBase] : [top, nextTop, nextBase, top, nextBase, base]);
+          }
+        }
+      }
+    }
     return [{ type: "mesh", positions: Float32Array.from(positions), indices: Uint32Array.from(indices) }];
   }
 });
@@ -5186,7 +6207,7 @@ var MOST_COLOURS2 = 8;
 var MOST_POINTS = 512;
 var MOST_RINGS = 64;
 var MOST_BYTES2 = 4096;
-var SPAN = 65535;
+var SPAN2 = 65535;
 var LEAST = 0.000000000001;
 var decodeOutline = (text) => {
   const bytes = fromBase64(text ?? "");
@@ -5205,7 +6226,7 @@ var decodeOutline = (text) => {
       return null;
     const points = Array.from({ length: count }, (_, i) => {
       const p = at + i * 4;
-      return [(bytes[p] | bytes[p + 1] << 8) / SPAN, (bytes[p + 2] | bytes[p + 3] << 8) / SPAN];
+      return [(bytes[p] | bytes[p + 1] << 8) / SPAN2, (bytes[p + 2] | bytes[p + 3] << 8) / SPAN2];
     });
     at += count * 4;
     const colours = Array.from({ length: count }, (_, i) => colour(bytes[at + (i >> 1)] >> (i & 1) * 4 & 15));
@@ -5502,7 +6523,7 @@ var recentred = ({ kind, params }) => {
   const { min, max } = type.footprint(values);
   const step = paths[0].step;
   const shift = [0, 1, 2].map((k) => Number((Math.round((min[k] + max[k]) / 2 / step) * step).toFixed(decimals(step))));
-  const moved = Object.fromEntries(type.params.filter((param) => param.points || param.heights).map((param) => [param.name, param.points ? values[param.name].map((point) => point.map((v, k) => v - shift[k])) : values[param.name].map((v) => v - shift[2])]));
+  const moved = Object.fromEntries(type.params.filter((param) => (param.points || param.heights) && values[param.name] !== undefined).map((param) => [param.name, param.points ? values[param.name].map((point) => point.map((v, k) => v - shift[k])) : values[param.name].map((v) => v - shift[2])]));
   return { params: constrainKind(kind, { ...values, ...moved }).params, shift };
 };
 var fallbackShape = ({ kind, params }) => {
@@ -7118,21 +8139,21 @@ var groundElevation = (dir) => land ? land.elevation(dir, bareElevation) : terra
 var RADIUS = 6348000;
 var SEA = 12000;
 var DEG3 = Math.PI / 180;
-var unit3 = (v) => {
+var unit4 = (v) => {
   const length2 = Math.hypot(v[0], v[1], v[2]);
   return [v[0] / length2, v[1] / length2, v[2] / length2];
 };
-var cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+var cross4 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 var dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 var axesAt = (up) => {
-  const north = unit3([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
-  return { north, east: cross3(north, up) };
+  const north = unit4([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
+  return { north, east: cross4(north, up) };
 };
 var frameAt2 = (at, heading = 0, ground = groundElevation) => {
-  const up = unit3(at);
+  const up = unit4(at);
   const { north, east } = axesAt(up);
   const ahead = north.map((v, i) => v * Math.cos(heading * DEG3) + east[i] * Math.sin(heading * DEG3));
-  const right = cross3(ahead, up);
+  const right = cross4(ahead, up);
   const origin = [...at];
   const base = Math.hypot(...at);
   const point = (x, y, z = 0) => origin.map((v, i) => v + right[i] * x + ahead[i] * y + up[i] * z);
@@ -7142,11 +8163,11 @@ var frameAt2 = (at, heading = 0, ground = groundElevation) => {
   };
   const surface = (dir) => RADIUS + Math.max(ground(dir), SEA);
   const groundAt3 = (x, y) => {
-    const dir = unit3(point(x, y));
+    const dir = unit4(point(x, y));
     return local(dir.map((v) => v * surface(dir)))[2];
   };
-  const wetAt = (x, y) => ground(unit3(point(x, y))) < SEA;
-  const depthAt = (x, y) => Math.max(0, SEA - ground(unit3(point(x, y))));
+  const wetAt = (x, y) => ground(unit4(point(x, y))) < SEA;
+  const depthAt = (x, y) => Math.max(0, SEA - ground(unit4(point(x, y))));
   return { origin, up, right, ahead, heading, base, point, local, groundAt: groundAt3, wetAt, depthAt, surface };
 };
 
@@ -7289,7 +8310,7 @@ var CUBE = PRESETS.cube.shape.join(",");
 var CYLINDER = PRESETS.cylinder.shape.join(",");
 var SPHERE = PRESETS.sphere.shape.join(",");
 var LEVEL = 1;
-var ROUND4 = 0.02;
+var ROUND5 = 0.02;
 var FLAT3 = 0.01;
 var ALIKE = 0.001;
 var normals = new Map;
@@ -7360,9 +8381,9 @@ var piecesOf2 = (part, meshOf) => {
   const key = shapeKey(part.shape);
   const [x, y, z] = size;
   if (key === CUBE)
-    return [{ type: "box", half: [x / 2, y / 2, z / 2], radius: Math.min(ROUND4, x / 2, y / 2, z / 2) }];
+    return [{ type: "box", half: [x / 2, y / 2, z / 2], radius: Math.min(ROUND5, x / 2, y / 2, z / 2) }];
   if (key === CYLINDER && round3(x, y))
-    return [{ type: "cylinder", half: z / 2, radius: x / 2, rounding: Math.min(ROUND4, z / 2, x / 2) }];
+    return [{ type: "cylinder", half: z / 2, radius: x / 2, rounding: Math.min(ROUND5, z / 2, x / 2) }];
   if (key === SPHERE && round3(x, y) && round3(y, z))
     return [{ type: "sphere", radius: x / 2 }];
   return fromMesh(`p:${key}`, meshOf(LEVEL), size);
@@ -8596,7 +9617,7 @@ var lowestOf = ({ at, size, rotation = [0, 0, 0, 1] }) => Math.min(...Array.from
 var LINKSET = 256;
 var LIGHT_RANGE = 10;
 var LIGHTS_EACH = 8;
-var NEAR = 30;
+var NEAR2 = 30;
 var DENSE_CAGE = 400;
 var BUDGET = Object.freeze({
   parts: { fair: 1500, most: 4000 },
@@ -8868,7 +9889,7 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
     notes.push(`${videoFaces} faces show videos: ${PLAYING} play at once, the nearest`);
   for (const host of untrusted)
     notes.push(`${host}: not a host the world trusts — each viewer but its owner starts its media with a click (GIPHY's play by themselves)`);
-  const most = (list) => list.reduce((top, each) => Math.max(top, list.filter((other) => Math.hypot(other.at[0] - each.at[0], other.at[1] - each.at[1]) < NEAR).length), 0);
+  const most = (list) => list.reduce((top, each) => Math.max(top, list.filter((other) => Math.hypot(other.at[0] - each.at[0], other.at[1] - each.at[1]) < NEAR2).length), 0);
   const crowd = most(lights);
   const moving = records.filter((record) => record.behaviour && record.behaviour.type !== "switch" && record.behaviour.type !== "passage").length + clones.filter((clone) => !clone.behaviour && objectRecords.find((object) => object.id === clone.of)?.behaviour).length;
   const totals = {
@@ -8907,7 +9928,7 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
     scripts: "behaviours do most things without a script (doors, spins, slides)",
     trees: "a forest is painted with the editor's brush, not written tree by tree"
   };
-  const NAMES = { crowd: `lights within ${NEAR} m of one another`, systems: "particle systems", particles: "particles in the air", moving: "things moving by themselves" };
+  const NAMES = { crowd: `lights within ${NEAR2} m of one another`, systems: "particle systems", particles: "particles in the air", moving: "things moving by themselves" };
   for (const [key, { fair, most: max }] of Object.entries(budget ?? {})) {
     const value = key === "triangles" ? finest : totals[key];
     const said = `${value.toLocaleString("en")} ${NAMES[key] ?? key}`;
@@ -8951,7 +9972,7 @@ var EMPTY = -32768;
 var APRON = 2;
 var JOIN = 8;
 var MOST_BOXES2 = 32;
-var SPAN2 = 2 ** 18;
+var SPAN3 = 2 ** 18;
 var ROCK_WORDS = CHUNK_NODES / 32;
 var NODE_METRES = 12696000 / NODES;
 var chunkKey = (face2, cx, cy) => `${face2}/${cx}/${cy}`;
@@ -8962,7 +9983,7 @@ var chunkOf = (key) => {
   const [face2, cx, cy] = parts.map(Number);
   return FACES2[face2] && cx < CHUNKS && cy < CHUNKS ? { face: face2, cx, cy } : null;
 };
-var chunkNumber = (face2, cx, cy) => (face2 * SPAN2 + cx) * SPAN2 + cy;
+var chunkNumber = (face2, cx, cy) => (face2 * SPAN3 + cx) * SPAN3 + cy;
 var parcelOfChunk = ({ face: face2, cx, cy }) => ({ face: face2, x: cx >> 3, y: cy >> 3 });
 var nodeDirection = (face2, i, j) => {
   const { normal, u, v } = FACES2[face2];
@@ -8972,6 +9993,26 @@ var latticeOf = (point) => {
   const face2 = FACES2.reduce((best, f) => dot(point, f.normal) > dot(point, best.normal) ? f : best);
   const along3 = 1 / dot(point, face2.normal);
   return { face: face2.id, x: (dot(point, face2.u) * along3 + 1) / 2 * NODES, y: (dot(point, face2.v) * along3 + 1) / 2 * NODES };
+};
+var REACH6 = 3;
+var NODE_LEVEL = 17;
+var SEGMENTS_BITS = 6;
+var texelsOf = (level, x, y, border) => {
+  const shift = NODE_LEVEL - level;
+  const span = ([first, last]) => shift >= 0 ? [first * 2 ** shift, last * 2 ** shift] : [Math.floor(first / 2 ** -shift), Math.ceil(last / 2 ** -shift)];
+  return {
+    x: span([(x << SEGMENTS_BITS) - border, (x << SEGMENTS_BITS) + (1 << SEGMENTS_BITS) + border]),
+    y: span([(y << SEGMENTS_BITS) - border, (y << SEGMENTS_BITS) + (1 << SEGMENTS_BITS) + border]),
+    step: 2 ** Math.max(shift, 0)
+  };
+};
+var anyWithin = ([first, last], step, low, high) => {
+  const from = Math.max(first, Math.ceil(low / step) * step);
+  return from <= Math.min(last, high);
+};
+var tileReads = (level, x, y, [, i0, j0, i1, j1]) => {
+  const { x: across, y: down, step } = texelsOf(level, x, y, 2);
+  return anyWithin(across, step, i0 - REACH6, i1 + REACH6) && anyWithin(down, step, j0 - REACH6, j1 + REACH6);
 };
 var weights = (t) => {
   const t2 = t * t;
@@ -9134,7 +10175,7 @@ var createLandField = ({ bare }) => {
       const chunk2 = values.get(key);
       if (chunk2 && chunk2.every((value) => value === 0)) {
         values.delete(key);
-        const face3 = Math.floor(key / SPAN2 / SPAN2);
+        const face3 = Math.floor(key / SPAN3 / SPAN3);
         faces.set(face3, faces.get(face3) - 1);
       }
     }
@@ -9298,6 +10339,7 @@ var createLandField = ({ bare }) => {
     changed.clear();
     return out;
   };
+  const untaken = (face2, level, x, y) => boxes.some((box) => box[0] === face2 && tileReads(level, x, y, box));
   return {
     elevation,
     editAt,
@@ -9309,6 +10351,7 @@ var createLandField = ({ bare }) => {
     setNodes,
     chunk,
     taken,
+    untaken,
     values: (key) => values.get(key),
     rockBits: (key) => rocks.get(key),
     get rockNodes() {
@@ -9320,7 +10363,7 @@ var createLandField = ({ bare }) => {
       return count;
     },
     valueKeys: () => [...values.keys()],
-    editedKeys: () => [...edits.keys()].map((key) => chunkKey(Math.floor(key / SPAN2 / SPAN2), Math.floor(key / SPAN2) % SPAN2, key % SPAN2)),
+    editedKeys: () => [...edits.keys()].map((key) => chunkKey(Math.floor(key / SPAN3 / SPAN3), Math.floor(key / SPAN3) % SPAN3, key % SPAN3)),
     get version() {
       return version;
     },
@@ -9332,7 +10375,7 @@ var createLandField = ({ bare }) => {
     }
   };
 };
-var chunkOfNumber = (key) => ({ face: Math.floor(key / SPAN2 / SPAN2), cx: Math.floor(key / SPAN2) % SPAN2, cy: key % SPAN2 });
+var chunkOfNumber = (key) => ({ face: Math.floor(key / SPAN3 / SPAN3), cx: Math.floor(key / SPAN3) % SPAN3, cy: key % SPAN3 });
 
 // src/parcel.js
 var PARCEL_LEVEL = 15;
@@ -9575,22 +10618,22 @@ var frameOf2 = ({ origin, heading }) => {
 var RADIUS2 = 6348000;
 var SEA3 = 12000;
 var DEG6 = Math.PI / 180;
-var unit4 = (v) => {
+var unit5 = (v) => {
   const length2 = Math.hypot(...v);
   return v.map((x) => x / length2);
 };
-var cross4 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+var cross5 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 var axesAt2 = (up) => {
-  const north = unit4([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
-  return { north, east: cross4(north, up) };
+  const north = unit5([-up[0] * up[1], 1 - up[1] * up[1], -up[2] * up[1]]);
+  return { north, east: cross5(north, up) };
 };
 var frameOf3 = (anchor) => {
-  const up = unit4(anchor.at);
+  const up = unit5(anchor.at);
   const { north, east } = axesAt2(up);
   const ahead = north.map((v, i) => v * Math.cos(anchor.heading * DEG6) + east[i] * Math.sin(anchor.heading * DEG6));
-  const right = cross4(ahead, up);
+  const right = cross5(ahead, up);
   const base = groundElevation(up);
-  const dirOf = (x, y) => unit4(up.map((v, i) => v * RADIUS2 + right[i] * x + ahead[i] * y));
+  const dirOf = (x, y) => unit5(up.map((v, i) => v * RADIUS2 + right[i] * x + ahead[i] * y));
   const ground = (x, y) => groundElevation(dirOf(x, y)) - base;
   const wet = (x, y) => groundElevation(dirOf(x, y)) < SEA3;
   const depth = (x, y) => Math.max(0, SEA3 - groundElevation(dirOf(x, y)));
@@ -9711,38 +10754,38 @@ var cornersOf2 = (parts, at, rotation) => parts.flatMap((part) => [-1, 1].flatMa
   const local = quatRotate(part.rotation, [sx * part.size[0] / 2, sy * part.size[1] / 2, sz * part.size[2] / 2]).map((v, i) => v + part.at[i]);
   return inFrame(quatRotate(rotation, local).map((v, i) => v + at[i]));
 }))));
-var boxOf2 = (part, unit5) => {
-  const corners = cornersOf2([part], unit5.at, unit5.rotation);
+var boxOf2 = (part, unit6) => {
+  const corners = cornersOf2([part], unit6.at, unit6.rotation);
   const box = { min: [0, 1, 2].map((k) => Math.min(...corners.map((c) => c[k]))), max: [0, 1, 2].map((k) => Math.max(...corners.map((c) => c[k]))) };
-  const up = along3(quatRotate(unit5.rotation, quatRotate(part.rotation, [0, 0, 1])));
+  const up = along3(quatRotate(unit6.rotation, quatRotate(part.rotation, [0, 0, 1])));
   if (part.kind || part.shape.join() !== PRESETS.cube.shape.join() || up[2] < 0.9)
     return box;
-  const top = inFrame(quatRotate(unit5.rotation, quatRotate(part.rotation, [0, 0, part.size[2] / 2]).map((v, i) => v + part.at[i])).map((v, i) => v + unit5.at[i]));
+  const top = inFrame(quatRotate(unit6.rotation, quatRotate(part.rotation, [0, 0, part.size[2] / 2]).map((v, i) => v + part.at[i])).map((v, i) => v + unit6.at[i]));
   return { ...box, plane: { top, up } };
 };
 var topOf = (box, x, y) => box.plane ? box.plane.top[2] - (box.plane.up[0] * (x - box.plane.top[0]) + box.plane.up[1] * (y - box.plane.top[1])) / box.plane.up[2] : box.max[2];
-var units = records.filter((record) => record.type === "object" || record.type === "instance").map((unit5) => ({ unit: unit5, parts: records.filter((part) => part.object === (unit5.of ?? unit5.id)) }));
-var boxes = units.flatMap(({ unit: unit5, parts }) => parts.map((part) => ({ unit: unit5.id, ...boxOf2(part, unit5) })));
-var support = ([x, y, z], unit5) => Math.max(frame.ground(x, y) + lift, ...boxes.filter((box) => box.unit !== unit5 && x >= box.min[0] && x <= box.max[0] && y >= box.min[1] && y <= box.max[1] && topOf(box, x, y) <= z + 0.05).map((box) => topOf(box, x, y)));
+var units = records.filter((record) => record.type === "object" || record.type === "instance").map((unit6) => ({ unit: unit6, parts: records.filter((part) => part.object === (unit6.of ?? unit6.id)) }));
+var boxes = units.flatMap(({ unit: unit6, parts }) => parts.map((part) => ({ unit: unit6.id, ...boxOf2(part, unit6) })));
+var support = ([x, y, z], unit6) => Math.max(frame.ground(x, y) + lift, ...boxes.filter((box) => box.unit !== unit6 && x >= box.min[0] && x <= box.max[0] && y >= box.min[1] && y <= box.max[1] && topOf(box, x, y) <= z + 0.05).map((box) => topOf(box, x, y)));
 var settles = (part) => part.kind === "road" || part.kind === "bridge" || part.kind === "fence" && Array.isArray(part.params?.points);
-for (const { unit: unit5, parts } of units) {
+for (const { unit: unit6, parts } of units) {
   if (!parts.length || parts.every(settles) || parts.some((part) => part.kind === "bridge") && parts.every((part) => settles(part) || part.kind === "lantern"))
     continue;
-  const label = unit5.type === "object" ? unit5.name : `a clone of ${records.find((record) => record.id === unit5.of)?.name}`;
-  const corners = cornersOf2(parts, unit5.at, unit5.rotation);
+  const label = unit6.type === "object" ? unit6.name : `a clone of ${records.find((record) => record.id === unit6.of)?.name}`;
+  const corners = cornersOf2(parts, unit6.at, unit6.rotation);
   const bottom = Math.min(...corners.map((c) => c[2]));
   const low = corners.filter((c) => c[2] < bottom + 0.05);
   const xs = corners.map((c) => c[0]), ys = corners.map((c) => c[1]);
   const centre = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2, bottom];
-  const gap = Math.max(...[...low, centre].map((point) => bottom - support(point, unit5.id)));
-  const floats = afloat(unit5.vehicle?.type);
+  const gap = Math.max(...[...low, centre].map((point) => bottom - support(point, unit6.id)));
+  const floats = afloat(unit6.vehicle?.type);
   if (gap > 0.05 && !floats)
     notes.push(`${label}: a gap of ${gap.toFixed(2)} m under its lowest parts — lower it, or its footing`);
   if (floats) {
     const under = Math.min(...[...low, centre].map(([x, y]) => frame.depth(x, y)));
-    const needs = inFrame(unit5.at)[2] - bottom + 0.2;
+    const needs = inFrame(unit6.at)[2] - bottom + 0.2;
     if (!frame.wet(centre[0], centre[1]))
-      notes.push(`${label}: a ${unit5.vehicle.type} floats only at sea — this one stands on land`);
+      notes.push(`${label}: a ${unit6.vehicle.type} floats only at sea — this one stands on land`);
     else if (under < needs)
       notes.push(`${label}: ${under.toFixed(2)} m of water under it — it needs ${needs.toFixed(1)} m, or it sits on the bottom and its engine cannot move it (the survey's depths say where)`);
   } else if (low.some(([x, y]) => frame.wet(x, y)))
