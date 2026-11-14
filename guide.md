@@ -2532,7 +2532,8 @@ A car drives itself too, on its object's route — a coach round its car park, a
 "accel": 1, "stop": 5, "at": "ends", "face": "yes", "held": true }` — its points in its own frame, a point every few metres
 along the way, round and back into where it is kept, its turns as wide as its length asks (a coach's 11–12 m) and clear of
 whatever stands near —, held where it is kept till its Auto is set on. It goes on the land under it wherever it is kept,
-read as it goes: its points' z are not its heights, so the same car on other land runs the same round over it. Aimed at its
+read as it goes, standing on it by its wheels — its nose up a rise, its side down across a slope: its points' z are not
+its heights, so the same car on other land runs the same round over it. Aimed at its
 seat at the wheel, O is its Auto for whoever may drive it: its whole way is read first, and over water or land steeper than
 35 % it does not set off (its hint says so); else it runs its route once and is off again where it is kept, its wheels
 turning as it goes, whoever is in it carried; sat at its wheel, one takes it from where it has got to. Its driver may record
@@ -2734,7 +2735,8 @@ parts of one group with a `lift` behaviour (format.md), a button a floor on its 
 at each stop — dry from the first moment under the surface, no stairs needed. Its hull and its dome thin shells — a loft of sections each its outline
 and, back the other way, that outline a few cm inside it, its two ends `corners` — seen and walked into
 from inside, at least three of a sculpt's steps thick (its box over 255: 12–14 cm across 10 m), and
-opaque decks and walls inside them; its tour a `route` whose points' z is its depth, `"water": "no"`,
+opaque decks and walls inside them; its tour a `route` whose points' z is its depth, `"water": "no"`
+— 0 afloat, negative under the sea; over 0 it stays afloat: its route never takes it over the sea —,
 its depth read all along it for its keel. Its inside is the box round its largest parts: make its hull
 and its dome the largest — nothing else a quarter of either as a box —, and the fish keep out of it and
 the air in it is all of it; close its top with its deck, but where its tower goes up through its sail:
@@ -2985,8 +2987,8 @@ for it, and it holds:
   write or change these by hand: they are the ground to the centimetre;
 - `"sky"`: the parcel's own sky, when it has one (time, clouds, rain).
 
-In *Builds as JSON*, **Save land** saves the parcel where the camera looks, and shows and downloads its
-file. A land pasted, dropped or opened by its address is checked as a whole parcel: counted, not held to
+In *Builds as JSON*, **Save land** (in the panel's *Land* section) saves the parcel where the camera looks
+and downloads its file. A land pasted, dropped — that file, say — or opened by its address is checked as a whole parcel: counted, not held to
 one build's budget, but to what a newcomer is sent of the world at once (about 1.6 MB compressed, which
 the panel says). Its parcel's keeper then chooses:
 
@@ -2995,7 +2997,7 @@ the panel says). Its parcel's keeper then chooses:
 - **Load here**: the same, into the parcel where the camera looks — moved to that parcel's centre, under
   new ids, its whole ground laid there. A smaller parcel that it would not fit refuses it.
 
-Either is one Ctrl+Z. **Reset land** (below the line in *Builds as JSON*, beside *Save land*) makes the
+Either is one Ctrl+Z. **Reset land** (in the same *Land* section, beside *Save land*) makes the
 parcel where the camera looks the planet's own again, its keeper alone, after a dialog that names it and what goes: their objects, clones and trees
 there taken away, its ground and sky the world's, its published land unpublished (its Gist stays); what is
 another's or locked is left. Also one Ctrl+Z.
@@ -3225,7 +3227,7 @@ Every pattern takes `scale` 0.25–20 (default 2), `width` 0.01–0.3 (default 0
 
 ### Starter materials
 
-Up to three of each subcategory of the bank (3253 in all in the catalog):
+Up to three of each subcategory of the bank (3272 in all in the catalog):
 
 - `masonry/brick/red-brick` — Red Brick, 1.4 × 1.4 m a tile, #8f6852
 - `masonry/brick/red-brick-03` — Red Brick 03, 1 × 1 m a tile, #6b564e
@@ -3260,9 +3262,9 @@ Up to three of each subcategory of the bank (3253 in all in the catalog):
 - `wood/siding/wood-siding-006` — Wood Siding 006, 2 × 2 m a tile, #4c3b31
 - `wood/siding/wood-siding-001` — Wood Siding 001, 2 × 2 m a tile, #38291f
 - `wood/siding/wood-siding-011` — Wood Siding 011, 1.4 × 1.4 m a tile, #655a4e
+- `wood/painted/white-painted-boards` — White painted boards, 3 × 1.2 m a tile, #e3e3e0
 - `wood/painted/painted-wood-008c` — Painted Wood 008 C, 1.5 × 1.5 m a tile, #5e4a2f
 - `wood/painted/painted-wood-003` — Painted Wood 003, 1.5 × 1.5 m a tile, #bb160a
-- `wood/painted/painted-wood-009b` — Painted Wood 009 B, 1.5 × 1.5 m a tile, #6f8d70
 - `wood/logs/bark-brown-02` — Bark Brown 02, 1 × 1 m a tile, #615844
 - `wood/logs/bark-brown-01` — Bark Brown 01, 1 × 1 m a tile, #75603a
 - `wood/logs/bark-willow` — Bark Willow, 1 × 1 m a tile, #42372b
@@ -3313,9 +3315,9 @@ Up to three of each subcategory of the bank (3253 in all in the catalog):
 - `paving/roads/road-012a` — Road 012 A, 6 × 6 m a tile, #41403f
 - `paving/roads/road-007` — Road 007, 7.5 × 7.5 m a tile, #50504e
 - `paving/roads/road-008a` — Road 008 A, 6 × 6 m a tile, #484641
+- `paving/stylized/sandbox-grid` — Sandbox grid, 10 m ruled in metres, circles of 4 to 10 m, 10 × 10 m a tile, #c5c9ce
 - `paving/stylized/cobblestone-irregular-floor-001` — Cobblestone Irregular Floor 001, 2 × 2 m a tile, #4c4749
 - `paving/stylized/stone-floor-007` — Stone Floor 007, 2.4 × 2.4 m a tile, #a3a2a1
-- `paving/stylized/stone-path-006` — Stone Path 006, 2 × 2 m a tile, #4e4c47
 - `ground/soil/brown-mud-dry` — Brown Mud Dry, 1.3 × 1.3 m a tile, #745c3f
 - `ground/soil/brown-mud-02` — Brown Mud 02, 1.3 × 1.3 m a tile, #4e4538
 - `ground/soil/mud-cracked-dry-03` — Mud Cracked Dry 03, 1.5 × 1.5 m a tile, #cfaa82

@@ -74,8 +74,8 @@ for it, and it holds:
   write or change these by hand: they are the ground to the centimetre;
 - `"sky"`: the parcel's own sky, when it has one (time, clouds, rain).
 
-In *Builds as JSON*, **Save land** saves the parcel where the camera looks, and shows and downloads its
-file. A land pasted, dropped or opened by its address is checked as a whole parcel: counted, not held to
+In *Builds as JSON*, **Save land** (in the panel's *Land* section) saves the parcel where the camera looks
+and downloads its file. A land pasted, dropped — that file, say — or opened by its address is checked as a whole parcel: counted, not held to
 one build's budget, but to what a newcomer is sent of the world at once (about 1.6 MB compressed, which
 the panel says). Its parcel's keeper then chooses:
 
@@ -84,7 +84,7 @@ the panel says). Its parcel's keeper then chooses:
 - **Load here**: the same, into the parcel where the camera looks — moved to that parcel's centre, under
   new ids, its whole ground laid there. A smaller parcel that it would not fit refuses it.
 
-Either is one Ctrl+Z. **Reset land** (below the line in *Builds as JSON*, beside *Save land*) makes the
+Either is one Ctrl+Z. **Reset land** (in the same *Land* section, beside *Save land*) makes the
 parcel where the camera looks the planet's own again, its keeper alone, after a dialog that names it and what goes: their objects, clones and trees
 there taken away, its ground and sky the world's, its published land unpublished (its Gist stays); what is
 another's or locked is left. Also one Ctrl+Z.

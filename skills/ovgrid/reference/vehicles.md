@@ -321,7 +321,8 @@ A car drives itself too, on its object's route — a coach round its car park, a
 "accel": 1, "stop": 5, "at": "ends", "face": "yes", "held": true }` — its points in its own frame, a point every few metres
 along the way, round and back into where it is kept, its turns as wide as its length asks (a coach's 11–12 m) and clear of
 whatever stands near —, held where it is kept till its Auto is set on. It goes on the land under it wherever it is kept,
-read as it goes: its points' z are not its heights, so the same car on other land runs the same round over it. Aimed at its
+read as it goes, standing on it by its wheels — its nose up a rise, its side down across a slope: its points' z are not
+its heights, so the same car on other land runs the same round over it. Aimed at its
 seat at the wheel, O is its Auto for whoever may drive it: its whole way is read first, and over water or land steeper than
 35 % it does not set off (its hint says so); else it runs its route once and is off again where it is kept, its wheels
 turning as it goes, whoever is in it carried; sat at its wheel, one takes it from where it has got to. Its driver may record
@@ -523,7 +524,8 @@ parts of one group with a `lift` behaviour (format.md), a button a floor on its 
 at each stop — dry from the first moment under the surface, no stairs needed. Its hull and its dome thin shells — a loft of sections each its outline
 and, back the other way, that outline a few cm inside it, its two ends `corners` — seen and walked into
 from inside, at least three of a sculpt's steps thick (its box over 255: 12–14 cm across 10 m), and
-opaque decks and walls inside them; its tour a `route` whose points' z is its depth, `"water": "no"`,
+opaque decks and walls inside them; its tour a `route` whose points' z is its depth, `"water": "no"`
+— 0 afloat, negative under the sea; over 0 it stays afloat: its route never takes it over the sea —,
 its depth read all along it for its keel. Its inside is the box round its largest parts: make its hull
 and its dome the largest — nothing else a quarter of either as a box —, and the fish keep out of it and
 the air in it is all of it; close its top with its deck, but where its tower goes up through its sail:

@@ -8303,7 +8303,7 @@ var airs = new WeakMap;
 var drawnPlaces = new WeakMap;
 var coasts = new WeakMap;
 var joins = new WeakMap;
-var keptOver = new WeakMap;
+var seats = new WeakMap;
 
 // src/physics/colliders.js
 var CUBE = PRESETS.cube.shape.join(",");
