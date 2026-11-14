@@ -2985,7 +2985,8 @@ for it, and it holds:
   an object's parts however far they reach, under their ids;
 - `"chunks"`: its ground where it was shaped (terraformed), each chunk as the world keeps it — never
   write or change these by hand: they are the ground to the centimetre;
-- `"sky"`: the parcel's own sky, when it has one (time, clouds, rain).
+- `"sky"`: the parcel's own sky, when it has one (time, clouds, rain — which falls as snow where the
+  ground is snowy, the terrain's high snow band).
 
 In *Builds as JSON*, **Save land** (in the panel's *Land* section) saves the parcel where the camera looks
 and downloads its file. A land pasted, dropped — that file, say — or opened by its address is checked as a whole parcel: counted, not held to

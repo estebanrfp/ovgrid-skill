@@ -85,7 +85,7 @@ var ROOT_SIZE = 12696000, NOISE_SCALE = 800, SEA_LEVEL = 0.5555556, ELEV_SCALE =
   const deltaH = h - SEA_LEVEL;
   const hf = Math.min(Math.max(Math.abs(deltaH) / lf, 0), 1) ** 1.4;
   return SEA_LEVEL + deltaH * hf + (h - SEA_LEVEL - deltaH * hf) * bf;
-}, bareElevation = (dir) => terrainHeight(dir) * ELEV_SCALE, land = null, groundElevation = (dir) => land ? land.elevation(dir, bareElevation) : terrainHeight(dir) * ELEV_SCALE;
+}, bareElevation = (dir) => terrainHeight(dir) * ELEV_SCALE, land = null, groundElevation = (dir) => land ? land.elevation(dir, bareElevation) : terrainHeight(dir) * ELEV_SCALE, BAND_NOISE;
 var init_terrain_height = __esm(() => {
   BASE_LAYER = layer(RIDGED, 23, 1.665, 3.6, 0, 1);
   TERRAIN_LAYER_0 = layer(RIDGED, 10, 1.005, 1.6, 0, 1);
@@ -93,6 +93,7 @@ var init_terrain_height = __esm(() => {
   TERRAIN_LAYER_2 = layer(RIDGED, 18, 1.1, 0.9, -2, 2);
   BIAS = [[2.3, 4.5, 6.7], [8.9, 9.8, 8.7], [7.6, 6.5, 5.4]];
   GRID_OFFSET = [5, 4, 9];
+  BAND_NOISE = { scale: 300 * 5.2, octaves: 3, reach: 0.2 };
 });
 
 // src/build/survey.js

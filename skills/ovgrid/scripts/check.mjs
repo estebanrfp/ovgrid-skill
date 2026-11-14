@@ -8134,6 +8134,7 @@ var useLand = (edits) => {
   land = edits;
 };
 var groundElevation = (dir) => land ? land.elevation(dir, bareElevation) : terrainHeight(dir) * ELEV_SCALE;
+var BAND_NOISE = { scale: 300 * 5.2, octaves: 3, reach: 0.2 };
 
 // src/build/survey.js
 var RADIUS = 6348000;
