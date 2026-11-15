@@ -1,9 +1,9 @@
 # 3. The resources: the build file, and what it may be made of
 
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
-materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
+materials, with their lights, particles and behaviours; linked clones of objects; trees; herds of animals. Every
 name it may use — shapes, kinds and their parameters, behaviours, particles, the 3,091 materials,
-the 67 species of trees and plants — is in **catalog.json**, made from the world's own code, one entry a line.
+the 67 species of trees and plants, the animals — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json
 {
@@ -14,6 +14,7 @@ the 67 species of trees and plants — is in **catalog.json**, made from the wor
                { "name": "lamp", "at": [6, 6], "prims": [ … ] } ],
   "clones": [ { "of": "lamp", "at": [-6, -6], "turn": [0, 0, 90] } ],
   "trees": [ { "species": "oak", "at": [24, 30], "seed": 3, "scale": 1.1 } ],
+  "animals": [ { "species": "sheep", "at": [40, 36], "count": 5, "seed": 7, "territory": 20 } ],
   "views": [ { "name": "square", "eye": [0, -14], "look": [0, 4, 2], "hour": 16 } ]
 }
 ```
@@ -735,7 +736,7 @@ prims collide as their mesh, its hull when convex.
   | `switch` | switches its object's lights in its zones, for everyone: on a click on or off — a switch by a room's door, one for a floor, one for every light — or, `"near"`, a presence detector: on while someone stands under it on its floor, off once all have gone; prims only | `zones` (a list of zone names, or `"all"`: every light of its object in a zone), `trigger` (`"click"`, the default; `"near"`; `"both"`), `reach` (m, 4: how far across under it a presence detector senses), `stay` (s, 30: how long its lights stay on once all have gone) |
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
   | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
-  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each) |
+  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
 
 - **Doors the avatar walks through**: a door's leaf collides where it stands, so a shut door is a
   wall. Build it shut and give it `"behaviour": { "type": "door", "trigger": "both", "reach": 2.5,
@@ -829,6 +830,32 @@ prims collide as their mesh, its hull when convex.
   optional: its script's source (a string), run by every peer near it — a plant's sets its look alone,
   `tint` and `glow` (`on('night', () => set({ glow: 0.8 }))`); `tint` and `glow`, optional, that look
   as its script keeps it.
+
+## Animals
+
+```json
+"animals": [ { "species": "cow", "at": [30, 42], "count": 5, "seed": 3, "territory": 25 } ]
+```
+
+- **A herd lives where it is put**: `at` `[x, y]`, its home on the ground, in the build's frame. Its animals walk
+  round it, stop there to graze or lie down, and set off again, by the world's clock — the same animals at the same
+  places for everyone who comes, nothing of where they are written or sent: the walk, its stops and its animals are
+  worked out from its home and its `seed`. A species of catalog.json's `animals` → `species`: the `horse`, `cow`,
+  `sheep`, `elephant`, `dog`, `cat`, `goose`, `chicken`. The `polar-bear` and the `penguin` (`wild` there) live on
+  the snow of their own, few, and keep off the lands: on a land lives what its designer puts — put one there only to
+  have one there.
+- `count`: how many it is, within its species' `group` (a cow's herd 3–6, a cat alone, a dog or two); none, its seed
+  deals one. `seed`: a whole number (0 up to 2³²); another seed, another walk round the same home — none, one from the
+  build's name and the herd's place in the list. `territory`: how far round its home it walks, in metres — from 5 (a
+  pen) up to its species' own (catalog: a cow's 80, a hen's 30, a horse's 150), which is what none gives. `key`,
+  optional, as a tree's.
+- **Its ground**: it walks no steeper than 35°, never into the sea, as far as its territory or nearer where the ground
+  does not let it; where none is left round its home — steep all round —, it stays there: another `seed`, or gentler
+  ground. It has no collision and does not see what is built: **give it open ground as wide as its territory** — a
+  paddock (`territory` its radius), a meadow, a farmyard behind a fence —, never a house or a street; for hens in a
+  run, a `territory` of 5–10.
+- What it is: no reaction to people, no sound; of a species in sight at once, the 48 nearest are drawn (the check
+  says when a build puts more). Each animal is 240–440 triangles, drawn while it covers 4 px; a herd costs a record.
 
 ## Land
 

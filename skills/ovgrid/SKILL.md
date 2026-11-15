@@ -1,6 +1,6 @@
 ---
 name: ovgrid
-description: Build whole environments in OVGrid, a planet shared peer to peer in the browser, from a description — houses, villages, squares, bridges, paths and fences, forests and clearings, furnished interiors, lights, smoke and fire, doors that open, ferries — as one JSON build the person pastes into the world's editor. Use whenever asked to build, place, furnish, light or animate anything in OVGrid, to survey a place there before building, or to write, fix or change an OVGrid build.
+description: Build whole environments in OVGrid, a planet shared peer to peer in the browser, from a description — houses, villages, squares, bridges, paths and fences, forests and clearings, farms and their animals, furnished interiors, lights, smoke and fire, doors that open, ferries — as one JSON build the person pastes into the world's editor. Use whenever asked to build, place, furnish, light or animate anything in OVGrid, to survey a place there before building, or to write, fix or change an OVGrid build.
 ---
 
 # Building environments in OVGrid
@@ -10,7 +10,7 @@ Second Life. What is built there is a **recipe**, never a mesh: objects of parts
 or a *kind* (door, roof, stairs, rock…) with a few named parameters in metres and degrees, its faces
 dressed from a bank of 3,091 real-size materials, and what it does — its light, its particles
 (smoke, fire, steam…), its behaviour (a door that opens, sails that turn), its script; linked clones
-of objects; trees as a species and a seed. Every peer meshes the same thing from the same recipe.
+of objects; trees as a species and a seed; herds of animals as a species, a home and a seed. Every peer meshes the same thing from the same recipe.
 You write that recipe as one JSON document, anchored at the coordinate the person gives you and
 fitted to a survey of the place; the person brings it into the world — pasted or dropped into the
 editor's *Builds as JSON*, or opened with `?import=` and its address — sees it as a ghost where
@@ -69,7 +69,7 @@ place keeps several boxes. Gather what is plain and measure what is textured (bu
    `--survey site.json` counts what already stands round it. → [budget.md](reference/budget.md)
 6. **Interactivity.** Particles, lights at night, behaviours (doors, slides, spins, lifts,
    ferries), scripts for what no property can say, games to come; vehicles people drive — cars,
-   motorbikes, boats, trains; screens — a video, a GIF or a sticker on a face by its address
+   motorbikes, boats, trains, helicopters and planes, a starship to space and back; screens — a video, a GIF or a sticker on a face by its address
    ([format.md](reference/format.md), Media), or a page of its own, HTML whose clicks its script hears
    or whose buttons count, sign and vote by themselves ([format.md](reference/format.md), Pages); patterns on a face — forty: grids,
    circuits, plasma, fire, arcs, radar, DNA, a peer-to-peer mesh… — glowing and moving by a few numbers, each its own (format.md, Surface); mirrors that show what stands before them, the avatars too (format.md, Mirrors). The panel first, code last. → [effects.md](reference/effects.md),
@@ -127,17 +127,17 @@ sound, plain build; a page of detail gets that detail, within the budget.
 |---|---|
 | [reference/plan.md](reference/plan.md) | 1 — from a request to a plan; fitting it to the budget; saying what was simplified |
 | [reference/site.md](reference/site.md) | 2 — URLs and coordinates, the survey and its map, reading the ground, standing on it, terraces, ways, bridges, views, what is there |
-| [reference/format.md](reference/format.md) | 3 — the build file: anchor, prims, shapes, kinds, materials by use, surface, mirrors, media (videos, GIFs and stickers on a face), pages (HTML on a face), light, collisions, behaviours, objects, clones, trees, ids |
+| [reference/format.md](reference/format.md) | 3 — the build file: anchor, prims, shapes, kinds, materials by use, surface, mirrors, media (videos, GIFs and stickers on a face), pages (HTML on a face), light, collisions, behaviours, objects, clones, trees, animals, ids |
 | [reference/sculpt.md](reference/sculpt.md) | 3 — curved and organic shapes as sculpted prims: lathes, boxes, lofts, sweeps, models; bends, twists, noise; examples |
 | [reference/recipes.md](reference/recipes.md) | 3 — carve, gather, clone: each form its recipe, with its JSON; what never to leave (overlaps, boxes round an opening, flickering faces, open joints) |
 | [reference/method.md](reference/method.md) | 4 — the frame, scale and proportions, walls with openings, a cottage as JSON |
-| [reference/composition.md](reference/composition.md) | 4 — villages, squares, ways, fences, forests and clearings, interiors, night, palettes, mistakes |
+| [reference/composition.md](reference/composition.md) | 4 — villages, squares, ways, fences, forests and clearings, animals on farms and paddocks, interiors, night, palettes, mistakes |
 | [reference/budget.md](reference/budget.md) | 5 — what one build and one place may bring (fair, most), what costs what, what was measured |
 | [reference/effects.md](reference/effects.md) | 6 — particles, lights at night, behaviours, vehicles, scripts, games |
 | [reference/vehicles.md](reference/vehicles.md) | 6 — vehicles: a car, a motorbike, a boat, a train — their look (rounded bodies, paint, chrome, rims, headlamps), wheels, seats, power, a pier out to deep water; each an example |
 | [reference/deliver.md](reference/deliver.md) | 7 — the JSON, the anchor, Builds as JSON, the ghost, export and change, sharing; a whole parcel as a land: Save land, Load in its place, Load here |
 | [reference/verify.md](reference/verify.md) | 8 — what to look for |
-| `catalog.json` | Prim presets (faces, size axes, triangles); every kind's, behaviour's and particle preset's parameters; the bank, one material a line (id, name, uses, size, colour, metal, look, tags); 45 species of trees and plants with their six variants |
+| `catalog.json` | Prim presets (faces, size axes, triangles); every kind's, behaviour's and particle preset's parameters; the bank, one material a line (id, name, uses, size, colour, metal, look, tags); 45 species of trees and plants with their six variants; the animals, each herd's size and walk |
 | `scripts/survey.mjs` | The ground round a place, from a URL, coordinates or a survey: JSON, SVG, PNG; `--profile` along lines |
 | `scripts/check.mjs` | A build checked as the world checks it, against the budget; `--survey` with what stands round it |
 | `scripts/sculpt.mjs` | A build's `sculpt` descriptions made sculpted prims (`build.sculpted.json`); a glTF model resampled into them, or told why it does not fit |

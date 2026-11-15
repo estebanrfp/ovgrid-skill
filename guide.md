@@ -214,11 +214,12 @@ What it holds — read the `note` at its top:
 | `anchor` | the frame: exact, on the ground at the centre, +y the way the person looked |
 | `latLon`, `elevation` | where it is; metres over the sea |
 | `radius`, `step` | how far each way, how fine |
-| `summary` | lowest and highest ground, the steepest slope, the share under 5°, the share under the sea and how deep it gets (`deepest`), how many builds and trees |
+| `summary` | lowest and highest ground, the steepest slope, the share under 5°, the share under the sea and how deep it gets (`deepest`), how many builds and trees, and `herds` where some were put |
 | `peaks`, `pits` | `[x, y, z]` the highest and lowest points round them |
 | `ridges`, `valleys` | lines: `from`, `to`, `length`, `low`, `high` |
 | `builds` | what stands there: `id`, `name`, `owner`, `centre`, `size` (a box in the frame), `parts`, `kinds`, `lights`, `emitters`, `moving` |
 | `trees` | `species`, `at`, `scale` |
+| `animals` | where herds were put: `species`, `at` (its home), `count`, `seed`, `territory` — what walks round there (format.md, Animals) |
 | `heights`, `slopes` | grids: `heights[j][i]` m over the centre's ground, `slopes[j][i]` ° — at x = −radius + step · i, y = radius − step · j (rows from the far edge to the near one, as a map reads) |
 | `water`, `depths` | where there is sea: `water[j][i]` 1 under it, `depths[j][i]` how deep it is (m) |
 | `built` | where there are builds: how high what is built stands over the ground in each cell, 0 free |
@@ -283,9 +284,9 @@ The terrain is a function; what you build is not.
 ## 3. The resources: the build file, and what it may be made of
 
 A build is one JSON object: objects of parts — prim shapes or *kinds* — dressed in the bank's
-materials, with their lights, particles and behaviours; linked clones of objects; trees. Every
+materials, with their lights, particles and behaviours; linked clones of objects; trees; herds of animals. Every
 name it may use — shapes, kinds and their parameters, behaviours, particles, the 3,091 materials,
-the 67 species of trees and plants — is in **catalog.json**, made from the world's own code, one entry a line.
+the 67 species of trees and plants, the animals — is in **catalog.json**, made from the world's own code, one entry a line.
 
 ```json
 {
@@ -296,6 +297,7 @@ the 67 species of trees and plants — is in **catalog.json**, made from the wor
                { "name": "lamp", "at": [6, 6], "prims": [ … ] } ],
   "clones": [ { "of": "lamp", "at": [-6, -6], "turn": [0, 0, 90] } ],
   "trees": [ { "species": "oak", "at": [24, 30], "seed": 3, "scale": 1.1 } ],
+  "animals": [ { "species": "sheep", "at": [40, 36], "count": 5, "seed": 7, "territory": 20 } ],
   "views": [ { "name": "square", "eye": [0, -14], "look": [0, 4, 2], "hour": 16 } ]
 }
 ```
@@ -1017,7 +1019,7 @@ prims collide as their mesh, its hull when convex.
   | `switch` | switches its object's lights in its zones, for everyone: on a click on or off — a switch by a room's door, one for a floor, one for every light — or, `"near"`, a presence detector: on while someone stands under it on its floor, off once all have gone; prims only | `zones` (a list of zone names, or `"all"`: every light of its object in a zone), `trigger` (`"click"`, the default; `"near"`; `"both"`), `reach` (m, 4: how far across under it a presence detector senses), `stay` (s, 30: how long its lights stay on once all have gone) |
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
   | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
-  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each) |
+  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
 
 - **Doors the avatar walks through**: a door's leaf collides where it stands, so a shut door is a
   wall. Build it shut and give it `"behaviour": { "type": "door", "trigger": "both", "reach": 2.5,
@@ -1111,6 +1113,32 @@ prims collide as their mesh, its hull when convex.
   optional: its script's source (a string), run by every peer near it — a plant's sets its look alone,
   `tint` and `glow` (`on('night', () => set({ glow: 0.8 }))`); `tint` and `glow`, optional, that look
   as its script keeps it.
+
+### Animals
+
+```json
+"animals": [ { "species": "cow", "at": [30, 42], "count": 5, "seed": 3, "territory": 25 } ]
+```
+
+- **A herd lives where it is put**: `at` `[x, y]`, its home on the ground, in the build's frame. Its animals walk
+  round it, stop there to graze or lie down, and set off again, by the world's clock — the same animals at the same
+  places for everyone who comes, nothing of where they are written or sent: the walk, its stops and its animals are
+  worked out from its home and its `seed`. A species of catalog.json's `animals` → `species`: the `horse`, `cow`,
+  `sheep`, `elephant`, `dog`, `cat`, `goose`, `chicken`. The `polar-bear` and the `penguin` (`wild` there) live on
+  the snow of their own, few, and keep off the lands: on a land lives what its designer puts — put one there only to
+  have one there.
+- `count`: how many it is, within its species' `group` (a cow's herd 3–6, a cat alone, a dog or two); none, its seed
+  deals one. `seed`: a whole number (0 up to 2³²); another seed, another walk round the same home — none, one from the
+  build's name and the herd's place in the list. `territory`: how far round its home it walks, in metres — from 5 (a
+  pen) up to its species' own (catalog: a cow's 80, a hen's 30, a horse's 150), which is what none gives. `key`,
+  optional, as a tree's.
+- **Its ground**: it walks no steeper than 35°, never into the sea, as far as its territory or nearer where the ground
+  does not let it; where none is left round its home — steep all round —, it stays there: another `seed`, or gentler
+  ground. It has no collision and does not see what is built: **give it open ground as wide as its territory** — a
+  paddock (`territory` its radius), a meadow, a farmyard behind a fence —, never a house or a street; for hens in a
+  run, a `territory` of 5–10.
+- What it is: no reaction to people, no sound; of a species in sight at once, the 48 nearest are drawn (the check
+  says when a build puts more). Each animal is 240–440 triangles, drawn while it covers 4 px; a herd costs a record.
 
 ### Land
 
@@ -1813,6 +1841,16 @@ ways through it, what stands along them, what grows round them, what lights them
 - **Keep clear**: no tree on a path, in a house or within its `reach` of a wall or a roof
   (`avoid`). Tall trees behind the houses frame them; one or two in front of a view, not in it.
 
+### Animals: farms, paddocks, a village's life
+
+- **Where they belong**: cows and sheep on a meadow or in a fenced paddock, horses by a stable, hens and geese in a
+  farmyard or a run, a dog or a cat by a house; an elephant on a savanna's open ground. A herd walks round its home
+  and walks through whatever is built (format.md, Animals): put its home in the paddock's middle and its `territory`
+  under the paddock's radius — a paddock of 30 × 30 m, 12; a hen run of 6 m, 5 —, or on open ground as wide as its
+  species' own.
+- **Few**: one herd a paddock, a few hens to a yard, a dog to a farm. A village's life is two or three herds round
+  it, not a crowd in its square.
+
 ### Interiors
 
 - **Every room**: a floor (boards, tiles), walls inside (the wall boxes' inner faces: plaster,
@@ -1964,6 +2002,7 @@ A place past its *most* takes nothing more: build lighter, or somewhere else.
 | Glow | A half-resolution pass when anything glows in view | Halos for a few lanterns, not for every window |
 | Particles | Symbolic: a flame 3–4 cards, smoke 3–5 puffs; one budget a frame for every system in view (1,500 particles, 0.6 of the screen covered), thinned alike past it; past 30 m a part throws its first layer only, past 200 m nothing. Blended ones (smoke, steam, fog) are the dearest where they fill the screen | A chimney for each burning hearth, a few fires, fog in one or two hollows (effects.md) |
 | Trees | Full mesh near, simplified mid-way, an impostor far; culled and drawn on the GPU | Hundreds are cheap: a 5,000-tree forest costs −0.4 ms on foot (it hides terrain), +0.4 ms from 150 m above |
+| Animals | A herd is one record; each animal 240–440 triangles, posed in the vertex stage, one draw a species in sight, drawn while it covers 4 px (a hen from 60 m, an elephant from 400 m); 48 of a species at once, the nearest; nothing sent as they move | A few herds where they belong — a paddock, a farmyard (format.md, Animals): five cows in view cost +0.01 ms |
 | Shadows | Everything built casts within 250 m; redrawn when it changes or the light moves | Nothing to do |
 
 Triangles per shape at its four levels (catalog.json has every preset and kind, at their defaults):
@@ -2051,6 +2090,9 @@ and each preset's own values: catalog.json → `particles`. A string names a kit
   over 3 s as it starts and dies away as it stops, as a helicopter's rotors do; still, none of it, at no
   cost. An engine's flame, a car's exhaust smoke, a steamer's funnel. On anything else it never shows
   (the check says so).
+- **As it pushes**: `"thrust": "ahead"` on such a layer throws it longer and stronger the faster its vehicle goes along
+  its own +y, `"up"` the faster it goes up or down its own z; a third of itself while it does not — a starship's main
+  engines and its lift engines (vehicles.md, A starship).
 - **Flames light only by their part's light**: without one they glow and light nothing. With it on
   (`true` or `"night"`), the part lights as its `light` says — glowing embers (`emissive` 1, warm)
   with `"light": { "range": 5, "flicker": 0.35 }` light a room or a square — and the two nearest
@@ -2119,7 +2161,8 @@ example; catalog.json → `behaviours` every range).
 
 ### Vehicles and routes
 
-Cars, motorbikes, boats and trains people drive: vehicles.md. What carries people by itself is an
+Cars, motorbikes, boats, trains, helicopters, planes and a starship people drive: vehicles.md — a starship goes to
+space, across the planet and back on its own (vehicles.md, A starship). What carries people by itself is an
 **object with a `move` behaviour**: a ferry across a river, a lift up a
 cliff, a cable car, a platform — there and back, waiting at either end, carrying whoever stands on
 it. Give it a floor wide enough to stand on (≥ 2 × 2 m), rails round its edge, a landing at each
@@ -2209,7 +2252,7 @@ then, keep games to what scripts and behaviours can do: a gate that opens, a bel
 The check counts the lights (a fire's by its part's light), the particle systems — the blended ones apart —
 the particles in the air, what moves and the scripts, against the budget (budget.md).
 
-## 6. Interactivity: vehicles — a car, a motorbike, a bicycle, a boat, a ship or yacht, a submarine, a helicopter, a plane, a train
+## 6. Interactivity: vehicles — a car, a motorbike, a bicycle, a boat, a ship or yacht, a submarine, a helicopter, a plane, a starship, a train
 
 An object one sits in and drives. Its owner, sitting on its seat, drives it — W and S throttle and
 brake, A and D steer, Space the hand brake, Escape out — and everyone sees it go, with whoever rides
@@ -2219,7 +2262,7 @@ then 0.07 ms of physics a frame on its driver's peer alone.
 ### What makes one
 
 - **The object** says what it is: `"vehicle": { "type": "car" }` — `car`, `bike`, `bicycle`, `boat`, `ship`,
-  `submarine`, `helicopter`, `plane` or `train` — and its parameters, each held to its range (catalog.json →
+  `submarine`, `helicopter`, `plane`, `starship` or `train` — and its parameters, each held to its range (catalog.json →
   `vehicles`): a car's `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg), and if it says so its `grip`
   (×, 0.4–3: how hard its tyres hold the ground) and its `drive` (`all`, `front` or `rear`: the wheels its engine turns) —
   left out, 2 and all —, its `brake`, `suspension`, `travel` and `steering` (each, and what it does to the feel, with the
@@ -2228,7 +2271,7 @@ then 0.07 ms of physics a frame on its driver's peer alone.
   its back wheel makes for each of its pedals'); a boat's `power`, `speed`, `steer` (its rudder) and `mass`; a ship's `speed`, `accel` (m/s²),
   `turn` and `thrusters` (°/s); a submarine's those and `dive` (m/s) and `depth` (m); a helicopter's
   `speed`, `accel`, `turn`, `climb` (m/s) and `ceiling` (m over the ground); a plane's those and `lift`
-  (m/s, its take-off speed); a train's `speed` and `accel`.
+  (m/s, its take-off speed); a starship's a helicopter's, flown by hand; a train's `speed` and `accel`.
 - **A seat**: a part with `"seat": true`, sat on by a click — on its top, facing its +y, or where
   its sit target says (`"seat": { "at": [x, y, z], "turn": 0 }`: format.md). The
   driver's where the driver sits; more for passengers. The driver faces +y, so the driver's left is
@@ -2522,6 +2565,11 @@ The other vehicles' numbers, each held to its range, its default where it is lef
 | plane | `turn` | 3–60 °/s | 15 |
 | plane | `climb` | 1–50 m/s | 10 |
 | plane | `ceiling` | 100–15,000 m | 3,000 |
+| starship | `speed` | 2–120 m/s | 60 |
+| starship | `accel` | 0.5–15 m/s² | 6 |
+| starship | `turn` | 5–120 °/s | 60 |
+| starship | `climb` | 0.5–30 m/s | 10 |
+| starship | `ceiling` | 10–3,000 m | 500 |
 | train | `speed` | 1–60 m/s | 20 |
 | train | `accel` | 0.1–3 m/s² | 0.8 |
 
@@ -2843,6 +2891,56 @@ down onto it as far before where it is kept as it needs to slow from its take-of
 ] }
 ```
 
+### A starship
+
+A `starship` goes to space and back on its own: its **trip** is its object's route — up off its pad out of the sky (its top
+60 km over the sea), across the planet and back the same way. Its route's points: z their height over the planet's round
+where it is kept, up to 100 km, x and y across it, 1,000 km at most; its Speed up to 2,000 m/s and its Speeds up to 30 m/s²,
+a rocket's 3 g (every other route keeps to 120 m/s, 10 m/s² and 10 km). Speeding up off its pad and slowing into its far
+end and onto its pad again at its Speeds up, it goes √(2 · 30 · h) m/s h m along its way — slow by its pad, its top speed
+only high up —; level all the way, nothing to lean into, facing where its trip takes it: its far end going out, where it
+is kept coming back, turned round at either end while it stops. Its way straight up off its pad and straight down onto it
+(a point a kilometre up with a handle along z, another high up the same: the curve keeps to its handles), and level up
+there: from higher than anything built is drawn (4 km), what is kept round its rider stays where it set off, so that it
+does not follow them across parcels many a second; coming down straight onto its pad, it is there.
+
+- **For one**: one seat, its pilot's and its passenger's — `"seat": { "pose": "quaternius/driving" }` under a canopy of
+  glass, a click on it sitting one at its controls. A ship large enough to stand in has its cockpit walked in, as a coach's
+  cabin (Its places): its outside's parts `passage` `"way": "in"` with where one stands in it, its nose `"both"` — out from
+  inside —, and what it collides as slabs round its cockpit (its floor, its sides, its roof), its seat and panel held from
+  its side walls over a glass floor.
+- **By hand** it flies as a helicopter does, on its feet (legs, pads: what of it is lowest), never over its `ceiling`.
+- **Its trip from its seat**: there, O — or the button over Stand up — sets it going with whoever sits there aboard,
+  its controls let go where it is; from outside, O at its seat sets it going as any Auto. On its trip one stays seated:
+  up from it, one is stood up once it is back. Once set going, its trip runs to its end — off up there, it would wait in
+  space.
+- **Its route**: `"behaviour": { "type": "route", "mode": "back", "points": [[0, 0, 1000, 0, 0, 300], [0, 0, 80000, 0, 0,
+  20000], [0, 60000, 100000, 0, 30000, 0], [0, 300000, 100000]], "speed": 2000, "accel": 30, "stop": 20, "at": "ends",
+  "face": "yes", "held": true }` — straight up to 80 km, rounding over to level at 100 km, 300 km on ahead of its nose, 20 s
+  there turning round, and back the same way: 9 min 3 s from its pad back onto it, 20 s more there turning to face as kept.
+- **Its pad**: level, open to the sky over it, as wide as it is.
+- **Its engines**: `"particles": { "preset": "exhaust", "running": true }` on what they blow from, turned so that its +z
+  points the way they blow, as a plane's — they blow on its trip and while it is flown. A thruster's `"thrust"`: `"ahead"`,
+  longer and stronger the faster it goes along its own +y — its main engines —; `"up"`, the faster it goes up or down its own
+  z — its lift engines under it, turned `[180, 0, 0]` to blow down —; each a third of itself while it does not.
+- **Its sound**: every starship roars while its engines run — low on its pad, fuller and higher the harder they push,
+  going ahead or up and down —, heard 100 m off at full strength and fading to nothing at 400 m. Nothing to set.
+
+```json
+{ "name": "prim starship", "at": [0, 0], "vehicle": { "type": "starship", "speed": 60, "ceiling": 500 },
+  "behaviour": { "type": "route", "mode": "back", "points": [[0, 0, 1000, 0, 0, 300], [0, 0, 80000, 0, 0, 20000], [0, 60000, 100000, 0, 30000, 0], [0, 300000, 100000]], "speed": 2000, "accel": 30, "stop": 20, "at": "ends", "face": "yes", "held": true },
+  "prims": [
+  { "name": "hull", "shape": "cube", "at": [0, 0, 1.4], "size": [2, 6, 1.4], "color": [0.85, 0.2, 0.18] },
+  { "name": "canopy", "shape": "cube", "at": [0, 1.6, 2.6], "size": [1.1, 1.8, 1.3], "material": "glass/clear/float", "seat": { "at": [0, -0.1, -0.32], "turn": 0, "pose": "quaternius/driving" } },
+  { "name": "wing", "shape": "cube", "at": [0, -1, 1.1], "size": [8, 2.4, 0.15], "color": [0.85, 0.2, 0.18] },
+  { "name": "leg", "shape": "cylinder", "at": [0, 2.2, 0.35], "size": [0.12, 0.12, 0.7], "color": [0.55, 0.56, 0.58] },
+  { "name": "leg", "shape": "cylinder", "at": [-0.8, -2, 0.35], "size": [0.12, 0.12, 0.7], "color": [0.55, 0.56, 0.58] },
+  { "name": "leg", "shape": "cylinder", "at": [0.8, -2, 0.35], "size": [0.12, 0.12, 0.7], "color": [0.55, 0.56, 0.58] },
+  { "name": "engine", "shape": "cylinder", "at": [0, -3.1, 1.4], "size": [0.8, 0.8, 0.3], "turn": [90, 0, 0], "color": [0.2, 0.2, 0.22], "particles": { "preset": "exhaust", "running": true, "thrust": "ahead" } },
+  { "name": "lift jet", "shape": "cube", "at": [0, 0, 0.6], "size": [0.1, 0.1, 0.1], "turn": [180, 0, 0], "color": [0.2, 0.2, 0.22], "particles": { "preset": "exhaust", "running": true, "thrust": "up" } }
+] }
+```
+
 ### A boat that takes people round
 
 Not every boat is driven. A tour boat that takes people round and brings them back to its port is an
@@ -2999,7 +3097,7 @@ the panel says). Its parcel's keeper then chooses:
   new ids, its whole ground laid there. A smaller parcel that it would not fit refuses it.
 
 Either is one Ctrl+Z. **Reset land** (in the same *Land* section, beside *Save land*) makes the
-parcel where the camera looks the planet's own again, its keeper alone, after a dialog that names it and what goes: their objects, clones and trees
+parcel where the camera looks the planet's own again, its keeper alone, after a dialog that names it and what goes: their objects, clones, trees and herds
 there taken away, its ground and sky the world's, its published land unpublished (its Gist stays); what is
 another's or locked is left. Also one Ctrl+Z.
 
@@ -3172,6 +3270,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
 - **`submarine`** — A ship that dives: at the surface afloat with its hull's top level with the water — all that is inside it under the water and dry, wherever its frame is —, and under it down to the depth its driver takes it, held there and level, never through the sea's floor. W and S ahead and astern, A and D the helm, Space up and C down. `speed` 1–25 m/s (default 6), `accel` 0.05–3 m/s² (default 0.6), `turn` 1–30 °/s (default 8), `thrusters` 0–10 °/s (default 3), `dive` 0.2–5 m/s (default 1), `depth` 2–500 m (default 60).
 - **`helicopter`** — Flies on its rotors: Space takes it up and C down, and between them it holds its height, never into the ground nor over its ceiling; once off the ground W and S fly it ahead and back, its nose down as it goes, and A and D turn it, on the spot or banking as it goes. On the ground it rests on what it stands on — land, a roof, the sea. Its parts that turn (Does: turns) are its rotors: they turn while it runs, driven or on its Auto, and stand still once it is parked. Up from its controls in the air, it lands first. `speed` 2–80 m/s (default 25), `accel` 0.5–10 m/s² (default 3), `turn` 5–120 °/s (default 45), `climb` 0.5–20 m/s (default 5), `ceiling` 10–3000 m (default 500).
 - **`plane`** — Flies on its wings. On its wheels W speeds it up along its way, S or C brake it, A and D steer it; once as fast as its take-off speed, Space lifts it off. In the air W and S speed it up and slow it down, Space takes it up and C down, and between them it holds its height, never into the ground nor over its ceiling; slower than its take-off speed it sinks; A and D turn it, banking. Back on its wheels it rolls on. On its Auto it flies its route by itself: along its runway, off it, round and down again. `speed` 20–300 m/s (default 80), `accel` 0.5–15 m/s² (default 4), `lift` 10–120 m/s (default 40), `turn` 3–60 °/s (default 15), `climb` 1–50 m/s (default 10), `ceiling` 100–15000 m (default 3000).
+- **`starship`** — Flies by hand as a helicopter does — on its feet, Space up and C down, W and S ahead and back, A and D turning it — never over its ceiling; on its Auto it goes its trip: up from where it is kept, out of the sky into space, across the planet and back the same way down onto it, as its route says. At its controls, O sets its trip going with whoever sits there aboard; up from its seat on its trip, one stays seated till it is back. `speed` 2–120 m/s (default 60), `accel` 0.5–15 m/s² (default 6), `turn` 5–120 °/s (default 60), `climb` 0.5–30 m/s (default 10), `ceiling` 10–3000 m (default 500).
 
 ### Particles
 
@@ -3225,6 +3324,10 @@ Every pattern takes `scale` 0.25–20 (default 2), `width` 0.01–0.3 (default 0
 ### Tree species
 
 `bush` Bush (plant, 2–2.7 m tall, crown 1.6–2 m); `oleander` Oleander (plant, 3.2–4 m tall, crown 2.1–2.7 m); `fern` Fern (plant, 0.7–0.8 m tall, crown 1.1–1.2 m); `agave` Agave (plant, 1.1–1.2 m tall, crown 1.1–1.3 m); `saguaro` Saguaro (plant, 5.6–6.6 m tall, crown 0.8–1 m); `bamboo` Bamboo (plant, 7.5–8.9 m tall, crown 3.7–4.2 m); `banana` Banana (plant, 3.4–4.6 m tall, crown 2.1–2.3 m); `joshua` Joshua tree (plant, 5.7–8.2 m tall, crown 2–3.4 m); `hosta` Hosta (plant, 0.3–0.4 m tall, crown 0.4–0.5 m); `monstera` Monstera (plant, 0.9–1.1 m tall, crown 1.1–1.3 m); `strelitzia` Bird of paradise (plant, 1.3–1.3 m tall, crown 0.9–1.1 m); `cordyline` Cordyline (plant, 2.1–3.7 m tall, crown 1.1–1.5 m); `sunflower` Sunflower (flower, 1.6–2 m tall, crown 1.2–1.5 m); `rudbeckia` Black-eyed Susan (flower, 0.6–0.8 m tall, crown 0.5–0.8 m); `daisy` Oxeye daisy (flower, 0.4–0.7 m tall, crown 0.4–0.6 m); `poppy` Poppy (flower, 0.6–0.7 m tall, crown 0.3–0.5 m); `lily` Lily (flower, 0.9–1.1 m tall, crown 0.3–0.4 m); `gladiolus` Gladiolus (flower, 1.2–1.4 m tall, crown 0.3–0.4 m); `columbine` Columbine (flower, 0.5–0.8 m tall, crown 0.3–0.4 m); `heather` Heather (flower, 0.5–0.6 m tall, crown 0.4–0.5 m); `pampas` Pampas grass (grass, 3.2–3.7 m tall, crown 1.4–2 m); `meadowGrass` Meadow grass (grass, 0.9–1.2 m tall, crown 0.6–0.6 m); `sedge` Sedge (grass, 0.7–0.8 m tall, crown 0.6–0.8 m); `papyrus` Papyrus (grass, 2.4–3.1 m tall, crown 1–1.5 m); `waterLily` Water lily (water, 0–0 m tall, crown 0.3–0.4 m); `floweringWaterLily` Water lily in flower (water, 0.1–0.1 m tall, crown 0.3–0.4 m); `cattail` Cattail (water, 1.9–2.4 m tall, crown 0.7–0.8 m); `reed` Common reed (water, 3–4 m tall, crown 1.3–1.7 m); `rush` Rush (water, 1.1–1.2 m tall, crown 0.3–0.3 m); `coconut` Coconut palm (palm, 12.8–16.3 m tall, crown 6.9–7.8 m); `date` Date palm (palm, 11.8–14.5 m tall, crown 4.1–4.4 m); `fanPalm` Fan palm (palm, 14.2–18.1 m tall, crown 2.9–3.3 m); `royal` Royal palm (palm, 15.6–16.4 m tall, crown 4.2–4.6 m); `bottle` Bottle palm (palm, 4.1–5.3 m tall, crown 2.2–2.4 m); `areca` Areca palm (palm, 4.7–6.3 m tall, crown 3.9–4.5 m); `sago` Sago palm (palm, 2.1–2.5 m tall, crown 1.4–1.6 m); `curvedCoconut` Curved coconut palm (palm, 10.9–14.6 m tall, crown 8.1–10.2 m); `dateClump` Clustered date palm (palm, 13–15.2 m tall, crown 10.8–13.5 m); `spindle` Spindle palm (palm, 7.6–11.8 m tall, crown 2.9–3.1 m); `christmas` Christmas palm (palm, 6.7–8.3 m tall, crown 3.6–4.7 m); `fir` Fir (conifer, 12.4–15.9 m tall, crown 5.1–7 m); `pine` Stone pine (conifer, 14.9–19.3 m tall, crown 5.8–9.6 m); `cypress` Cypress (conifer, 12.1–15.9 m tall, crown 1.3–1.5 m); `sugi` Japanese cedar (conifer, 18.7–25.1 m tall, crown 6.5–7.7 m); `redwood` Redwood (conifer, 25.5–32.9 m tall, crown 6.6–8 m); `dawnRedwood` Dawn redwood (conifer, 16.5–20.8 m tall, crown 6.4–7.7 m); `blackPine` Black pine (conifer, 14–17.6 m tall, crown 6.6–9.2 m); `oak` Oak (broadleaf, 13.5–17.9 m tall, crown 6.3–8.4 m); `birch` Birch (broadleaf, 15.6–18.2 m tall, crown 4.9–5.6 m); `poplar` Poplar (broadleaf, 15.5–18.9 m tall, crown 2.3–2.7 m); `acacia` Acacia (broadleaf, 11–15.3 m tall, crown 7.2–9.7 m); `maple` Maple (broadleaf, 12.4–15.1 m tall, crown 3.7–5.6 m); `cherry` Cherry blossom (broadleaf, 8–9.5 m tall, crown 6.4–7.6 m); `willow` Weeping willow (broadleaf, 10–12.4 m tall, crown 5.7–6.6 m); `olive` Olive (broadleaf, 8.6–9.6 m tall, crown 4.8–6.9 m); `baobab` Baobab (broadleaf, 14–19.3 m tall, crown 3.5–5.6 m); `eucalyptus` Eucalyptus (broadleaf, 19.7–26 m tall, crown 5.4–7.8 m); `plane` Plane tree (broadleaf, 18.5–26.4 m tall, crown 7.9–10.9 m); `zelkova` Zelkova (broadleaf, 16.1–20.3 m tall, crown 6.7–9.5 m); `camphor` Camphor tree (broadleaf, 11.9–16.2 m tall, crown 9.7–12.6 m); `hackberry` Hackberry (broadleaf, 14.6–17.5 m tall, crown 4.8–8.1 m); `chestnut` Sweet chestnut (broadleaf, 14.7–20.2 m tall, crown 7.9–9.3 m); `beech` Beech (broadleaf, 17.8–24.3 m tall, crown 6.6–9.5 m); `alder` Alder (broadleaf, 12.7–15 m tall, crown 4–6.1 m); `feverTree` Fever tree (broadleaf, 17.6–21.6 m tall, crown 9.9–11.1 m); `blueGum` Blue gum (broadleaf, 22.1–29.1 m tall, crown 6.7–9.5 m); `dead` Dead tree (broadleaf, 9.1–13.6 m tall, crown 3.2–5.1 m).
+
+### Animals
+
+Put as herds (format.md, Animals): `elephant` (2–4 in a herd, walking up to 150 m, 4.4 m long); `horse` (2–5 in a herd, walking up to 150 m, 2.67 m long); `cow` (3–6 in a herd, walking up to 80 m, 2.67 m long); `sheep` (3–7 in a herd, walking up to 70 m, 1.04 m long); `dog` (1–2 in a herd, walking up to 140 m, 1 m long); `cat` (1 in a herd, walking up to 60 m, 0.59 m long); `goose` (3–6 in a herd, walking up to 50 m, 0.8 m long); `chicken` (3–6 in a herd, walking up to 30 m, 0.44 m long).
 
 ### Starter materials
 

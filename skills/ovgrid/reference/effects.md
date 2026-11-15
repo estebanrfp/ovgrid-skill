@@ -47,6 +47,9 @@ and each preset's own values: catalog.json → `particles`. A string names a kit
   over 3 s as it starts and dies away as it stops, as a helicopter's rotors do; still, none of it, at no
   cost. An engine's flame, a car's exhaust smoke, a steamer's funnel. On anything else it never shows
   (the check says so).
+- **As it pushes**: `"thrust": "ahead"` on such a layer throws it longer and stronger the faster its vehicle goes along
+  its own +y, `"up"` the faster it goes up or down its own z; a third of itself while it does not — a starship's main
+  engines and its lift engines (vehicles.md, A starship).
 - **Flames light only by their part's light**: without one they glow and light nothing. With it on
   (`true` or `"night"`), the part lights as its `light` says — glowing embers (`emissive` 1, warm)
   with `"light": { "range": 5, "flicker": 0.35 }` light a room or a square — and the two nearest
@@ -115,7 +118,8 @@ example; catalog.json → `behaviours` every range).
 
 ## Vehicles and routes
 
-Cars, motorbikes, boats and trains people drive: vehicles.md. What carries people by itself is an
+Cars, motorbikes, boats, trains, helicopters, planes and a starship people drive: vehicles.md — a starship goes to
+space, across the planet and back on its own (vehicles.md, A starship). What carries people by itself is an
 **object with a `move` behaviour**: a ferry across a river, a lift up a
 cliff, a cable car, a platform — there and back, waiting at either end, carrying whoever stands on
 it. Give it a floor wide enough to stand on (≥ 2 × 2 m), rails round its edge, a landing at each

@@ -62,6 +62,7 @@ A place past its *most* takes nothing more: build lighter, or somewhere else.
 | Glow | A half-resolution pass when anything glows in view | Halos for a few lanterns, not for every window |
 | Particles | Symbolic: a flame 3–4 cards, smoke 3–5 puffs; one budget a frame for every system in view (1,500 particles, 0.6 of the screen covered), thinned alike past it; past 30 m a part throws its first layer only, past 200 m nothing. Blended ones (smoke, steam, fog) are the dearest where they fill the screen | A chimney for each burning hearth, a few fires, fog in one or two hollows (effects.md) |
 | Trees | Full mesh near, simplified mid-way, an impostor far; culled and drawn on the GPU | Hundreds are cheap: a 5,000-tree forest costs −0.4 ms on foot (it hides terrain), +0.4 ms from 150 m above |
+| Animals | A herd is one record; each animal 240–440 triangles, posed in the vertex stage, one draw a species in sight, drawn while it covers 4 px (a hen from 60 m, an elephant from 400 m); 48 of a species at once, the nearest; nothing sent as they move | A few herds where they belong — a paddock, a farmyard (format.md, Animals): five cows in view cost +0.01 ms |
 | Shadows | Everything built casts within 250 m; redrawn when it changes or the light moves | Nothing to do |
 
 Triangles per shape at its four levels (catalog.json has every preset and kind, at their defaults):

@@ -266,6 +266,26 @@ pins (<https://github.com/AngusJohnson/Clipper2>, Boost Software License 1.0, in
 - `assets/wasm/` — Binomial's Basis Universal transcoder: Apache License 2.0, with its LICENSE and
   NOTICE.
 
+## The animals' models
+
+The planet's animals (docs/fauna.md) are drawn from these models, each licensed under the Creative Commons
+Attribution 4.0 International licence (CC BY 4.0, https://creativecommons.org/licenses/by/4.0/) by its author.
+They are kept as downloaded in `assets/fauna/sources/`, and adapted for the meshes the world draws
+(`assets/fauna/<species>.json`, made by tools/fauna/bake.js): the base under one left out, each stood along its
+own length at its size in the world, simplified to a few hundred triangles — the legs of a pair modelled in mid
+stride stood as the two lean between them —, and its vertices given the parts they move by; they carry no
+skeleton and no animation, and OVGrid gives them their motion.
+
+| species | model | author | source |
+|---|---|---|---|
+| polar bear | «Low Poly - Polar Bear» | Gouw (https://sketchfab.com/Gouw) | https://sketchfab.com/3d-models/low-poly-polar-bear-744849f988f148749245c8115eec046e |
+| penguin | «Low Poly Penguin» | Mysticreator (https://sketchfab.com/Mysticreator, as the model downloaded records it; Sketchfab shows the account as Daringcuteseal) | https://sketchfab.com/3d-models/low-poly-penguin-8a27f42a0b1646d6b210db9ab668c54f |
+| elephant | «Low Poly Elephant» | Maksim Batyrev (https://sketchfab.com/c3posw01) | https://sketchfab.com/3d-models/low-poly-elephant-4d16e8e3344f4c7499cf9d2c488e4c9b |
+| horse | «Low Poly Horse(Free Download)» | ouz209 (https://sketchfab.com/ouz209) | https://sketchfab.com/3d-models/low-poly-horsefree-download-a938d9527eb14bdfb9efe45073fa9c18 |
+| cow, sheep, dog, cat | «Low poly animals» (`farm-pack.glb`; its elephant is not used) | ranaaunhaider12 (https://sketchfab.com/ranaaunhaider12) | https://sketchfab.com/3d-models/low-poly-animals-ab00915d1d40484ea658409be3e4cf93 |
+| goose | «Goose Low Poly» | Atlas (https://sketchfab.com/Atlasmodels) | https://sketchfab.com/3d-models/goose-low-poly-3318893e41fc4d2f9f497776da95c13a |
+| chicken | «Low Poly Chicken» | Tiberiu Uncu (https://sketchfab.com/pangolinbc) | https://sketchfab.com/3d-models/low-poly-chicken-29e61a713bd3413c8fc74c8453a1ada1 |
+
 ## Models taken as plans
 
 These builds are rebuilt in OVGrid's own pieces — its prims, its kinds and the texture bank's
@@ -308,6 +328,11 @@ is licensed under the Creative Commons Attribution 4.0 International licence
   Rebuilt with OVGrid's pieces, the model taken as the plan, coarser, at 5.75 times its size: its fuselage's rings, its
   windscreen and windows, its wings, fin, tailplane and engines from its measurements, in its flat colours; its window
   panes, wheels, floor, seats, tables, panel and lights OVGrid's own.
+- `assets/builds/nave.json` (`tools/build-nave.js`): «low poly space ship» by chrisonciuconcepts (Sketchfab:
+  chrisonciuconcepts), https://sketchfab.com/3d-models/low-poly-space-ship-587941c9c11742c6b82dfb99e7b210b9, licence
+  CC-BY-4.0. Rethought with OVGrid's pieces, the model taken as the plan, at twice its size for one seated under its
+  canopy: its hull, nose, wings and fins from its own corners, in its colours; its seat, panel, yoke, legs, engines'
+  cores, exhausts and lamps OVGrid's own. Its triangles frozen for its test: `tests/build/nave-model.json`.
 - `assets/builds/yate.json` (`tools/build-yate.js`): «Yate» by vicente betoret ferrero,
   https://sketchfab.com/3d-models/yate-38cd0b9138c64c4fa5fb125c5f6796f6. Rebuilt with OVGrid's pieces,
   the model taken as the plan, its rooms, doors, lights and fittings OVGrid's own, in the bank's

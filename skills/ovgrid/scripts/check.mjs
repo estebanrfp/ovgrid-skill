@@ -8035,6 +8035,162 @@ var ICOSAHEDRON_VERTICES = [
 
 // src/vegetation/species.js
 var floatsOn = (species, recordOf) => Boolean((SPECIES[species] ?? SPECIES[recordOf?.(species)?.base])?.floats);
+
+// src/fauna/species.js
+var WALK = { lag: 0.25, duty: 0.64, sway: 1.5, bob: 0.02, lift: 0.12, reach: 25 };
+var AMBLE = { lag: 0.14, duty: 0.68, sway: 2.5, bob: 0.02, lift: 0.1, reach: 25 };
+var STRUT = { lag: 0, duty: 0.6, sway: 2, bob: 0.03, lift: 0.2, reach: 24 };
+var WADDLE = { lag: 0, duty: 0.62, sway: 9, bob: 0.03, lift: 0.12, reach: 16 };
+var SPECIES2 = [
+  {
+    name: "polar-bear",
+    source: { file: "polar-bear.glb", drop: ["Material.003"], faces: "+x" },
+    metres: { length: 2.5 },
+    triangles: 420,
+    legs: 4,
+    neck: [[0.72, 0.6], [0.84, 0.6]],
+    wild: true,
+    habitat: { band: [0.8, 1], slope: 20 },
+    share: 0.06,
+    group: [1, 1],
+    territory: 120,
+    pace: 1,
+    gait: AMBLE,
+    rest: { stand: [12, 40], lie: [60, 200], lies: 0.45 }
+  },
+  {
+    name: "penguin",
+    source: { file: "penguin.glb", faces: "-x" },
+    metres: { height: 0.95 },
+    triangles: 240,
+    legs: 2,
+    neck: [[0.5, 0.7], [0.5, 0.8]],
+    wild: true,
+    habitat: { band: [0.8, 1], slope: 12 },
+    share: 0.04,
+    group: [4, 8],
+    territory: 40,
+    pace: 0.3,
+    gait: WADDLE,
+    rest: { stand: [20, 70] }
+  },
+  {
+    name: "elephant",
+    source: { file: "elephant.glb", faces: "-x" },
+    metres: { height: 3.2 },
+    triangles: 420,
+    legs: 4,
+    neck: [[0.7, 0.6], [0.8, 0.6]],
+    group: [2, 4],
+    territory: 150,
+    pace: 1.1,
+    gait: AMBLE,
+    rest: { stand: [15, 50] }
+  },
+  {
+    name: "horse",
+    source: { file: "horse.glb", faces: "+x" },
+    metres: { height: 2 },
+    triangles: 400,
+    legs: 4,
+    neck: [[0.6, 0.62], [0.74, 0.8]],
+    tail: [[0.09, 0.66], [0.03, 0.25]],
+    group: [2, 5],
+    territory: 150,
+    pace: 1.3,
+    gait: WALK,
+    rest: { stand: [10, 30], graze: 55 }
+  },
+  {
+    name: "cow",
+    source: { file: "farm-pack.glb", node: "cow", faces: "+z" },
+    metres: { height: 1.5 },
+    triangles: 420,
+    legs: 4,
+    neck: [[0.72, 0.7], [0.84, 0.7]],
+    tail: [[0.04, 0.72], [0, 0.25]],
+    group: [3, 6],
+    territory: 80,
+    pace: 0.8,
+    gait: WALK,
+    rest: { stand: [20, 60], lie: [60, 180], lies: 0.3, graze: 50 }
+  },
+  {
+    name: "sheep",
+    source: { file: "farm-pack.glb", node: "Cube.001", faces: "+z" },
+    metres: { height: 0.9 },
+    triangles: 320,
+    legs: 4,
+    neck: [[0.74, 0.7], [0.86, 0.7]],
+    group: [3, 7],
+    territory: 70,
+    pace: 0.7,
+    gait: WALK,
+    rest: { stand: [20, 60], lie: [50, 150], lies: 0.3, graze: 45 }
+  },
+  {
+    name: "dog",
+    source: { file: "farm-pack.glb", node: "dog", faces: "+z" },
+    metres: { length: 1 },
+    triangles: 300,
+    legs: 4,
+    neck: [[0.66, 0.6], [0.78, 0.68]],
+    tail: [[0.2, 0.62], [0.31, 0.82]],
+    group: [1, 2],
+    territory: 140,
+    pace: 1,
+    gait: WALK,
+    rest: { stand: [8, 25], lie: [40, 120], lies: 0.4 }
+  },
+  {
+    name: "cat",
+    source: { file: "farm-pack.glb", node: "Cube.002", faces: "+z" },
+    metres: { length: 0.6 },
+    triangles: 300,
+    legs: 4,
+    neck: [[0.7, 0.6], [0.82, 0.62]],
+    tail: [[0.2, 0.45], [0.05, 0.95]],
+    group: [1, 1],
+    territory: 60,
+    pace: 0.5,
+    gait: WALK,
+    rest: { stand: [10, 30], lie: [60, 200], lies: 0.5 }
+  },
+  {
+    name: "goose",
+    source: { file: "goose.glb", faces: "+z" },
+    metres: { height: 0.8 },
+    triangles: 300,
+    legs: 2,
+    neck: [[0.6, 0.55], [0.66, 0.75]],
+    group: [3, 6],
+    territory: 50,
+    pace: 0.5,
+    gait: STRUT,
+    rest: { stand: [15, 45], graze: 60 }
+  },
+  {
+    name: "chicken",
+    source: { file: "chicken.glb", faces: "+z" },
+    metres: { height: 0.45 },
+    triangles: 280,
+    legs: 2,
+    neck: [[0.6, 0.6], [0.7, 0.72]],
+    group: [3, 6],
+    territory: 30,
+    pace: 0.45,
+    gait: STRUT,
+    rest: { stand: [6, 18], graze: 70 }
+  }
+];
+var speciesOf = (name) => SPECIES2.find((species) => species.name === name);
+var DRAWN_MOST = 48;
+
+// src/fauna/record.js
+var homeOf = (at) => at.map((v) => Math.round(v * 1000) / 1000);
+var countOf2 = (species, count) => Math.min(Math.max(Math.round(count), species.group[0]), species.group[1]);
+var PEN = 5;
+var territoryOf = (species, metres2) => Math.min(Math.max(Math.round(metres2), PEN), species.territory);
 // src/terrain-height.js
 var ROOT_SIZE = 12696000;
 var NOISE_SCALE = 800;
@@ -8297,6 +8453,8 @@ var BEHAVIOURS = Object.freeze({
     routes: { name: "routes", most: 7, description: "Its other routes, kept to be run instead — `{ name, points, speed, stop, at, mode, face, water }` each, as its own are: one recorded by its driver, or chosen at its helm or on its card, takes this one's place and keeps it among them." }
   }
 });
+var SPACE = Object.freeze({ speed: 2000, accel: 30, highest: HIGHEST, across: 1e6 });
+var SPACE_PARAMS = Object.freeze(BEHAVIOURS.route.params.map((param) => param.name === "speed" ? { ...param, max: SPACE.speed, wide: true, description: "How fast it goes (m/s), up to 2,000 on a trip to space; where it stops, it slows down and speeds up again as Speeds up says." } : param.name === "accel" ? { ...param, max: SPACE.accel, wide: true, description: "How fast it speeds up from a stop and slows down into one (m/s²), up to 30 — a rocket's 3 g — on a trip to space." } : param));
 var MOVE_DEFAULTS = Object.fromEntries(BEHAVIOURS.move.params.map((param) => [param.name, param.default]));
 var paths = new WeakMap;
 var timelines = new WeakMap;
@@ -8513,6 +8671,19 @@ var VEHICLES = Object.freeze({
       { name: "turn", label: "Turns", min: 3, max: 60, default: 15, step: 1, unit: "°/s", description: "How fast it turns at full A or D, banked in the air (°/s)." },
       { name: "climb", label: "Climbs", min: 1, max: 50, default: 10, step: 0.5, unit: "m/s", description: "How fast it goes up on Space and down on C (m/s)." },
       { name: "ceiling", label: "Highest", min: 100, max: 15000, default: 3000, step: 50, unit: "m", description: "As high as it goes over the ground under it (m)." }
+    ]
+  },
+  starship: {
+    label: "Starship",
+    auto: true,
+    space: true,
+    description: "Flies by hand as a helicopter does — on its feet, Space up and C down, W and S ahead and back, A and D turning it — never over its ceiling; on its Auto it goes its trip: up from where it is kept, out of the sky into space, across the planet and back the same way down onto it, as its route says. At its controls, O sets its trip going with whoever sits there aboard; up from its seat on its trip, one stays seated till it is back.",
+    params: [
+      { name: "speed", label: "Top speed", min: 2, max: 120, default: 60, step: 1, unit: "m/s", description: "As fast as it flies by hand (m/s); back, a third of it. On its trip, its route's Speed." },
+      { name: "accel", label: "Speeds up", min: 0.5, max: 15, default: 6, step: 0.5, unit: "m/s²", description: "How fast it gets going by hand, and stops again once let go (m/s²)." },
+      { name: "turn", label: "Turns", min: 5, max: 120, default: 60, step: 1, unit: "°/s", description: "How fast it turns round (°/s)." },
+      { name: "climb", label: "Climbs", min: 0.5, max: 30, default: 10, step: 0.5, unit: "m/s", description: "How fast it goes up on Space and down on C, by hand (m/s)." },
+      { name: "ceiling", label: "Highest", min: 10, max: 3000, default: 500, step: 10, unit: "m", description: "As high as it flies by hand over the ground under it (m); its trip takes it higher." }
     ]
   }
 });
@@ -8948,8 +9119,26 @@ var placeBuild = (spec, { groundRadius, bareRadius = groundRadius, waterRadius =
       ...Number.isFinite(tree.glow) && { glow: tree.glow }
     };
   });
+  const herds = (spec.animals ?? []).map((animal, n) => {
+    const species = speciesOf(animal?.species);
+    if (!species)
+      throw new Error(`${spec.name}: no animal ${animal?.species}`);
+    if (!Array.isArray(animal.at) || animal.at.length < 2 || animal.at.length > 3 || !animal.at.every(Number.isFinite))
+      throw new Error(`${spec.name}: animals ${n} (${species.name}) has no place: "at": [x, y]`);
+    const seed = Number.isInteger(animal.seed) && animal.seed >= 0 ? animal.seed % 4294967296 : seedFor(`${spec.name}~animals`, n);
+    const count = Number.isFinite(animal.count) ? countOf2(species, animal.count) : undefined;
+    if (count !== undefined && count !== animal.count)
+      warnings.push(`animals ${n} (${species.name}): count ${animal.count} → ${count}`);
+    const territory = Number.isFinite(animal.territory) ? territoryOf(species, animal.territory) : undefined;
+    if (territory !== undefined && territory !== animal.territory)
+      warnings.push(`animals ${n} (${species.name}): territory ${animal.territory} → ${territory}`);
+    const key = typeof animal.key === "string" || Number.isInteger(animal.key) ? String(animal.key) : null;
+    if (key !== null && !/^[\w.-]{1,64}$/.test(key))
+      throw new Error(`${spec.name}: animals ${n}'s key ${key}: letters, digits, dots and dashes`);
+    return { type: "herd", id: idOf(animal.id, `${id}~herd-${key ?? n}`), species: species.name, at: homeOf(placeOf(animal.at)), seed, ...count !== undefined && { count }, ...territory !== undefined && { territory } };
+  });
   const own = objects.find((object) => object.id === id) ?? null;
-  return { object: own, parts: parts.filter((part) => part.object === id), records: [...objects, ...parts, ...clones, ...trees], warnings, frame: { origin, right, ahead, up } };
+  return { object: own, parts: parts.filter((part) => part.object === id), records: [...objects, ...parts, ...clones, ...trees, ...herds], warnings, frame: { origin, right, ahead, up } };
 };
 
 // src/build/particles.js
@@ -9282,7 +9471,7 @@ var RANGES = {
   accel: [-50, 50, 3],
   drift: [-20, 20, 3]
 };
-var OPTIONS = { pattern: Object.keys(PATTERNS), blend: ["add", "alpha"], shape: Object.keys(SHAPES2) };
+var OPTIONS = { pattern: Object.keys(PATTERNS), blend: ["add", "alpha"], shape: Object.keys(SHAPES2), thrust: ["ahead", "up"] };
 var AMOUNT = [0.1, 4];
 var SCALE = [0.1, 10];
 var clamp5 = (value, low, high, fallback) => Number.isFinite(value) ? Math.min(Math.max(value, low), high) : fallback;
@@ -9330,7 +9519,8 @@ var particlesOf = (spec) => {
     shape: Object.hasOwn(SHAPES2, value("shape")) ? SHAPES2[value("shape")] : SHAPES2.soft,
     variety: clamp5(value("variety"), ...RANGES.variety, base.variety ?? 0),
     since: Number.isFinite(spec.since) ? spec.since : 0,
-    running: spec.running === true
+    running: spec.running === true,
+    thrust: OPTIONS.thrust.includes(spec.thrust) ? spec.thrust : null
   };
   system.alive = system.count * system.bursts;
   return system;
@@ -9861,6 +10051,8 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
       errors.push(`${object.name}: a ${type} floats at its waterline, its frame's z = 0 — nothing of its hull reaches under it`);
     if (type === "plane" && object.vehicle.speed < object.vehicle.lift)
       notes.push(`${object.name}: its top speed is under its take-off speed — a plane that never leaves the ground ("speed" ≥ "lift")`);
+    if (type === "starship" && object.behaviour?.type !== "route")
+      notes.push(`${object.name}: no trip — a starship goes to space and back on its route: "behaviour": { "type": "route", "mode": "back", "points": [[0, 0, 1000, 0, 0, 300], [0, 0, 80000, 0, 0, 20000], [0, 60000, 100000, 0, 30000, 0], [0, 300000, 100000]], "speed": 2000, "accel": 30, "face": "yes" }`);
     if (type === "helicopter" && !own.some((part) => part.behaviour?.type === "spin"))
       notes.push(`${object.name}: nothing of it turns — a helicopter's rotors are its parts that turn ("behaviour": { "type": "spin" }), phantom`);
     if (!own.some((part) => part.seat))
@@ -9876,6 +10068,13 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
   const strange = [...new Set(trees.map((tree) => tree.species).filter((species) => !isSpecies(species)))];
   if (strange.length)
     errors.push(`no such species: ${strange.join(", ")}`);
+  const herds = records.filter((record) => record.type === "herd");
+  const animals = new Map;
+  for (const herd of herds)
+    animals.set(herd.species, (animals.get(herd.species) ?? 0) + (herd.count ?? speciesOf(herd.species).group[1]));
+  for (const [species, count] of animals)
+    if (count > DRAWN_MOST)
+      notes.push(`${count} ${species} animals: only the ${DRAWN_MOST} nearest of a species are drawn at once — fewer herds, or set them apart`);
   if (dropped)
     notes.push(`${dropped} ${dropped > 1 ? "faces'" : "face's"} media not an https address (512 characters at most): dropped`);
   if (droppedPages)
@@ -9898,6 +10097,8 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
     parts: prims.length,
     clones: clones.length,
     trees: trees.length,
+    herds: herds.length,
+    animals: [...animals.values()].reduce((sum, count) => sum + count, 0),
     triangles: [finest, second],
     meshes: meshes.size,
     materials: new Set(prims.flatMap(texturesOf)).size,
@@ -10804,12 +11005,20 @@ for (const tree of trees) {
   if (frame.wet(x, y))
     notes.push(`${tree.id}: in the sea`);
 }
+var herds = records.filter((record) => record.type === "herd");
+for (const herd of herds) {
+  const [x, y] = inFrame(herd.at);
+  if (frame.wet(x, y))
+    notes.push(`${herd.id} (${herd.species}): its home in the sea`);
+}
 console.log(`${spec.name} (${file.split("/").at(-1)}): ${totals.objects} objects, ${totals.parts} parts, ${totals.clones} clones, ${totals.trees} trees, ${(spec.views ?? []).length} views`);
 for (const object of objects) {
   console.log(`  ${object.name.padEnd(28)} ${String(object.parts).padStart(4)} parts ${object.copies > 1 ? `×${object.copies}` : "  "} ${String(object.triangles[0]).padStart(7)} / ${String(object.triangles[1]).padStart(6)} triangles${object.lights ? `, ${object.lights} light${object.lights > 1 ? "s" : ""}` : ""}${object.systems ? `, ${object.systems} particle system${object.systems > 1 ? "s" : ""}` : ""}`);
 }
 console.log(`triangles, clones counted: ${totals.triangles[0]} at the finest level, ${totals.triangles[1]} at the second; ${totals.meshes} distinct meshes`);
 console.log(`trees: ${totals.trees}, ${treeTriangles} triangles near, ${variants.size} variants`);
+if (herds.length)
+  console.log(`animals: ${totals.herds} herds, ${totals.animals} animals at most (${[...new Set(herds.map((herd) => herd.species))].join(", ")})`);
 console.log(`see-through faces: ${totals.seeThrough} (glass and water, the dear ones), cut-out: ${totals.cutOut}`);
 if (totals.media)
   console.log(`media: ${totals.media} faces show it, ${totals.videos} of them videos (8 shown at once, 4 videos, the nearest)`);

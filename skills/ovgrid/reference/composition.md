@@ -74,6 +74,16 @@ ways through it, what stands along them, what grows round them, what lights them
 - **Keep clear**: no tree on a path, in a house or within its `reach` of a wall or a roof
   (`avoid`). Tall trees behind the houses frame them; one or two in front of a view, not in it.
 
+## Animals: farms, paddocks, a village's life
+
+- **Where they belong**: cows and sheep on a meadow or in a fenced paddock, horses by a stable, hens and geese in a
+  farmyard or a run, a dog or a cat by a house; an elephant on a savanna's open ground. A herd walks round its home
+  and walks through whatever is built (format.md, Animals): put its home in the paddock's middle and its `territory`
+  under the paddock's radius — a paddock of 30 × 30 m, 12; a hen run of 6 m, 5 —, or on open ground as wide as its
+  species' own.
+- **Few**: one herd a paddock, a few hens to a yard, a dog to a farm. A village's life is two or three herds round
+  it, not a crowd in its square.
+
 ## Interiors
 
 - **Every room**: a floor (boards, tiles), walls inside (the wall boxes' inner faces: plaster,

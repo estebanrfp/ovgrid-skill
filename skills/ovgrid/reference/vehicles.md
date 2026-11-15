@@ -1,4 +1,4 @@
-# 6. Interactivity: vehicles — a car, a motorbike, a bicycle, a boat, a ship or yacht, a submarine, a helicopter, a plane, a train
+# 6. Interactivity: vehicles — a car, a motorbike, a bicycle, a boat, a ship or yacht, a submarine, a helicopter, a plane, a starship, a train
 
 An object one sits in and drives. Its owner, sitting on its seat, drives it — W and S throttle and
 brake, A and D steer, Space the hand brake, Escape out — and everyone sees it go, with whoever rides
@@ -8,7 +8,7 @@ then 0.07 ms of physics a frame on its driver's peer alone.
 ## What makes one
 
 - **The object** says what it is: `"vehicle": { "type": "car" }` — `car`, `bike`, `bicycle`, `boat`, `ship`,
-  `submarine`, `helicopter`, `plane` or `train` — and its parameters, each held to its range (catalog.json →
+  `submarine`, `helicopter`, `plane`, `starship` or `train` — and its parameters, each held to its range (catalog.json →
   `vehicles`): a car's `power` (N·m, 50–3,000), `speed` (m/s), `steer` (°) and `mass` (kg), and if it says so its `grip`
   (×, 0.4–3: how hard its tyres hold the ground) and its `drive` (`all`, `front` or `rear`: the wheels its engine turns) —
   left out, 2 and all —, its `brake`, `suspension`, `travel` and `steering` (each, and what it does to the feel, with the
@@ -17,7 +17,7 @@ then 0.07 ms of physics a frame on its driver's peer alone.
   its back wheel makes for each of its pedals'); a boat's `power`, `speed`, `steer` (its rudder) and `mass`; a ship's `speed`, `accel` (m/s²),
   `turn` and `thrusters` (°/s); a submarine's those and `dive` (m/s) and `depth` (m); a helicopter's
   `speed`, `accel`, `turn`, `climb` (m/s) and `ceiling` (m over the ground); a plane's those and `lift`
-  (m/s, its take-off speed); a train's `speed` and `accel`.
+  (m/s, its take-off speed); a starship's a helicopter's, flown by hand; a train's `speed` and `accel`.
 - **A seat**: a part with `"seat": true`, sat on by a click — on its top, facing its +y, or where
   its sit target says (`"seat": { "at": [x, y, z], "turn": 0 }`: format.md). The
   driver's where the driver sits; more for passengers. The driver faces +y, so the driver's left is
@@ -311,6 +311,11 @@ The other vehicles' numbers, each held to its range, its default where it is lef
 | plane | `turn` | 3–60 °/s | 15 |
 | plane | `climb` | 1–50 m/s | 10 |
 | plane | `ceiling` | 100–15,000 m | 3,000 |
+| starship | `speed` | 2–120 m/s | 60 |
+| starship | `accel` | 0.5–15 m/s² | 6 |
+| starship | `turn` | 5–120 °/s | 60 |
+| starship | `climb` | 0.5–30 m/s | 10 |
+| starship | `ceiling` | 10–3,000 m | 500 |
 | train | `speed` | 1–60 m/s | 20 |
 | train | `accel` | 0.1–3 m/s² | 0.8 |
 
@@ -629,6 +634,56 @@ down onto it as far before where it is kept as it needs to slow from its take-of
   { "name": "main wheel", "shape": "cylinder", "at": [-1.4, -0.5, 0.35], "size": [0.7, 0.7, 0.25], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
   { "name": "main wheel", "shape": "cylinder", "at": [1.4, -0.5, 0.35], "size": [0.7, 0.7, 0.25], "turn": [0, 90, 0], "color": [0.05, 0.05, 0.05] },
   { "name": "pilot seat", "shape": "cube", "at": [0.4, 2.5, 1.1], "size": [0.6, 0.6, 0.2], "color": [0.3, 0.3, 0.32], "seat": { "pose": "quaternius/driving" } }
+] }
+```
+
+## A starship
+
+A `starship` goes to space and back on its own: its **trip** is its object's route — up off its pad out of the sky (its top
+60 km over the sea), across the planet and back the same way. Its route's points: z their height over the planet's round
+where it is kept, up to 100 km, x and y across it, 1,000 km at most; its Speed up to 2,000 m/s and its Speeds up to 30 m/s²,
+a rocket's 3 g (every other route keeps to 120 m/s, 10 m/s² and 10 km). Speeding up off its pad and slowing into its far
+end and onto its pad again at its Speeds up, it goes √(2 · 30 · h) m/s h m along its way — slow by its pad, its top speed
+only high up —; level all the way, nothing to lean into, facing where its trip takes it: its far end going out, where it
+is kept coming back, turned round at either end while it stops. Its way straight up off its pad and straight down onto it
+(a point a kilometre up with a handle along z, another high up the same: the curve keeps to its handles), and level up
+there: from higher than anything built is drawn (4 km), what is kept round its rider stays where it set off, so that it
+does not follow them across parcels many a second; coming down straight onto its pad, it is there.
+
+- **For one**: one seat, its pilot's and its passenger's — `"seat": { "pose": "quaternius/driving" }` under a canopy of
+  glass, a click on it sitting one at its controls. A ship large enough to stand in has its cockpit walked in, as a coach's
+  cabin (Its places): its outside's parts `passage` `"way": "in"` with where one stands in it, its nose `"both"` — out from
+  inside —, and what it collides as slabs round its cockpit (its floor, its sides, its roof), its seat and panel held from
+  its side walls over a glass floor.
+- **By hand** it flies as a helicopter does, on its feet (legs, pads: what of it is lowest), never over its `ceiling`.
+- **Its trip from its seat**: there, O — or the button over Stand up — sets it going with whoever sits there aboard,
+  its controls let go where it is; from outside, O at its seat sets it going as any Auto. On its trip one stays seated:
+  up from it, one is stood up once it is back. Once set going, its trip runs to its end — off up there, it would wait in
+  space.
+- **Its route**: `"behaviour": { "type": "route", "mode": "back", "points": [[0, 0, 1000, 0, 0, 300], [0, 0, 80000, 0, 0,
+  20000], [0, 60000, 100000, 0, 30000, 0], [0, 300000, 100000]], "speed": 2000, "accel": 30, "stop": 20, "at": "ends",
+  "face": "yes", "held": true }` — straight up to 80 km, rounding over to level at 100 km, 300 km on ahead of its nose, 20 s
+  there turning round, and back the same way: 9 min 3 s from its pad back onto it, 20 s more there turning to face as kept.
+- **Its pad**: level, open to the sky over it, as wide as it is.
+- **Its engines**: `"particles": { "preset": "exhaust", "running": true }` on what they blow from, turned so that its +z
+  points the way they blow, as a plane's — they blow on its trip and while it is flown. A thruster's `"thrust"`: `"ahead"`,
+  longer and stronger the faster it goes along its own +y — its main engines —; `"up"`, the faster it goes up or down its own
+  z — its lift engines under it, turned `[180, 0, 0]` to blow down —; each a third of itself while it does not.
+- **Its sound**: every starship roars while its engines run — low on its pad, fuller and higher the harder they push,
+  going ahead or up and down —, heard 100 m off at full strength and fading to nothing at 400 m. Nothing to set.
+
+```json
+{ "name": "prim starship", "at": [0, 0], "vehicle": { "type": "starship", "speed": 60, "ceiling": 500 },
+  "behaviour": { "type": "route", "mode": "back", "points": [[0, 0, 1000, 0, 0, 300], [0, 0, 80000, 0, 0, 20000], [0, 60000, 100000, 0, 30000, 0], [0, 300000, 100000]], "speed": 2000, "accel": 30, "stop": 20, "at": "ends", "face": "yes", "held": true },
+  "prims": [
+  { "name": "hull", "shape": "cube", "at": [0, 0, 1.4], "size": [2, 6, 1.4], "color": [0.85, 0.2, 0.18] },
+  { "name": "canopy", "shape": "cube", "at": [0, 1.6, 2.6], "size": [1.1, 1.8, 1.3], "material": "glass/clear/float", "seat": { "at": [0, -0.1, -0.32], "turn": 0, "pose": "quaternius/driving" } },
+  { "name": "wing", "shape": "cube", "at": [0, -1, 1.1], "size": [8, 2.4, 0.15], "color": [0.85, 0.2, 0.18] },
+  { "name": "leg", "shape": "cylinder", "at": [0, 2.2, 0.35], "size": [0.12, 0.12, 0.7], "color": [0.55, 0.56, 0.58] },
+  { "name": "leg", "shape": "cylinder", "at": [-0.8, -2, 0.35], "size": [0.12, 0.12, 0.7], "color": [0.55, 0.56, 0.58] },
+  { "name": "leg", "shape": "cylinder", "at": [0.8, -2, 0.35], "size": [0.12, 0.12, 0.7], "color": [0.55, 0.56, 0.58] },
+  { "name": "engine", "shape": "cylinder", "at": [0, -3.1, 1.4], "size": [0.8, 0.8, 0.3], "turn": [90, 0, 0], "color": [0.2, 0.2, 0.22], "particles": { "preset": "exhaust", "running": true, "thrust": "ahead" } },
+  { "name": "lift jet", "shape": "cube", "at": [0, 0, 0.6], "size": [0.1, 0.1, 0.1], "turn": [180, 0, 0], "color": [0.2, 0.2, 0.22], "particles": { "preset": "exhaust", "running": true, "thrust": "up" } }
 ] }
 ```
 

@@ -334,6 +334,7 @@ var RADIUS = 6348000, SEA = 12000, DEG, REACH = 8, RISE = 0.4, unit = (v) => {
     });
   }
   const trees = records.filter((record) => record.type === "tree").map((tree) => ({ id: tree.id, species: tree.species, at: frame.local(tree.at).map((v) => round(v)), seed: tree.seed, scale: tree.scale })).filter((tree) => near(tree.at));
+  const animals = records.filter((record) => record.type === "herd").map((herd) => ({ id: herd.id, species: herd.species, at: frame.local(herd.at).map((v) => round(v)), ...herd.count !== undefined && { count: herd.count }, seed: herd.seed, ...herd.territory !== undefined && { territory: herd.territory } })).filter((herd) => near(herd.at));
   const flat = heights.flat(), steep = slopes.flat(), wet = water.flat().reduce((sum, v) => sum + v, 0) / flat.length;
   return {
     name,
@@ -351,7 +352,8 @@ var RADIUS = 6348000, SEA = 12000, DEG, REACH = 8, RISE = 0.4, unit = (v) => {
       wet: round(wet, 2),
       ...wet && { deepest: Math.max(...depths.flat()) },
       builds: builds.length,
-      trees: trees.length
+      trees: trees.length,
+      ...animals.length && { herds: animals.length }
     },
     peaks: peaks.sort((a, b) => b[2] - a[2]).slice(0, 12),
     pits: pits.sort((a, b) => a[2] - b[2]).slice(0, 12),
@@ -359,6 +361,7 @@ var RADIUS = 6348000, SEA = 12000, DEG, REACH = 8, RISE = 0.4, unit = (v) => {
     valleys: linesOf(valley, size, pointOf),
     builds,
     trees,
+    ...animals.length && { animals },
     heights,
     slopes,
     ...wet && { water, depths },
@@ -425,7 +428,7 @@ var RADIUS = 6348000, SEA = 12000, DEG, REACH = 8, RISE = 0.4, unit = (v) => {
 }, surveyText = (survey) => {
   const grids = ["heights", "slopes", "water", "depths"];
   const rest = Object.entries(survey).filter(([key, value]) => !grids.includes(key) && value !== undefined);
-  const lines = rest.map(([key, value]) => `  ${JSON.stringify(key)}: ${["builds", "trees", "ridges", "valleys"].includes(key) && value.length ? `[
+  const lines = rest.map(([key, value]) => `  ${JSON.stringify(key)}: ${["builds", "trees", "animals", "ridges", "valleys"].includes(key) && value.length ? `[
 ${value.map((item) => `    ${JSON.stringify(item)}`).join(`,
 `)}
   ]` : JSON.stringify(value)}`);
@@ -8308,8 +8311,165 @@ var init_species = __esm(() => {
   init_tree_generator();
 });
 
+// src/fauna/species.js
+var WALK, AMBLE, STRUT, WADDLE, SPECIES2, speciesOf = (name) => SPECIES2.find((species) => species.name === name);
+var init_species2 = __esm(() => {
+  WALK = { lag: 0.25, duty: 0.64, sway: 1.5, bob: 0.02, lift: 0.12, reach: 25 };
+  AMBLE = { lag: 0.14, duty: 0.68, sway: 2.5, bob: 0.02, lift: 0.1, reach: 25 };
+  STRUT = { lag: 0, duty: 0.6, sway: 2, bob: 0.03, lift: 0.2, reach: 24 };
+  WADDLE = { lag: 0, duty: 0.62, sway: 9, bob: 0.03, lift: 0.12, reach: 16 };
+  SPECIES2 = [
+    {
+      name: "polar-bear",
+      source: { file: "polar-bear.glb", drop: ["Material.003"], faces: "+x" },
+      metres: { length: 2.5 },
+      triangles: 420,
+      legs: 4,
+      neck: [[0.72, 0.6], [0.84, 0.6]],
+      wild: true,
+      habitat: { band: [0.8, 1], slope: 20 },
+      share: 0.06,
+      group: [1, 1],
+      territory: 120,
+      pace: 1,
+      gait: AMBLE,
+      rest: { stand: [12, 40], lie: [60, 200], lies: 0.45 }
+    },
+    {
+      name: "penguin",
+      source: { file: "penguin.glb", faces: "-x" },
+      metres: { height: 0.95 },
+      triangles: 240,
+      legs: 2,
+      neck: [[0.5, 0.7], [0.5, 0.8]],
+      wild: true,
+      habitat: { band: [0.8, 1], slope: 12 },
+      share: 0.04,
+      group: [4, 8],
+      territory: 40,
+      pace: 0.3,
+      gait: WADDLE,
+      rest: { stand: [20, 70] }
+    },
+    {
+      name: "elephant",
+      source: { file: "elephant.glb", faces: "-x" },
+      metres: { height: 3.2 },
+      triangles: 420,
+      legs: 4,
+      neck: [[0.7, 0.6], [0.8, 0.6]],
+      group: [2, 4],
+      territory: 150,
+      pace: 1.1,
+      gait: AMBLE,
+      rest: { stand: [15, 50] }
+    },
+    {
+      name: "horse",
+      source: { file: "horse.glb", faces: "+x" },
+      metres: { height: 2 },
+      triangles: 400,
+      legs: 4,
+      neck: [[0.6, 0.62], [0.74, 0.8]],
+      tail: [[0.09, 0.66], [0.03, 0.25]],
+      group: [2, 5],
+      territory: 150,
+      pace: 1.3,
+      gait: WALK,
+      rest: { stand: [10, 30], graze: 55 }
+    },
+    {
+      name: "cow",
+      source: { file: "farm-pack.glb", node: "cow", faces: "+z" },
+      metres: { height: 1.5 },
+      triangles: 420,
+      legs: 4,
+      neck: [[0.72, 0.7], [0.84, 0.7]],
+      tail: [[0.04, 0.72], [0, 0.25]],
+      group: [3, 6],
+      territory: 80,
+      pace: 0.8,
+      gait: WALK,
+      rest: { stand: [20, 60], lie: [60, 180], lies: 0.3, graze: 50 }
+    },
+    {
+      name: "sheep",
+      source: { file: "farm-pack.glb", node: "Cube.001", faces: "+z" },
+      metres: { height: 0.9 },
+      triangles: 320,
+      legs: 4,
+      neck: [[0.74, 0.7], [0.86, 0.7]],
+      group: [3, 7],
+      territory: 70,
+      pace: 0.7,
+      gait: WALK,
+      rest: { stand: [20, 60], lie: [50, 150], lies: 0.3, graze: 45 }
+    },
+    {
+      name: "dog",
+      source: { file: "farm-pack.glb", node: "dog", faces: "+z" },
+      metres: { length: 1 },
+      triangles: 300,
+      legs: 4,
+      neck: [[0.66, 0.6], [0.78, 0.68]],
+      tail: [[0.2, 0.62], [0.31, 0.82]],
+      group: [1, 2],
+      territory: 140,
+      pace: 1,
+      gait: WALK,
+      rest: { stand: [8, 25], lie: [40, 120], lies: 0.4 }
+    },
+    {
+      name: "cat",
+      source: { file: "farm-pack.glb", node: "Cube.002", faces: "+z" },
+      metres: { length: 0.6 },
+      triangles: 300,
+      legs: 4,
+      neck: [[0.7, 0.6], [0.82, 0.62]],
+      tail: [[0.2, 0.45], [0.05, 0.95]],
+      group: [1, 1],
+      territory: 60,
+      pace: 0.5,
+      gait: WALK,
+      rest: { stand: [10, 30], lie: [60, 200], lies: 0.5 }
+    },
+    {
+      name: "goose",
+      source: { file: "goose.glb", faces: "+z" },
+      metres: { height: 0.8 },
+      triangles: 300,
+      legs: 2,
+      neck: [[0.6, 0.55], [0.66, 0.75]],
+      group: [3, 6],
+      territory: 50,
+      pace: 0.5,
+      gait: STRUT,
+      rest: { stand: [15, 45], graze: 60 }
+    },
+    {
+      name: "chicken",
+      source: { file: "chicken.glb", faces: "+z" },
+      metres: { height: 0.45 },
+      triangles: 280,
+      legs: 2,
+      neck: [[0.6, 0.6], [0.7, 0.72]],
+      group: [3, 6],
+      territory: 30,
+      pace: 0.45,
+      gait: STRUT,
+      rest: { stand: [6, 18], graze: 70 }
+    }
+  ];
+});
+
+// src/fauna/record.js
+var homeOf = (at) => at.map((v) => Math.round(v * 1000) / 1000), countOf2 = (species, count) => Math.min(Math.max(Math.round(count), species.group[0]), species.group[1]), PEN = 5, territoryOf = (species, metres2) => Math.min(Math.max(Math.round(metres2), PEN), species.territory);
+var init_record2 = __esm(() => {
+  init_species2();
+});
+
 // src/build/behaviours.js
-var TIME, STAY2, TRIGGER, REACH5, along2 = (axis, fallback, what) => ({ name: axis, label: `Along ${axis}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `How far it ${what} along its own ${axis} (m).` }), HIGHEST = 1e5, BEHAVIOURS, MOVE_DEFAULTS, paths, timelines, airs, drawnPlaces, coasts, joins, seats;
+var TIME, STAY2, TRIGGER, REACH5, along2 = (axis, fallback, what) => ({ name: axis, label: `Along ${axis}`, min: -64, max: 64, default: fallback, step: 0.05, unit: "m", description: `How far it ${what} along its own ${axis} (m).` }), HIGHEST = 1e5, BEHAVIOURS, SPACE, SPACE_PARAMS, MOVE_DEFAULTS, paths, timelines, airs, drawnPlaces, coasts, joins, seats;
 var init_behaviours = __esm(async () => {
   init_survey();
   init_terrain_height();
@@ -8439,6 +8599,8 @@ var init_behaviours = __esm(async () => {
       routes: { name: "routes", most: 7, description: "Its other routes, kept to be run instead — `{ name, points, speed, stop, at, mode, face, water }` each, as its own are: one recorded by its driver, or chosen at its helm or on its card, takes this one's place and keeps it among them." }
     }
   });
+  SPACE = Object.freeze({ speed: 2000, accel: 30, highest: HIGHEST, across: 1e6 });
+  SPACE_PARAMS = Object.freeze(BEHAVIOURS.route.params.map((param) => param.name === "speed" ? { ...param, max: SPACE.speed, wide: true, description: "How fast it goes (m/s), up to 2,000 on a trip to space; where it stops, it slows down and speeds up again as Speeds up says." } : param.name === "accel" ? { ...param, max: SPACE.accel, wide: true, description: "How fast it speeds up from a stop and slows down into one (m/s²), up to 30 — a rocket's 3 g — on a trip to space." } : param));
   MOVE_DEFAULTS = Object.fromEntries(BEHAVIOURS.move.params.map((param) => [param.name, param.default]));
   paths = new WeakMap;
   timelines = new WeakMap;
@@ -8589,6 +8751,19 @@ var init_vehicles = __esm(async () => {
         { name: "turn", label: "Turns", min: 3, max: 60, default: 15, step: 1, unit: "°/s", description: "How fast it turns at full A or D, banked in the air (°/s)." },
         { name: "climb", label: "Climbs", min: 1, max: 50, default: 10, step: 0.5, unit: "m/s", description: "How fast it goes up on Space and down on C (m/s)." },
         { name: "ceiling", label: "Highest", min: 100, max: 15000, default: 3000, step: 50, unit: "m", description: "As high as it goes over the ground under it (m)." }
+      ]
+    },
+    starship: {
+      label: "Starship",
+      auto: true,
+      space: true,
+      description: "Flies by hand as a helicopter does — on its feet, Space up and C down, W and S ahead and back, A and D turning it — never over its ceiling; on its Auto it goes its trip: up from where it is kept, out of the sky into space, across the planet and back the same way down onto it, as its route says. At its controls, O sets its trip going with whoever sits there aboard; up from its seat on its trip, one stays seated till it is back.",
+      params: [
+        { name: "speed", label: "Top speed", min: 2, max: 120, default: 60, step: 1, unit: "m/s", description: "As fast as it flies by hand (m/s); back, a third of it. On its trip, its route's Speed." },
+        { name: "accel", label: "Speeds up", min: 0.5, max: 15, default: 6, step: 0.5, unit: "m/s²", description: "How fast it gets going by hand, and stops again once let go (m/s²)." },
+        { name: "turn", label: "Turns", min: 5, max: 120, default: 60, step: 1, unit: "°/s", description: "How fast it turns round (°/s)." },
+        { name: "climb", label: "Climbs", min: 0.5, max: 30, default: 10, step: 0.5, unit: "m/s", description: "How fast it goes up on Space and down on C, by hand (m/s)." },
+        { name: "ceiling", label: "Highest", min: 10, max: 3000, default: 500, step: 10, unit: "m", description: "As high as it flies by hand over the ground under it (m); its trip takes it higher." }
       ]
     }
   });
@@ -8919,6 +9094,8 @@ var DEG5, seedFor = (name, index) => {
     return record;
   if (record.type === "tree")
     return { ...record, at: standing.at, yaw: standing.yaw };
+  if (record.type === "herd")
+    return { ...record, at: standing.at };
   if (record.behaviour?.type === "route")
     return { ...record, at: add(record.at, moved) };
   return { ...record, at: standing.at, rotation: standing.rotation };
@@ -9017,13 +9194,33 @@ var DEG5, seedFor = (name, index) => {
       ...Number.isFinite(tree.glow) && { glow: tree.glow }
     };
   });
+  const herds = (spec.animals ?? []).map((animal, n) => {
+    const species = speciesOf(animal?.species);
+    if (!species)
+      throw new Error(`${spec.name}: no animal ${animal?.species}`);
+    if (!Array.isArray(animal.at) || animal.at.length < 2 || animal.at.length > 3 || !animal.at.every(Number.isFinite))
+      throw new Error(`${spec.name}: animals ${n} (${species.name}) has no place: "at": [x, y]`);
+    const seed = Number.isInteger(animal.seed) && animal.seed >= 0 ? animal.seed % 4294967296 : seedFor(`${spec.name}~animals`, n);
+    const count = Number.isFinite(animal.count) ? countOf2(species, animal.count) : undefined;
+    if (count !== undefined && count !== animal.count)
+      warnings.push(`animals ${n} (${species.name}): count ${animal.count} → ${count}`);
+    const territory = Number.isFinite(animal.territory) ? territoryOf(species, animal.territory) : undefined;
+    if (territory !== undefined && territory !== animal.territory)
+      warnings.push(`animals ${n} (${species.name}): territory ${animal.territory} → ${territory}`);
+    const key = typeof animal.key === "string" || Number.isInteger(animal.key) ? String(animal.key) : null;
+    if (key !== null && !/^[\w.-]{1,64}$/.test(key))
+      throw new Error(`${spec.name}: animals ${n}'s key ${key}: letters, digits, dots and dashes`);
+    return { type: "herd", id: idOf(animal.id, `${id}~herd-${key ?? n}`), species: species.name, at: homeOf(placeOf2(animal.at)), seed, ...count !== undefined && { count }, ...territory !== undefined && { territory } };
+  });
   const own = objects.find((object) => object.id === id) ?? null;
-  return { object: own, parts: parts.filter((part) => part.object === id), records: [...objects, ...parts, ...clones, ...trees], warnings, frame: { origin, right, ahead, up } };
+  return { object: own, parts: parts.filter((part) => part.object === id), records: [...objects, ...parts, ...clones, ...trees, ...herds], warnings, frame: { origin, right, ahead, up } };
 }, kindsIn = (spec) => [...new Set([...spec.prims ?? [], ...(spec.objects ?? []).flatMap((object) => object.prims ?? [])].flatMap((prim) => typeof prim?.kind === "string" ? [prim.kind] : []))], kindsFor = (spec) => loadKinds(kindsIn(spec)), floatsIn = (spec) => (spec.trees ?? []).some((tree) => floatsOn(tree.species));
 var init_import = __esm(async () => {
   init_params();
   init_record();
   init_species();
+  init_species2();
+  init_record2();
   init_looks();
   init_seat();
   init_bouncy();

@@ -86,7 +86,7 @@ the panel says). Its parcel's keeper then chooses:
   new ids, its whole ground laid there. A smaller parcel that it would not fit refuses it.
 
 Either is one Ctrl+Z. **Reset land** (in the same *Land* section, beside *Save land*) makes the
-parcel where the camera looks the planet's own again, its keeper alone, after a dialog that names it and what goes: their objects, clones and trees
+parcel where the camera looks the planet's own again, its keeper alone, after a dialog that names it and what goes: their objects, clones, trees and herds
 there taken away, its ground and sky the world's, its published land unpublished (its Gist stays); what is
 another's or locked is left. Also one Ctrl+Z.
 

@@ -55,11 +55,12 @@ What it holds — read the `note` at its top:
 | `anchor` | the frame: exact, on the ground at the centre, +y the way the person looked |
 | `latLon`, `elevation` | where it is; metres over the sea |
 | `radius`, `step` | how far each way, how fine |
-| `summary` | lowest and highest ground, the steepest slope, the share under 5°, the share under the sea and how deep it gets (`deepest`), how many builds and trees |
+| `summary` | lowest and highest ground, the steepest slope, the share under 5°, the share under the sea and how deep it gets (`deepest`), how many builds and trees, and `herds` where some were put |
 | `peaks`, `pits` | `[x, y, z]` the highest and lowest points round them |
 | `ridges`, `valleys` | lines: `from`, `to`, `length`, `low`, `high` |
 | `builds` | what stands there: `id`, `name`, `owner`, `centre`, `size` (a box in the frame), `parts`, `kinds`, `lights`, `emitters`, `moving` |
 | `trees` | `species`, `at`, `scale` |
+| `animals` | where herds were put: `species`, `at` (its home), `count`, `seed`, `territory` — what walks round there (format.md, Animals) |
 | `heights`, `slopes` | grids: `heights[j][i]` m over the centre's ground, `slopes[j][i]` ° — at x = −radius + step · i, y = radius − step · j (rows from the far edge to the near one, as a map reads) |
 | `water`, `depths` | where there is sea: `water[j][i]` 1 under it, `depths[j][i]` how deep it is (m) |
 | `built` | where there are builds: how high what is built stands over the ground in each cell, 0 free |
