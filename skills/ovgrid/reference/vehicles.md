@@ -670,7 +670,8 @@ does not follow them across parcels many a second; coming down straight onto its
   longer and stronger the faster it goes along its own +y — its main engines —; `"up"`, the faster it goes up or down its own
   z — its lift engines under it, turned `[180, 0, 0]` to blow down —; each a third of itself while it does not.
 - **Its sound**: every starship roars while its engines run — low on its pad, fuller and higher the harder they push,
-  going ahead or up and down —, heard 100 m off at full strength and fading to nothing at 400 m. Nothing to set.
+  going ahead or up and down —, heard at full strength within 20 m, fainter the farther off as any sound in the world is — a fifth at
+  100 m —, and fading from there to nothing at 400 m. Nothing to set.
 
 ```json
 { "name": "prim starship", "at": [0, 0], "vehicle": { "type": "starship", "speed": 60, "ceiling": 500 },

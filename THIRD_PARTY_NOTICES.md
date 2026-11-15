@@ -330,9 +330,9 @@ is licensed under the Creative Commons Attribution 4.0 International licence
   panes, wheels, floor, seats, tables, panel and lights OVGrid's own.
 - `assets/builds/nave.json` (`tools/build-nave.js`): «low poly space ship» by chrisonciuconcepts (Sketchfab:
   chrisonciuconcepts), https://sketchfab.com/3d-models/low-poly-space-ship-587941c9c11742c6b82dfb99e7b210b9, licence
-  CC-BY-4.0. Rethought with OVGrid's pieces, the model taken as the plan, at twice its size for one seated under its
-  canopy: its hull, nose, wings and fins from its own corners, in its colours; its seat, panel, yoke, legs, engines'
-  cores, exhausts and lamps OVGrid's own. Its triangles frozen for its test: `tests/build/nave-model.json`.
+  CC-BY-4.0. Rethought with OVGrid's pieces, the model taken as the plan, at four times its size for one seated and
+  standing under its canopy: its hull, nose, wings and fins from its own corners, in its colours; its seat, panel, yoke,
+  legs, engines' cores, exhausts and lamps OVGrid's own. Its triangles frozen for its test: `tests/build/nave-model.json`.
 - `assets/builds/yate.json` (`tools/build-yate.js`): «Yate» by vicente betoret ferrero,
   https://sketchfab.com/3d-models/yate-38cd0b9138c64c4fa5fb125c5f6796f6. Rebuilt with OVGrid's pieces,
   the model taken as the plan, its rooms, doors, lights and fittings OVGrid's own, in the bank's
