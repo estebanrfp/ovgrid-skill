@@ -237,6 +237,11 @@ pins (<https://github.com/AngusJohnson/Clipper2>, Boost Software License 1.0, in
   five of wlily's characters (teru64, opengameart.org/content/wlilys-characters); and `neonglitch86/` — one of
   NeonGlitch86's collection (from the same registry): laid on our skeleton
   (tools/build-avatar-skins.js), CC0 1.0 by their own meta, credited here as a courtesy.
+- The avatar library's `wearables/skin/robots/` — the three robots of «Lowpoly Robots» by Satendra Saraswat
+  (sketchfab.com/satendra5286, sketchfab.com/3d-models/lowpoly-robots-7181d9e5ba434aa59dc7b9042c9723df):
+  CC BY 4.0 (creativecommons.org/licenses/by/4.0/). Changed: laid on our skeleton and proportions, their
+  meshes quantised, their map recoloured for each colour combination and converted to KTX2, their thumbnails
+  drawn (tools/build-avatar-skins.js --robots, tools/avatar/robots.json); credited in that folder's NOTICE too.
 - `tools/avatar/simplify.js` uses meshoptimizer (MIT, © Arseny Kapoulkine), a tools-only dependency.
 - The avatar library's `animations/quaternius/` — twelve animations of Quaternius's Universal Animation
   Library (the Standard one, quaternius.com), retargeted onto our skeleton: CC0 1.0, credited here
@@ -259,7 +264,8 @@ pins (<https://github.com/AngusJohnson/Clipper2>, Boost Software License 1.0, in
 - The avatar library — `assets/avatar/library/` (out of git, made by tools/build-avatar-library.js),
   published at assets.ovgrid.com/avatar/v1/ — Decentraland's bodies, wearables, face features and
   thumbnails from decentraland/avatar-assets, their meshes fitted and quantised and their maps in
-  KTX2, and the common emotes of decentraland/unity-explorer (`animations/dcl/`): Apache License 2.0,
+  KTX2, the common emotes of decentraland/unity-explorer and the reference emotes of
+  decentraland/documentation-creators (`animations/dcl/`): Apache License 2.0,
   © 2019 Metaverse Holdings Ltd., with its LICENSE and NOTICE beside it. No
   trademark rights are granted (§6): what bears a brand or a mark is left out, and artwork licensed
   from its artists to a collection rather than to Decentraland (docs/avatar-system.md).
@@ -268,9 +274,9 @@ pins (<https://github.com/AngusJohnson/Clipper2>, Boost Software License 1.0, in
 
 ## The animals' models
 
-The planet's animals (docs/fauna.md) are drawn from these models, each licensed under the Creative Commons
-Attribution 4.0 International licence (CC BY 4.0, https://creativecommons.org/licenses/by/4.0/) by its author.
-They are kept as downloaded in `assets/fauna/sources/`, and adapted for the meshes the world draws
+The planet's animals (docs/fauna.md) are drawn from these models. Those of the first table are licensed under the
+Creative Commons Attribution 4.0 International licence (CC BY 4.0, https://creativecommons.org/licenses/by/4.0/) by
+their authors, kept as downloaded in `assets/fauna/sources/`, and adapted for the meshes the world draws
 (`assets/fauna/<species>.json`, made by tools/fauna/bake.js): the base under one left out, each stood along its
 own length at its size in the world, simplified to a few hundred triangles — the legs of a pair modelled in mid
 stride stood as the two lean between them —, and its vertices given the parts they move by; they carry no
@@ -285,6 +291,26 @@ skeleton and no animation, and OVGrid gives them their motion.
 | cow, sheep, dog, cat | «Low poly animals» (`farm-pack.glb`; its elephant is not used) | ranaaunhaider12 (https://sketchfab.com/ranaaunhaider12) | https://sketchfab.com/3d-models/low-poly-animals-ab00915d1d40484ea658409be3e4cf93 |
 | goose | «Goose Low Poly» | Atlas (https://sketchfab.com/Atlasmodels) | https://sketchfab.com/3d-models/goose-low-poly-3318893e41fc4d2f9f497776da95c13a |
 | chicken | «Low Poly Chicken» | Tiberiu Uncu (https://sketchfab.com/pangolinbc) | https://sketchfab.com/3d-models/low-poly-chicken-29e61a713bd3413c8fc74c8453a1ada1 |
+
+The dinosaurs are Quaternius' «Dinosaur Animated Pack - Dec 2018» (https://www.patreon.com/quaternius, as its
+License.txt names its author), dedicated to the public domain under CC0 1.0 Universal
+(https://creativecommons.org/publicdomain/zero/1.0/): credited here though CC0 asks for none. Each came as a .blend
+with its skeleton and six clips; `tools/fauna/from-blend.py` made each the GLB kept in `assets/fauna/sources/` — its
+mesh, skeleton and skin, its six clips, its materials as plain colours; a bone a clip leaves unmoved kept as the file
+keeps it, a looping clip made to end where it begins —, with every foot kept to the ground as it walks and runs: each
+foot's path aft on the ground made straight, and scaled so that every foot goes aft as fast as the others (the clips'
+hind feet went 2.4–3.6 times as far as the fore ones a step), its legs following by their IK. tools/fauna/bake.js
+stands each at its size, simplifies it to 440 triangles, gives each vertex its four weightiest joints and samples its
+six clips.
+
+| species | model (its .blend) | size in the world |
+|---|---|---|
+| tyrannosaurus | Trex | 12 m long |
+| triceratops | Triceratops | 8.5 m long |
+| stegosaurus | Stegosaurus | 9 m long |
+| apatosaurus | Apatosaurus | 22 m long |
+| parasaurolophus | Parasaurolophus | 9.5 m long |
+| velociraptor | Velociraptor | 2 m long |
 
 ## Models taken as plans
 

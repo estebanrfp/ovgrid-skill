@@ -343,7 +343,7 @@ each of `objects` has its own (below).
 | `live` | a live module, people's own media for whoever is near: a voice zone, a screen, a file drop (below, Live media) |
 | `behaviour` | What it does by itself: opens on a click, turns, bounces, goes and comes back (below) |
 | `script` | Its script, JavaScript as a string, for what no property can say (effects.md) |
-| `seat` | `true`: sat on by a click, on its top, facing its +y — a bench, a chair, a vehicle's seat (vehicles.md); or `{ "at": [x, y, z], "turn": 90 }`, its sit target: the hips there in the part's own frame (m, from its centre) and the body turned that many degrees from its +y about the vertical, as a part turns about z — a ring-shaped puf (on its rim, not over its hole), a sofa's places, a stool sat on facing the bar; and `"pose"`, how one sits there (catalog.json → `poses`: a clip, a chair's resting the hips on the top, the rest the feet — a cushion on the floor cross-legged, a pew kneeling, a stage dancing, a car's wheel), with a target or without one |
+| `seat` | `true`: sat on by a click, on its top, facing its +y — a bench, a chair, a vehicle's seat (vehicles.md); or `{ "at": [x, y, z], "turn": 90 }`, its sit target: the hips there in the part's own frame (m, from its centre) and the body turned that many degrees from its +y about the vertical, as a part turns about z — a ring-shaped puf (on its rim, not over its hole), a sofa's places, a stool sat on facing the bar; and `"pose"`, how one sits there (catalog.json → `poses`: a clip, a chair's resting the hips on the top, the rest the feet — a cushion on the floor cross-legged, a pew kneeling, a stage dancing, a car's wheel, a mat or a sun lounger lain on: `ovgrid/lying`, flat on one's back, the head behind the part's middle and the feet to its +y), with a target or without one |
 | `seed` | A rock's: whole number, one seed one rock (else one from the build's name and the part's place, the same at every import) |
 
 #### Shapes
@@ -392,6 +392,10 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `fence` | what its `points`, `thickness` and `height` make; or a `size`: a straight length along x | 0 posts, 1 rails, 2 pickets | a path of 2–32 `points`, a post on each and others every `spacing` m at most; the last on the first closes it round |
 | `road` | what its `points`, `width`, `depth` and `lift` make | 0 surface, 1 sides, 2 underside (3 barriers, where `barrier` is said) | a ribbon along 2–32 `points` laid on the ground — with `"round": 1` (or a `grade`) its corners, every point it turns more than 15° at, rounded as the road tool rounds them (arcs of 6 m or twice its width), so that it no longer runs through such a point —, its slab `depth` under it, its surface `lift` (0.1 m) over the ground — or, `"level": "over"`, levelled over the land: straight across within `fall` (%), along it as straight as it can be between its ends, never under the ground and no more than `fill` (m, 2) over it — a dip filled up to so much, a valley deeper gone down into —, its low side and its ends on walls; the land never touched; with `grade` (%, 30 as the road tool lays it) never steeper than that along it, and no steeper than 12.5 % wherever its ends and the ground let it (steeper only where the taut line over the ground between its ends is): on the ground within its fill where its walls keep it so, raised up to 10 m over the ground where they cannot — a valley deeper gone down into —, a deck on columns where its edge's underside stands more than 1.8 m over the ground (past its fill where it lies on the ground; or where water stands under it — `water`, measured as `ground` is: its underside then 0.3 m over the water), barriers along its decks only, on a side whose edge stands more than 1.05 m over the ground beside it — each deck's from end to end, going down to nothing over 4 m onto the walls; along walls none —, all in its sides' face; under a grade, `"columns"` 0 square (an eighth of its width a side), 1 round (as wide) or 2 arches (a pier across the road at each column's place, between each two an arch as a stone bridge's — a semicircle where the ground leaves room, flatter where it is near, solid stone where too low —, open under them: what goes under passes through — a road may run under another's deck or arch where it leaves 4.5 m over the road's surface and the road keeps 0.3 m clear of its columns and piers, as the road tool lays one —), `"barrier"` 0 a parapet 1.05 m tall, 1 a steel guardrail (a beam 0.75 m over the road on posts 2 m apart) or 2 none — said, its barriers are a face of their own, 3 (dress it: a parapet in what it stands on, a guardrail in `metal/bare/metal-0025`), and any barrier collides as a wall 3 m tall (the tool's `ends` pins carry, under a grade, the barrier's height at each joint as two more numbers, so that it goes on through the parts as one; where one road meets another's end, or itself round, both ends carry the same pin — turned where they meet head on —, so that the two go on as one); a climb its grade cannot make, a cliff, is the road tool's red; no `grade`, as steep as its fill makes it, on its walls; under 2 m wide a path; the last point on the first closes it round |
 | `bridge` | what its `points`, `width` and the ground under it make | 0 deck, 1 structure (logs, masonry), 2 rails (a stone parapet) | a straight deck from `points[0]` to `points[1]` (`[x, y]` on its two banks, laid on the ground once placed; 60 m at most), `style` `timber`, `stone`, `clapper`, `rope`, `girder` or `suspension`, `railing` `none`/`both`/`open`, for stone `arch` `round`/`pointed`/`segmental`, `lamps` `none`/`ends`/`piers`/`spaced` (`spacing`, `lights`), and a `look` to dress it in; its spans and piers across the gap are worked out from the ground — see *A bridge over a gap* |
+| `house` | what its `width`, `depth`, `floors` and `roof` make | 0 walls, 1 the walls of the storeys dressed apart, 2 trim (slabs' edges, reveals, the base), 3 glass, 4 roof, 5 floors, 6 walls inside | a whole modern house in one part, worked out from a few numbers — walls with their windows cut and glazed, floors, a stair, terraces with glass rails, its roof, a base down past the ground and steps to its door —, walked into as drawn; its doors parts of their own that open as someone comes — see *A modern house in one part* |
+| `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
+| `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
+| `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall` —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
 | `lantern` | its own: 0.3 × 0.3 × 0.46 m | 0 glass (it glows), 1 frame | a lamp's housing — a base, a box of glass, a pointed cap — whose middle is its flame, where a part's light sits: give it `"light": { "on": "night", "range": 8 }` and `"surface": { "emissive": 0.9 }` to light it; under a metre, so its light passes it as its own fixture. A bridge's `lamps` stand one on each of its posts |
 | `column` | plinth width, depth, height | 0 shaft, 1 base, 2 capital | upright |
 | `arch` | width, wall depth, height | 0 its two faces, 1 the opening, 2 outside, 3 feet | wall in x–z, opening through y |
@@ -690,6 +694,270 @@ A part is 60 m at most (64 m a side): a longer crossing is two bridges that meet
 at one height there, written with `[x, y, z]` points and their `ground`.
 `node skills/ovgrid/scripts/check.mjs` says what is wrong with a bridge: a step of more than 0.3 m up onto its deck, a deck buried, a rise in
 the way, a pier past its style's tallest, a deck steeper than 1 in 8.
+
+**A modern house in one part** (`house`): when a street or a neighbourhood needs houses and none of them is the subject, do not
+build each from walls and solids — one part is a whole house, at most 5,000 triangles, 1,600 far away (about 3,400 and 1,000 at 22 × 16 m). Its front is its **+y**;
+`width` and `depth` (6–40 m; 13 × 10 where left out) are its ground storey's, its `at` the middle of its box — which is not the
+middle of its ground storey: its box has its steps, an eave, a carport. **Build a new one
+with `"scale": "game"`, 14 m or more each way** — 22 × 16 m is a good house, 14–24 m wide a street's —: a house is walked through
+by an avatar with a camera 4 m behind and over it, and what suits a person's floor plan is cramped for that. At a game's scale its
+storeys are 4 m (3.75 m clear), its doors 1.4 m wide and 2.7 m high, its stair 2 m wide on the same steps, its windows half as
+wide again, its rooms ones the camera stays inside, and its front door is set back 3 m from the street's face of the house in a
+recess open to the street under the storey over it — an entrance outside, sheltered, not a door flat on the wall. Left out
+(`"real"`), it is as houses were first made: storeys 3.2 m, a stair 1 m wide, 24 m a side at the most. A house under 11 × 12.5 m
+keeps a person's scale whatever is asked. `style`: `box` (rendered walls, ribbon
+windows, a parapet, an upper storey that may stand back from a terrace), `wood` (timber cladding, upright windows, eaves),
+`glass` (glass from floor to ceiling between slabs that stand out past it), `stack` (each storey a volume of its own, the upper
+one out over the door, a terrace beside it), `chalet` (a steep roof swept out over its front; in the middle of the front a bay
+of glass through every storey under a vault of its own, open to the living room; its door in a porch beside the bay, under a
+balcony, with the house's side wall gone on forward to close it, and a second balcony at the bay's other side — that porch is its
+entrance, it has no recess; its bay stands 3.6 m out at a game's scale, so its box is that much deeper at the front; a front under
+10.6 m has no bay), `lodge` (a long steep roof gone on 4.5 m past each end of the house over a covered terrace, a post at each
+outer corner; in the middle of the front a bay under a gable of glass up to its ridge; its door in a porch beside the bay that
+opens onto one terrace, a way out from the living room onto the other; no balconies — best with one storey; its box is 9.6 m
+wider than its `width` and 3.6 m deeper at the front) or `barn` (an L: a hall under a ridged roof — the living room, open up to
+it —, its end away from the stair glass from the floor up to the roof with a terrace 4.5 m out before it under a flat canopy and
+a way out onto it; behind the hall the back of the house — the row of bedrooms of a house of one storey — low under a flat roof,
+which goes on past the other end as a wing of one storey: a garage 9.6 × 9.5 m inside, its door one leaf 4.4 m wide and 3 m high
+that slides aside along the wall as someone comes or on a click, a ramp before it down to the ground and a door into the house;
+the front door in the half of the front the wing is at — best with one storey; its box is 14.4 m wider than its `width`, the
+wing at one end and the terrace at the other, so leave that room beside it; a house under 10 m deep has no wing) or `manor` (a
+mansion, the same either side of its middle: its front door, always two leaves, in the middle under a portico — four columns,
+six with a front of 36 m or more, as tall as its walls, an entablature and a pediment over them, on a landing 3.2 m out with
+steps as wide down to the ground —; tall sash windows in line from storey to storey; a cornice and a hipped roof; a chimney at
+each end; its ground storey dressed apart from those over it, its columns and trim marble; divided into rooms (`rooms`), a hall
+through its middle from the door to the back wall with the stair in it, the living room and the study at the front either side
+of it, the dining room and the kitchen behind them, a bedroom at each corner of the storeys over, and with `"rooms": "doors"`
+the doorways from the hall into the living room and the study two leaves each — hinged, or with `"sliding"` sliding into the
+wall —, twelve doors inside at the most — give it 28 m of front or more, 18 m of depth and two storeys, and its own roof, `hip`;
+its box is 3.6 m deeper at the front), `villa` (a modern mansion, the same either side of its middle: glass from floor to
+ceiling on every side under a flat roof 2.2 m out past its walls; every floor 1.8 m out past them — a terrace all round each
+storey over the ground one, railed with glass, a way out onto it from the landing, and with `"sliding"` a pane of each bay; a
+podium round the ground storey, steps down from it before the door, two leaves in the middle; inside, a mansion's hall and
+rooms — give it 26 m of front or more and two storeys; its box is 4.4 m wider and deeper than its ground storey) or `cabin` (a log cabin: walls of logs in courses, a round log standing at each corner, a porch all along its front on log posts — under its roof swept out over it where it is of one storey under a ridge, else under a shelter of its own —, railed with logs but before its steps, a chimney of stone up one end wall and its base of that stone; no recess: its door is in the front wall under the porch — small and low it is at its best: 14–18 m of front, one storey, `gable` or `steep`; its box is 3.3 m deeper at the front and a chimney wider at one end); `floors` 1–3; `roof` `flat`, `mono` (one pitch rising to the front),
+`gable`, `butterfly`, `steep` (two steep pitches from a ridge along its width, as high as three fifths of its walls, 31° to 50°,
+the storey under it open up to them — the chalet's own; on any other style, a barn's roof) or `hip` (four pitches up from the
+eaves to a ridge along the longer side, on a flat slab that is the top storey's ceiling: the house under it as under a flat roof); `glazing` 0–1 (0.5 the style's own); `variant` 0–9999, which of its style's houses it is — where its door
+and stair are, which storeys stand back, which bays are glazed: one number, one house, the same for everyone. A `look` dresses it
+from the bank, six to each style — box: `white`, `stucco`, `concrete`, `grey`, `charcoal`, `ochre`; wood: `cedar`, `dark`, `oak`,
+`boards`, `charred`, `solar`; glass: `concrete`, `travertine`, `walnut`, `white`, `steel`, `board`; stack: `cedar`, `concrete`,
+`stone`, `charcoal`, `ochre`, `boards`; chalet: `white`, `blue`, `timber`, `alpine`, `stone`, `ochre`; lodge: `walnut`,
+`charred`, `white`, `cedar`, `stone`, `boards`; barn: `black`, `white`, `brick`, `cedar`, `concrete`, `boards`; manor: `stone`, `white`, `brick`, `ochre`,
+`grey`, `slate`; villa: `travertine`, `concrete`, `white`, `cedar`, `black`, `marble`; cabin: `logs`, `beams`, `dark`, `pine`, `brown`, `weathered` (a chalet's and a lodge's second wall
+material is its bay's, a barn's its wing's, a manor's and a villa's their upper storeys', a cabin's its stone — its base and its chimney) —, six materials at
+the most. **Houses side by side read as one unless they differ**: give
+neighbours different looks, different `variant`s and the roofs that suit their style (box: `flat`, `mono`; wood: `mono`, `gable`,
+`butterfly`; glass: `flat`, `butterfly`, `mono`; stack: `flat`; chalet and lodge: `steep`; barn: `steep`, `gable`; manor: `hip`; villa: `flat`; cabin: `gable`, `steep`), as the editor's tool throws them at each house. Stand it on the ground: its floor a hand over
+the highest ground under its rectangle, `plinth` how far its base goes down under its floor (past the lowest ground under it, 3 m
+at most — over 2 m the check says the ground falls too far) and `stoop` how far the ground before its door lies under its floor
+(steps go down to it, 1.5 m at most); a `barn` besides `drive`, how far the ground before its garage lies under its floor (its
+ramp goes down to it, six times as long; 1.5 m at most) — the ground read under its wing and its terrace too. Its front door is larger than any door inside: `"entrance"` `"single"`, one leaf (1.8 m wide and 3 m high at a game's scale,
+1.1 × 2.3 m at a person's — doors inside are 1.4 × 2.7 m and 0.9 × 2.1 m); `"double"`, two leaves that meet in one doorway, nothing
+between them (2.8 m at a game's scale, 2 m at a person's: two doors of the `door` kind with `"jambs": "hinge"`, each with only the
+jamb it hangs on — a double door anywhere is made so); or **`"suited"`, by the house's size — two leaves where its front is 22 m
+or more, one under that: what a house built now is given**. `"lighting"`:
+`"storey"` (one linear light on each storey's ceiling) or `"room"` (two) — each storey a zone with a switch of its own, by the
+front door and by the stair, that a click turns on and off and that lights the storey by itself while someone is in it: six
+lights at the most, off while nobody is in, so a street of them stays within a place's lights. `"lift": "platform"`, with two or
+three storeys: a shaft of glass in the corner by the stair, a platform a click sends to its next stop and a button on each storey
+that calls it — 2.1 m across, for four avatars, at a game's scale (1.3 m at a person's). `"sliding"`: `"doors"` — the door onto each terrace two panes of glass in a doorway of 2 m, one sliding over the
+other as someone comes or on a click, and one pane of each bay glazed from floor to ceiling that has floor outside it (the ground
+storey's, a terrace's) sliding on a click: ways out to a garden or a terrace — or `"all"`, a pane of every window of two panes or
+more besides; eight sliding panes a house at the most (a barn's garage door one of the eight), each a thing that moves in the build's budget (what moves is what is
+used: `"doors"` for a street, `"all"` for the one house that is the subject). `"forms": "varied"` lets its `variant` shape it
+more — by a chance each, as its style allows: a band of its front and one side in its second wall material (box), a canopy with
+a fin over its door (at a person's scale: a game's recess is its shelter), a carport beside it, a balcony before an upper storey, a pergola over a terrace, a chimney — so that houses
+of one style and size differ in outline; its box grows with them (a carport is 3.4 m beside it), so lay it out by
+`KINDS.house.footprint`, not by its `width`. `"rooms"` divides its storeys: `"rooms"` — on the ground storey a toilet off the
+foot of the stair, the kitchen and the dining room along the back and the living room open (a study where it is wide); above, a
+bathroom and a closet by the landing (a second bathroom with three bedrooms or more), a passage and bedrooms across the front, a
+lounge where they leave room; in a house of one storey the bedrooms and their bathrooms in a row across the back, each with its
+door on the living room, the kitchen at the row's end — with their doorways open, or `"doors"`, a door besides in each
+bathroom's, bedroom's, closet's and study's doorway (eight at the most, bathrooms first, each a thing that moves: `"rooms"` for a
+street). At a game's scale a passage is 3 m wide, a doorway 1.4 m, a bedroom 5 to 8 m across and 4.5 to 7 m deep, a bathroom
+3.2 m; rooms take what they need and no more, what is left being open floor (a lounge, a wider passage, the living room).
+`"bedrooms"` says how many each storey of bedrooms has, 1 to 4: a storey over the ground one is not cut narrower than they need,
+and one too narrow has fewer (at a game's scale two want 11 m of width, three 16 m, four 21 m; in a house of one storey, where
+the bathrooms stand in the row, two want 14 m, three 19.5 m, four 28 m); left out or 0, as many as its width suits. (At a
+person's scale a hall besides, inside behind the front door; a game's has its entrance outside.) The
+importer adds its doors — the `door` kind in each doorway, with the `door` behaviour, each opening into the house —, its lights and switches (the `switch` behaviour reaches the
+lights of its own object), its lift's platform and buttons, its sliding panes (the `window` kind with the `slide` behaviour), so give
+each house an object of its own. **Place that object at the house's site — the middle of its ground storey, on its floor — and the
+house within it at its box's middle**: a build imported again is updated where it stands, every object left where it is, so a
+house whose object was placed by its box's middle sinks into the ground when it is made again taller, and one placed by its floor
+stands on it whatever it becomes:
+
+```json
+{ "name": "number 4", "at": [16, -15.3, 0.1], "turn": [0, 0, 0],
+  "prims": [{ "name": "house", "kind": "house", "style": "stack", "look": "cedar", "at": [-2.4, 0.915, 6.495],
+              "width": 22, "depth": 17, "floors": 3, "roof": "flat", "variant": 5, "plinth": 0.46, "stoop": 0.15,
+              "lighting": "storey", "lift": "platform", "sliding": "doors", "forms": "varied", "rooms": "rooms",
+              "scale": "game", "entrance": "suited", "bedrooms": 3 }] }
+```
+
+**A house that comes furnished**: `"furnished"`, with its storeys divided (`"rooms"`: a house of open storeys has no rooms to
+furnish) — `"oak"` (oak and linen), `"walnut"` (walnut and bouclé) or `"white"` (white and charcoal). Each of its rooms is then a
+part of the `room` kind (*A furnished room*, below) laid out by what it is from the house's own plan — its walls, its windows and
+their sills, its doorways, its stair and its lift are read by the house: write none of it —, and what is sat on in it parts of
+their own of the `furniture` kind, each a seat; which pieces stand where follows the house's `variant` — and so do its wood's
+tone, its furniture's proportions and each room's cloth colour (*A piece of furniture*, its variety): houses alike but for their
+`variant` are each furnished their own way, the same models and not a material more. The importer stands them
+with its doors, in the house's object: write only the house. Furnish at a game's scale. A house of 22 × 16 m on two storeys
+brings 24 to 40 parts and 6,400 to 10,000 triangles from near, nothing from far; three storeys of 40 × 30 m 78 parts and 20,000
+triangles, the most a house brings. A palette is some fifteen materials, the three of them 28 — a street in all three has them in
+its 40 —; neighbours in different palettes are different homes. (At a person's scale a few rooms stay without what they
+are for: a glass house's, a manor's or a villa's dining room, a villa's kitchen.)
+
+```json
+{ "name": "furnished house", "at": [52, -6, 0.446],
+  "prims": [{ "name": "house", "kind": "house", "style": "box", "look": "white", "at": [0, 1.12, 3.74],
+              "width": 22, "depth": 16, "floors": 2, "roof": "flat", "variant": 3, "plinth": 0.97, "stoop": 0.44,
+              "lighting": "storey", "forms": "plain", "rooms": "doors", "scale": "game", "entrance": "suited", "bedrooms": 3,
+              "furnished": "oak" }] }
+```
+
+Here the object stands 0.1 m over the ground (its floor), and the house's box — 26.8 × 18.8 × 13.9 m, with its carport on one side,
+the storey out over its front and its base 0.46 m under its floor — has its middle 2.4 m to one side of the ground storey's, 0.9 m
+before it and 6.5 m over the floor.
+
+**A neighbourhood**: houses side by side along a street are a neighbourhood when each stands on its own lot facing the street —
+its steps' foot some 7.5 m from the street's edge, 6 m or more between neighbours, a path (a `road` 1.6 m wide, two `[x, y]`
+points, lying on the ground) from its door to the street —, each on its own ground (its `plinth` and `stoop`), with few looks
+among them (two to a style) and trees in the gardens. In the editor the Neighbourhood tool lays one where it is clicked: a
+street that closes round, twelve lots at its defaults, a mansion with a pool behind it.
+
+**A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
+`length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
+out: **from 1.3 m it is swum in**, shallower it is waded); `deck` how far its paving goes on round it past its coping (0–6 m, 1.5);
+`steps` where its steps are — `end`, the middle of its +x end, or `side`, of its +y side —: those up to the deck from the ground
+and, before them inside the basin, those down into the water; `water` `calm` or `rippled`; `style` what its deck is of, `stone` or
+`timber`, with a `look` each (stone: `travertine`, `marble`, `granite`, `terrazzo`, `dark`, `white`; timber: `cedar`, `deck`,
+`dark`). 338 triangles at the most.
+
+**It stands over the ground: a build does not dig.** Its basin's floor is over the highest ground under the basin, so its rim —
+the top of its box, the level of its deck — stands its `depth` and 0.27 m over that ground (1.67 m where its depth is left out):
+a raised pool, its base a block down to the ground, steps up to its deck. Two numbers say where the ground is, as a house's do:
+`plinth`, how far its base goes down under its rim (past the lowest ground under it), and `stoop`, how far the ground at the foot
+of its steps lies under its rim. On level ground `stoop` is `depth` + 0.27 and `plinth` is `depth` + 0.57. A house whose terrace
+is to be level with it wants its own floor as high (a house's `plinth` and `stoop`).
+
+**Its water comes with it**: an object that holds a pool is given, when the build is placed, a second part — a box of
+`effects/water/calm` (or `rippled`) that fills the basin up to 0.12 m under the rim, tinted turquoise: a body of water, swum and
+dived in, drawn as a lake. Do not write it. Write the pool as an object of its own whose place is **its basin's middle at its
+rim** — the pool's own origin: x along its length, z up from its rim —, the part's `at` the middle of its box in that frame (its
+box has its steps at one side, and goes down `plinth` under the rim):
+
+```json
+{ "name": "pool", "at": [92, -30, 1.47],
+  "prims": [{ "name": "pool", "kind": "pool", "style": "stone", "look": "travertine", "at": [0, 1.6, -1.205],
+              "length": 12, "width": 5, "depth": 1.5, "steps": "side", "plinth": 2.41, "stoop": 1.96 }] }
+```
+
+Here the rim stands 1.77 m — 1.5 m of water and 0.27 m — over the highest ground under its basin, which lies 0.3 m under the
+anchor's; its box, 15.9 × 12.1 × 2.41 m, has its middle 1.6 m towards its steps and 1.205 m under its rim.
+
+**A piece of furniture** (`furniture`): a sofa, an armchair, a chair, a stool, a bed, a dining, coffee or side table, a desk —
+one part each, worked out from a few numbers, as light as a piece can be (320 triangles at the most, a sofa about 250, a chair
+60–90; from a few metres off simpler, from far nothing). Its heights are a person's whatever the room: a seat 0.45 m over the
+floor, a table 0.75, a coffee table 0.4, a side table 0.52, a mattress 0.52.
+
+| `type` | its models (the parameter named) | `width` × `depth` (m) |
+|---|---|---|
+| `sofa` | `sofa`: `track` (square arms), `rolled`, `chaise` (a chaise at its +x end), `modular` (low, no arms, cushions at its back), `chesterfield` | 1.5–3.4 × 0.85–1.05 (`chaise` 2.3–3.4 × 1.4–1.8; `modular` 0.95–1.15 deep) |
+| `armchair` | `armchair`: `lounge`, `club`, `wing` (1.05 m tall) | 0.7–1.05 × 0.75–1 |
+| `chair` | `chair`: `dining` (wooden), `upholstered`, `shell` — `count` 1–6 side by side, one part (a dining table's side), each a place | 0.42–0.6 × 0.46–0.62 |
+| `stool` | `stool`: `bar` (its seat 0.76 m up, a ring for the feet), `low` — `count` 1–6 in a row, one part (an island's) | 0.34–0.5 across |
+| `bed` | `headboard`: `panel`, `padded`, `tufted`, `channel`, `slatted`, `wing`, `arched` | its mattress's width + 0.08 — 0.9 single, 1.4–1.6 double, 1.8–2 king — × 2.05–2.3; its box 0.12 m wider (the headboard) |
+| `table` | `table`: `legs`, `trestle`, `round` (to 1.6 m across) | 0.8–3 × 0.8–1.2 |
+| `coffee` | `coffee`: `slab`, `legs`, `round` | 0.6–1.6 × 0.5–1 |
+| `side` | `side`: `cube` (a drawer), `legs`, `round` | 0.38–0.65 × 0.34–0.6 |
+| `desk` | `desk`: `legs`, `drawers` | 1–2 × 0.55–0.85 |
+| `rug` | `rug`: `rectangle`, `round`, `runner`, `fitted` (a carpet wall to wall, 8 mm) | 0.6–6 × 0.6–5 (`round` 0.8–4 across; `runner` 1.8–6 × 0.6–1; `fitted` 1–10 × 1–10), 12 mm thick |
+| `picture` | `picture`: `framed`, `canvas` (wrapped, no frame), `mounted` (a white mount in a slim frame) | `width` × `height` 0.25–3 each, 4.5 cm deep: hung, its back on the wall (its −y), its bottom where it hangs |
+| `plant` | `plant`: `tall` (1.4 m), `bush` (0.85 m), `cactus` (1.3 m) — in a pot | its model's |
+| `ornament` | `ornament`: `vase`, `bowl`, `jar`, `books`, `sculpture`, `candles` — on a table, a shelf, a plinth | its model's (0.1–0.44 m tall) |
+| `lamp` | `lamp`: `floor` (1.62 m), `arc` (2 m, over 1.3 m), `table` (0.56 m) — no light of its own: give the part one if it is to light (Light) | its model's |
+| `rack` | `rack`: `standing`, `tree` (a coat tree), `wall` (a board of hooks under a shelf, hung), `rail` (a clothes rail) | its model's |
+| `wardrobe` | `wardrobe`: `doors`, `sliding`, `open` (a rail and shelves) — 2.2 m | 0.9–3 × 0.55–0.65 |
+| `shelf` | `shelf`: `books` (a bookcase of five shelves, its books), `cubes` (1.5 m), `ladder` (leaning, 1.9 m) | 0.6–2.4 × 0.3–0.42 |
+| `sideboard` | `sideboard`: `doors`, `drawers`, `legs` — 0.8 m | 1.2–2.4 × 0.4–0.5 |
+| `tv` | `tv`: `stand` (a low unit, the screen on it), `wall` (a screen over a floating shelf, hung) — its screen 16 by 9 of 0.72 its width | 1.2–2.6 × 0.4–0.45 |
+| `toilet` | `toilet`: `floor`, `wall` (hung: its bowl off the floor, a flush plate) — sat on | its model's |
+| `basin` | `basin`: `vanity` (a cabinet, a vessel and a tap on its counter), `pedestal`, `double` | `vanity` 0.6–1.2, `double` 1.2–1.8, 0.5 deep; `pedestal` its own |
+| `bath` | `bath`: `built` (its panel to the floor, against walls), `free` (round at its ends, on feet) — sat in, on its bottom | 1.5–1.9 × 0.7–0.9, its rim 0.58 (0.66) m |
+| `shower` | `shower`: `tray` (a tray in a frame, a head), `walk` (walk-in: a wall of tiles at its side) — walked into, nothing collides | 0.8–1.6 × 0.8–1.2 |
+| `kitchen` | `kitchen`: `run` (base units, a worktop with a sink and a hob, upper units and a hood over it, 2.3 m), `island` (its worktop out over its front for stools, 0.92 m), `tall` (a fridge's and an oven's column, 2.2 m), `counter` (base units alone, for under a window: its worktop 0.92 m, the sink's tap rising over it to 1.22) | `run` and `counter` 1.2–6 × 0.62, `island` 1.2–3 × 0.9–1.3, `tall` 0.6–1.2 × 0.62 |
+
+**A picture**: its look is its painting — `"look": "tivoli"`, one of the bank's paintings in the frame that suits it (catalog.json
+→ `kinds`: `mondrian`, `cafe`, `cottage`, `tivoli`, `twilight`, `snow`, `kashmir`, `yosemite`, `garden`, `bath`, `bottle`, `bamboo`,
+`cloud`, `oasis`, `seine`, `tiger`) — and the painting covers its canvas once, whatever its size (the import gives its face 6 the
+canvas as its `scale`). Give it the painting's shape: its canvas is the picture less its frame (4.5 cm a side; a mount 10 cm; a
+canvas none), so a `framed` picture of a painting of 1.1 × 0.84 m shown at 1.3 times is `"width": 1.54, "height": 1.18`. Hang it
+with its back on the wall's face, its middle about 1.7 m over the floor (higher on a game's storeys of 4 m: 1.9–2.1). What dresses
+a room collides with nothing: a rug walked over, a picture, a plant, a lamp, a coat rack walked through.
+
+`width` and `depth` 0 (or left out) are the type's own; one past its range is held to it. Its looks are by type
+(catalog.json → `kinds`: a sofa's `linen`, `boucle`, `charcoal`, `leather`, `navy`, `olive`; a bed's `oak`, `walnut`, `white`,
+`velvet`, `terracotta`, `charcoal`; a table's `oak`, `walnut`, `white`, `marble`…). **Give it no `seat`**: a sofa, an armchair, a
+chair, a stool and a bed are seats where their recipe says — a place a person a sofa's width holds, the hips over its cushions,
+leaning back; a bed lain on, flat on one's back, the head on its pillow and the feet to its foot, a place to each pillow —, which the import gives them; `"seat": false` makes one
+that is not sat on, a `seat` of its own puts one elsewhere. What one walks round collides (its seat and its back, a bed and its
+headboard, a table whole). A part's `at` is its box's middle: on a floor at height `f`, `[x, y, f + height / 2]`.
+
+**Its variety**: five parameters, each left out where a piece is as its model has it — the same models looking different, with
+no material more. Two colour it: `"fabric"`, the colour of what it is upholstered in (a sofa's, an armchair's or a chair's cover
+and the cushions one sits on, a bed's padded headboard and its sheets, a rug) — `ivory`, `sand`, `ochre`, `terracotta`, `rose`,
+`sage`, `teal`, `sky`, `slate`, `plum`, `graphite` —, and `"wood"`, the tone of whatever of it is dressed in a wood of the bank
+(its frame, its legs, a top, fronts) — `honey`, `amber`, `chestnut`, `mahogany`, `smoke`, `ebony`. They are tints the import lays
+over its look's own materials (a face's `tint`: write none yourself), so pieces that differ by them alone share one mesh and a
+street of them costs nothing more. A tint darkens: dress what is to take a colour in a light look (a sofa's `linen`, a chair's
+`white`, an armchair's `leather`; a table's `oak` or `white` for a tone) — a charcoal sofa stays charcoal —, and its scatter
+cushions and its duvet stay its look's, the accent beside the colour. Three shape it, each 0–1 with 0.5 its model's own:
+`"tall"`, how tall what stands up of it is (a seat's back, a bed's headboard, a stool, a coffee or a side table, a wardrobe,
+shelves, a sideboard — a sofa 0.75 to 0.99 m, a padded headboard 0.9 to 1.54); `"legs"`, how high a sofa, an armchair or a bed
+stands on its feet; `"stout"`, how thick its arms, its legs and its top are. A seat's top, a mattress's and a dining table's stay
+a person's. Each shape is a mesh of its own: give pieces that are to share one the same three numbers.
+
+```json
+{ "name": "sofa", "kind": "furniture", "type": "sofa", "sofa": "chaise", "width": 2.8, "depth": 1.6, "look": "boucle", "at": [0, 2, 0.425] },
+{ "name": "bed", "kind": "furniture", "type": "bed", "headboard": "tufted", "width": 1.8, "look": "velvet", "at": [4, -3, 0.625] },
+{ "name": "teal sofa", "kind": "furniture", "type": "sofa", "sofa": "track", "look": "linen", "fabric": "teal", "wood": "chestnut", "tall": 1, "legs": 1, "at": [8, 2, 0.493] }
+```
+
+**A furnished room** (`room`): a room furnished whole by what it is, in one part — a house of the `house` kind furnishes its own
+(its `"furnished"`, above: write a room only where there is no such house, a room built of walls) —: what nobody sits on in it drawn as one mesh, seen
+from as near as a piece is whatever its floor; what is sat on (a sofa, armchairs, a row of chairs at a table, a bed, a toilet, a bath,
+an island's stools) parts of their own of the `furniture` kind that its recipe stands, as a house stands its doors, each with its seat.
+Its layout is worked out from its `type`, its floor and what it is told of it — the same for every peer; `variant` chooses among the
+ways it may be laid out — by a game's rules: a bed between its side tables, its head to a wall; a sofa before a low table on a rug, an
+armchair either side — its back to a wall, or free in a room all of glass —; a table between its rows of chairs, as many places as its floor leaves (eight, six, four) — in a room too
+narrow to go round one, against a wall with a row of chairs along its open side —; a kitchen's run along
+its longest wall, base units alone under a window, its tall units, an island where it is deep enough — in a room all of glass, an
+island alone —; a bath, a toilet, a basin, a
+shower; a desk and its chair; what is left open floor. What it is told, in its own frame (its middle at the part's, x along its width):
+
+- `walls`: the stretches it may stand against, `[side, from, to]` — side 0 its back (−y), 1 its right (+x), 2 its front (+y), 3 its
+  left (−x) —, from and to along x (back, front) or y (sides). None given: all four whole.
+- `windows`: `[side, from, to, sill]` — nothing stands before one higher than its sill, a hand over it at the most (a worktop meeting
+  it); no picture is hung over one.
+- `ways`: `[x0, y0, x1, y1]`, where it is come into and gone out of — a doorway's landing, a side open to the next room, the floor
+  beside a stair or before a lift. Wherever its pieces stand, each stays joined to every other by a way `way` m wide (1.4 at a game's
+  scale, a doorway's width), clear of what stands and of its walls: the avatar and the camera behind it go through.
+- `keep`: what nothing stands on (a doorway's landing, a stair's foot, before a switch); `closed`: what is not walked through either
+  (a stair's well, a lift's shaft).
+
+Its look is its palette, given twice, as `palette` and as `look`: `oak` (oak and linen), `walnut` (walnut and bouclé), `white` (white
+and charcoal) — what is sat on in it dressed alike. Its variety is the furniture kind's five, given to the whole room: `"fabric"`
+colours its rugs and what is sat on in it, `"wood"` its wood, its fronts and its seats' frames, and `"tall"`, `"legs"` and
+`"stout"` shape every piece that takes them — a set that matches; a picture hangs clear over what stands under it however tall. A
+house that comes furnished picks all five itself, by its `variant`. A part's `at` is its box's middle: on a floor at height `f`,
+`[x, y, f + height / 2]`.
+
+```json
+{ "name": "bedroom", "kind": "room", "type": "bedroom", "palette": "walnut", "look": "walnut", "width": 5, "depth": 4.5, "height": 3.75,
+  "walls": [[0, -2.5, 2.5], [1, -2.25, 2.25], [2, -2.5, 1], [3, -2.25, 2.25]], "windows": [[0, -1, 1, 0.9]],
+  "ways": [[0.7, 0.85, 2.5, 2.25]], "keep": [[0.7, 0.85, 2.5, 2.25]], "at": [0, 0, 1.875] }
+```
 
 A kind's uvs are in metres: its material lies at real size on every face. A kind whose mesh
 depends on its size (door, window, roof, fence, arch, column, bevel) makes a mesh for each size
@@ -1124,9 +1392,11 @@ prims collide as their mesh, its hull when convex.
   round it, stop there to graze or lie down, and set off again, by the world's clock — the same animals at the same
   places for everyone who comes, nothing of where they are written or sent: the walk, its stops and its animals are
   worked out from its home and its `seed`. A species of catalog.json's `animals` → `species`: the `horse`, `cow`,
-  `sheep`, `elephant`, `dog`, `cat`, `goose`, `chicken`. The `polar-bear` and the `penguin` (`wild` there) live on
-  the snow of their own, few, and keep off the lands: on a land lives what its designer puts — put one there only to
-  have one there.
+  `sheep`, `elephant`, `dog`, `cat`, `goose`, `chicken`; and six dinosaurs at their kinds' sizes, moved by their own
+  clips (walking and now and then running, roaring or leaping at a stop, lying down to rest) — the `tyrannosaurus` (12 m long, one or two), the `triceratops` (8.5 m, 2–5), the `stegosaurus` (9 m,
+  1–3), the `apatosaurus` (22 m, 2–5), the `parasaurolophus` (9.5 m, 3–8) and the `velociraptor` (2 m, 3–6). The
+  `polar-bear` and the `penguin` (`wild` there) live on the snow of their own, few, and keep off the lands: on a land
+  lives what its designer puts — put one there only to have one there.
 - `count`: how many it is, within its species' `group` (a cow's herd 3–6, a cat alone, a dog or two); none, its seed
   deals one. `seed`: a whole number (0 up to 2³²); another seed, another walk round the same home — none, one from the
   build's name and the herd's place in the list. `territory`: how far round its home it walks, in metres — from 5 (a
@@ -1139,6 +1409,7 @@ prims collide as their mesh, its hull when convex.
   run, a `territory` of 5–10.
 - What it is: no reaction to people, no sound; of a species in sight at once, the 48 nearest are drawn (the check
   says when a build puts more). Each animal is 240–440 triangles, drawn while it covers 4 px; a herd costs a record.
+  A dinosaur does not graze; it may run, act at a stop (its attack or its jump) or lie down (its fall), of its own.
 
 ### Land
 
@@ -1498,7 +1769,8 @@ Its two ends are wood by `faces`, its inside plaster by the cut's colour.
 
 ### A basin
 
-A pool, a well's curb, a planter: a box with a box `cut` from its top, the cut's colour the tiles that line it. Here 10.2 × 5 m
+A pool to swim in is the `pool` kind (format.md, «A pool in one part»): one part, its water with it. A basin carved by hand is
+for what that kind is not — a well's curb, a planter, a paddling pool flush with a terrace: a box with a box `cut` from its top, the cut's colour the tiles that line it. Here 10.2 × 5 m
 with its coping, 9 × 4 m of basin, its floor 0.04 m over the ground; the water is a `cube` of its own, `phantom` to wade in.
 
 ```json
@@ -1844,7 +2116,9 @@ ways through it, what stands along them, what grows round them, what lights them
 ### Animals: farms, paddocks, a village's life
 
 - **Where they belong**: cows and sheep on a meadow or in a fenced paddock, horses by a stable, hens and geese in a
-  farmyard or a run, a dog or a cat by a house; an elephant on a savanna's open ground. A herd walks round its home
+  farmyard or a run, a dog or a cat by a house; an elephant on a savanna's open ground; dinosaurs in a valley or a
+  park of their own, open ground as wide as their walk — an apatosaurus 22 m long wants a clearing, not a paddock —,
+  a tyrannosaurus alone or two, raptors in a pack, the plant-eaters in herds. A herd walks round its home
   and walks through whatever is built (format.md, Animals): put its home in the paddock's middle and its `territory`
   under the paddock's radius — a paddock of 30 × 30 m, 12; a hen run of 6 m, 5 —, or on open ground as wide as its
   species' own.
@@ -1857,7 +2131,19 @@ ways through it, what stands along them, what grows round them, what lights them
   panelling), a ceiling (the roof's underside, face 2, or a slab), and one warm lamp.
 - **Furniture against walls**, a clear way from the door through the room (≥ 1 m — the avatar is
   0.6 m wide and everything is solid), and one focal piece: a hearth, a table, a bed, a counter.
-- **Each piece of furniture one `solid`**, never a part a leg: its plates `add`ed side by side (`"join": "none"`), a leg
+- **A sofa, an armchair, a chair, a stool, a bed, a table — dining, coffee, side — or a desk: one part of the `furniture` kind**
+  (format.md, *A piece of furniture*): its type, its model, its width and depth, a look; its seat its recipe's. Lighter than any
+  piece built by hand, and sat on where it should be. **What dresses a room too**: a rug or a fitted carpet, a picture of a painting
+  of the bank (its look), a plant, an ornament, a lamp, a coat rack — a part each; **and what a room keeps things in, a bathroom and
+  a kitchen**: a wardrobe, shelves, a sideboard, a television; a toilet, a basin, a bath, a shower; a run of kitchen units, an
+  island, tall units — each its back to a wall. **A room furnished whole**: one part of the `room` kind (format.md, *A furnished
+  room*) — its type, its floor, its walls, windows and where it is come into — lays all of it by what the room is, what is sat on
+  parts of their own; the ways between its doors stay as wide as a doorway, whatever stands. **A house furnished whole**: a
+  house of the `house` kind with `"furnished"` (format.md, *A house that comes furnished*) — one word, and each of its rooms is
+  such a part, laid out from its own plan, with what is sat on in it; write nothing beside the house. Houses alike but for
+  their `variant` are each furnished their own way — another wood tone, other proportions, a cloth colour to each room —, the
+  same models and not a material more: vary `variant` along a street.
+- **Each other piece of furniture one `solid`**, never a part a leg: its plates `add`ed side by side (`"join": "none"`), a leg
   `mirror`ed, a row `repeat`ed, each look a colour. A table is its top 0.04 m and its legs, one part; a chair its frame
   (legs, seat and back) one part, with its `seat` target; a bed its frame, mattress, duvet, pillows and headboard one part of
   three looks; a shelf a box with its shelves `cut` (one cut `repeat`ed); a rug a box 1 cm thick (`fabric/carpet/…`); a hearth
@@ -2002,7 +2288,7 @@ A place past its *most* takes nothing more: build lighter, or somewhere else.
 | Glow | A half-resolution pass when anything glows in view | Halos for a few lanterns, not for every window |
 | Particles | Symbolic: a flame 3–4 cards, smoke 3–5 puffs; one budget a frame for every system in view (1,500 particles, 0.6 of the screen covered), thinned alike past it; past 30 m a part throws its first layer only, past 200 m nothing. Blended ones (smoke, steam, fog) are the dearest where they fill the screen | A chimney for each burning hearth, a few fires, fog in one or two hollows (effects.md) |
 | Trees | Full mesh near, simplified mid-way, an impostor far; culled and drawn on the GPU | Hundreds are cheap: a 5,000-tree forest costs −0.4 ms on foot (it hides terrain), +0.4 ms from 150 m above |
-| Animals | A herd is one record; each animal 240–440 triangles, posed in the vertex stage, one draw a species in sight, drawn while it covers 4 px (a hen from 60 m, an elephant from 400 m); 48 of a species at once, the nearest; nothing sent as they move | A few herds where they belong — a paddock, a farmyard (format.md, Animals): five cows in view cost +0.01 ms |
+| Animals | A herd is one record; each animal 240–440 triangles, posed in the vertex stage, one draw a species in sight, drawn while it covers 4 px (a hen from 60 m, an elephant from 400 m); 48 of a species at once, the nearest; nothing sent as they move | A few herds where they belong — a paddock, a farmyard (format.md, Animals): five cows in view cost +0.01 ms; a dinosaur is 440 triangles moved by its own clips, its files 34–49 KB fetched where one is |
 | Shadows | Everything built casts within 250 m; redrawn when it changes or the light moves | Nothing to do |
 
 Triangles per shape at its four levels (catalog.json has every preset and kind, at their defaults):
@@ -2810,6 +3096,10 @@ straight down first.
   A part turns about its own z through its own middle, so a pair of blades is one part across the hub
   (two crossing ones for four blades); a tail rotor turned `[0, 90, 0]` so that its z lies across the
   helicopter.
+  As they turn, each is seen as the disc its blades sweep — faint, as wide as the part's box across its x
+  and y, at the height of the solid body reaching farthest from its axis (its blades' tips) — and a main
+  rotor 3 m wide or more moves the air under it: soft, wide wisps from the bottom of its body under the hub,
+  going down while it hovers, streaming back the way it flies. Nothing to write for either: size a rotor's box to its blades' circle and they follow.
 - **Its exhausts**: a turbine's breath, the jet's exhaust half as long —
   `"particles": { "preset": "exhaust", "running": true, "life": 0.08 }`, some 1.3 m —, coming up with its
   rotors and dying away with them; `"scale"` to its outlet (0.6 for one 0.27 m high). On a part whose +z
@@ -3166,6 +3456,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
   - `leaf` 0.02–0.12, default 0.045: How thick the door itself is (m); no thicker than its frame is deep.
   - `style` `plain` / `panelled` / `glazed`, default `panelled`: Plain: one flat slab. Panelled: four raised panels each side. Glazed: glass in its upper half.
   - `hinge` `left` / `right`, default `left`: The side it hangs on, seen from in front (−y); its handles on the other.
+  - `jambs` `both` / `hinge`, default `both`: Its frame's uprights: both; or hinge, only the one it hangs on — one leaf of a double door, its other side open to the leaf that meets it: two such doors side by side, hung on the outer sides, are a double door with nothing between its leaves.
   - `open` 0–110, default 0: How far it stands open (°), swinging out towards the front: its leaf turns on its hinges, its mesh the same. A behaviour opens and shuts it so.
 - **`window`** — A window: its frame round its opening, glass in it divided into columns and rows of panes by bars, and a sill standing out to the front (−y) if asked. Its box is the frame's: width, a wall's thickness (or less), height; the sill stands out of it. Faces: 0 frame, 1 bars, 2 glass, 3 sill. Size: its own, in metres.
   - `frame` 0.02–0.3, default 0.06: How wide its frame is round the glass (m).
@@ -3222,6 +3513,90 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
   - `rise` 0–4, default 0: How far the deck is raised in the middle over the straight line between its ends (m), by ramps no steeper than 1 in 8: to clear water, or a hump. A deck hung from ropes (rope) is never raised: this takes the slack out of its sag instead, no more than its sag.
   - `points` -31.5–31.5, default -4,0,0,4,0,0: Its two ends, A and B: [x, y, z] in metres in its own frame, z the deck's height there, where it meets the bank.
   - `ground` -31.5–31.5, default : The ground under the chord (m, in its own frame), as the editor that laid it measured it: evenly from A to B, about every metre; none: nothing to cross.
+- **`house`** — A modern house worked out from a few numbers: storeys of walls between slabs with their windows cut and glazed, a stair up through them, terraces with glass rails where a storey stands back, a flat, single-pitch, gabled, butterfly, steep or hipped roof, and a base down past the ground with steps up to its door. Its front is its +y. `width` and `depth` are its ground storey's — 14 m or more each way with `scale` game for a house built now —; its box is what it makes (eaves, a storey out over the front, its steps). One part, at most 5,000 triangles (a mansion 6,000); its doors are parts of their own (kind door) that open into the house as someone comes, its lights and their switches too (`lighting`), the platform and call buttons of a lift (`lift`), the panes of glass that slide (`sliding`) and the door of a garage. With `rooms` its storeys are divided — a hall, a toilet, bedrooms, bathrooms — by partitions with their doorways. With `forms` varied its variation shapes it more: a canopy, a carport, balconies, a pergola, a chimney, an accent band. With `furnished`, and its storeys divided, it comes furnished: each of its rooms a part of the room kind laid out by what it is — beds, sofas, tables and their chairs, a kitchen's units, baths, wardrobes, rugs, pictures, plants —, what is sat on in them parts of their own, seats. Walked into: rooms, floors and stairs collide as drawn. Faces: 0 walls, 1 walls apart, 2 trim, 3 glass, 4 roof, 5 floors, 6 inside. Size: what its width, depth, storeys and roof make (m): a size given sets its width and depth.
+  - `style` `box` / `wood` / `glass` / `stack` / `chalet` / `lodge` / `barn` / `manor` / `villa` / `cabin`, default `box`: Box: rendered walls, ribbon windows, a parapet, an upper storey that may stand back from a terrace. Wood: timber cladding, upright windows, eaves. Glass: glass from floor to ceiling between slabs that stand out past it. Stack: each storey a volume of its own, the upper one out over the door and a terrace beside it. Chalet: a steep roof swept out over the front, a bay of glass through every storey in the middle of the front under a vault of its own, the door in a porch beside it under a balcony, another balcony at its other side. Lodge: a long steep roof gone on past both ends over a covered terrace each, a bay under a gable of glass in the middle of the front, the door in a porch beside it that opens onto a terrace. Barn: a hall under a ridged roof, the end of it away from its stair all glass up to the roof with a terrace before it under a flat canopy, and behind the hall the back of the house low under a flat roof that goes on past its other end as a wing — a garage, its door sliding aside as someone comes, a ramp down to the ground before it —: an L, the front door by the corner the wing makes. Manor: a mansion, the same either side of its middle — its front door, two leaves, in the middle under a portico of four or six columns as tall as two storeys, an entablature and a pediment over them and steps as wide; tall windows in line from storey to storey; a cornice and a hipped roof; a chimney at each end; its ground storey dressed apart from those over it, its columns and trim marble. Divided into rooms: a hall through its middle from the door to the back wall, the stair in it, the living room and the study either side of it at the front, the dining room and the kitchen behind them, bedrooms at the corners of the storeys over; with doors, the doorways from the hall into the living room and the study have two leaves each, hinged — or, with sliding glass, sliding into the wall. Villa: a modern mansion, the same either side of its middle — glass from floor to ceiling on every side under a flat roof 2.2 m out past its walls; every floor out 1.8 m past them: a terrace all round each storey over the ground one, railed with glass, a way out onto it from the landing — and, with sliding glass, a pane of each bay —, and a podium round the ground storey, steps down from it before the door; its door, two leaves, in the middle; inside, a mansion's hall and rooms. Cabin: a log cabin — walls of logs, a round log standing at each corner, a porch all along the front on log posts under the roof swept out over it (or under a shelter of its own), railed with logs, a chimney of stone up one end wall; its door in the front wall, under the porch.
+  - `width` 6–40, default 13: How wide its ground storey is, along its front (m).
+  - `depth` 6–40, default 10: How deep its ground storey is, front to back (m).
+  - `floors` 1–3, default 2: How many storeys, a stair between them: each 3.2 m from floor to floor, 4 m at a game's scale.
+  - `roof` `flat` / `mono` / `gable` / `butterfly` / `steep` / `hip`, default `flat`: Over its top storey: flat; mono, one pitch rising to the front; gable, two pitches from a ridge along its width; butterfly, two pitches down to a valley along its width; steep, two steep pitches from a ridge along its width, as high as three fifths of its walls (5.5 m at the most), the storey under it open up to them — a chalet's own, its front swept out flatter over its balconies; hip, four pitches up from its eaves to a ridge along its longer side, standing on a flat slab that is the top storey's ceiling — the house under it as under a flat roof, without a parapet.
+  - `glazing` 0–1, default 0.5: How much of its walls is glass: 0.5 its style's own, less towards 0, more towards 1.
+  - `variant` 0–9999, default 0: Which of its style's houses it is: where its door and stair are, which storeys stand back and how far, which bays are glazed. One number, one house.
+  - `plinth` 0.1–3, default 0.3: How far its base goes down under its floor (m): past the lowest ground under it. Its floor is its box's bottom raised by this.
+  - `stoop` 0–1.5, default 0.15: How far the ground before its door lies under its floor (m): steps go down to it, one for every 0.19 m.
+  - `entrance` `single` / `double` / `suited`, default `single`: Its front door, larger than any door inside. single: one leaf — 1.1 m wide and 2.3 m high, 1.8 × 3 m at a game's scale (a door inside is 0.9 × 2.1 m, and 1.4 × 2.7 m). double: two leaves that meet in one doorway, nothing between them — 2 m, 2.8 m at a game's scale —, its landing as much wider. suited: by the house's size — two leaves where its front is 22 m or more at a game's scale (14 m at a person's), one under that.
+  - `lighting` `none` / `storey` / `room`, default `none`: Lights on its ceilings, each storey a zone with a switch of its own — by the front door, and by the stair on the storeys over it — that a click turns on and off and that turns them on by itself while someone is in the storey: none; storey, one linear light to each; room, two. Six lights at the most, off while nobody is in.
+  - `lift` `none` / `platform`, default `none`: A lift between its storeys, of two or three: a platform in a shaft of glass in the corner by the stair, open to the room on each storey, that a click on it sends to its next stop and a button by it on each storey calls — 1.3 m across, or 2.1 m, for four, at a game's scale. None with one storey.
+  - `sliding` `none` / `doors` / `all`, default `none`: Glass that slides: none; doors — the door onto each terrace two panes of glass in a doorway of 2 m, one sliding over the other as someone comes or on a click, and one pane of each bay glazed from floor to ceiling that has floor outside it (on the ground storey, onto a terrace) sliding on a click; all — besides, one pane of every window of two panes or more, on a click. Eight sliding panes a house at the most.
+  - `forms` `plain` / `varied`, default `plain`: What its variation may give it besides: plain, nothing; varied, some of — a band of its front and one side in its second wall material, a canopy with a fin over its door (at a person's scale: a game's recess is its shelter), a carport beside it, a balcony before an upper storey, a pergola over a terrace, a chimney — each by a chance of its own, as its style allows: two houses of one style and size differ in outline.
+  - `rooms` `open` / `rooms` / `doors`, default `open`: How its storeys are divided: open, each one room; rooms — on the ground storey a toilet off the foot of the stair, the kitchen and the dining room along the back and the living room open, a study where it is wide; on the storeys over it a bathroom and a closet by the landing, a passage and bedrooms across the front, a lounge where they leave room; in a house of one storey the bedrooms and their bathrooms across the back, each with its door on the living room, and the kitchen beside them — their doorways open; doors, a door besides in each bathroom's, bedroom's, closet's and study's doorway, eight at the most (a mansion twelve), opening as someone comes. At the scale houses were first made at, a hall besides behind the front door, closed across from it. A storey too small for it stays open.
+  - `scale` `real` / `game`, default `real`: What it is sized for. real: a person, as houses were first made — storeys 3.2 m, a stair 1 m wide, doors 1.1 m. game: an avatar and the camera behind and over it — storeys 4 m, doors 1.4 m wide and 2.7 m high, a stair 2 m wide on the same steps, a lift for four, windows half as wide again, rooms a camera stays inside (bedrooms 5 m across at the least, passages 3 m, doorways 1.4 m), and its front door set back 3 m from the street's face of the house in a recess under the storey over it, sheltered. A game's where its ground storey is at least 11 × 12.5 m: a smaller house keeps a person's; and a house over 24 m a side, larger than a person's ever were, is at a game's whatever is asked — or, too narrow for one, 24 m at the most.
+  - `bedrooms` 0–4, default 0: With `rooms`, how many bedrooms each storey of bedrooms has — a storey over the ground one, or the one storey of a house of one —: 0, as many as its width suits (one fewer one time in three); 1 to 4, that many where it holds them — fewer in a storey too narrow. A storey over the ground one is not cut narrower than those asked for need.
+  - `drive` 0–1.5, default 0.15: Of a house with a wing: how far the ground before its garage door lies under its floor (m) — a ramp goes down to it, six times as long.
+  - `furnished` `none` / `oak` / `walnut` / `white`, default `none`: With `rooms`, whether it comes furnished and in which palette: none; oak — oak and linen —, walnut — walnut and bouclé —, white — white and charcoal. Each of its rooms is then a part of the room kind, laid out by what it is from the house's own plan — a bed between its side tables and a wardrobe; a sofa before a low table on a rug, armchairs, a television; a table between its rows of chairs; a kitchen's run, its tall units and an island with its stools; a bath, a toilet, a basin, a shower; a desk; rugs, pictures, plants —, the ways between its doors kept clear, nothing before a window higher than its sill; what is sat on — sofas, armchairs, chairs, stools, beds, toilets, baths — parts of their own of the furniture kind, each a seat. Which pieces and where follows its `variant`. Nothing in a house of open storeys.
+- **`furniture`** — A piece of furniture worked out from a few numbers: a sofa (square or rolled arms, with a chaise, low and modular, a Chesterfield), an armchair, a chair, a stool, a bed with its headboard (a panel, padded, tufted, channelled, slatted, with wings, arched), a dining table, a coffee table, a side table or a desk; what dresses a room — a rug (a rectangle, round, a runner, a fitted carpet), a picture of a painting of the bank (framed, a canvas, mounted: its look the painting), a plant, an ornament (a vase, a bowl, a lidded jar, books, a sculpture, candles), a lamp (floor, arc, table), a coat rack (standing, a coat tree, on a wall, a clothes rail); storage — a wardrobe (doors, sliding, open), shelves (a bookcase, cubes, a ladder), a sideboard (doors, drawers, on legs), a television (on a stand, on the wall) —, a bathroom — a toilet (on the floor, hung on the wall), a basin (on a cabinet, on a pedestal, double), a bath (built in, freestanding), a shower (a tray and frame, walk-in) — and a kitchen (a run of units with its sink, hob and upper units, an island, tall units). Its front is its +y — where one sits facing, a bed's foot, a picture's painting —, its bottom the floor (a picture's where it hangs). `width` and `depth` are along its front and from front to back, each held to its type's range (a picture's `width` and `height`; a plant, an ornament, a lamp, a coat rack its model's size); its height is its type's, a person's measures whatever the room. Seats, beds and stools are sat on where the part's `seat` says (the import gives the kind's); a picture's painting covers its canvas once (its face's `scale`, given by the import). One part, 320 triangles at the most; nothing drawn from far; what dresses a room collides with nothing. Faces: 0 frame, 1 cover, 2 bedding, 3 throw, 4 metal, 5 top, 6 art. Size: what its type, model, width and depth make (m): a size given sets its width and depth.
+  - `type` `sofa` / `armchair` / `chair` / `stool` / `bed` / `table` / `coffee` / `side` / `desk` / `rug` / `picture` / `plant` / `ornament` / `lamp` / `rack` / `wardrobe` / `shelf` / `sideboard` / `tv` / `toilet` / `basin` / `bath` / `shower` / `kitchen`, default `sofa`: What it is: a sofa, an armchair, a chair, a stool, a bed, a dining table, a coffee table, a side table or a desk.
+  - `sofa` `track` / `rolled` / `chaise` / `modular` / `chesterfield`, default `track`: Which sofa it is: square arms, rolled arms, with a chaise, low and modular, chesterfield.
+  - `armchair` `lounge` / `club` / `wing`, default `lounge`: Which armchair it is: lounge, club, wingback.
+  - `chair` `dining` / `upholstered` / `shell`, default `dining`: Which chair it is: wooden, upholstered, shell.
+  - `stool` `bar` / `low`, default `bar`: Which stool it is: bar stool, low stool.
+  - `headboard` `panel` / `padded` / `tufted` / `channel` / `slatted` / `wing` / `arched`, default `panel`: Which bed it is: panel, padded, tufted, channelled, slatted, wings, arched.
+  - `table` `legs` / `trestle` / `round`, default `legs`: Which dining table it is: four legs, trestles, round.
+  - `coffee` `slab` / `legs` / `round`, default `slab`: Which coffee table it is: slab, four legs, round.
+  - `side` `cube` / `legs` / `round`, default `cube`: Which side table it is: cube with a drawer, four legs, round.
+  - `desk` `legs` / `drawers`, default `legs`: Which desk it is: four legs, with drawers.
+  - `rug` `rectangle` / `round` / `runner` / `fitted`, default `rectangle`: Which rug it is: rectangle, round, runner, fitted carpet.
+  - `picture` `framed` / `canvas` / `mounted`, default `framed`: Which picture it is: framed, canvas, mounted.
+  - `plant` `tall` / `bush` / `cactus`, default `tall`: Which plant it is: tall, bush, cactus.
+  - `ornament` `vase` / `bowl` / `jar` / `books` / `sculpture` / `candles`, default `vase`: Which ornament it is: vase, bowl, lidded jar, books, sculpture, candles.
+  - `lamp` `floor` / `arc` / `table`, default `floor`: Which lamp it is: floor lamp, arc lamp, table lamp.
+  - `rack` `standing` / `tree` / `wall` / `rail`, default `standing`: Which coat rack it is: standing, coat tree, on a wall, clothes rail.
+  - `wardrobe` `doors` / `sliding` / `open`, default `doors`: Which wardrobe it is: doors, sliding doors, open.
+  - `shelf` `books` / `cubes` / `ladder`, default `books`: Which shelves it is: bookcase, cubes, ladder.
+  - `sideboard` `doors` / `drawers` / `legs`, default `doors`: Which sideboard it is: doors, drawers, on legs.
+  - `tv` `stand` / `wall`, default `stand`: Which television it is: on a stand, on the wall.
+  - `toilet` `floor` / `wall`, default `floor`: Which toilet it is: on the floor, hung on the wall.
+  - `basin` `vanity` / `pedestal` / `double`, default `vanity`: Which basin it is: on a cabinet, on a pedestal, double.
+  - `bath` `built` / `free`, default `built`: Which bath it is: built in, freestanding.
+  - `shower` `tray` / `walk`, default `tray`: Which shower it is: tray and frame, walk-in.
+  - `kitchen` `run` / `island` / `tall` / `counter`, default `run`: Which kitchen it is: a run of units, island, tall units, base units.
+  - `width` 0–10, default 0: How wide it is along its front (m) — 0, its type's own —, held to its type's range: a sofa 1.5–3.4, an armchair 0.7–1.05, a chair 0.42–0.6, a bed 0.9–2 (the mattress 0.9 single, 1.4–1.6 double, 1.8–2 king), a dining table 0.8–3, a coffee table 0.6–1.6, a side table 0.38–0.65, a desk 1–2.
+  - `depth` 0–10, default 0: How deep it is from front to back (m) — 0, its type's own —, held to its type's range: a sofa 0.85–1 (1.4–1.8 with a chaise), a bed 2.05–2.3, a round table its width.
+  - `count` 1–6, default 1: Chairs or stools side by side in a row, one part — a dining table's side, a counter's stools —, each a place of its seat: 1 to 6, 0.6 m apart (stools 0.65).
+  - `height` 0–3, default 0: How tall a picture is (m) — 0, its own: 0.75 —, 0.25–3: give it its painting's shape (PAINTINGS), its canvas covered once by it whatever its size.
+  - `tall` 0–1, default 0.5: How tall what stands up of it is, 0–1 (0.5, or left out, its model's own): a sofa's, an armchair's or a chair's back, a bed's headboard, a stool, a coffee or a side table, a wardrobe, shelves, a sideboard. A seat's top and a mattress's stay where a person sits and lies; a low modular sofa is as tall as it is.
+  - `legs` 0–1, default 0.5: How high it stands on its legs, 0–1 (0.5, or left out, its model's own): a sofa's or an armchair's feet, a bed's plinth — low to the floor, or up on them. One that stands on no legs (a club armchair, a modular sofa) stays on the floor.
+  - `stout` 0–1, default 0.5: How thick its arms, its legs and its top are, 0–1 (0.5, or left out, its model's own): slender, or stout — a sofa's arms, a chair's or a table's legs, a table's top.
+  - `fabric` `own` / `ivory` / `sand` / `ochre` / `terracotta` / `rose` / `sage` / `teal` / `sky` / `slate` / `plum` / `graphite`, default `own`: The colour of what it is upholstered in — a sofa's or a chair's cover and the cushions one sits on, a bed's padded headboard and its sheets, a rug —: a tint over its look's own material, none added. own (or left out): the material as it is; ivory, sand, ochre, terracotta, rose, sage, teal, sky, slate, plum, graphite. A light cloth takes them clearest, a dark one hardly; what is thrown over it — scatter cushions, a duvet — stays its look's.
+  - `wood` `own` / `honey` / `amber` / `chestnut` / `mahogany` / `smoke` / `ebony`, default `own`: The tone of whatever of it is wood — its frame, its legs, a top or fronts dressed in a wood of the bank —: a tint over its look's own material, none added. own (or left out): the material as it is; honey, amber, chestnut, mahogany, smoke, ebony. Tones darken: on a light wood, and on white paint, they show most.
+- **`room`** — What a room holds that nobody sits on, in one part, laid out from what the room is (`type`: living, dining, kitchen, bedroom, bath, toilet, study, lounge, passage, landing, closet, hall), its floor (`width` × `depth`, its middle at the part's, its bottom the floor) and what its recipe is told of it: the stretches of wall it may stand against (`walls`: [side, from, to] — side 0 its back, 1 its right, 2 its front, 3 its left — along x or y in its own frame), its windows (`windows`: [side, from, to, sill]), where it is come into (`ways`: [x0, y0, x1, y1] — the landing before a doorway, a side open to the next room, the floor beside a stair —, each joined to every other by a way `way` m wide that nothing stands in), what nothing stands on (`keep`) and what is not walked through either (`closed`: a stair's well, a lift's shaft). What is sat on — a sofa, armchairs, a row of chairs, a bed, a toilet, a bath — stands as parts of their own of the furniture kind, seats, its recipe's. `palette` dresses it and them alike; `variant` chooses among the ways it may be laid out. Faces: 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art. Size: its floor and its height (m): what its width, depth and height make.
+  - `type` `living` / `dining` / `kitchen` / `bedroom` / `bath` / `toilet` / `study` / `lounge` / `passage` / `landing` / `closet` / `hall`, default `bedroom`: What it is, what it is furnished as: a living room, a dining room, a kitchen, a bedroom, a bathroom, a toilet, a study, a lounge, a passage, a landing, a closet, a hall.
+  - `palette` `oak` / `walnut` / `white`, default `oak`: What it and what is sat on in it are dressed in: oak and linen, walnut and bouclé, white and charcoal.
+  - `variant` 0–9999, default 0: Which of the ways its pieces may be laid out it is, and which of them it has: one number, one room.
+  - `dines` `no` / `yes`, default `no`: A living room's: whether its dining table is in it too, where the storey has no dining room of its own.
+  - `width` 1–40, default 5: Its floor along x (m).
+  - `depth` 1–40, default 4: Its floor along y (m).
+  - `height` 2–8, default 3.75: From its floor to its ceiling (m).
+  - `walls` -20–20, default : The stretches of wall it may stand against: [side, from, to] — side 0 its back (−y), 1 its right (+x), 2 its front (+y), 3 its left (−x) —, from and to along x (its back and front) or y (its sides), in its own frame. None given: all four walls whole.
+  - `windows` -20–20, default : Its windows: [side, from, to, sill] — what is taller than its sill stands nowhere before one.
+  - `way` 0.6–3, default 1.4: How wide the ways between where it is come into are kept, clear of what stands and of its walls (m): its house's doorways' width.
+  - `ways` -20–20, default : Where it is come into and gone out of: [x0, y0, x1, y1] in its own frame — the landing before a doorway, a side open to the next room, the floor beside a stair or before a lift. Each is joined to every other by a way `way` m wide.
+  - `keep` -20–20, default : What nothing stands on: [x0, y0, x1, y1] in its own frame — its doorways' landings, the floor beside a stair and before a lift, behind the front door, before a switch.
+  - `closed` -20–20, default : What nothing stands on and is not walked through either: [x0, y0, x1, y1] — a stair's well, a lift's shaft, the front door's recess, a smaller room inside it.
+  - `tall` 0–1, default 0.5: How tall what stands up of its furniture is, 0–1 (0.5, or left out, each model's own): the backs of what is sat on, a bed's headboard, its low tables, its wardrobe, its shelves, its sideboard — low and wide, or tall. What stands before a window stays under its sill, and a picture hangs clear over what is under it.
+  - `legs` 0–1, default 0.5: How high its sofa, its armchairs and its bed stand on their legs, 0–1 (0.5, or left out, each model's own): low to the floor, or up on them.
+  - `stout` 0–1, default 0.5: How thick the arms, the legs and the tops of its furniture are, 0–1 (0.5, or left out, each model's own): slender, or stout.
+  - `fabric` `own` / `ivory` / `sand` / `ochre` / `terracotta` / `rose` / `sage` / `teal` / `sky` / `slate` / `plum` / `graphite`, default `own`: The colour of its cloth — its rugs, and what is sat on in it is upholstered in, a bed's sheets —: a tint over its palette's own materials, none added. own (or left out): as they are. Its throws, its scatter cushions and its duvets stay its palette's: the accent beside the colour.
+  - `wood` `own` / `honey` / `amber` / `chestnut` / `mahogany` / `smoke` / `ebony`, default `own`: The tone of its wood — its tables, its storage, its fronts, and the frames of what is sat on in it, whatever of them is dressed in a wood of the bank —: a tint over its palette's own, none added. own (or left out): as it is.
+- **`pool`** — A pool to swim in: a basin lined with tiles, raised over the ground it stands on (a build does not dig: its basin's floor stands over the highest ground under it, so its rim is its water's depth and 0.27 m over that ground), a coping and a deck of paving round it at its rim's level, steps up to the deck from the ground and steps down into the water. `length` and `width` are its basin's, inside; its box is what it makes — its deck round the basin, its steps past the deck, from its base's foot up to its rim —, and its origin its basin's middle at its rim. Its water is a part its recipe stands in it (a box of the bank's water: a body of water, swum in from 1.3 m deep): an object that holds a pool holds its water too. `plinth` and `stoop` are how far the ground lies under its rim — under all of it, and at the foot of its steps —: the editor measures them where it is placed; on level ground they are its depth and 0.57 m, and its depth and 0.27 m, its box's top — its rim — that second measure over the ground. Faces: 0 paving, 1 lining, 2 sides. Size: what its basin, its deck, its steps and its base make (m): a size given sets its basin's length and width.
+  - `style` `stone` / `timber`, default `stone`: What its deck is of, which its looks go by: stone — paving, its base rendered or of stone —; timber — boards, its base clad in them.
+  - `length` 4–30, default 10: How long its basin is inside, along its x (m).
+  - `width` 2.5–15, default 5: How wide its basin is inside, along its y (m).
+  - `depth` 0.4–2, default 1.4: How deep its water is (m): from 1.3 m it is swum in; shallower, waded.
+  - `deck` 0–6, default 1.5: How far its deck goes on round it past its coping (m): 0, its coping alone, 0.45 m.
+  - `steps` `end` / `side`, default `end`: Where its steps are — those up to the deck from the ground, and before them those down into the water —: in the middle of its +x end, or of its +y side.
+  - `water` `calm` / `rippled`, default `calm`: How rippled its water is: the bank's calm water, or its rippled one.
+  - `plinth` 0.6–6, default 1.97: How far its base goes down under its rim (m): past the lowest ground under it — never less than its water, its rim over it and its floor take.
+  - `stoop` 0–6, default 1.67: How far the ground at the foot of its steps lies under its rim (m): a step for every 0.19 m.
 - **`lantern`** — The housing of a lamp's light: a base, a box of glass that glows, a pointed cap — in a small box whose middle is the flame, where the part's light sits. Give it a light (At night) or leave it dark; stand it on a post. Under a metre, so its light passes it as its own fixture. Faces: 0 glass, 1 frame. Size: its own, in metres.
 
 - **`sculpt`** — A sculpted prim, as Second Life and OpenSim have them: its surface a map of points (its sculpt map), stitched as a sphere, a torus, a plane or a cylinder. Never written by hand: a part written with "sculpt" — a lathe, a box, a loft, a sweep or a model — is made one by the sculpt tool, and an OpenSim import brings its own; its stitching, mirror and invert set on its card. Faces: 0 surface. Size: its own, in metres.
@@ -3328,7 +3703,7 @@ Every pattern takes `scale` 0.25–20 (default 2), `width` 0.01–0.3 (default 0
 
 ### Animals
 
-Put as herds (format.md, Animals): `elephant` (2–4 in a herd, walking up to 150 m, 4.4 m long); `horse` (2–5 in a herd, walking up to 150 m, 2.67 m long); `cow` (3–6 in a herd, walking up to 80 m, 2.67 m long); `sheep` (3–7 in a herd, walking up to 70 m, 1.04 m long); `dog` (1–2 in a herd, walking up to 140 m, 1 m long); `cat` (1 in a herd, walking up to 60 m, 0.59 m long); `goose` (3–6 in a herd, walking up to 50 m, 0.8 m long); `chicken` (3–6 in a herd, walking up to 30 m, 0.44 m long).
+Put as herds (format.md, Animals): `elephant` (2–4 in a herd, walking up to 150 m, 4.4 m long); `horse` (2–5 in a herd, walking up to 150 m, 2.67 m long); `cow` (3–6 in a herd, walking up to 80 m, 2.67 m long); `sheep` (3–7 in a herd, walking up to 70 m, 1.04 m long); `dog` (1–2 in a herd, walking up to 140 m, 1 m long); `cat` (1 in a herd, walking up to 60 m, 0.59 m long); `goose` (3–6 in a herd, walking up to 50 m, 0.8 m long); `chicken` (3–6 in a herd, walking up to 30 m, 0.44 m long); `tyrannosaurus` (1–2 in a herd, walking up to 200 m, 11.9 m long); `triceratops` (2–5 in a herd, walking up to 150 m, 8.48 m long); `stegosaurus` (1–3 in a herd, walking up to 120 m, 8.98 m long); `apatosaurus` (2–5 in a herd, walking up to 200 m, 21.97 m long); `parasaurolophus` (3–8 in a herd, walking up to 150 m, 9.5 m long); `velociraptor` (3–6 in a herd, walking up to 120 m, 2 m long).
 
 ### Starter materials
 

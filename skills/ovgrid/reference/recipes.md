@@ -105,7 +105,8 @@ Its two ends are wood by `faces`, its inside plaster by the cut's colour.
 
 ## A basin
 
-A pool, a well's curb, a planter: a box with a box `cut` from its top, the cut's colour the tiles that line it. Here 10.2 × 5 m
+A pool to swim in is the `pool` kind (format.md, «A pool in one part»): one part, its water with it. A basin carved by hand is
+for what that kind is not — a well's curb, a planter, a paddling pool flush with a terrace: a box with a box `cut` from its top, the cut's colour the tiles that line it. Here 10.2 × 5 m
 with its coping, 9 × 4 m of basin, its floor 0.04 m over the ground; the water is a `cube` of its own, `phantom` to wade in.
 
 ```json

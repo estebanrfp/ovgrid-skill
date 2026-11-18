@@ -77,7 +77,9 @@ ways through it, what stands along them, what grows round them, what lights them
 ## Animals: farms, paddocks, a village's life
 
 - **Where they belong**: cows and sheep on a meadow or in a fenced paddock, horses by a stable, hens and geese in a
-  farmyard or a run, a dog or a cat by a house; an elephant on a savanna's open ground. A herd walks round its home
+  farmyard or a run, a dog or a cat by a house; an elephant on a savanna's open ground; dinosaurs in a valley or a
+  park of their own, open ground as wide as their walk — an apatosaurus 22 m long wants a clearing, not a paddock —,
+  a tyrannosaurus alone or two, raptors in a pack, the plant-eaters in herds. A herd walks round its home
   and walks through whatever is built (format.md, Animals): put its home in the paddock's middle and its `territory`
   under the paddock's radius — a paddock of 30 × 30 m, 12; a hen run of 6 m, 5 —, or on open ground as wide as its
   species' own.
@@ -90,7 +92,19 @@ ways through it, what stands along them, what grows round them, what lights them
   panelling), a ceiling (the roof's underside, face 2, or a slab), and one warm lamp.
 - **Furniture against walls**, a clear way from the door through the room (≥ 1 m — the avatar is
   0.6 m wide and everything is solid), and one focal piece: a hearth, a table, a bed, a counter.
-- **Each piece of furniture one `solid`**, never a part a leg: its plates `add`ed side by side (`"join": "none"`), a leg
+- **A sofa, an armchair, a chair, a stool, a bed, a table — dining, coffee, side — or a desk: one part of the `furniture` kind**
+  (format.md, *A piece of furniture*): its type, its model, its width and depth, a look; its seat its recipe's. Lighter than any
+  piece built by hand, and sat on where it should be. **What dresses a room too**: a rug or a fitted carpet, a picture of a painting
+  of the bank (its look), a plant, an ornament, a lamp, a coat rack — a part each; **and what a room keeps things in, a bathroom and
+  a kitchen**: a wardrobe, shelves, a sideboard, a television; a toilet, a basin, a bath, a shower; a run of kitchen units, an
+  island, tall units — each its back to a wall. **A room furnished whole**: one part of the `room` kind (format.md, *A furnished
+  room*) — its type, its floor, its walls, windows and where it is come into — lays all of it by what the room is, what is sat on
+  parts of their own; the ways between its doors stay as wide as a doorway, whatever stands. **A house furnished whole**: a
+  house of the `house` kind with `"furnished"` (format.md, *A house that comes furnished*) — one word, and each of its rooms is
+  such a part, laid out from its own plan, with what is sat on in it; write nothing beside the house. Houses alike but for
+  their `variant` are each furnished their own way — another wood tone, other proportions, a cloth colour to each room —, the
+  same models and not a material more: vary `variant` along a street.
+- **Each other piece of furniture one `solid`**, never a part a leg: its plates `add`ed side by side (`"join": "none"`), a leg
   `mirror`ed, a row `repeat`ed, each look a colour. A table is its top 0.04 m and its legs, one part; a chair its frame
   (legs, seat and back) one part, with its `seat` target; a bed its frame, mattress, duvet, pillows and headboard one part of
   three looks; a shelf a box with its shelves `cut` (one cut `repeat`ed); a rug a box 1 cm thick (`fabric/carpet/…`); a hearth

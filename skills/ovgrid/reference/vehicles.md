@@ -556,6 +556,10 @@ straight down first.
   A part turns about its own z through its own middle, so a pair of blades is one part across the hub
   (two crossing ones for four blades); a tail rotor turned `[0, 90, 0]` so that its z lies across the
   helicopter.
+  As they turn, each is seen as the disc its blades sweep — faint, as wide as the part's box across its x
+  and y, at the height of the solid body reaching farthest from its axis (its blades' tips) — and a main
+  rotor 3 m wide or more moves the air under it: soft, wide wisps from the bottom of its body under the hub,
+  going down while it hovers, streaming back the way it flies. Nothing to write for either: size a rotor's box to its blades' circle and they follow.
 - **Its exhausts**: a turbine's breath, the jet's exhaust half as long —
   `"particles": { "preset": "exhaust", "running": true, "life": 0.08 }`, some 1.3 m —, coming up with its
   rotors and dying away with them; `"scale"` to its outlet (0.6 for one 0.27 m high). On a part whose +z
