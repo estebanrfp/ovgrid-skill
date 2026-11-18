@@ -451,20 +451,48 @@ its box is 3.6 m deeper at the front), `villa` (a modern mansion, the same eithe
 ceiling on every side under a flat roof 2.2 m out past its walls; every floor 1.8 m out past them — a terrace all round each
 storey over the ground one, railed with glass, a way out onto it from the landing, and with `"sliding"` a pane of each bay; a
 podium round the ground storey, steps down from it before the door, two leaves in the middle; inside, a mansion's hall and
-rooms — give it 26 m of front or more and two storeys; its box is 4.4 m wider and deeper than its ground storey) or `cabin` (a log cabin: walls of logs in courses, a round log standing at each corner, a porch all along its front on log posts — under its roof swept out over it where it is of one storey under a ridge, else under a shelter of its own —, railed with logs but before its steps, a chimney of stone up one end wall and its base of that stone; no recess: its door is in the front wall under the porch — small and low it is at its best: 14–18 m of front, one storey, `gable` or `steep`; its box is 3.3 m deeper at the front and a chimney wider at one end); `floors` 1–3; `roof` `flat`, `mono` (one pitch rising to the front),
+rooms — give it 26 m of front or more and two storeys; its box is 4.4 m wider and deeper than its ground storey), `cabin` (a log cabin: walls of logs in courses, a round log standing at each corner, a porch all along its front on log posts — under its roof swept out over it where it is of one storey under a ridge, else under a shelter of its own —, railed with logs but before its steps, a chimney of stone up one end wall and its base of that stone; no recess: its door is in the front wall under the porch — small and low it is at its best: 14–18 m of front, one storey, `gable` or `steep`; its box is 3.3 m deeper at the front and a chimney wider at one end), `cantilever` (the storeys over the
+ground one larger than it: on past the end of it away from its stair — a fifth to a third of its width, 3.6–6 m at a game's
+scale —, their end all glass, over a terrace the house's floor goes on as, a way out onto it from the ground storey; a third
+storey as the second, or back at the ground one's end over a terrace of its own — give it two storeys or three: of one it is a
+plain box; its box is as much wider at one end), `plates` (a layered house: each storey a box of its own between slabs that
+stand out a metre past it and a flat roof 1.6 m, shifted against the one under it — on past the far end and back from the front
+over a terrace, then back from the far end and out over the front, or the other way round first —, glass from floor to ceiling
+before and at its far end, and the wall its stair stands beside gone on as a blade in its second wall material: 0.45 m thick,
+outside the wall, from a quarter of the house's depth behind its front to before all that stands out there, a metre up past the
+roof — give it two storeys or three, three at its best, and `flat`: of one storey it has no blade; at a game's scale its box
+is up to 7.5 m wider and 6.2 m deeper than its ground storey), `terrace` (a roof-terrace house: the top storey a pavilion in the corner its stair stands
+in — a third to a half of the width of the one under it, back from its front; at a game's scale 11 × 12.5 m at the least —, the
+roof under it a terrace round two sides of it railed with glass, a way out onto it, its own flat roof 1.2 m out over it; of three
+storeys the one between as the ground one, or back from its far end over a terrace too — give it two storeys or three, 20 m of
+front or more, and `flat`), `ell` (an L-shaped house: an arm of glass standing out of the front at its far end, flush with the
+house's side, nearly half the front wide and 3.6 m out at a game's scale, in its second wall material — as high as the house
+under its flat roof gone on over it and over the porch, its glass one pane from its floor to that roof, the ground storey open to
+it and the storeys over it looking into it across a rail: a hall two storeys high; or, one `variant` in three of a house of two
+storeys or three, a storey lower, its roof a terrace railed with glass with a way out onto it —; the door by the corner the two
+make, in a porch under a balcony, no recess — give it two storeys and `flat`; its box is 3.6 m deeper at the front and a metre
+more all round) or `platform` (a platform house: every floor 2.4 m out past its walls — a podium round the ground storey, steps
+down from its edge before the door, and a terrace railed with glass all round each storey over it, a way out onto each —, and
+the top storey a pavilion in the corner its stair stands in, the floor it stands on far wider than it, its own roof 1.2 m out —
+give it two storeys or three and `flat`; its box is 4.8 m wider and deeper than its ground storey); `floors` 1–3; `roof` `flat`, `mono` (one pitch rising to the front),
 `gable`, `butterfly`, `steep` (two steep pitches from a ridge along its width, as high as three fifths of its walls, 31° to 50°,
 the storey under it open up to them — the chalet's own; on any other style, a barn's roof) or `hip` (four pitches up from the
 eaves to a ridge along the longer side, on a flat slab that is the top storey's ceiling: the house under it as under a flat roof); `glazing` 0–1 (0.5 the style's own); `variant` 0–9999, which of its style's houses it is — where its door
 and stair are, which storeys stand back, which bays are glazed: one number, one house, the same for everyone. A `look` dresses it
-from the bank, six to each style — box: `white`, `stucco`, `concrete`, `grey`, `charcoal`, `ochre`; wood: `cedar`, `dark`, `oak`,
+from the bank, six to each style and a seventh to the cabin — box: `white`, `stucco`, `concrete`, `grey`, `charcoal`, `ochre`; wood: `cedar`, `dark`, `oak`,
 `boards`, `charred`, `solar`; glass: `concrete`, `travertine`, `walnut`, `white`, `steel`, `board`; stack: `cedar`, `concrete`,
 `stone`, `charcoal`, `ochre`, `boards`; chalet: `white`, `blue`, `timber`, `alpine`, `stone`, `ochre`; lodge: `walnut`,
 `charred`, `white`, `cedar`, `stone`, `boards`; barn: `black`, `white`, `brick`, `cedar`, `concrete`, `boards`; manor: `stone`, `white`, `brick`, `ochre`,
-`grey`, `slate`; villa: `travertine`, `concrete`, `white`, `cedar`, `black`, `marble`; cabin: `logs`, `beams`, `dark`, `pine`, `brown`, `weathered` (a chalet's and a lodge's second wall
-material is its bay's, a barn's its wing's, a manor's and a villa's their upper storeys', a cabin's its stone — its base and its chimney) —, six materials at
+`grey`, `slate`; villa: `travertine`, `concrete`, `white`, `cedar`, `black`, `marble`; cabin: `logs`, `beams`, `dark`, `pine`, `brown`, `weathered`, `fieldstone` (its walls of stone, its timber dark, its roof of sheet metal);
+cantilever: `white`, `cedar`, `concrete`, `stone`, `black`, `walnut`; plates: `walnut`, `white`, `cedar`, `charcoal`, `board`,
+`travertine`; terrace: `white`, `travertine`, `concrete`, `ochre`, `stone`, `charcoal`; ell: `white`, `concrete`, `brick`,
+`charcoal`, `stone`, `cedar`; platform: `travertine`, `white`, `concrete`, `cedar`, `black`, `ochre` (a chalet's and a lodge's second wall
+material is its bay's, an L-shaped house's its arm's, a barn's its wing's, a manor's, a villa's, a cantilever's, a roof-terrace
+house's and a platform house's their upper storeys', a
+cabin's its stone — its base and its chimney —, a layered house's its blade's, its trim its slabs' edges and its last the undersides of its slabs) —, six materials at
 the most. **Houses side by side read as one unless they differ**: give
 neighbours different looks, different `variant`s and the roofs that suit their style (box: `flat`, `mono`; wood: `mono`, `gable`,
-`butterfly`; glass: `flat`, `butterfly`, `mono`; stack: `flat`; chalet and lodge: `steep`; barn: `steep`, `gable`; manor: `hip`; villa: `flat`; cabin: `gable`, `steep`), as the editor's tool throws them at each house. Stand it on the ground: its floor a hand over
+`butterfly`; glass: `flat`, `butterfly`, `mono`; stack: `flat`; chalet and lodge: `steep`; barn: `steep`, `gable`; manor: `hip`; villa: `flat`; cabin: `gable`, `steep`; cantilever: `flat`, `mono`; plates, terrace, ell and platform: `flat`), as the editor's tool throws them at each house. Stand it on the ground: its floor a hand over
 the highest ground under its rectangle, `plinth` how far its base goes down under its floor (past the lowest ground under it, 3 m
 at most — over 2 m the check says the ground falls too far) and `stoop` how far the ground before its door lies under its floor
 (steps go down to it, 1.5 m at most); a `barn` besides `drive`, how far the ground before its garage lies under its floor (its

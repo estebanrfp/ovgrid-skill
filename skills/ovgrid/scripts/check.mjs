@@ -374,6 +374,9 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
 }, solidBox = (min, max, rotation = null) => {
   const half = max.map((v, k) => (v - min[k]) / 2);
   return { type: "box", half, radius: Math.min(0.01, ...half), at: min.map((v, k) => (v + max[k]) / 2), ...rotation && { rotation } };
+}, WINDOW_MARK = 1024, marked = (uvOf) => (p, n, slot) => {
+  const [u, v] = uvOf(p, n, slot);
+  return [u + WINDOW_MARK, v];
 }, boxUv = (p, n, origin, across, up) => {
   const x = p[0] - origin[0], y = p[1] - origin[1], z = p[2] - origin[2];
   const ax = Math.abs(n[0]), ay = Math.abs(n[1]), az = Math.abs(n[2]);
@@ -1303,19 +1306,24 @@ var init_bridge = __esm(() => {
 });
 
 // src/build/kinds/house.js
-var STYLES2, STYLE_NAMES2, ROOFS, FACES, BUDGET, LOOKS2, LOOK_LABELS2, LABELS2, house;
+var STYLES2, STYLE_NAMES2, ROOFS, WIDEST = 40, FACES, BUDGET, LOOKS2, LOOK_LABELS2, LABELS2, house;
 var init_house = __esm(() => {
   STYLES2 = Object.freeze({
-    box: Object.freeze({ label: "White box", ground: Object.freeze({ front: "ribbon", back: "punched", side: "tall", beside: "slot" }), upper: Object.freeze({ front: "ribbon", back: "ribbon", side: "tall", beside: "slot" }), over: 0, eave: 0, parapet: 0.45, shape: "setback", apart: "none", roofs: Object.freeze(["flat", "mono"]), door: "plain", forms: Object.freeze({ accent: 0.6, canopy: 0.5, carport: 0.4, balcony: 0.45, pergola: 0.5, chimney: 0.25 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false }),
-    wood: Object.freeze({ label: "Timber", ground: Object.freeze({ front: "punched", back: "punched", side: "tall", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "tall", side: "punched", beside: "slot" }), over: 0, eave: 0.3, parapet: 0, shape: "same", apart: "upper", roofs: Object.freeze(["mono", "gable", "butterfly"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0.5, carport: 0.4, balcony: 0.45, pergola: 0, chimney: 0.6 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false }),
-    glass: Object.freeze({ label: "Glass", ground: Object.freeze({ front: "full", back: "full", side: "full", beside: "blank" }), upper: Object.freeze({ front: "full", back: "full", side: "full", beside: "blank" }), over: 0.8, eave: 1.1, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["flat", "butterfly", "mono"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0.4, balcony: 0, pergola: 0, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false }),
-    stack: Object.freeze({ label: "Stacked", ground: Object.freeze({ front: "full", back: "punched", side: "punched", beside: "slot" }), upper: Object.freeze({ front: "full", back: "tall", side: "ribbon", beside: "slot" }), over: 0, eave: 0, parapet: 0.45, shape: "stack", apart: "odd", roofs: Object.freeze(["flat"]), door: "plain", forms: Object.freeze({ accent: 0, canopy: 0.5, carport: 0.4, balcony: 0.4, pergola: 0.6, chimney: 0.2 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false }),
-    chalet: Object.freeze({ label: "Chalet", ground: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["steep"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0.35, balcony: 0, pergola: 0, chimney: 0.5 }), bay: 0.38, crown: "vault", sweep: true, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false }),
-    lodge: Object.freeze({ label: "Lodge", ground: Object.freeze({ front: "punched", back: "punched", side: "full", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["steep"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0.6 }), bay: 0.45, crown: "gable", sweep: true, veranda: true, wing: false, end: null, grand: false, portico: null, logs: false }),
-    barn: Object.freeze({ label: "Barn house", ground: Object.freeze({ front: "tall", back: "punched", side: "full", beside: "slot" }), upper: Object.freeze({ front: "tall", back: "punched", side: "full", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["steep", "gable"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0.5 }), bay: 0, crown: null, sweep: false, veranda: false, wing: true, end: "glass", grand: false, portico: null, logs: false }),
-    manor: Object.freeze({ label: "Manor", ground: Object.freeze({ front: "sash", back: "sash", side: "sash", beside: "sash" }), upper: Object.freeze({ front: "sash", back: "sash", side: "sash", beside: "sash" }), over: 0, eave: 0.6, parapet: 0, shape: "same", apart: "upper", roofs: Object.freeze(["hip"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0.9 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: true, portico: "columns", logs: false }),
-    villa: Object.freeze({ label: "Villa", ground: Object.freeze({ front: "full", back: "full", side: "full", beside: "full" }), upper: Object.freeze({ front: "full", back: "full", side: "full", beside: "full" }), over: 1.8, eave: 2.2, parapet: 0, shape: "same", apart: "upper", roofs: Object.freeze(["flat"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: true, portico: null, logs: false }),
-    cabin: Object.freeze({ label: "Log cabin", ground: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["gable", "steep"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: true })
+    box: Object.freeze({ label: "White box", ground: Object.freeze({ front: "ribbon", back: "punched", side: "tall", beside: "slot" }), upper: Object.freeze({ front: "ribbon", back: "ribbon", side: "tall", beside: "slot" }), over: 0, eave: 0, parapet: 0.45, shape: "setback", apart: "none", roofs: Object.freeze(["flat", "mono"]), door: "plain", forms: Object.freeze({ accent: 0.6, canopy: 0.5, carport: 0.4, balcony: 0.45, pergola: 0.5, chimney: 0.25 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: null }),
+    wood: Object.freeze({ label: "Timber", ground: Object.freeze({ front: "punched", back: "punched", side: "tall", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "tall", side: "punched", beside: "slot" }), over: 0, eave: 0.3, parapet: 0, shape: "same", apart: "upper", roofs: Object.freeze(["mono", "gable", "butterfly"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0.5, carport: 0.4, balcony: 0.45, pergola: 0, chimney: 0.6 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: null }),
+    glass: Object.freeze({ label: "Glass", ground: Object.freeze({ front: "full", back: "full", side: "full", beside: "blank" }), upper: Object.freeze({ front: "full", back: "full", side: "full", beside: "blank" }), over: 0.8, eave: 1.1, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["flat", "butterfly", "mono"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0.4, balcony: 0, pergola: 0, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: null }),
+    stack: Object.freeze({ label: "Stacked", ground: Object.freeze({ front: "full", back: "punched", side: "punched", beside: "slot" }), upper: Object.freeze({ front: "full", back: "tall", side: "ribbon", beside: "slot" }), over: 0, eave: 0, parapet: 0.45, shape: "stack", apart: "odd", roofs: Object.freeze(["flat"]), door: "plain", forms: Object.freeze({ accent: 0, canopy: 0.5, carport: 0.4, balcony: 0.4, pergola: 0.6, chimney: 0.2 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: null }),
+    chalet: Object.freeze({ label: "Chalet", ground: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["steep"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0.35, balcony: 0, pergola: 0, chimney: 0.5 }), bay: 0.38, crown: "vault", sweep: true, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: "middle" }),
+    lodge: Object.freeze({ label: "Lodge", ground: Object.freeze({ front: "punched", back: "punched", side: "full", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["steep"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0.6 }), bay: 0.45, crown: "gable", sweep: true, veranda: true, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: "middle" }),
+    barn: Object.freeze({ label: "Barn house", ground: Object.freeze({ front: "tall", back: "punched", side: "full", beside: "slot" }), upper: Object.freeze({ front: "tall", back: "punched", side: "full", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["steep", "gable"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0.5 }), bay: 0, crown: null, sweep: false, veranda: false, wing: true, end: "glass", grand: false, portico: null, logs: false, blade: false, stand: null }),
+    manor: Object.freeze({ label: "Manor", ground: Object.freeze({ front: "sash", back: "sash", side: "sash", beside: "sash" }), upper: Object.freeze({ front: "sash", back: "sash", side: "sash", beside: "sash" }), over: 0, eave: 0.6, parapet: 0, shape: "same", apart: "upper", roofs: Object.freeze(["hip"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0.9 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: true, portico: "columns", logs: false, blade: false, stand: null }),
+    villa: Object.freeze({ label: "Villa", ground: Object.freeze({ front: "full", back: "full", side: "full", beside: "full" }), upper: Object.freeze({ front: "full", back: "full", side: "full", beside: "full" }), over: 1.8, eave: 2.2, parapet: 0, shape: "same", apart: "upper", roofs: Object.freeze(["flat"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: true, portico: null, logs: false, blade: false, stand: null }),
+    cabin: Object.freeze({ label: "Log cabin", ground: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), upper: Object.freeze({ front: "punched", back: "punched", side: "punched", beside: "slot" }), over: 0, eave: 0, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["gable", "steep"]), door: "panelled", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: true, blade: false, stand: null }),
+    cantilever: Object.freeze({ label: "Cantilever", ground: Object.freeze({ front: "full", back: "punched", side: "full", beside: "slot" }), upper: Object.freeze({ front: "ribbon", back: "ribbon", side: "full", beside: "slot" }), over: 0, eave: 0, parapet: 0.45, shape: "jut", apart: "upper", roofs: Object.freeze(["flat", "mono"]), door: "plain", forms: Object.freeze({ accent: 0, canopy: 0.4, carport: 0, balcony: 0.4, pergola: 0.4, chimney: 0.2 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: null }),
+    plates: Object.freeze({ label: "Layered", ground: Object.freeze({ front: "full", back: "punched", side: "full", beside: "slot" }), upper: Object.freeze({ front: "full", back: "tall", side: "full", beside: "slot" }), over: 1, eave: 1.6, parapet: 0, shape: "shift", apart: "none", roofs: Object.freeze(["flat"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0.5, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: true, stand: null }),
+    terrace: Object.freeze({ label: "Roof terrace", ground: Object.freeze({ front: "ribbon", back: "punched", side: "tall", beside: "slot" }), upper: Object.freeze({ front: "full", back: "punched", side: "full", beside: "slot" }), over: 0, eave: 1.2, parapet: 0, shape: "crown", apart: "upper", roofs: Object.freeze(["flat"]), door: "plain", forms: Object.freeze({ accent: 0, canopy: 0.5, carport: 0.4, balcony: 0, pergola: 0.8, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: null }),
+    ell: Object.freeze({ label: "L-shaped", ground: Object.freeze({ front: "full", back: "punched", side: "tall", beside: "slot" }), upper: Object.freeze({ front: "ribbon", back: "punched", side: "tall", beside: "slot" }), over: 0, eave: 1, parapet: 0, shape: "same", apart: "none", roofs: Object.freeze(["flat"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0.35, balcony: 0, pergola: 0, chimney: 0.3 }), bay: 0.45, crown: "slab", sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: "end" }),
+    platform: Object.freeze({ label: "Platform", ground: Object.freeze({ front: "full", back: "punched", side: "tall", beside: "slot" }), upper: Object.freeze({ front: "full", back: "full", side: "full", beside: "slot" }), over: 2.4, eave: 1.2, parapet: 0, shape: "crown", apart: "upper", roofs: Object.freeze(["flat"]), door: "glazed", forms: Object.freeze({ accent: 0, canopy: 0, carport: 0, balcony: 0, pergola: 0.5, chimney: 0 }), bay: 0, crown: null, sweep: false, veranda: false, wing: false, end: null, grand: false, portico: null, logs: false, blade: false, stand: null })
   });
   STYLE_NAMES2 = Object.freeze(Object.keys(STYLES2));
   ROOFS = Object.freeze(["flat", "mono", "gable", "butterfly", "steep", "hip"]);
@@ -1400,7 +1408,48 @@ var init_house = __esm(() => {
       dark: Object.freeze(["wood/planks/dark-planks", "masonry/stone-blocks/stone-wall-05", "wood/siding/wood-0038", "glass/clear/float", "roofing/slate/roof-slates-03", "wood/floor/weathered-planks", "wood/siding/wood-0038"]),
       pine: Object.freeze(["wood/planks/planks-039", "masonry/stone-blocks/medieval-blocks-06", "wood/planks/japanese-cedar-planks", "glass/clear/float", "roofing/tiles/wood-shingles-001", "wood/floor/wood-floor-051", "wood/planks/japanese-cedar-planks"]),
       brown: Object.freeze(["wood/planks/planks-brown-10", "masonry/stone-blocks/rustic-stone-wall-02", "wood/planks/walnut-veneer", "glass/clear/float", "roofing/slate/roof-slates-03", "wood/floor/plank-flooring-03", "wood/planks/walnut-veneer"]),
-      weathered: Object.freeze(["wood/planks/brown-planks-07", "masonry/stone-blocks/rustic-stone-wall", "wood/siding/wood-0038", "glass/clear/float", "roofing/tiles/wood-roof-shingles-002", "wood/floor/weathered-planks", "wood/siding/wood-0038"])
+      weathered: Object.freeze(["wood/planks/brown-planks-07", "masonry/stone-blocks/rustic-stone-wall", "wood/siding/wood-0038", "glass/clear/float", "roofing/tiles/wood-roof-shingles-002", "wood/floor/weathered-planks", "wood/siding/wood-0038"]),
+      fieldstone: Object.freeze(["masonry/stone-blocks/old-stone-wall", "masonry/stone-blocks/rustic-stone-wall-02", "wood/siding/wood-0038", "glass/clear/bronze", "metal/corrugated/corrugated-steel-009", "wood/floor/dark-wooden-planks", "wood/siding/wood-0038"])
+    }),
+    cantilever: Object.freeze({
+      white: Object.freeze(["masonry/stone-blocks/stone-tile-wall", "plaster/plaster/plaster-001", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "plaster/plaster/plaster-001"]),
+      cedar: Object.freeze(["plaster/plaster/painted-plaster-008", "wood/planks/japanese-cedar-planks", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "wood/planks/japanese-cedar-planks"]),
+      concrete: Object.freeze(["plaster/plaster/wood-textured-concrete", "plaster/concrete/concrete-046", "metal/painted/metal-029", "glass/clear/bronze", "ground/gravel/gravel-floor", "paving/stone/terrazzo-006", "plaster/concrete/concrete-046"]),
+      stone: Object.freeze(["masonry/stone-blocks/stacked-stone-wall", "plaster/plaster/white-stucco", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "paving/stone/travertine-009", "plaster/plaster/white-stucco"]),
+      black: Object.freeze(["plaster/plaster/plaster-001", "wood/planks/weathered-plank-siding", "metal/painted/metal-029", "glass/clear/bronze", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "plaster/plaster/plaster-001"]),
+      walnut: Object.freeze(["plaster/concrete/concrete-034", "wood/planks/walnut-veneer", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "paving/tiles/porcelain-001", "wood/planks/walnut-veneer"])
+    }),
+    plates: Object.freeze({
+      walnut: Object.freeze(["wood/planks/walnut-veneer", "masonry/stone-blocks/stacked-stone-wall", "plaster/concrete/concrete-010", "glass/clear/bronze", "ground/gravel/gravel-floor", "paving/stone/travertine-009", "wood/planks/walnut-veneer"]),
+      white: Object.freeze(["plaster/plaster/plaster-001", "masonry/stone-blocks/stone-tile-wall", "plaster/plaster/plaster-001", "glass/clear/float", "ground/gravel/gravel-floor", "paving/tiles/porcelain-001", "wood/panel/oak-veneer-01"]),
+      cedar: Object.freeze(["wood/planks/japanese-cedar-planks", "masonry/stone-blocks/rustic-stone-wall", "plaster/concrete/concrete-046", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "wood/planks/japanese-cedar-planks"]),
+      charcoal: Object.freeze(["plaster/plaster/painted-plaster-008", "wood/planks/japanese-cedar-planks", "plaster/plaster/painted-plaster-008", "glass/clear/bronze", "ground/gravel/gravel-floor", "paving/stone/terrazzo-006", "wood/planks/japanese-cedar-planks"]),
+      board: Object.freeze(["plaster/plaster/wood-textured-concrete", "masonry/stone-blocks/stone-wall-04", "plaster/concrete/concrete-046", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "plaster/concrete/concrete-046"]),
+      travertine: Object.freeze(["paving/stone/travertine-009", "masonry/stone-blocks/stacked-stone-wall", "plaster/plaster/plaster-001", "glass/clear/float", "ground/gravel/gravel-floor", "paving/stone/travertine-009", "wood/planks/walnut-veneer"])
+    }),
+    terrace: Object.freeze({
+      white: Object.freeze(["plaster/plaster/white-stucco", "wood/planks/japanese-cedar-planks", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/teak-deck", "plaster/plaster/white-stucco"]),
+      travertine: Object.freeze(["paving/stone/travertine-009", "plaster/plaster/plaster-001", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "paving/tiles/patio-tiles", "plaster/plaster/plaster-001"]),
+      concrete: Object.freeze(["plaster/concrete/concrete-034", "wood/planks/walnut-veneer", "metal/painted/metal-029", "glass/clear/bronze", "ground/gravel/gravel-floor", "paving/tiles/large-grey-tiles", "wood/planks/walnut-veneer"]),
+      ochre: Object.freeze(["plaster/plaster/painted-plaster-018", "plaster/plaster/plaster-001", "plaster/plaster/plaster-001", "glass/clear/float", "ground/gravel/gravel-floor", "paving/tiles/patio-tiles", "plaster/plaster/plaster-001"]),
+      stone: Object.freeze(["masonry/stone-blocks/stone-tile-wall", "plaster/plaster/white-stucco", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/teak-deck", "plaster/plaster/white-stucco"]),
+      charcoal: Object.freeze(["plaster/plaster/painted-plaster-008", "wood/painted/white-painted-boards", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-deck", "wood/painted/white-painted-boards"])
+    }),
+    ell: Object.freeze({
+      white: Object.freeze(["plaster/plaster/plaster-001", "wood/planks/japanese-cedar-planks", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "plaster/plaster/plaster-001"]),
+      concrete: Object.freeze(["plaster/concrete/concrete-034", "wood/planks/walnut-veneer", "metal/painted/metal-029", "glass/clear/bronze", "ground/gravel/gravel-floor", "paving/stone/terrazzo-006", "wood/planks/walnut-veneer"]),
+      brick: Object.freeze(["masonry/brick/red-brick", "plaster/plaster/plaster-001", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "plaster/plaster/plaster-001"]),
+      charcoal: Object.freeze(["plaster/plaster/painted-plaster-008", "wood/panel/oak-veneer-01", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "wood/panel/oak-veneer-01"]),
+      stone: Object.freeze(["masonry/stone-blocks/stone-tile-wall", "plaster/plaster/white-stucco", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "paving/stone/travertine-009", "plaster/plaster/white-stucco"]),
+      cedar: Object.freeze(["wood/planks/japanese-cedar-planks", "plaster/plaster/painted-plaster-008", "metal/painted/metal-029", "glass/clear/bronze", "ground/gravel/gravel-floor", "wood/floor/wood-floor-051", "wood/planks/japanese-cedar-planks"])
+    }),
+    platform: Object.freeze({
+      travertine: Object.freeze(["paving/stone/travertine-009", "plaster/plaster/plaster-001", "plaster/concrete/concrete-046", "glass/clear/float", "ground/gravel/gravel-floor", "paving/stone/travertine-009", "plaster/plaster/plaster-001"]),
+      white: Object.freeze(["plaster/plaster/plaster-001", "wood/planks/walnut-veneer", "plaster/plaster/plaster-001", "glass/clear/float", "ground/gravel/gravel-floor", "paving/tiles/porcelain-001", "wood/planks/walnut-veneer"]),
+      concrete: Object.freeze(["plaster/plaster/wood-textured-concrete", "plaster/concrete/concrete-046", "plaster/concrete/concrete-010", "glass/clear/bronze", "ground/gravel/gravel-floor", "paving/tiles/large-grey-tiles", "plaster/concrete/concrete-046"]),
+      cedar: Object.freeze(["masonry/stone-blocks/stone-tile-wall", "wood/planks/japanese-cedar-planks", "metal/painted/metal-029", "glass/clear/float", "ground/gravel/gravel-floor", "wood/floor/teak-deck", "wood/planks/japanese-cedar-planks"]),
+      black: Object.freeze(["plaster/plaster/painted-plaster-008", "wood/planks/weathered-plank-siding", "plaster/plaster/painted-plaster-008", "glass/clear/bronze", "ground/gravel/gravel-floor", "wood/floor/wood-floor-deck", "plaster/plaster/plaster-001"]),
+      ochre: Object.freeze(["plaster/plaster/painted-plaster-018", "plaster/plaster/plaster-001", "plaster/plaster/plaster-001", "glass/clear/float", "ground/gravel/gravel-floor", "paving/tiles/patio-tiles", "plaster/plaster/plaster-001"])
     })
   });
   LOOK_LABELS2 = Object.freeze({
@@ -1432,13 +1481,14 @@ var init_house = __esm(() => {
     beams: "Squared beams",
     pine: "Pale pine",
     weathered: "Weathered boards",
-    brown: "Old brown boards"
+    brown: "Old brown boards",
+    fieldstone: "Stone walls"
   });
-  LABELS2 = Object.freeze(["White house", "Timber house", "Glass pavilion", "Stacked house", "Chalet", "Lodge", "Barn house", "Manor", "Villa", "Log cabin"]);
+  LABELS2 = Object.freeze(["White house", "Timber house", "Glass pavilion", "Stacked house", "Chalet", "Lodge", "Barn house", "Manor", "Villa", "Log cabin", "Cantilever house", "Layered house", "Roof-terrace house", "L-shaped house", "Platform house"]);
   house = Object.freeze({
     name: "house",
     label: "House",
-    description: "A modern house worked out from a few numbers: storeys of walls between slabs with their windows cut and glazed, a stair up through them, terraces with glass rails where a storey stands back, a flat, single-pitch, gabled, butterfly, steep or hipped roof, and a base down past the ground with steps up to its door. Its front is its +y. `width` and `depth` are its ground storey's — 14 m or more each way with `scale` game for a house built now —; its box is what it makes (eaves, a storey out over the front, its steps). One part, at most 5,000 triangles (a mansion 6,000); its doors are parts of their own (kind door) that open into the house as someone comes, its lights and their switches too (`lighting`), the platform and call buttons of a lift (`lift`), the panes of glass that slide (`sliding`) and the door of a garage. With `rooms` its storeys are divided — a hall, a toilet, bedrooms, bathrooms — by partitions with their doorways. With `forms` varied its variation shapes it more: a canopy, a carport, balconies, a pergola, a chimney, an accent band. With `furnished`, and its storeys divided, it comes furnished: each of its rooms a part of the room kind laid out by what it is — beds, sofas, tables and their chairs, a kitchen's units, baths, wardrobes, rugs, pictures, plants —, what is sat on in them parts of their own, seats. Walked into: rooms, floors and stairs collide as drawn.",
+    description: "A modern house worked out from a few numbers: storeys of walls between slabs with their windows cut and glazed, a stair up through them, terraces with glass rails where a storey stands back, a flat, single-pitch, gabled, butterfly, steep or hipped roof, and a base down past the ground with steps up to its door — or a storey on past the one under it, storeys shifted between slabs that stand out, a pavilion on a roof that is a terrace. Its front is its +y. `width` and `depth` are its ground storey's — 14 m or more each way with `scale` game for a house built now —; its box is what it makes (eaves, a storey out over the front, its steps). One part, at most 5,000 triangles (a mansion 6,000); its doors are parts of their own (kind door) that open into the house as someone comes, its lights and their switches too (`lighting`), the platform and call buttons of a lift (`lift`), the panes of glass that slide (`sliding`) and the door of a garage. With `rooms` its storeys are divided — a hall, a toilet, bedrooms, bathrooms — by partitions with their doorways. With `forms` varied its variation shapes it more: a canopy, a carport, balconies, a pergola, a chimney, an accent band. With `furnished`, and its storeys divided, it comes furnished: each of its rooms a part of the room kind laid out by what it is — beds, sofas, tables and their chairs, a kitchen's units, baths, wardrobes, rugs, pictures, plants —, what is sat on in them parts of their own, seats. Walked into: rooms, floors and stairs collide as drawn.",
     faces: FACES,
     shape: "cube",
     sized: true,
@@ -1450,9 +1500,9 @@ var init_house = __esm(() => {
     lookLabels: LOOK_LABELS2,
     brings: (params) => params.furnished ? ["room"] : [],
     params: [
-      { name: "style", label: "Style", min: 0, max: STYLE_NAMES2.length - 1, default: 0, step: 1, options: STYLE_NAMES2, labels: STYLE_NAMES2.map((name) => STYLES2[name].label), description: "Box: rendered walls, ribbon windows, a parapet, an upper storey that may stand back from a terrace. Wood: timber cladding, upright windows, eaves. Glass: glass from floor to ceiling between slabs that stand out past it. Stack: each storey a volume of its own, the upper one out over the door and a terrace beside it. Chalet: a steep roof swept out over the front, a bay of glass through every storey in the middle of the front under a vault of its own, the door in a porch beside it under a balcony, another balcony at its other side. Lodge: a long steep roof gone on past both ends over a covered terrace each, a bay under a gable of glass in the middle of the front, the door in a porch beside it that opens onto a terrace. Barn: a hall under a ridged roof, the end of it away from its stair all glass up to the roof with a terrace before it under a flat canopy, and behind the hall the back of the house low under a flat roof that goes on past its other end as a wing — a garage, its door sliding aside as someone comes, a ramp down to the ground before it —: an L, the front door by the corner the wing makes. Manor: a mansion, the same either side of its middle — its front door, two leaves, in the middle under a portico of four or six columns as tall as two storeys, an entablature and a pediment over them and steps as wide; tall windows in line from storey to storey; a cornice and a hipped roof; a chimney at each end; its ground storey dressed apart from those over it, its columns and trim marble. Divided into rooms: a hall through its middle from the door to the back wall, the stair in it, the living room and the study either side of it at the front, the dining room and the kitchen behind them, bedrooms at the corners of the storeys over; with doors, the doorways from the hall into the living room and the study have two leaves each, hinged — or, with sliding glass, sliding into the wall. Villa: a modern mansion, the same either side of its middle — glass from floor to ceiling on every side under a flat roof 2.2 m out past its walls; every floor out 1.8 m past them: a terrace all round each storey over the ground one, railed with glass, a way out onto it from the landing — and, with sliding glass, a pane of each bay —, and a podium round the ground storey, steps down from it before the door; its door, two leaves, in the middle; inside, a mansion's hall and rooms. Cabin: a log cabin — walls of logs, a round log standing at each corner, a porch all along the front on log posts under the roof swept out over it (or under a shelter of its own), railed with logs, a chimney of stone up one end wall; its door in the front wall, under the porch." },
-      { name: "width", label: "Width", min: 6, max: 40, default: 13, step: 0.1, description: "How wide its ground storey is, along its front (m)." },
-      { name: "depth", label: "Depth", min: 6, max: 40, default: 10, step: 0.1, description: "How deep its ground storey is, front to back (m)." },
+      { name: "style", label: "Style", min: 0, max: STYLE_NAMES2.length - 1, default: 0, step: 1, options: STYLE_NAMES2, labels: STYLE_NAMES2.map((name) => STYLES2[name].label), description: "Box: rendered walls, ribbon windows, a parapet, an upper storey that may stand back from a terrace. Wood: timber cladding, upright windows, eaves. Glass: glass from floor to ceiling between slabs that stand out past it. Stack: each storey a volume of its own, the upper one out over the door and a terrace beside it. Chalet: a steep roof swept out over the front, a bay of glass through every storey in the middle of the front under a vault of its own, the door in a porch beside it under a balcony, another balcony at its other side. Lodge: a long steep roof gone on past both ends over a covered terrace each, a bay under a gable of glass in the middle of the front, the door in a porch beside it that opens onto a terrace. Barn: a hall under a ridged roof, the end of it away from its stair all glass up to the roof with a terrace before it under a flat canopy, and behind the hall the back of the house low under a flat roof that goes on past its other end as a wing — a garage, its door sliding aside as someone comes, a ramp down to the ground before it —: an L, the front door by the corner the wing makes. Manor: a mansion, the same either side of its middle — its front door, two leaves, in the middle under a portico of four or six columns as tall as two storeys, an entablature and a pediment over them and steps as wide; tall windows in line from storey to storey; a cornice and a hipped roof; a chimney at each end; its ground storey dressed apart from those over it, its columns and trim marble. Divided into rooms: a hall through its middle from the door to the back wall, the stair in it, the living room and the study either side of it at the front, the dining room and the kitchen behind them, bedrooms at the corners of the storeys over; with doors, the doorways from the hall into the living room and the study have two leaves each, hinged — or, with sliding glass, sliding into the wall. Villa: a modern mansion, the same either side of its middle — glass from floor to ceiling on every side under a flat roof 2.2 m out past its walls; every floor out 1.8 m past them: a terrace all round each storey over the ground one, railed with glass, a way out onto it from the landing — and, with sliding glass, a pane of each bay —, and a podium round the ground storey, steps down from it before the door; its door, two leaves, in the middle; inside, a mansion's hall and rooms. Cabin: a log cabin — walls of logs, a round log standing at each corner, a porch all along the front on log posts under the roof swept out over it (or under a shelter of its own), railed with logs, a chimney of stone up one end wall; its door in the front wall, under the porch. Cantilever: the storeys over the ground one larger than it — on past the end of it away from its stair, 3.6–6 m at a game's scale (no storey wider than 40 m: a ground storey that leaves them less has none), their end all glass —, over a terrace the house's floor goes on as, a way out onto it from the ground storey; a third storey as the second, or back at the ground one's end over a terrace of its own. Layered: each storey a box of its own between slabs that stand out a metre past it and a roof farther, shifted against the one under it — out past the far end and back from the front over a terrace, then back from the far end and out over the front, or the other way round first —, glass from floor to ceiling before and at its far end, and with a stair the wall it stands beside gone on as a blade in the second wall material: thicker, out before the front and a metre up past the roof. Roof terrace: the top storey a pavilion in the corner its stair stands in — a third to a half of the width, back from the front —, the roof under it a terrace round two sides of it railed with glass, a way out onto it, its own roof 1.2 m out over it; of three storeys the one between as the ground one, or back from its far end over a terrace too. L-shaped: an arm of glass standing out of the front at its far end, flush with the house's side, 2.4 m out (3.6 m at a game's scale) and nearly half the front wide, in the second wall material — as high as the house under its flat roof gone on over it, its glass one pane from its floor to that roof, the ground storey open to it and the storeys over it looking into it across a rail: a hall two storeys high; or (one house in three, of two storeys or three) a storey lower, its roof a terrace railed with glass, a way out onto it —; the door by the corner the two make, in a porch under a balcony. Platform: every floor 2.4 m out past its walls — a podium round the ground storey, a terrace railed with glass all round each storey over it —, and the top storey a pavilion in the corner its stair stands in, the floor it stands on far wider than it, its own roof 1.2 m out." },
+      { name: "width", label: "Width", min: 6, max: WIDEST, default: 13, step: 0.1, description: "How wide its ground storey is, along its front (m)." },
+      { name: "depth", label: "Depth", min: 6, max: WIDEST, default: 10, step: 0.1, description: "How deep its ground storey is, front to back (m)." },
       { name: "floors", label: "Storeys", min: 1, max: 3, default: 2, step: 1, description: "How many storeys, a stair between them: each 3.2 m from floor to floor, 4 m at a game's scale." },
       { name: "roof", label: "Roof", min: 0, max: ROOFS.length - 1, default: 0, step: 1, options: ROOFS, labels: ["Flat", "Single pitch", "Gabled", "Butterfly", "Steep", "Hipped"], description: "Over its top storey: flat; mono, one pitch rising to the front; gable, two pitches from a ridge along its width; butterfly, two pitches down to a valley along its width; steep, two steep pitches from a ridge along its width, as high as three fifths of its walls (5.5 m at the most), the storey under it open up to them — a chalet's own, its front swept out flatter over its balconies; hip, four pitches up from its eaves to a ridge along its longer side, standing on a flat slab that is the top storey's ceiling — the house under it as under a flat roof, without a parapet." },
       { name: "glazing", label: "Glass", min: 0, max: 1, default: 0.5, step: 0.05, description: "How much of its walls is glass: 0.5 its style's own, less towards 0, more towards 1." },
@@ -4109,7 +4159,7 @@ var init_house_rooms = __esm(() => {
 });
 
 // src/build/kinds/house-plan.js
-var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.22, EAVE = 0.5, VERGE = 0.3, LOG_VERGE = 0.7, SWEEP = 0.28, HANG = 1.5, LIFT2 = 0.5, ARCH2 = 0.42, FACETS = 8, NIB = 0.3, SLIDING = 0.08, RAMP2 = 6, OPEN, CORNER = 0.45, SLIT = 0.45, WELL = 0.1, APPROACH = 1.2, FOOT = 1.4, STEP2 = 0.19, TREAD = 0.32, DEEPEST = 2, FACE2, FORMS3, scaleOf2 = ({ slot, tall, least, ...given }) => {
+var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.22, EAVE = 0.5, VERGE = 0.3, LOG_VERGE = 0.7, SWEEP = 0.28, HANG = 1.5, LIFT2 = 0.5, ARCH2 = 0.42, FACETS = 8, NIB = 0.3, BLADE, SLIDING = 0.08, RAMP2 = 6, OPEN, CORNER = 0.45, SLIT = 0.45, WELL = 0.1, APPROACH = 1.2, FOOT = 1.4, STEP2 = 0.19, TREAD = 0.32, DEEPEST = 2, FACE2, FORMS3, scaleOf2 = ({ slot, tall, least, ...given }) => {
   const clear = given.storey - SLAB3;
   const risers = given.flights[0] + given.flights[1] + 2;
   const hole = Object.freeze([given.landing + given.flight, 2 * given.lane + WELL]);
@@ -4187,12 +4237,21 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
   const verandaWays = new Map;
   const accesses = new Map;
   const rects = [ground];
+  const pastOf = (by, least2) => WIDEST - width >= least2 - 0.000000001 ? round4(Math.min(by, WIDEST - width)) : 0;
+  const jut = style.shape === "jut" && floors > 1 ? pastOf(clamp5(width * (0.22 + 0.12 * cuts[1]), M.jut[0], M.jut[1]), M.jut[0]) : 0;
   for (let k = 1;k < floors; k++) {
     const under2 = rects[k - 1];
     if (style.shape === "setback") {
       rects.push(k === 1 ? cuts[0] < 0.6 ? narrowed(under2, cutOf(width, 0.25 + 0.15 * cuts[1], least[0])) : under2 : { ...under2, y1: round4(under2.y1 - cutOf(depth, 0.2 + 0.1 * cuts[2], least[1])) });
     } else if (style.shape === "stack") {
       rects.push(k === 1 ? { ...narrowed(under2, cutOf(width, 0.2 + 0.15 * cuts[1], least[0])), y1: round4(under2.y1 + M.out[0] + M.out[1] * cuts[0]) } : { ...under2, y1: round4(ground.y1 - cutOf(depth, 0.2 + 0.1 * cuts[2], least[1])) });
+    } else if (style.shape === "jut") {
+      rects.push(k === 1 ? narrowed(under2, -jut) : cuts[0] < 0.4 ? narrowed(under2, jut) : under2);
+    } else if (style.shape === "shift") {
+      const past2 = k % 2 === 1 === cuts[0] < 0.5;
+      rects.push(past2 ? { ...narrowed(ground, -pastOf(M.jut[0] * (0.7 + 0.5 * cuts[1]), 0.7 * M.jut[0])), y1: round4(ground.y1 - cutOf(depth, 0.2 + 0.1 * cuts[2], least[1])) } : { ...narrowed(ground, cutOf(width, 0.2 + 0.15 * cuts[1], least[0])), y1: round4(ground.y1 + M.out[0] + M.out[1] * cuts[2]) });
+    } else if (style.shape === "crown") {
+      rects.push(k === floors - 1 ? { ...narrowed(under2, cutOf(under2.x1 - under2.x0, 0.5 + 0.15 * cuts[1], least[0])), y1: round4(under2.y1 - cutOf(depth, 0.25 + 0.15 * cuts[2], least[1])) } : cuts[0] < 0.5 ? narrowed(under2, cutOf(width, 0.25 + 0.15 * cuts[1], least[0])) : under2);
     } else
       rects.push(under2);
   }
@@ -4203,9 +4262,17 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
     if (!style.bay)
       return null;
     const room2 = WALL + CORNER + NIB + M.entry.single + 0.25;
+    if (style.stand === "end") {
+      const wide2 = round4(Math.min(width * style.bay, width - room2));
+      if (wide2 < M.bay[0])
+        return null;
+      const [x0, x1] = dir > 0 ? [round4(ground.x1 - wide2), ground.x1] : [ground.x0, round4(ground.x0 + wide2)];
+      return { x0, x1, y0: ground.y1, y1: round4(ground.y1 + M.bay[2]), door: -dir, high: floors > 1 && cuts[0] < 1 / 3 ? floors - 1 : floors, way: null };
+    }
     const wide = round4(Math.min(clamp5(width * style.bay, M.bay[0], M.bay[1]), width - 2 * room2));
-    return wide < M.bay[0] ? null : { x0: round4(-wide / 2), x1: round4(wide / 2), y0: ground.y1, y1: round4(ground.y1 + M.bay[2]), door: at < 0.5 ? -1 : 1 };
+    return wide < M.bay[0] ? null : { x0: round4(-wide / 2), x1: round4(wide / 2), y0: ground.y1, y1: round4(ground.y1 + M.bay[2]), door: at < 0.5 ? -1 : 1, high: floors };
   })();
+  const roofedBay = Boolean(bay) && style.crown === "slab" && bay.high === floors;
   const besideBay = (side2) => side2 < 0 ? [ground.x0 + WALL + CORNER, bay.x0 - NIB] : [bay.x1 + NIB, ground.x1 - WALL - CORNER];
   const wing = (() => {
     const [across2, deep, wide] = M.garage;
@@ -4243,7 +4310,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
   const stoa = style.logs ? round4(M.bay[2] - 0.6) : 0;
   const hearth = style.logs ? { y0: round4((ground.y0 + ground.y1) / 2 - 0.6 * M.bays), y1: round4((ground.y0 + ground.y1) / 2 + 0.6 * M.bays), out: round4(0.6 * M.bays) } : null;
   if (flat)
-    slabs.push({ kind: "roof", rect: { ...grown(top, style.eave), ...past && { x0: round4(top.x0 - ends), x1: round4(top.x1 + ends) } }, top: round4(floors * M.storey), bottom: round4(floors * M.storey - SLAB3), holes: [] });
+    slabs.push({ kind: "roof", rect: { ...grown(top, style.eave), ...past && { x0: round4(top.x0 - ends), x1: round4(top.x1 + ends) }, ...roofedBay && { y1: round4(bay.y1 + style.eave) } }, top: round4(floors * M.storey), bottom: round4(floors * M.storey - SLAB3), holes: [] });
   if (wing)
     slabs.push({ kind: "base", rect: { x0: wing.x0, x1: wing.x1, y0: wing.y0, y1: wing.y1 }, top: 0, bottom: slabs[0].bottom, holes: [], face: FACE2.trim }, { kind: "roof", rect: { x0: wing.x0, x1: wing.x1, y0: wing.y0, y1: round4(wing.y1 + EAVE) }, top: round4(M.storey), bottom: round4(M.storey - SLAB3), holes: [] });
   const ramp = wing ? { x0: round4(wing.door.a0 - 0.3), x1: round4(wing.door.a1 + 0.3), y0: wing.y1, y1: round4(wing.y1 + Math.max(RAMP2 * drive, 1)), drop: round4(drive), bottom: slabs[0].bottom } : null;
@@ -4299,6 +4366,10 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
       return spine ? { at: [round4(shaft.entry + dir * 0.3), round4(spine.at - PART / 2), z], on: "partition" } : { at: [x, y, z], on: "side" };
     });
   }
+  const bladed = style.blade && floors > 1 ? (() => {
+    const [x0, x1] = dir > 0 ? [round4(ground.x0 - BLADE[0]), ground.x0] : [ground.x1, round4(ground.x1 + BLADE[0])];
+    return { x0, x1, y0: round4(ground.y1 - depth / 4), y1: round4(Math.max(...rects.map((rect) => rect.y1 + style.over), flat ? top.y1 + style.eave : -Infinity) + BLADE[1]) };
+  })() : null;
   const rails = [];
   const hingeOf = (leaves, leaf, front2, span2, rect) => leaves > 1 ? leaf : front2 ? switchBeside(span2, rect, recess) > 0 ? 0 : 1 : 1;
   const doors = [];
@@ -4349,6 +4420,8 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
       const blocked = [];
       if (hearth && side2 === far)
         blocked.push([hearth.y0 - 0.4, hearth.y1 + 0.4]);
+      if (bladed && side2 === beside)
+        blocked.push([bladed.y0 - 0.3, bladed.y1]);
       if (floors > 1 && side2 === "back")
         blocked.push([hole.x0 - 0.3, hole.x1 + 0.3]);
       if (floors > 1 && side2 === beside && !hall)
@@ -4441,23 +4514,25 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
         blocked.push([wing.y0, wing.y1 + 0.4]);
       }
       if (bay && side2 === "front") {
-        const stretches = freeOf([bay.x0 + WALL, bay.x1 - WALL], blocked).filter(([p, q]) => q - p >= M.rooms.inner[0] + 0.4).sort((p, q) => q[1] - q[0] - (p[1] - p[0]));
+        const stretches = k < bay.high ? freeOf([bay.x0 + WALL, bay.x1 - WALL], blocked).filter(([p, q]) => q - p >= M.rooms.inner[0] + 0.4).sort((p, q) => q[1] - q[0] - (p[1] - p[0])) : [];
         const behind = ([p, q]) => roomAt(k, (p + q) / 2, rect.y1 - WALL - 0.3);
         const open = stretches.find((each) => OPEN.includes(behind(each))) ?? (k === 0 ? stretches[0] : undefined);
+        if (k === bay.high)
+          bay.way = within3([bay.x0 + WALL + NIB, bay.x1 - WALL - NIB], wayOut);
         if (open) {
           openings.push({ a0: round4(open[0]), a1: round4(open[1]), z0: floor, z1: round4(floor + M.clear), void: true, bars: 0 });
           blocked.push([open[0] - 0.4, open[1] + 0.4]);
           if (k > 0)
             rails.push({ from: [round4(open[0]), round4(rect.y1 - 0.06)], to: [round4(open[1]), round4(rect.y1 - 0.06)], z: floor, inside: true });
         }
-        if (k === 1 && !style.veranda)
+        if (k === 1 && !style.veranda && !(bay.high === 1 && bay.way !== null))
           for (const which of [-1, 1]) {
             const way = within3(besideBay(which), wayOut);
             if (way !== null)
               bayWays.set(which, way);
           }
       }
-      const terraced = style.veranda ? along2 === 1 && !(bay && bay.door < 0 === (side2 === "left")) : style.end ? side2 === far : false;
+      const terraced = style.veranda ? along2 === 1 && !(bay && bay.door < 0 === (side2 === "left")) : style.end || jut ? side2 === far : false;
       if (terraced && k === 0) {
         const inside = SIDES5[side2].at(rect) - out2 * (WALL + 0.3);
         const reach = style.end ? [Math.max(usable[0], roofed.y0 + 0.3), usable[1]] : usable;
@@ -4760,6 +4835,9 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
       const [from, over] = flat ? [floors * M.storey, floors * M.storey + (hipped ? Math.max(...[-0.45, 0.45].flatMap((dy) => [-0.35, 0.35].map((dx) => capAt(x + dx, y + dy)))) : style.parapet || 0)] : [under(y - 0.45) - 0.02, Math.max(under(y - 0.45), under(y + 0.45)) + ROOF];
       extra("chimney", [x - 0.35, y - 0.45, from], [x + 0.35, y + 0.45, over + 1], [trim, storeys[floors - 1].walls[0].slot, null]);
     }
+  const blade = bladed && { ...bladed, z0: slabs[0].bottom, z1: round4(roof2.top + BLADE[2]) };
+  if (blade)
+    extra("blade", [blade.x0, blade.y0, blade.z0], [blade.x1, blade.y1, blade.z1], [other, other, null]);
   const timber = stoa ? (() => {
     const [r, thin] = [M.veranda[1], round4(M.veranda[1] * 0.45)];
     const [posts, logs] = [[], []];
@@ -4820,48 +4898,53 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
   if (bay) {
     const slot = FACE2.apart;
     const mid = (bay.x0 + bay.x1) / 2;
-    const frontTop = flat ? floors * M.storey + (hipped ? 0 : style.parapet || 0) : under(top.y1) + ROOF;
-    const spring = frontTop + LIFT2;
-    const half = (bay.x1 - bay.x0) / 2 + VERGE;
-    const room2 = ridged ? under(middle) + ROOF - 0.4 - spring : 0;
-    const meets = room2 >= 0.3;
-    const gabled = style.crown === "gable";
-    const [strips, steep] = gabled ? [2, (ridged ? slope : 0.6) * half] : [FACETS, ARCH2 * half];
-    const rise = meets ? Math.min(steep, room2) : steep;
-    const radius = (half * half + rise * rise) / (2 * rise);
-    const angle = Math.asin(half / radius);
-    const points = Array.from({ length: strips + 1 }, (_, i) => {
-      const t = -angle + 2 * angle * i / strips;
-      return [round4(mid + radius * Math.sin(t)), round4(spring + rise - radius + radius * Math.cos(t))];
-    });
-    const backOf2 = (z) => round4(meets ? top.y1 - (z - wallTop - ROOF) / slope : top.y1 - WALL);
-    const soffitAt = (x) => {
-      const next = points.findIndex((point) => point[0] > x);
-      const i = next < 0 ? strips - 1 : Math.max(0, next - 1);
-      const [[xa, za], [xb, zb]] = [points[i], points[i + 1]];
-      return za + (zb - za) * (x - xa) / (xb - xa) - ROOF;
-    };
-    const wallsTop = round4(soffitAt(bay.x0 + WALL));
+    const [slabbed, gabled] = [style.crown === "slab", style.crown === "gable"];
     bay.ways = bayWays;
-    bay.vault = {
-      points,
-      thick: ROOF,
-      front: round4(bay.y1 + VERGE),
-      meets,
-      glass: gabled,
-      back: points.map(([, z]) => backOf2(z)),
-      under: points.map(([, z]) => backOf2(z - ROOF)),
-      at: top.y1,
-      base: round4(frontTop),
-      behind: round4(flat ? frontTop : under(top.y1 - WALL) + ROOF),
-      wall: storeys[floors - 1].walls[0].slot,
-      cheek: meets ? { z: round4(soffitAt(bay.x0)), back: backOf2(soffitAt(bay.x0)), foot: round4(frontTop) } : null,
-      walls: wallsTop,
-      slot,
-      top: round4(spring + rise)
-    };
+    const crowned = slabbed ? { wallsTop: round4(bay.high * M.storey - SLAB3), vault: null } : (() => {
+      const frontTop = flat ? floors * M.storey + (hipped ? 0 : style.parapet || 0) : under(top.y1) + ROOF;
+      const spring = frontTop + LIFT2;
+      const half = (bay.x1 - bay.x0) / 2 + VERGE;
+      const room2 = ridged ? under(middle) + ROOF - 0.4 - spring : 0;
+      const meets = room2 >= 0.3;
+      const [strips, steep] = gabled ? [2, (ridged ? slope : 0.6) * half] : [FACETS, ARCH2 * half];
+      const rise = meets ? Math.min(steep, room2) : steep;
+      const radius = (half * half + rise * rise) / (2 * rise);
+      const angle = Math.asin(half / radius);
+      const points = Array.from({ length: strips + 1 }, (_, i) => {
+        const t = -angle + 2 * angle * i / strips;
+        return [round4(mid + radius * Math.sin(t)), round4(spring + rise - radius + radius * Math.cos(t))];
+      });
+      const backOf2 = (z) => round4(meets ? top.y1 - (z - wallTop - ROOF) / slope : top.y1 - WALL);
+      const soffitAt = (x) => {
+        const next = points.findIndex((point) => point[0] > x);
+        const i = next < 0 ? strips - 1 : Math.max(0, next - 1);
+        const [[xa, za], [xb, zb]] = [points[i], points[i + 1]];
+        return za + (zb - za) * (x - xa) / (xb - xa) - ROOF;
+      };
+      const wallsTop2 = round4(soffitAt(bay.x0 + WALL));
+      const vault = {
+        points,
+        thick: ROOF,
+        front: round4(bay.y1 + VERGE),
+        meets,
+        glass: gabled,
+        back: points.map(([, z]) => backOf2(z)),
+        under: points.map(([, z]) => backOf2(z - ROOF)),
+        at: top.y1,
+        base: round4(frontTop),
+        behind: round4(flat ? frontTop : under(top.y1 - WALL) + ROOF),
+        wall: storeys[floors - 1].walls[0].slot,
+        cheek: meets ? { z: round4(soffitAt(bay.x0)), back: backOf2(soffitAt(bay.x0)), foot: round4(frontTop) } : null,
+        walls: wallsTop2,
+        slot,
+        top: round4(spring + rise)
+      };
+      return { wallsTop: wallsTop2, vault };
+    })();
+    const { wallsTop } = crowned;
+    bay.vault = crowned.vault;
     const inner2 = [round4(bay.x0 + WALL), round4(bay.x1 - WALL)];
-    const glass = (inner2[1] - inner2[0]) * (gabled ? 0.86 : 0.72);
+    const glass = (inner2[1] - inner2[0]) * (gabled || slabbed ? 0.86 : 0.72);
     const bars = Math.max(0, Math.round(glass / (1.5 * M.bays)) - 1);
     bayWalls.push({
       side: "bay",
@@ -4875,9 +4958,17 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
       z0: 0,
       z1: wallsTop,
       slot,
-      openings: rects.map((_, k) => ({ a0: round4(mid - glass / 2), a1: round4(mid + glass / 2), z0: round4(k * M.storey), z1: round4(gabled && k === floors - 1 ? wallsTop - 0.15 : k * M.storey + M.clear), bars }))
+      openings: slabbed ? [{ a0: round4(mid - glass / 2), a1: round4(mid + glass / 2), z0: 0, z1: round4(wallsTop - 0.15), bars }] : rects.map((_, k) => ({ a0: round4(mid - glass / 2), a1: round4(mid + glass / 2), z0: round4(k * M.storey), z1: round4(gabled && k === floors - 1 ? wallsTop - 0.15 : k * M.storey + M.clear), bars }))
     }, ...[[bay.x0, -1], [bay.x1, 1]].map(([x, out2]) => ({ side: "bay", storey: null, along: 1, out: out2, at: x, a0: bay.y0, a1: round4(bay.y1 - WALL), inner: [bay.y0, round4(bay.y1 - WALL)], z0: 0, z1: wallsTop, slot, openings: [] })));
     slabs.push({ kind: "base", rect: { x0: bay.x0, x1: bay.x1, y0: bay.y0, y1: bay.y1 }, top: 0, bottom: slabs[0].bottom, holes: [] });
+    if (slabbed && bay.high < floors) {
+      const [z, inset] = [round4(bay.high * M.storey), 0.06];
+      slabs.push({ kind: "deck", rect: { x0: bay.x0, x1: bay.x1, y0: bay.y0, y1: bay.y1 }, top: z, bottom: round4(z - SLAB3), holes: [] });
+      rails.push({ from: [round4(bay.x0 + inset), round4(bay.y1 - inset)], to: [round4(bay.x1 - inset), round4(bay.y1 - inset)], z });
+      for (const [x, side2] of [[bay.x0 + inset, -1], [bay.x1 - inset, 1]])
+        rails.push({ from: [round4(x), side2 === bay.door && winged && bay.high === 1 ? porch.y1 : bay.y0], to: [round4(x), round4(bay.y1 - inset)], z });
+    } else if (slabbed && !flat)
+      slabs.push({ kind: "roof", rect: { x0: round4(bay.x0 - style.eave), x1: round4(bay.x1 + style.eave), y0: bay.y0, y1: round4(bay.y1 + style.eave) }, top: round4(floors * M.storey), bottom: round4(floors * M.storey - SLAB3), holes: [] });
     const [w0, w1] = bay.door < 0 ? [ground.x0, ground.x0 + WALL] : [ground.x1 - WALL, ground.x1];
     if (winged)
       extra("wing wall", [w0, ground.y1, slabs[0].bottom], [w1, porch.y1, Math.min(floors > 1 ? M.storey + M.head : Infinity, wallTop - sweep2 * SWEEP - 0.03)], [trim, FACE2.walls, null]);
@@ -4897,12 +4988,14 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
       }
     }
   }
-  const verandas = (style.veranda ? ["left", "right"] : style.end ? [far] : []).map((side2) => {
-    const out2 = style.veranda ? past : M.veranda[0];
+  const verandas = (style.veranda ? ["left", "right"] : style.end || jut ? [far] : []).map((side2) => {
+    const out2 = style.veranda ? past : jut || M.veranda[0];
     const [x0, x1] = side2 === "left" ? [round4(ground.x0 - out2), ground.x0] : [ground.x1, round4(ground.x1 + out2)];
-    const y0 = style.veranda ? ground.y0 : roofed.y0;
+    const y0 = style.veranda || jut ? ground.y0 : roofed.y0;
     const y1 = bay && bay.door < 0 === (side2 === "left") ? porch.y1 : ground.y1;
     slabs.push({ kind: "base", rect: { x0, x1, y0, y1 }, top: 0, bottom: slabs[0].bottom, holes: [] });
+    if (jut)
+      return { side: side2, x0, x1, y0, y1, way: verandaWays.get(side2) ?? null };
     const [x, half] = [side2 === "left" ? x0 + 0.3 : x1 - 0.3, M.veranda[1] / 2];
     if (!style.veranda)
       extra("terrace roof", [x0, y0, M.clear], [x1, y1, M.clear + 0.15], [roofing, trim, soffit]);
@@ -4916,19 +5009,20 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL4 = 1.05, ROOF = 0.2
     ...flat ? [] : [{ x0: top.x0 - ends, x1: top.x1 + ends, y0: split ? roofed.y0 : top.y0 - EAVE, y1: top.y1 + (sweep2 || EAVE) }],
     ...ramp ? [ramp] : [],
     ...portico ? [{ x0: portico.pediment.x0, x1: portico.pediment.x1, y0: portico.y0, y1: portico.pediment.y1 }] : [],
-    ...bay ? [{ x0: bay.x0 - VERGE, x1: bay.x1 + VERGE, y0: bay.y0, y1: bay.vault.front }] : [],
+    ...bay?.vault ? [{ x0: bay.x0 - VERGE, x1: bay.x1 + VERGE, y0: bay.y0, y1: bay.vault.front }] : [],
     { x0: porch.x0, x1: porch.x1, y0: porch.y0, y1: porch.steps.at(-1)?.y1 ?? porch.y1 },
     ...extras.map((each) => ({ x0: each.min[0], x1: each.max[0], y0: each.min[1], y1: each.max[1] })),
     ...timber ? [...timber.posts.map(({ x, y, r }) => ({ x0: x - r, x1: x + r, y0: y - r, y1: y + r })), ...timber.logs.map(({ along: along2, a0, a1, at: at2, r }) => along2 === 0 ? { x0: a0, x1: a1, y0: at2 - r, y1: at2 + r } : { x0: at2 - r, x1: at2 + r, y0: a0, y1: a1 })] : []
   ].reduce(both);
   const min = [covered.x0, covered.y0, slabs[0].bottom].map(round4);
-  const max = [covered.x1, covered.y1, Math.max(roof2.top, parapet?.z1 ?? 0, bay?.vault.top ?? 0, portico ? portico.pediment.z0 + portico.pediment.rise : 0, ...extras.map((each) => each.max[2]))].map(round4);
+  const max = [covered.x1, covered.y1, Math.max(roof2.top, parapet?.z1 ?? 0, bay?.vault?.top ?? 0, portico ? portico.pediment.z0 + portico.pediment.rise : 0, ...extras.map((each) => each.max[2]))].map(round4);
   const reasons = params.plinth > DEEPEST ? [`the ground falls ${(params.plinth - 0.3).toFixed(1)} m under it: ${DEEPEST - 0.3} m at most — a flatter place, or the land levelled first`] : [];
-  return { name, style, floors, dir, measures: M, rects, storeys, slabs, hole, stairs: stairs2, shaft, rails, parapet, roof: roof2, raised, doors, lights, switches, porch, extras, balconies, partitions, rooms, inner, entry: { ...entry, recess }, entryWalls, bay, bayWalls, verandas, wing: wing && { ...wing, ramp }, wingWalls, portico, hall: hall ? { x0: round4(-hall / 2), x1: round4(hall / 2) } : null, timber, min, max, reasons };
+  return { name, style, floors, dir, measures: M, rects, storeys, slabs, hole, stairs: stairs2, shaft, rails, parapet, roof: roof2, raised, doors, lights, switches, porch, extras, balconies, partitions, rooms, inner, entry: { ...entry, recess }, entryWalls, bay, bayWalls, verandas, wing: wing && { ...wing, ramp }, wingWalls, portico, hall: hall ? { x0: round4(-hall / 2), x1: round4(hall / 2) } : null, timber, blade, min, max, reasons };
 };
 var init_house_plan = __esm(() => {
   init_house();
   init_house_rooms();
+  BLADE = Object.freeze([0.45, 0.3, 1]);
   OPEN = Object.freeze([null, "living", "dining", "lounge", "passage", "landing", "hall"]);
   FACE2 = Object.freeze({ walls: 0, apart: 1, trim: 2, glass: 3, roof: 4, floors: 5, inside: 6 });
   FORMS3 = Object.freeze(["accent", "canopy", "carport", "balcony", "pergola", "chimney"]);
@@ -4954,6 +5048,7 @@ var init_house_plan = __esm(() => {
       terrace: 1.2,
       cut: 1.5,
       out: [1, 0.8],
+      jut: [2.4, 4],
       canopy: [1.6, 0.15],
       carport: [3.4, 5.6, 2.3],
       balcony: [3.4, 1.3, 0.15],
@@ -4985,6 +5080,7 @@ var init_house_plan = __esm(() => {
       terrace: 1.8,
       cut: 2.4,
       out: [1.5, 1.2],
+      jut: [3.6, 6],
       canopy: null,
       carport: [4.8, 7.8, 2.9],
       balcony: [5, 2, 0.15],
@@ -5216,7 +5312,8 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
 ], fenceBox = ({ along: along2, a0, a1, at, z, r }) => along2 === 0 ? { min: [a0, at - r, 0], max: [a1, at + r, z + r] } : { min: [at - r, a0, 0], max: [at + r, a1, z + r] }, build = (plan, level) => {
   const mesh = createMesh(7);
   const uvOf = (p, n) => boxUv(p, n, ORIGIN, 1, 1);
-  const plate = (slot, axis, sign, at, min, max) => {
+  const windowUv = marked(uvOf);
+  const plate = (slot, axis, sign, at, min, max, uvs = uvOf) => {
     const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
     const corner = (s, t) => {
       const p = [0, 0, 0];
@@ -5228,7 +5325,7 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
     const normal = [0, 0, 0];
     normal[axis] = sign;
     const corners = sign > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)];
-    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvOf(p, normal)));
+    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvs(p, normal)));
     mesh.quad(slot, p0, p1, p2, p3);
   };
   const box = ({ min, max }, slotOf) => {
@@ -5274,7 +5371,7 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
       }
       if (level === 0) {
         if (!o.door)
-          plate(GLASS2, across, out, at, point(o.a0, 0, o.z0), point(o.a1, 0, o.z1));
+          plate(GLASS2, across, out, at, point(o.a0, 0, o.z0), point(o.a1, 0, o.z1), windowUv);
         continue;
       }
       plate(reveal, along2, 1, o.a0, point(0, f0, o.z0), point(0, f1, o.z1));
@@ -5287,8 +5384,8 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
         continue;
       const middle = (at + inside) / 2;
       for (const [g0, g1] of o.slide ? [[o.a0, o.slide.a0], [o.slide.a1, o.a1]].filter(([p, q]) => q - p > 0.000001) : [[o.a0, o.a1]]) {
-        plate(GLASS2, across, out, middle + out * PANE3 / 2, point(g0, 0, o.z0), point(g1, 0, o.z1));
-        plate(GLASS2, across, -out, middle - out * PANE3 / 2, point(g0, 0, o.z0), point(g1, 0, o.z1));
+        plate(GLASS2, across, out, middle + out * PANE3 / 2, point(g0, 0, o.z0), point(g1, 0, o.z1), windowUv);
+        plate(GLASS2, across, -out, middle - out * PANE3 / 2, point(g0, 0, o.z0), point(g1, 0, o.z1), windowUv);
       }
       if (level < 3)
         continue;
@@ -5344,7 +5441,7 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
           if (piece.length < 3 || area23(piece) < 0.0001)
             continue;
           if (glass)
-            addExtrusion(mesh, piece, 0, middle - PANE3 / 2, middle + PANE3 / 2, GLASS2, () => GLASS2, uvOf);
+            addExtrusion(mesh, piece, 0, middle - PANE3 / 2, middle + PANE3 / 2, GLASS2, () => GLASS2, windowUv);
           else
             addExtrusion(mesh, piece, 0, x0, x1, slot, () => slot, uvOf);
         }
@@ -5405,7 +5502,7 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
           mesh.polygon(TRIM, Array.from({ length: 6 }, (_, i) => point(a, i)), along2 === 0 ? [sign, 0, 0] : [0, sign, 0], uvOf);
       }
   }
-  if (plan.bay) {
+  if (plan.bay?.vault) {
     const { x0, x1, y1, vault } = plan.bay;
     const { points, back, under, front, thick, meets, glass, at, base, behind, wall: face2, cheek, walls: top, slot } = vault;
     const strips = points.length - 1;
@@ -5425,10 +5522,10 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
     }
     const [l, r] = [x0 + WALL, x1 - WALL];
     const arch2 = points.filter(([x]) => x > l && x < r).map(([x, z]) => [x, z - thick]);
-    const shut = (y, foot, sign, face3) => mesh.polygon(face3, [[l, y, foot], ...foot < top ? [[l, y, top]] : [], ...arch2.map(([x, z]) => [x, y, z]), ...foot < top ? [[r, y, top]] : [], [r, y, foot]], [0, sign, 0], uvOf);
-    shut(y1, top, 1, glass ? GLASS2 : slot);
+    const shut = (y, foot, sign, face3, uvs = uvOf) => mesh.polygon(face3, [[l, y, foot], ...foot < top ? [[l, y, top]] : [], ...arch2.map(([x, z]) => [x, y, z]), ...foot < top ? [[r, y, top]] : [], [r, y, foot]], [0, sign, 0], uvs);
+    shut(y1, top, 1, glass ? GLASS2 : slot, glass ? windowUv : uvOf);
     if (level > 0)
-      shut(y1 - WALL, top, -1, glass ? GLASS2 : INSIDE);
+      shut(y1 - WALL, top, -1, glass ? GLASS2 : INSIDE, glass ? windowUv : uvOf);
     if (level > 0)
       shut(at, base, 1, face2);
     if (!meets)
@@ -5516,7 +5613,7 @@ var WALLS, TRIM, GLASS2, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SAS
     const { x0, x1, y0, y1, drop, bottom } = plan.wing.ramp;
     hulls.push({ points: [x0, x1].flatMap((x) => [[x, y0, 0], [x, y1, -drop], [x, y1, bottom], [x, y0, bottom]]) });
   }
-  if (plan.bay)
+  if (plan.bay?.vault)
     hulls.push({ points: plan.bay.vault.points.flatMap(([x, z]) => [[x, plan.bay.vault.at - WALL, z], [x, plan.bay.vault.front, z]]) });
   return { boxes, hulls };
 }, DOOR_DRESSING, DOOR_BEHAVIOUR, DOOR_STYLES, STRIP, SPOT, SASH_DRESSING, sashesOf = (plan) => plan.storeys.flatMap((storey) => storey.walls.flatMap((wall) => wall.openings.filter((o) => o.slide).map((o) => {
@@ -5583,7 +5680,7 @@ var init_house_gen = __esm(() => {
           size: [...door2.size],
           yaw: door2.yaw * Math.PI / 180,
           at: from([door2.at[0], door2.at[1], door2.at[2] + door2.size[2] / 2]),
-          params: { style: DOOR_STYLES[door2.style], frame: 0.06, hinge: door2.hinge, ...door2.leaves > 1 && { jambs: 1 } },
+          params: { style: DOOR_STYLES[door2.style], frame: 0.06, hinge: door2.hinge, lit: 1, ...door2.leaves > 1 && { jambs: 1 } },
           behaviour: { ...DOOR_BEHAVIOUR },
           color: [...DOOR_DRESSING.color],
           surface: structuredClone(DOOR_DRESSING.surface)
@@ -5612,7 +5709,7 @@ var init_house_gen = __esm(() => {
           size: sash.size,
           yaw: sash.yaw,
           at: from(sash.at),
-          params: { frame: 0.05, columns: 1, rows: 1, sill: 0 },
+          params: { frame: 0.05, columns: 1, rows: 1, sill: 0, lit: 1 },
           color: [...SASH_DRESSING.color],
           surface: structuredClone(SASH_DRESSING.surface),
           behaviour: { type: "slide", x: sash.by, y: 0, z: 0, trigger: sash.near ? "both" : "click", reach: 2.5, time: 1.2, stay: sash.near ? 10 : 0 }
@@ -8605,7 +8702,8 @@ var door = Object.freeze({
     { name: "style", label: "Style", min: 0, max: 2, default: 1, step: 1, options: ["plain", "panelled", "glazed"], description: "Plain: one flat slab. Panelled: four raised panels each side. Glazed: glass in its upper half." },
     { name: "hinge", label: "Hinges", min: 0, max: 1, default: 0, step: 1, options: ["left", "right"], description: "The side it hangs on, seen from in front (−y); its handles on the other." },
     { name: "jambs", label: "Jambs", min: 0, max: 1, default: 0, step: 1, options: ["both", "hinge"], optional: true, description: "Its frame's uprights: both; or hinge, only the one it hangs on — one leaf of a double door, its other side open to the leaf that meets it: two such doors side by side, hung on the outer sides, are a double door with nothing between its leaves." },
-    { name: "open", label: "Open", min: 0, max: 110, default: 0, step: 1, pose: true, description: "How far it stands open (°), swinging out towards the front: its leaf turns on its hinges, its mesh the same. A behaviour opens and shuts it so." }
+    { name: "open", label: "Open", min: 0, max: 110, default: 0, step: 1, pose: true, description: "How far it stands open (°), swinging out towards the front: its leaf turns on its hinges, its mesh the same. A behaviour opens and shuts it so." },
+    { name: "lit", label: "Lit inside", min: 0, max: 1, default: 0, step: 1, options: ["no", "yes"], optional: true, description: "Its glass closes a room: by night a faint neutral light from inside, as a house's windows have, in a house's object (the house kind sets it on its outer doors and its sliding panes)." }
   ],
   moving: [{
     faces: [1, 2, 3],
@@ -8614,7 +8712,7 @@ var door = Object.freeze({
       return { at: [hinge === 0 ? x0 : x1, -hy, 0], axis: [0, 0, 1], angle: (hinge === 0 ? -1 : 1) * open * Math.PI / 180 };
     }
   }],
-  mesh: ({ frame, leaf, style, hinge, jambs }, seed, level, size) => {
+  mesh: ({ frame, leaf, style, hinge, jambs, lit }, seed, level, size) => {
     const mesh = createMesh(4);
     const { hx, hy, hz, f, left, right, x0, x1, z0, z1 } = openingOf(frame, size, hinge, jambs);
     const t = Math.min(leaf, size[1]);
@@ -8633,7 +8731,7 @@ var door = Object.freeze({
       box(1, [x1 - margin, y0, g0 - SINK2], [x1, y1, g1 + SINK2]);
       box(1, [x0, y0, g1], [x1, y1, z1]);
       const middle = (y0 + y1) / 2;
-      box(2, [x0 + margin - SINK2 * 2, middle - PANE / 2, g0 - SINK2 * 2], [x1 - margin + SINK2 * 2, middle + PANE / 2, g1 + SINK2 * 2]);
+      addBox(mesh, [x0 + margin - SINK2 * 2, middle - PANE / 2, g0 - SINK2 * 2], [x1 - margin + SINK2 * 2, middle + PANE / 2, g1 + SINK2 * 2], () => 2, lit ? marked(uvOf) : uvOf);
     } else {
       box(1, [x0, y0, z0], [x1, y1, z1]);
       if (style === 1) {
@@ -8700,9 +8798,10 @@ var windowKind = Object.freeze({
     { name: "columns", label: "Columns", min: 1, max: 8, default: 2, step: 1, description: "Panes across, divided by upright bars." },
     { name: "rows", label: "Rows", min: 1, max: 8, default: 2, step: 1, description: "Panes up, divided by level bars." },
     { name: "bar", label: "Bars", min: 0.01, max: 0.1, default: 0.03, step: 0.005, description: "How wide the bars between its panes are (m)." },
-    { name: "sill", label: "Sill", min: 0, max: 0.3, default: 0.05, step: 0.005, description: "How far a sill under it stands out to the front (m); 0 for none." }
+    { name: "sill", label: "Sill", min: 0, max: 0.3, default: 0.05, step: 0.005, description: "How far a sill under it stands out to the front (m); 0 for none." },
+    { name: "lit", label: "Lit inside", min: 0, max: 1, default: 0, step: 1, options: ["no", "yes"], optional: true, description: "Its glass closes a room: by night a faint neutral light from inside, as a house's windows have, in a house's object (the house kind sets it on its outer doors and its sliding panes)." }
   ],
-  mesh: ({ frame, columns, rows, bar, sill }, seed, level, size) => {
+  mesh: ({ frame, columns, rows, bar, sill, lit }, seed, level, size) => {
     const [hx, hy, hz] = size.map((v) => v / 2);
     const mesh = createMesh(4);
     const uvOf = (p, n) => boxUv(p, n, [-hx, -hy, -hz], ...METRE2);
@@ -8713,7 +8812,7 @@ var windowKind = Object.freeze({
     box(0, [-hx + f - SINK3, -hy, hz - f], [hx - f + SINK3, hy, hz]);
     box(0, [-hx + f - SINK3, -hy, -hz], [hx - f + SINK3, hy, -hz + f]);
     const [x0, x1, z0, z1] = [-hx + f, hx - f, -hz + f, hz - f];
-    box(2, [x0 - SINK3 * 2, -PANE2 / 2, z0 - SINK3 * 2], [x1 + SINK3 * 2, PANE2 / 2, z1 + SINK3 * 2]);
+    addBox(mesh, [x0 - SINK3 * 2, -PANE2 / 2, z0 - SINK3 * 2], [x1 + SINK3 * 2, PANE2 / 2, z1 + SINK3 * 2], () => 2, lit ? marked(uvOf) : uvOf);
     if (level > 0) {
       const b = Math.min(bar, (x1 - x0) / (2 * columns), (z1 - z0) / (2 * rows));
       const deep = Math.min(hy * 0.6, 0.04);
@@ -13283,14 +13382,14 @@ var placeBuild = (spec, { groundRadius, bareRadius = groundRadius, waterRadius =
   const objects = [];
   const parts = [];
   const names = new Map;
-  const addObject = (name, objectId, at, turn3, prims, behaviour, vehicle, origin2, marked, dry, looks) => {
+  const addObject = (name, objectId, at, turn3, prims, behaviour, vehicle, origin2, marked2, dry, looks) => {
     if (!prims?.length)
       return;
     const rotation = quatNormalize(quatMultiply(frame, turnOf2(turn3)));
     const driven = vehicle === undefined ? null : vehicleOf(vehicle);
     if (vehicle !== undefined && !driven)
       warnings.push(`${name}: no vehicle "${vehicle?.type}"`);
-    objects.push({ type: "object", id: objectId, name, at, rotation, ...behaviour && { behaviour }, ...driven && { vehicle: driven }, ...looksOf(looks) && { looks: looksOf(looks) }, ...dry === true && { dry: true }, ...origin2 && typeof origin2 === "object" && { origin: origin2 }, ...typeof marked === "string" && { package: marked } });
+    objects.push({ type: "object", id: objectId, name, at, rotation, ...behaviour && { behaviour }, ...driven && { vehicle: driven }, ...looksOf(looks) && { looks: looksOf(looks) }, ...dry === true && { dry: true }, ...origin2 && typeof origin2 === "object" && { origin: origin2 }, ...typeof marked2 === "string" && { package: marked2 } });
     const made4 = partsOf(prims, { name: objectId === id ? spec.name : `${spec.name}#${name}`, objectId, materials, warnings, object: { at, rotation }, groundRadius, waterRadius, landRadius });
     parts.push(...made4, ...companionParts(made4, objectId));
     names.set(name, objectId);
@@ -14528,7 +14627,7 @@ var createLandField = ({ bare }) => {
     const [e0, f0] = [Math.max(i0 - APRON, 0), Math.max(j0 - APRON, 0)];
     const [e1, f1] = [Math.min(i1 + APRON, NODES - 1), Math.min(j1 + APRON, NODES - 1)];
     const width = e1 - e0 + 1;
-    const marked = new Uint8Array(width * (f1 - f0 + 1));
+    const marked2 = new Uint8Array(width * (f1 - f0 + 1));
     for (let cy = f0 >> 5;cy <= f1 >> 5; cy++) {
       for (let cx = e0 >> 5;cx <= e1 >> 5; cx++) {
         const kept2 = edits.get(chunkNumber(face2, cx, cy));
@@ -14537,7 +14636,7 @@ var createLandField = ({ bare }) => {
         for (let j = Math.max(f0, cy * CHUNK);j <= Math.min(f1, cy * CHUNK + CHUNK - 1); j++) {
           for (let i = Math.max(e0, cx * CHUNK);i <= Math.min(e1, cx * CHUNK + CHUNK - 1); i++) {
             if (!Number.isNaN(kept2[index(i, j)]))
-              marked[(j - f0) * width + i - e0] = 1;
+              marked2[(j - f0) * width + i - e0] = 1;
           }
         }
       }
@@ -14545,7 +14644,7 @@ var createLandField = ({ bare }) => {
     return (i, j) => {
       for (let b = Math.max(j - APRON, f0);b <= Math.min(j + APRON, f1); b++) {
         for (let a = Math.max(i - APRON, e0);a <= Math.min(i + APRON, e1); a++)
-          if (marked[(b - f0) * width + a - e0])
+          if (marked2[(b - f0) * width + a - e0])
             return true;
       }
       return false;
