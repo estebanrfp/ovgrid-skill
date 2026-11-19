@@ -20,7 +20,7 @@ refuses the build. Counted with every clone (a clone's parts draw again).
 | crowd | 8 | 16 | lights within 30 m of one another: past 8 each pixel takes the dearer, clustered path |
 | systems | 12 | 48 | particle systems: each a draw of its own; 128 in view at most, the nearest |
 | particles | 1,000 | 3,000 | in the air at once; the world draws 1,500 a frame for everything in view, thinning each alike past it |
-| moving | 30 | 120 | objects, clones and parts with a behaviour: 20 cost 0.02 ms of GPU and 0.05 ms of physics |
+| moving | 30 | 120 | objects, clones and parts with a behaviour: 20 cost 0.02 ms of GPU and 0.05 ms of physics. The parts of one lift's `group` — its car, its buttons, the leaves of its doors — count as one: they go as one, and only when it is called |
 | scripts | 8 | 32 | the 32 nearest run; each has its own 16 MB and 5 ms an event |
 | trees | 400 | 2,000 | cheap on the GPU, but each a record to sign and send; forests are painted with the brush |
 
