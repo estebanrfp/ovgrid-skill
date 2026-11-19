@@ -110,6 +110,7 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `road` | what its `points`, `width`, `depth` and `lift` make | 0 surface, 1 sides, 2 underside (3 barriers, where `barrier` is said) | a ribbon along 2–32 `points` laid on the ground — with `"round": 1` (or a `grade`) its corners, every point it turns more than 15° at, rounded as the road tool rounds them (arcs of 6 m or twice its width), so that it no longer runs through such a point —, its slab `depth` under it, its surface `lift` (0.1 m) over the ground — or, `"level": "over"`, levelled over the land: straight across within `fall` (%), along it as straight as it can be between its ends, never under the ground and no more than `fill` (m, 2) over it — a dip filled up to so much, a valley deeper gone down into —, its low side and its ends on walls; the land never touched; with `grade` (%, 30 as the road tool lays it) never steeper than that along it, and no steeper than 12.5 % wherever its ends and the ground let it (steeper only where the taut line over the ground between its ends is): on the ground within its fill where its walls keep it so, raised up to 10 m over the ground where they cannot — a valley deeper gone down into —, a deck on columns where its edge's underside stands more than 1.8 m over the ground (past its fill where it lies on the ground; or where water stands under it — `water`, measured as `ground` is: its underside then 0.3 m over the water), barriers along its decks only, on a side whose edge stands more than 1.05 m over the ground beside it — each deck's from end to end, going down to nothing over 4 m onto the walls; along walls none —, all in its sides' face; under a grade, `"columns"` 0 square (an eighth of its width a side), 1 round (as wide) or 2 arches (a pier across the road at each column's place, between each two an arch as a stone bridge's — a semicircle where the ground leaves room, flatter where it is near, solid stone where too low —, open under them: what goes under passes through — a road may run under another's deck or arch where it leaves 4.5 m over the road's surface and the road keeps 0.3 m clear of its columns and piers, as the road tool lays one —), `"barrier"` 0 a parapet 1.05 m tall, 1 a steel guardrail (a beam 0.75 m over the road on posts 2 m apart) or 2 none — said, its barriers are a face of their own, 3 (dress it: a parapet in what it stands on, a guardrail in `metal/bare/metal-0025`), and any barrier collides as a wall 3 m tall (the tool's `ends` pins carry, under a grade, the barrier's height at each joint as two more numbers, so that it goes on through the parts as one; where one road meets another's end, or itself round, both ends carry the same pin — turned where they meet head on —, so that the two go on as one); a climb its grade cannot make, a cliff, is the road tool's red; no `grade`, as steep as its fill makes it, on its walls; under 2 m wide a path; the last point on the first closes it round |
 | `bridge` | what its `points`, `width` and the ground under it make | 0 deck, 1 structure (logs, masonry), 2 rails (a stone parapet) | a straight deck from `points[0]` to `points[1]` (`[x, y]` on its two banks, laid on the ground once placed; 60 m at most), `style` `timber`, `stone`, `clapper`, `rope`, `girder` or `suspension`, `railing` `none`/`both`/`open`, for stone `arch` `round`/`pointed`/`segmental`, `lamps` `none`/`ends`/`piers`/`spaced` (`spacing`, `lights`), and a `look` to dress it in; its spans and piers across the gap are worked out from the ground — see *A bridge over a gap* |
 | `house` | what its `width`, `depth`, `floors` and `roof` make | 0 walls, 1 the walls of the storeys dressed apart, 2 trim (slabs' edges, reveals, the base), 3 glass, 4 roof, 5 floors, 6 walls inside | a whole modern house in one part, worked out from a few numbers — walls with their windows cut and glazed, floors, a stair, terraces with glass rails, its roof, a base down past the ground and steps to its door —, walked into as drawn; its doors parts of their own that open as someone comes — see *A modern house in one part* |
+| `building` | what its `width`, `depth`, `floors`, `storey` and `roof` make | 0 walls, 1 what is dressed apart (its balconies' screens, its spandrels, a pavilion on its roof), 2 trim (frames, slabs' edges, the base, columns, the stair's sides), 3 glass, 4 roof, 5 floors, 6 walls inside | a whole block of flats in one part, worked out from a few numbers — storeys of flats either side of a core (the street's door, a hall, a stair of two flights behind a slot of glass), windows in columns, balconies between screens, its roof, a base down past the ground and steps to its door —, walked into as drawn, up its stair into every flat; its doors parts of their own that open as someone comes — see *A block of flats in one part* |
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
 | `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
 | `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall` —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
@@ -471,10 +472,21 @@ under its flat roof gone on over it and over the porch, its glass one pane from 
 it and the storeys over it looking into it across a rail: a hall two storeys high; or, one `variant` in three of a house of two
 storeys or three, a storey lower, its roof a terrace railed with glass with a way out onto it —; the door by the corner the two
 make, in a porch under a balcony, no recess — give it two storeys and `flat`; its box is 3.6 m deeper at the front and a metre
-more all round) or `platform` (a platform house: every floor 2.4 m out past its walls — a podium round the ground storey, steps
+more all round), `platform` (a platform house: every floor 2.4 m out past its walls — a podium round the ground storey, steps
 down from its edge before the door, and a terrace railed with glass all round each storey over it, a way out onto each —, and
 the top storey a pavilion in the corner its stair stands in, the floor it stands on far wider than it, its own roof 1.2 m out —
-give it two storeys or three and `flat`; its box is 4.8 m wider and deeper than its ground storey); `floors` 1–3; `roof` `flat`, `mono` (one pitch rising to the front),
+give it two storeys or three and `flat`; its box is 4.8 m wider and deeper than its ground storey), `arm` (an L wing: an arm with
+rooms of its own — a volume against the front at its far end, flush with the house's side, two fifths of the front wide (6.5–10 m
+at a game's scale) and 6 m out, its walls and windows its storeys' (the side flush with the house's end blank), two storeys high
+at the most, the house's flat roof gone on over it where it is as high —; on each of its storeys a room, with `"rooms"` a room of
+the house's own — a dining room, a study or a lounge, furnished as the rest with `"furnished"` —, come into from the room behind
+it: open to it from floor to ceiling where that is one walked through, by a doorway from a bedroom, a study or a kitchen; behind
+the arm the house's wall keeps high windows, the light the rooms behind it borrow; the door in its recess in the front the arm
+leaves — give it 18 m of front or more, two storeys and `flat`: under 14.1 m at a game's scale it has no arm; its box is 6 m deeper
+at the front) or `zed` (a Z-shaped house: two such arms at opposite ends — one at the front by the stair's end, two storeys at
+the most, and one at the back at the far end, a storey high, the lowest of its volumes: a dining room off the kitchen; none where
+a bathroom lies behind it — give it 18 m of front or more, two storeys or three and `flat`; its box is 6 m deeper at the front
+and at the back); `floors` 1–3; `roof` `flat`, `mono` (one pitch rising to the front),
 `gable`, `butterfly`, `steep` (two steep pitches from a ridge along its width, as high as three fifths of its walls, 31° to 50°,
 the storey under it open up to them — the chalet's own; on any other style, a barn's roof) or `hip` (four pitches up from the
 eaves to a ridge along the longer side, on a flat slab that is the top storey's ceiling: the house under it as under a flat roof); `glazing` 0–1 (0.5 the style's own); `variant` 0–9999, which of its style's houses it is — where its door
@@ -486,13 +498,14 @@ from the bank, six to each style and a seventh to the cabin — box: `white`, `s
 `grey`, `slate`; villa: `travertine`, `concrete`, `white`, `cedar`, `black`, `marble`; cabin: `logs`, `beams`, `dark`, `pine`, `brown`, `weathered`, `fieldstone` (its walls of stone, its timber dark, its roof of sheet metal);
 cantilever: `white`, `cedar`, `concrete`, `stone`, `black`, `walnut`; plates: `walnut`, `white`, `cedar`, `charcoal`, `board`,
 `travertine`; terrace: `white`, `travertine`, `concrete`, `ochre`, `stone`, `charcoal`; ell: `white`, `concrete`, `brick`,
-`charcoal`, `stone`, `cedar`; platform: `travertine`, `white`, `concrete`, `cedar`, `black`, `ochre` (a chalet's and a lodge's second wall
+`charcoal`, `stone`, `cedar`; platform: `travertine`, `white`, `concrete`, `cedar`, `black`, `ochre`; arm: `white`, `brick`, `stone`,
+`grey`, `charcoal`, `ochre`; zed: `concrete`, `white`, `cedar`, `travertine`, `black`, `board` (a chalet's and a lodge's second wall
 material is its bay's, an L-shaped house's its arm's, a barn's its wing's, a manor's, a villa's, a cantilever's, a roof-terrace
-house's and a platform house's their upper storeys', a
+house's, a platform house's, an L wing's and a Z-shaped house's their upper storeys' — their arms' as their storeys' —, a
 cabin's its stone — its base and its chimney —, a layered house's its blade's, its trim its slabs' edges and its last the undersides of its slabs) —, six materials at
 the most. **Houses side by side read as one unless they differ**: give
 neighbours different looks, different `variant`s and the roofs that suit their style (box: `flat`, `mono`; wood: `mono`, `gable`,
-`butterfly`; glass: `flat`, `butterfly`, `mono`; stack: `flat`; chalet and lodge: `steep`; barn: `steep`, `gable`; manor: `hip`; villa: `flat`; cabin: `gable`, `steep`; cantilever: `flat`, `mono`; plates, terrace, ell and platform: `flat`), as the editor's tool throws them at each house. Stand it on the ground: its floor a hand over
+`butterfly`; glass: `flat`, `butterfly`, `mono`; stack: `flat`; chalet and lodge: `steep`; barn: `steep`, `gable`; manor: `hip`; villa: `flat`; cabin: `gable`, `steep`; cantilever: `flat`, `mono`; plates, terrace, ell, platform, arm and zed: `flat`), as the editor's tool throws them at each house. Stand it on the ground: its floor a hand over
 the highest ground under its rectangle, `plinth` how far its base goes down under its floor (past the lowest ground under it, 3 m
 at most — over 2 m the check says the ground falls too far) and `stoop` how far the ground before its door lies under its floor
 (steps go down to it, 1.5 m at most); a `barn` besides `drive`, how far the ground before its garage lies under its floor (its
@@ -570,6 +583,46 @@ its steps' foot some 7.5 m from the street's edge, 6 m or more between neighbour
 points, lying on the ground) from its door to the street —, each on its own ground (its `plinth` and `stoop`), with few looks
 among them (two to a style) and trees in the gardens. In the editor the Neighbourhood tool lays one where it is clicked: a
 street that closes round, twelve lots at its defaults, a mansion with a pool behind it.
+
+**A block of flats in one part** (`building`): when a street, a square or a city needs buildings, do not build each from walls
+and solids — one part is a whole block of two to eight storeys. Its front is its **+y**; `width` (11–40 m) and `depth` (12–24 m)
+are the rectangle it stands on, its `at` the middle of its box — which is not the middle of that rectangle: its box has its
+balconies, its eaves and its steps. It is sized as a house at a game's scale, for an avatar and the camera behind it: storeys of
+4 m (`storey`, 3.6–4.8 m), doors 1.4 m wide and 2.7 m high, the street's door two leaves of 1.4 × 3 m set back 3 m in a recess
+under the storey over it, a stair 2 m wide on risers of 0.19 m, flats 6 m across at the least. `style`: `block` (rendered walls,
+punched windows, balconies between screens of timber, a roof of sheet out past its walls), `brick` (brick walls, tall windows
+close together, a parapet or four pitches), `concrete` (board-marked concrete, slits of glass in pairs, panels of dark metal, a
+pavilion on its roof), `glass` (glass from floor to ceiling between slim piers, a band at each floor's edge), `hipped` (stucco
+walls, wide windows, four pitches of tiles over eaves). `floors` 2–8. `core`: where its door, hall and stair stand — `centre`,
+flats either side of it, or `left` / `right`, at one end (always at an end under 17.1 m wide). `flats`: `through`, one from front
+to back each side of the core, or `double`, one at the front and one at the back (four a landing with the core in the middle).
+`balconies`: `none`, `front` or `both` — one to each flat on the storeys over the ground one, 5 × 2 m between two screens that
+run up the building, an open way out onto it. `ground`: `flats`, or `open` — the building on columns, its core alone walled.
+`roof`: `flat` (a parapet), `eaves` (a slab out past its walls) or `hip`; a style's own are the first of the catalog's `roofs`.
+`glazing` 0–1 (0.5 its style's own), `variant` 0–9999 (which end of each flat its balcony stands at, whether the wall between
+its windows is dressed apart, a pavilion on its roof). `doors`: `open`, doorways from the hall into each flat, or `doors`, a door
+in each — a part each that moves, which costs the page every frame it is in sight (twenty of them, half a millisecond): leave
+them out but in the one building a visitor is led into. `lighting`: `none`, or `halls` — a light and a
+presence switch a storey: light the one or two a visitor walks into, not a whole street (a build's fair share is 12 lights).
+`stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair alone.
+
+```json
+{ "name": "block", "at": [0, 0, 0.2], "prims": [
+  { "name": "building", "kind": "building", "style": "block", "look": "white", "width": 30, "depth": 16, "floors": 5,
+    "roof": "eaves", "flats": "double", "balconies": "front", "variant": 3, "plinth": 0.6, "stoop": 0.4, "at": [0, 0.3, 10.2] } ] }
+```
+
+- **Its cost**: from near — inside it, or within a street's width — at most 900 triangles and 1,250 more a storey (five storeys of
+  30 × 16 m: 3,800); from a street away 350 and 190 more a storey (that block: 530, a sixth of a house): a street of twenty
+  seen from its end is some 12,000 triangles. In construction a third of that. Sixty pieces to collide as and 18 more a storey.
+- **Laid on the ground** as a house: give it the `plinth` (how far its base goes down under its floor, past the lowest ground
+  under it; 3 m at the most) and the `stoop` (how far the ground before its door lies under its floor: its steps go down to it)
+  that the ground asks — the ground may fall 2.5 m under it at the most. Place its object at its site — the middle of its
+  rectangle, on its floor — and the building within it at its box's middle, as a house in a build.
+- **Its looks**: six to a style, each the bank's materials for the seven faces; `look` in a build file names one, the first its
+  own. Its glass is lit from inside by night as a house's.
+- **What its recipe stands** (never write them yourself): the two leaves of its street door; with `doors`, a door to each flat;
+  with `lighting`, a light and a switch a storey.
 
 **A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
 `length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
