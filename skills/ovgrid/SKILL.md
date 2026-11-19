@@ -68,7 +68,8 @@ place keeps several boxes. Gather what is plain and measure what is textured (bu
    objects past 256 parts and anything past the budget's *most* are errors; past *fair*, notes;
    `--survey site.json` counts what already stands round it. → [budget.md](reference/budget.md)
 6. **Interactivity.** Particles, lights at night, behaviours (doors, slides, spins, lifts,
-   ferries), scripts for what no property can say, games to come; vehicles people drive — cars,
+   ferries, treasures found with E for points and coins), scripts for what no property can say — one may give a player
+   points, `award(who, points, reason)` —, games to come; vehicles people drive — cars,
    motorbikes, boats, trains, helicopters and planes, a starship to space and back; screens — a video, a GIF or a sticker on a face by its address
    ([format.md](reference/format.md), Media), or a page of its own, HTML whose clicks its script hears
    or whose buttons count, sign and vote by themselves ([format.md](reference/format.md), Pages); patterns on a face — forty: grids,

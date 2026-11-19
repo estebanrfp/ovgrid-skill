@@ -600,14 +600,23 @@ base and its roof: fifteen of 4 m, sixteen of 3.6 m. `core`: where its door, hal
 side of it, or `left` / `right`, at one end, its lift in the corner (always at an end under 20.4 m wide). `flats`: `through`, one from front
 to back each side of the core, or `double`, one at the front and one at the back (four a landing with the core in the middle).
 `balconies`: `none`, `front` or `both` — one to each flat on the storeys over the ground one, 5 × 2 m between two screens that
-run up the building, an open way out onto it. `ground`: `flats`, or `open` — the building on columns, its core alone walled.
+run up the building, an open way out onto it. `ground`: `flats`; `open` — the building on columns, its core alone walled —; `hotel` — its ground storey one hall round its
+core, the core's walls open onto it, its windows' columns glass from the floor to the ceiling on the street: a hotel's lobby, come
+into by the building's own door —; or `shops` — a shop either side of the core, each a room from the front to the back, glazed
+like a hotel's and the column nearest its middle left open as its way in from the street, steps down to the street all along its
+front.
 `roof`: `flat` (a parapet), `eaves` (a slab out past its walls) or `hip`; a style's own are the first of the catalog's `roofs`.
 `glazing` 0–1 (0.5 its style's own), `variant` 0–9999 (which end of each flat its balcony stands at, whether the wall between
 its windows is dressed apart, a pavilion on its roof, which side of the street's door its lift stands at). `doors`: `open`, doorways from the hall into each flat, or `doors`, a door
 in each — a part each that moves, which costs the page every frame it is in sight (twenty of them, half a millisecond): leave
 them out but in the one building a visitor is led into. `lighting`: `none`, or `halls` — a light and a
 presence switch a storey: light the one or two a visitor walks into, not a whole street (a build's fair share is 12 lights).
-`stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair alone, its lift's shaft empty.
+`reception`: `none`, or `lobby` — its ground hall furnished as a reception by what the hall is. A block's: a concierge's desk
+facing the street's door (in the hall's wing beside the stair, where it has room), mailboxes by the door, a bench or a pair of
+armchairs, a runner, pictures and plants by its size, every way through it — to the lift, the stair, each flat's door — kept
+clear. With `ground` `hotel`, a hotel's, in all its ground storey: a long counter with its keys behind it, groups of seats on rugs,
+a luggage trolley, leaflets. For the buildings a visitor walks into. `stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair
+alone, its lift's shaft empty, no reception.
 
 Every building has its **lift**: a shaft beside the street's door, glass to the street from the ground to the top storey's
 ceiling — and to the side too where the core stands at an end —, a car for a dozen kept on the ground storey, and on the hall of
@@ -635,7 +644,8 @@ while it stands: its parts move only on a ride.
   own. Its glass is lit from inside by night as a house's.
 - **What its recipe stands** (never write them yourself): its lift — the car, two leaves to each landing's door and a button a
   storey, parts of the `lift` kind: one and three more a storey —; the two leaves of its street door; with `doors`, a door to
-  each flat; with `lighting`, a light and a switch a storey.
+  each flat; with `lighting`, a light and a switch a storey; with `reception`, its lobby — one part of the `room` kind, which
+  itself stands what is sat on in it (one to five seats).
 
 **A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
 `length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
@@ -1115,6 +1125,14 @@ prims collide as their mesh, its hull when convex.
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
   | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
   | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
+  | `treasure` | found with E by whoever touches it: its points (XP) and coins, once to each player, by its id; the voucher is signed as it is set, by whoever sets it, and counts only when that is OVGrid's master account or an issuer it certified — anyone else's treasure is found and gives nothing; a prim, an object or a clone | `points` (XP, 0–1000, 50), `coins` (0–100, 10); its `voucher` is the page's, never written in a build |
+
+- **Treasures to find** (`treasure`): hide one anywhere — a chest in a cellar, a box behind a waterfall, a
+  shell on the sea floor — as any part is placed, and give it `"behaviour": { "type": "treasure", "points": 120, "coins": 20 }`
+  and a `name` (what the finder is told they found: «Old chest»). E finds it, once per player; each finder's claim is kept in
+  the land it is in, so the land's standing (the Profile's «This land») counts who found what there. A build only says what it is
+  worth: its voucher is signed by the page of whoever places it, so a build imported by OVGrid's master account gives points and
+  the same build placed by anyone else gives none. Keep it small and in reach of the avatar (5 m): it is aimed at as any part.
 
 - **Doors the avatar walks through**: a door's leaf collides where it stands, so a shut door is a
   wall. Build it shut and give it `"behaviour": { "type": "door", "trigger": "both", "reach": 2.5,

@@ -162,6 +162,8 @@ WebAssembly): no page, no network, no storage, nothing but its API.
 | `keep(props)` | the same, kept: written by its owner's peer, signed, for everyone — at most once a second |
 | `get()` | its properties as shown |
 | `touch()` | opens or shuts what opens on a click (its door or slide, or its object's), as a click would |
+| `award(who, points, reason)` | gives `who` (a click's `who`) points (XP), once per call: signed on its owner's peer alone, and counted only if its owner is OVGrid's master account or an issuer it certified — a bell rung, a race won |
+| `hasUnlock(id)` | whether the player of the peer running it has an unlock (a level's title, one bought with coins): what each peer shows its own player |
 | `print(…)` | a line in its owner's Script tab |
 | `random()`, `now()`, `self` | alike on every peer; the shared time (s); `{ id, owner }` |
 

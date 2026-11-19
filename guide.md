@@ -883,14 +883,23 @@ base and its roof: fifteen of 4 m, sixteen of 3.6 m. `core`: where its door, hal
 side of it, or `left` / `right`, at one end, its lift in the corner (always at an end under 20.4 m wide). `flats`: `through`, one from front
 to back each side of the core, or `double`, one at the front and one at the back (four a landing with the core in the middle).
 `balconies`: `none`, `front` or `both` — one to each flat on the storeys over the ground one, 5 × 2 m between two screens that
-run up the building, an open way out onto it. `ground`: `flats`, or `open` — the building on columns, its core alone walled.
+run up the building, an open way out onto it. `ground`: `flats`; `open` — the building on columns, its core alone walled —; `hotel` — its ground storey one hall round its
+core, the core's walls open onto it, its windows' columns glass from the floor to the ceiling on the street: a hotel's lobby, come
+into by the building's own door —; or `shops` — a shop either side of the core, each a room from the front to the back, glazed
+like a hotel's and the column nearest its middle left open as its way in from the street, steps down to the street all along its
+front.
 `roof`: `flat` (a parapet), `eaves` (a slab out past its walls) or `hip`; a style's own are the first of the catalog's `roofs`.
 `glazing` 0–1 (0.5 its style's own), `variant` 0–9999 (which end of each flat its balcony stands at, whether the wall between
 its windows is dressed apart, a pavilion on its roof, which side of the street's door its lift stands at). `doors`: `open`, doorways from the hall into each flat, or `doors`, a door
 in each — a part each that moves, which costs the page every frame it is in sight (twenty of them, half a millisecond): leave
 them out but in the one building a visitor is led into. `lighting`: `none`, or `halls` — a light and a
 presence switch a storey: light the one or two a visitor walks into, not a whole street (a build's fair share is 12 lights).
-`stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair alone, its lift's shaft empty.
+`reception`: `none`, or `lobby` — its ground hall furnished as a reception by what the hall is. A block's: a concierge's desk
+facing the street's door (in the hall's wing beside the stair, where it has room), mailboxes by the door, a bench or a pair of
+armchairs, a runner, pictures and plants by its size, every way through it — to the lift, the stair, each flat's door — kept
+clear. With `ground` `hotel`, a hotel's, in all its ground storey: a long counter with its keys behind it, groups of seats on rugs,
+a luggage trolley, leaflets. For the buildings a visitor walks into. `stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair
+alone, its lift's shaft empty, no reception.
 
 Every building has its **lift**: a shaft beside the street's door, glass to the street from the ground to the top storey's
 ceiling — and to the side too where the core stands at an end —, a car for a dozen kept on the ground storey, and on the hall of
@@ -918,7 +927,8 @@ while it stands: its parts move only on a ride.
   own. Its glass is lit from inside by night as a house's.
 - **What its recipe stands** (never write them yourself): its lift — the car, two leaves to each landing's door and a button a
   storey, parts of the `lift` kind: one and three more a storey —; the two leaves of its street door; with `doors`, a door to
-  each flat; with `lighting`, a light and a switch a storey.
+  each flat; with `lighting`, a light and a switch a storey; with `reception`, its lobby — one part of the `room` kind, which
+  itself stands what is sat on in it (one to five seats).
 
 **A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
 `length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
@@ -1398,6 +1408,14 @@ prims collide as their mesh, its hull when convex.
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
   | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
   | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
+  | `treasure` | found with E by whoever touches it: its points (XP) and coins, once to each player, by its id; the voucher is signed as it is set, by whoever sets it, and counts only when that is OVGrid's master account or an issuer it certified — anyone else's treasure is found and gives nothing; a prim, an object or a clone | `points` (XP, 0–1000, 50), `coins` (0–100, 10); its `voucher` is the page's, never written in a build |
+
+- **Treasures to find** (`treasure`): hide one anywhere — a chest in a cellar, a box behind a waterfall, a
+  shell on the sea floor — as any part is placed, and give it `"behaviour": { "type": "treasure", "points": 120, "coins": 20 }`
+  and a `name` (what the finder is told they found: «Old chest»). E finds it, once per player; each finder's claim is kept in
+  the land it is in, so the land's standing (the Profile's «This land») counts who found what there. A build only says what it is
+  worth: its voucher is signed by the page of whoever places it, so a build imported by OVGrid's master account gives points and
+  the same build placed by anyone else gives none. Keep it small and in reach of the avatar (5 m): it is aimed at as any part.
 
 - **Doors the avatar walks through**: a door's leaf collides where it stands, so a shut door is a
   wall. Build it shut and give it `"behaviour": { "type": "door", "trigger": "both", "reach": 2.5,
@@ -2601,6 +2619,8 @@ WebAssembly): no page, no network, no storage, nothing but its API.
 | `keep(props)` | the same, kept: written by its owner's peer, signed, for everyone — at most once a second |
 | `get()` | its properties as shown |
 | `touch()` | opens or shuts what opens on a click (its door or slide, or its object's), as a click would |
+| `award(who, points, reason)` | gives `who` (a click's `who`) points (XP), once per call: signed on its owner's peer alone, and counted only if its owner is OVGrid's master account or an issuer it certified — a bell rung, a race won |
+| `hasUnlock(id)` | whether the player of the peer running it has an unlock (a level's title, one bought with coins): what each peer shows its own player |
 | `print(…)` | a line in its owner's Script tab |
 | `random()`, `now()`, `self` | alike on every peer; the shared time (s); `{ id, owner }` |
 
@@ -3654,7 +3674,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
   - `core` `centre` / `left` / `right`, default `centre`: Where its core stands — the street's door, the hall, the stair and the lift —: in the middle, flats either side of it; or at one end (seen from the street), flats at the other side alone, its lift in the corner, glazed to the side too. In the middle only where its width holds a flat either side (20.4 m).
   - `flats` `through` / `double`, default `double`: How each side of the core is laid on every storey: through — one flat from the front to the back —; double — one at the front and one at the back, where its depth holds both their doors on the hall (12.8 m with storeys of 4 m), else through.
   - `balconies` `none` / `front` / `both`, default `front`: A balcony to each flat on the storeys over the ground one, 5 m wide and 2 m out between two screens that run up the building, a way out onto it from the flat: none; at the front; at the front and the back.
-  - `ground` `flats` / `open`, default `flats`: What its ground storey is: flats, as the storeys over it; or open — the building on columns over the ground, its core alone walled.
+  - `ground` `flats` / `open` / `hotel` / `shops`, default `flats`: What its ground storey is: flats, as the storeys over it; open — the building on columns over the ground, its core alone walled; hotel — one hall round its core, its windows' columns glass from the floor to the ceiling on the street, the core's walls open onto it: a hotel's lobby, come into by the building's own door (with `reception`, furnished as one); shops — a shop either side of the core, each a room from the front to the back, its windows' columns glass from the floor to the ceiling and the one nearest its middle its way in, open on the street (1.4 m wide at the least), steps down to the street all along its front.
   - `roof` `flat` / `eaves` / `hip`, default `flat`: Over its top storey: flat, behind a parapet its walls go on as; eaves, a flat slab out past its walls; hip, four pitches up from eaves to a ridge along its longer side.
   - `glazing` 0–1, default 0.5: How wide its windows are: 0.5 its style's own, narrower towards 0, wider towards 1.
   - `variant` 0–9999, default 0: Which of its style's buildings it is: which end of each flat its balcony stands at, whether the wall between its windows is dressed apart, whether a pavilion stands on its roof, which side of the street's door its lift stands at. One number, one building.
@@ -3662,6 +3682,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
   - `stoop` 0–1.5, default 0.15: How far the ground before its door lies under its floor (m): steps go down to it, one for every 0.19 m.
   - `doors` `open` / `doors`, default `open`: The way from the hall into each flat: open, a doorway; doors, a door in it besides, opening into the flat as someone comes — a part each, four a storey at the most.
   - `lighting` `none` / `halls`, default `none`: A light on the ceiling of each storey's hall, its storey a zone with a switch of its own that turns it on while someone is there: none; halls, one a storey.
+  - `reception` `none` / `lobby`, default `none`: What stands in its ground storey's hall: none; lobby — its reception, furnished by what the hall is. A block's (the room kind's `lobby`): a concierge's desk facing the street's door, in the hall's wing where it has room, mailboxes by the door, a bench or a pair of armchairs, a runner, pictures and plants by its size, every way through it — to the lift, the stair and each flat's door — kept clear. A hotel's, where its ground storey is one (`ground` hotel; the room kind's `reception`): a long counter with its keys behind it, groups of seats on rugs, a luggage trolley, leaflets, in all its ground storey. One part, and one more to each seat. None in construction.
   - `stage` `finished` / `frame`, default `finished`: How far it is built: finished; or frame — its columns, its floors, its core and its stair alone, no wall round it, no glass, no door, no lift in its shaft: a building in construction.
 - **`lift`** — A piece of a lift, a few boxes each: car — a floor, a ceiling that lights it, a post at each corner, glass behind and at both sides, a panel either side of its way in (its −y) and over it —; leaf — one leaf of a door, a panel in its frame —; button — a plate on a wall, its face lit. Its size is its box. What moves it is its behaviour, a lift's (`lift`): give the car and its buttons the same `group` and `stops`, each button `button: stop` and its `stop`, each leaf `door` — how far it slides open along its own x — and, a landing's, the `landing` it stays at. A building's recipe stands them in its shaft. Faces: 0 frame, 1 floor, 2 glass, 3 lit, 4 panel. Size: its box (m): a car's across, front to back and floor to top; a leaf's width, thickness and height; a button's plate.
   - `piece` `car` / `leaf` / `button`, default `car`: Which piece of a lift it is: its car, a leaf of a door, a button.
@@ -3773,6 +3794,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
 - **`belt`** — Carries whoever stands on it along its own y: an escalator (stairs rise along their y), a moving walkway. `speed` -5–5 m/s (default 0.5).
 - **`passage`** — A click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside (x, y, z of its object) — into a vehicle by a click on its hull —, from inside out across its thinnest side, past it, onto what is there — out of it by its door. Inside its object is within the box round its solid parts' middles. `way` `both` / `in` / `out` (default both), `x` -64–64 m (default 0), `y` -64–64 m (default 0), `z` -64–64 m (default 1), `depth` 0.3–5 m (default 1).
 - **`route`** — Goes from where it is through its points, round and on again or to the last and back, stopping a while if asked — at each point, or only at its ends: a boat on a tour that comes back to port, a train on its line with its station, a ship on its autopilot. Held, it waits where it was left until it is run again, and then comes back onto it from there. Run once, it goes round or there and back once and stays where it is kept. `speed` 0.1–120 m/s (default 3), `accel` 0.1–10 m/s² (default 1), `stop` 0–120 s (default 0), `at` `each` / `ends` (default each), `mode` `round` / `back` (default round), `face` `no` / `yes` (default yes), `water` `no` / `yes` (default no).
+- **`treasure`** — Found with E: gives its points and coins once to each player who finds it. They count when whoever set it is OVGrid's master account or an issuer it certified: its voucher is signed as it is set. `points` 0–1000 XP (default 50), `coins` 0–100 coins (default 10).
 
 ### Vehicles
 

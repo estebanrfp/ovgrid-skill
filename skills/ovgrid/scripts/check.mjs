@@ -1637,6 +1637,7 @@ var init_building = __esm(() => {
     size: [30, 18, 22],
     sizeNote: "what its width, depth, storeys and roof make (m): a size given sets its width and depth",
     labelOf: ({ style }) => LABELS3[style] ?? "Building",
+    brings: (params) => params.reception && !params.stage ? ["room"] : [],
     lookedBy: "style",
     looks: LOOKS3,
     lookLabels: LOOK_LABELS3,
@@ -1649,7 +1650,7 @@ var init_building = __esm(() => {
       { name: "core", label: "Core", min: 0, max: 2, default: 0, step: 1, options: ["centre", "left", "right"], labels: ["In the middle", "At its left end", "At its right end"], description: "Where its core stands — the street's door, the hall, the stair and the lift —: in the middle, flats either side of it; or at one end (seen from the street), flats at the other side alone, its lift in the corner, glazed to the side too. In the middle only where its width holds a flat either side (20.4 m)." },
       { name: "flats", label: "Flats", min: 0, max: 1, default: 1, step: 1, options: ["through", "double"], labels: ["Front to back", "Front and back"], description: "How each side of the core is laid on every storey: through — one flat from the front to the back —; double — one at the front and one at the back, where its depth holds both their doors on the hall (12.8 m with storeys of 4 m), else through." },
       { name: "balconies", label: "Balconies", min: 0, max: 2, default: 1, step: 1, options: ["none", "front", "both"], labels: ["None", "At the front", "Front and back"], description: "A balcony to each flat on the storeys over the ground one, 5 m wide and 2 m out between two screens that run up the building, a way out onto it from the flat: none; at the front; at the front and the back." },
-      { name: "ground", label: "Ground storey", min: 0, max: 1, default: 0, step: 1, options: ["flats", "open"], labels: ["Flats", "Open, on columns"], description: "What its ground storey is: flats, as the storeys over it; or open — the building on columns over the ground, its core alone walled." },
+      { name: "ground", label: "Ground storey", min: 0, max: 3, default: 0, step: 1, options: ["flats", "open", "hotel", "shops"], labels: ["Flats", "Open, on columns", "A hotel's lobby", "Shops"], description: "What its ground storey is: flats, as the storeys over it; open — the building on columns over the ground, its core alone walled; hotel — one hall round its core, its windows' columns glass from the floor to the ceiling on the street, the core's walls open onto it: a hotel's lobby, come into by the building's own door (with `reception`, furnished as one); shops — a shop either side of the core, each a room from the front to the back, its windows' columns glass from the floor to the ceiling and the one nearest its middle its way in, open on the street (1.4 m wide at the least), steps down to the street all along its front." },
       { name: "roof", label: "Roof", min: 0, max: ROOFS2.length - 1, default: 0, step: 1, options: ROOFS2, labels: ["Flat, a parapet", "Flat, out past the walls", "Hipped"], description: "Over its top storey: flat, behind a parapet its walls go on as; eaves, a flat slab out past its walls; hip, four pitches up from eaves to a ridge along its longer side." },
       { name: "glazing", label: "Glass", min: 0, max: 1, default: 0.5, step: 0.05, description: "How wide its windows are: 0.5 its style's own, narrower towards 0, wider towards 1." },
       { name: "variant", label: "Variation", min: 0, max: 9999, default: 0, step: 1, description: "Which of its style's buildings it is: which end of each flat its balcony stands at, whether the wall between its windows is dressed apart, whether a pavilion stands on its roof, which side of the street's door its lift stands at. One number, one building." },
@@ -1657,6 +1658,7 @@ var init_building = __esm(() => {
       { name: "stoop", label: "Door step", min: 0, max: 1.5, default: 0.15, step: 0.01, description: "How far the ground before its door lies under its floor (m): steps go down to it, one for every 0.19 m." },
       { name: "doors", label: "Flats' doors", min: 0, max: 1, default: 0, step: 1, options: ["open", "doors"], labels: ["Open doorways", "A door each"], description: "The way from the hall into each flat: open, a doorway; doors, a door in it besides, opening into the flat as someone comes — a part each, four a storey at the most." },
       { name: "lighting", label: "Lights", min: 0, max: 1, default: 0, step: 1, options: ["none", "halls"], labels: ["None", "In its halls"], description: "A light on the ceiling of each storey's hall, its storey a zone with a switch of its own that turns it on while someone is there: none; halls, one a storey." },
+      { name: "reception", label: "Reception", min: 0, max: 1, default: 0, step: 1, options: ["none", "lobby"], labels: ["None", "A lobby"], description: "What stands in its ground storey's hall: none; lobby — its reception, furnished by what the hall is. A block's (the room kind's `lobby`): a concierge's desk facing the street's door, in the hall's wing where it has room, mailboxes by the door, a bench or a pair of armchairs, a runner, pictures and plants by its size, every way through it — to the lift, the stair and each flat's door — kept clear. A hotel's, where its ground storey is one (`ground` hotel; the room kind's `reception`): a long counter with its keys behind it, groups of seats on rugs, a luggage trolley, leaflets, in all its ground storey. One part, and one more to each seat. None in construction." },
       { name: "stage", label: "Built", min: 0, max: 1, default: 0, step: 1, options: ["finished", "frame"], labels: ["Finished", "In construction"], description: "How far it is built: finished; or frame — its columns, its floors, its core and its stair alone, no wall round it, no glass, no door, no lift in its shaft: a building in construction." }
     ]
   });
@@ -6018,6 +6020,8 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
   const frame = params.stage === 1;
   const F = Math.max(2, Math.min(params.floors, Math.floor((TALLEST - Math.max(params.plinth, params.stoop) - (frame ? 0 : CROWN[roofName] ?? 0)) / S + 0.000000001)));
   const open = params.ground === 1 && !frame;
+  const hotel = params.ground === 2 && !frame;
+  const shops = params.ground === 3 && !frame;
   const flat = roofName === "flat" && !frame;
   const random = randomOf3(params.variant * 7919 + params.style * 131 + 29);
   const chances = { inner: random(), spandrels: random(), pavilion: random(), lift: random() };
@@ -6050,11 +6054,13 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
   const split = params.flats === 1 && doorY - hallY >= 2 * way - 0.000000001;
   const midY = split ? round6(clamp6(0, hallY + way, doorY - way)) : 0;
   const parts = split ? [{ part: "back", y0: inside.y0, y1: round6(midY - PART / 2), door: round6((hallY + midY - PART / 2) / 2) }, { part: "front", y0: round6(midY + PART / 2), y1: inside.y1, door: round6((midY + PART / 2 + doorY) / 2) }] : [{ part: "through", y0: inside.y0, y1: inside.y1, door: round6((hallY + doorY) / 2) }];
-  const lived = Array.from({ length: F }, (_, k) => k).filter((k) => k > 0 || !open);
+  const lived = Array.from({ length: F }, (_, k) => k).filter((k) => k > 0 || !(open || hotel || shops));
+  const lit = Array.from({ length: F }, (_, k) => k).filter((k) => k > 0 || !open);
   const flats = frame ? [] : lived.flatMap((k) => sides.flatMap((each) => parts.map((part) => ({ storey: k, side: each.name, part: part.part, x0: each.x0, x1: each.x1, y0: part.y0, y1: part.y1 }))));
   const balconied = !frame && F > 1 ? params.balconies : 0;
   const inner = chances.inner < 0.5;
   const balconies = [];
+  const shopDoors = [];
   const frontOf = (sign, pattern, name) => sides.flatMap((each) => {
     if (!parts.some((part) => part.part === "through" || part.part === name))
       return [];
@@ -6068,8 +6074,20 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
       const from = round6(clamp6((column2.a0 + column2.a1) / 2 - wide2 / 2, each.x0 + FOOTING, each.x1 - FOOTING - wide2));
       balconies.push({ front: name, sign, x0: from, x1: round6(from + wide2), y: sign > 0 ? rect2.y1 : rect2.y0, out: BALCONY_OUT, storeys: F - 1, top: flat ? top : round6(top - SLAB3), canopy: flat, rail: style.rail });
     }
-    return columns2.flatMap((column2, i) => lived.flatMap((k) => {
+    const street = sign > 0 && (hotel || shops);
+    const entered = street && shops ? columns2.reduce((best, column2, i) => Math.abs((column2.a0 + column2.a1) / 2 - (each.x0 + each.x1) / 2) < Math.abs((columns2[best].a0 + columns2[best].a1) / 2 - (each.x0 + each.x1) / 2) ? i : best, 0) : -1;
+    return columns2.flatMap((column2, i) => lit.flatMap((k) => {
       const floor = k * S;
+      if (k === 0 && street) {
+        if (i !== entered && i !== chosen)
+          return column2.panes.map(([a0, a1]) => ({ a0, a1, z0: 0, z1: clear, kind: "window" }));
+        const widened = Math.max(0, WAY - (column2.a1 - column2.a0)) / 2;
+        const [d0, d1] = [round6(column2.a0 - widened), round6(column2.a1 + widened)];
+        if (i !== entered)
+          return [{ a0: d0, a1: d1, z0: 0, z1: clear, kind: "window" }];
+        shopDoors.push({ side: each.name, a0: d0, a1: d1 });
+        return [{ a0: d0, a1: d1, z0: 0, z1: head, kind: "way" }, { a0: d0, a1: d1, z0: head, z1: clear, kind: "window" }];
+      }
       if (i === chosen && k > 0) {
         const widened = Math.max(0, WAY - (column2.a1 - column2.a0)) / 2;
         return [{ a0: round6(column2.a0 - widened), a1: round6(column2.a1 + widened), z0: round6(floor), z1: round6(floor + Math.max(column2.z[1], head)), kind: "way" }];
@@ -6077,7 +6095,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
       return column2.panes.map(([a0, a1]) => ({ a0, a1, z0: round6(floor + column2.z[0]), z1: round6(floor + column2.z[1]), kind: "window" }));
     }));
   });
-  const sideOf = (each) => parts.flatMap((part) => laid2(PATTERNS[style.side], [part.y0 + CORNER2, part.y1 - CORNER2], g, clear, head).flatMap((column2) => lived.flatMap((k) => column2.panes.map(([a0, a1]) => ({ a0, a1, z0: round6(k * S + column2.z[0]), z1: round6(k * S + column2.z[1]), kind: "window" })))));
+  const sideOf = (each) => parts.flatMap((part) => laid2(PATTERNS[style.side], [part.y0 + CORNER2, part.y1 - CORNER2], g, clear, head).flatMap((column2) => lit.flatMap((k) => column2.panes.map(([a0, a1]) => ({ a0, a1, z0: round6(k * S + column2.z[0]), z1: round6(k * S + column2.z[1]), kind: "window" })))));
   const frontZ = PATTERNS[style.front] ? laid2(PATTERNS[style.front], [0, 4], 1, clear, head)[0].z : [0.9, head];
   const openUnder = (a0, a1) => open && a1 - a0 > 0.01 ? [{ a0: round6(a0), a1: round6(a1), z0: 0, z1: round6(S - SLAB3), kind: "void" }] : [];
   const walls = [];
@@ -6164,13 +6182,13 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
       back: within3,
       partition: true,
       blocker: true,
-      openings: doorways,
+      openings: [...hotel ? [{ a0: recessed ? hallY : inside.y0, a1: doorY, z0: 0, z1: clear, kind: "void" }] : [], ...doorways],
       ends: open ? [null, [0, round6(S - SLAB3)]] : frame ? [[0, round6(top - SLAB3)], [0, round6(top - SLAB3)]] : null,
       endSlot: frame ? FACE3.trim : FACE3.walls,
       skins: frame ? [] : [...recessed ? [{ face: 0, a0: recessY, a1: inside.y1, z0: 0, z1: clear, slot: FACE3.walls }] : [], ...open ? [{ face: 1, a0: inside.y0, a1: inside.y1, z0: 0, z1: round6(S - SLAB3), slot: FACE3.walls }] : []]
     });
     if (split && !frame)
-      walls.push({ name: `between ${each.name}`, along: 0, at: round6(midY + PART / 2), out: 1, thick: PART, a0: each.x0, a1: each.x1, inner: [each.x0, each.x1], z0: open ? S : 0, z1: ceiling, slot: FACE3.inside, back: FACE3.inside, partition: true, blocker: true, openings: [], skins: [] });
+      walls.push({ name: `between ${each.name}`, along: 0, at: round6(midY + PART / 2), out: 1, thick: PART, a0: each.x0, a1: each.x1, inner: [each.x0, each.x1], z0: lived.includes(0) ? 0 : S, z1: ceiling, slot: FACE3.inside, back: FACE3.inside, partition: true, blocker: true, openings: [], skins: [] });
   }
   const liftMid = round6((shaftX.x0 + shaftX.x1) / 2);
   const shaftTop = frame ? round6(top - SLAB3) : ceiling;
@@ -6263,8 +6281,8 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
   const steps = Math.max(1, Math.ceil(params.stoop / STEP4 - 0.000000001));
   const out = M.porch[1];
   const porch = {
-    x0: bay.x0,
-    x1: bay.x1,
+    x0: shops ? rect2.x0 : bay.x0,
+    x1: shops ? rect2.x1 : bay.x1,
     y0: rect2.y1,
     y1: round6(rect2.y1 + out),
     bottom: base,
@@ -6308,6 +6326,54 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
       at: [round6(liftMid + (LIFT3.door + car.size[0] - 2 * LIFT3.post) / 4 + (Math.floor(k / LIFT3.rows) - (stacks - 1) / 2) * LIFT3.rise), round6(car.at[1] - car.size[1] / 2 + LIFT3.post + 0.01), round6(LIFT3.foot + k % LIFT3.rows * LIFT3.rise)]
     }))
   };
+  const reception = params.reception && !frame ? (() => {
+    const sideOf2 = (name) => name === "left" ? 3 : 1;
+    const stairs2 = { x0: Math.min(bay.x0, edge), x1: Math.max(bay.x1, edge) };
+    if (hotel) {
+      const [own2, along3] = [(x) => round6(clamp6(x, inside.x0, inside.x1)), (y) => round6(clamp6(y, inside.y0, inside.y1))];
+      const windows = [["back", 0, own2], ["right", 1, along3], ["front", 2, own2], ["left", 3, along3]].flatMap(([name, at, held]) => walls.find((wall) => wall.name === name).openings.filter((o) => o.kind === "window" && o.z0 < clear && o.z1 - o.z0 < S && o.z1 <= clear + 0.000000001).map((o) => ({ side: at, from: held(o.a0), to: held(o.a1), as: "window", sill: round6(o.z0) })));
+      return {
+        type: "reception",
+        at: [0, 0, 0],
+        palette: params.variant % 3,
+        variant: params.variant,
+        hall: {
+          width: round6(inside.x1 - inside.x0),
+          depth: round6(inside.y1 - inside.y0),
+          height: clear,
+          way: M.rooms.inner[0],
+          openings: windows,
+          cores: [
+            { x0: own2(core.x0 - WALL), x1: own2(core.x1 + WALL), y0: doorY, y1: inside.y1, doors: [{ side: 0, from: entry.from, to: round6(entry.from + entry.width) }, { side: 0, from: round6(liftMid - LIFT3.door / 2), to: round6(liftMid + LIFT3.door / 2) }] },
+            { x0: own2(stairs2.x0 - WALL), x1: own2(stairs2.x1 + WALL), y0: inside.y0, y1: hallY, doors: [{ side: 2, from: bay.x0, to: bay.x1 }] }
+          ]
+        }
+      };
+    }
+    const [cx, cy] = [round6((core.x0 + core.x1) / 2), round6((inside.y0 + doorY) / 2)];
+    const [own, along2] = [(x) => round6(x - cx), (y) => round6(y - cy)];
+    const end = side2 === 0 ? [] : walls.find((wall) => wall.name === (side2 < 0 ? "left" : "right")).openings.filter((o) => o.kind === "window" && o.z0 < clear && o.a1 <= doorY + 0.000000001 && o.z1 - o.z0 < S);
+    return {
+      type: "lobby",
+      at: [cx, cy, 0],
+      palette: params.variant % 3,
+      variant: params.variant,
+      hall: {
+        width: round6(core.x1 - core.x0),
+        depth: round6(doorY - inside.y0),
+        height: clear,
+        way: M.rooms.inner[0],
+        openings: [
+          { side: 2, from: own(entry.from), to: own(entry.from + entry.width), as: "door", entry: true },
+          { side: 2, from: own(liftMid - LIFT3.door / 2), to: own(liftMid + LIFT3.door / 2), as: "door" },
+          ...lived.includes(0) ? sides.flatMap((each) => parts.map((part) => ({ side: sideOf2(each.name), from: along2(part.door - M.rooms.inner[0] / 2), to: along2(part.door + M.rooms.inner[0] / 2), as: "door" }))) : [],
+          ...end.map((o) => ({ side: sideOf2(side2 < 0 ? "left" : "right"), from: along2(o.a0), to: along2(o.a1), as: "window", sill: round6(o.z0) })),
+          { side: 0, from: own(shaftX.x0 + 0.6), to: own(shaftX.x1 - 0.6), as: "window", sill: frontZ[0] }
+        ],
+        cores: [{ x0: own(stairs2.x0), x1: own(stairs2.x1), y0: along2(inside.y0), y1: along2(hallY), doors: [{ side: 2, from: own(bay.x0), to: own(bay.x1) }] }]
+      }
+    };
+  })() : null;
   const past = Math.max(eave, bands?.out ?? 0);
   const reach = (sign) => Math.max(past, ...balconies.filter((each) => each.sign === sign).map((each) => each.out));
   const roof2 = { type: frame ? "frame" : roofName, top: cap3 ? round6(top + cap3.rise) : flat ? Math.max(wallTop, overrun.max[2], pavilion?.max[2] ?? 0) : top, cap: cap3 };
@@ -6348,7 +6414,10 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LIFT3, O
     lights,
     switches,
     lift: lift2,
+    reception,
     measures: M,
+    hotel,
+    shops: shops ? sides.map((each) => ({ side: each.name, x0: each.x0, x1: each.x1, y0: inside.y0, y1: inside.y1, door: (({ a0, a1 }) => [a0, a1])(shopDoors.find((door2) => door2.side === each.name)) })) : [],
     min: [round6(rect2.x0 - past), round6(rect2.y0 - reach(-1)), base],
     max: [round6(rect2.x1 + past), round6(Math.max(rect2.y1 + reach(1), porch.y1 + (steps - 1) * TREAD2)), roof2.top],
     reasons: []
@@ -6364,6 +6433,64 @@ var init_building_plan = __esm(() => {
   EAVES = Object.freeze({ eaves: 1, hip: 0.6 });
   [BALCONY_WIDE, BALCONY_OUT] = M.balcony;
   FACE3 = Object.freeze({ walls: 0, apart: 1, trim: 2, glass: 3, roof: 4, floors: 5, inside: 6 });
+});
+
+// src/build/kinds/room-hall.js
+var round7 = (v) => Math.round(v * 1000) / 1000, hallOf2 = ({ width: W, depth: D, height = 3.75, way = 1.4, openings = [], cores = [] }) => {
+  const r3 = (v) => Math.round(v * 1000) / 1000;
+  const box = (x0, y0, x1, y1) => [Math.max(Math.min(x0, x1), -W / 2), Math.max(Math.min(y0, y1), -D / 2), Math.min(Math.max(x0, x1), W / 2), Math.min(Math.max(y0, y1), D / 2)].map(r3);
+  const sided = (side2) => ({ length: side2 % 2 ? D : W, line: [-D / 2, W / 2, D / 2, -W / 2][side2], inward: [1, -1, -1, 1][side2], across: side2 % 2 ? W : D });
+  const landing = (side2, from, to, hand, deep) => {
+    const { line, inward } = sided(side2);
+    return side2 % 2 ? box(line, from - hand, line + inward * deep, to + hand) : box(from - hand, line, to + hand, line + inward * deep);
+  };
+  const ordered = [...openings.filter((each) => each.entry), ...openings.filter((each) => !each.entry)];
+  const walls = [], windows = [], ways = [], keep = [];
+  for (const side2 of [0, 1, 2, 3]) {
+    const { length: length2 } = sided(side2);
+    const cut2 = openings.filter((each) => each.side === side2 && each.as !== "window").map((each) => [Math.min(each.from, each.to), Math.max(each.from, each.to)]).sort((p, q) => p[0] - q[0]);
+    let from = -length2 / 2;
+    for (const [a0, a1] of [...cut2, [length2 / 2, length2 / 2]]) {
+      if (a0 - from >= 0.4)
+        walls.push([side2, r3(from), r3(a0)]);
+      from = Math.max(from, a1);
+    }
+  }
+  for (const each of ordered) {
+    const [from, to] = [Math.min(each.from, each.to), Math.max(each.from, each.to)];
+    const deep = Math.min(way, sided(each.side).across * 0.45);
+    if (each.as === "window")
+      windows.push([each.side, r3(from), r3(to), r3(each.sill ?? 0.9)]);
+    else if (each.as === "door" || each.as === "stair") {
+      const at = each.as === "door" ? landing(each.side, from, to, 0.3, deep) : landing(each.side, from, to, 0, Math.min(Math.max(2.2, way), sided(each.side).across));
+      ways.push(at);
+      keep.push(at);
+    } else
+      ways.push(landing(each.side, from, to, 0, deep));
+  }
+  const closed = [];
+  for (const core of cores) {
+    closed.push(box(core.x0, core.y0, core.x1, core.y1));
+    for (const door2 of core.doors ?? []) {
+      const [from, to] = [Math.min(door2.from, door2.to), Math.max(door2.from, door2.to)];
+      const deep = Math.max(2.2, way);
+      const at = door2.side % 2 ? box(door2.side === 1 ? core.x1 : core.x0, from - 0.3, door2.side === 1 ? core.x1 + deep : core.x0 - deep, to + 0.3) : box(from - 0.3, door2.side === 2 ? core.y1 : core.y0, to + 0.3, door2.side === 2 ? core.y1 + deep : core.y0 - deep);
+      ways.push(at);
+      keep.push(at);
+    }
+  }
+  return { width: r3(W), depth: r3(D), height: r3(height), way: r3(way), walls, windows, ways: ways.filter(([x0, y0, x1, y1]) => x1 - x0 > 0.05 && y1 - y0 > 0.05), keep, closed };
+}, BODY2, receptionPart = (hall, { type = "lobby", palette = 0, variant = 0, fabric = 0, wood = 0 } = {}) => {
+  const params = { type: ROOM_TYPES.indexOf(type), palette: palette % PALETTE_NAMES.length, variant, dines: 0, width: hall.width, depth: hall.depth, height: hall.height, walls: hall.walls, windows: hall.windows, way: hall.way, ways: hall.ways, keep: hall.keep, closed: hall.closed, ...fabric && { fabric }, ...wood && { wood } };
+  const faces = Object.fromEntries(LOOKS6[type][PALETTE_NAMES[params.palette]].map((texture, face2) => [face2, { texture }]));
+  for (const [face2, tint] of Object.entries(tintsFor(params, ROOM_CLOTH, ROOM_FACES.length, { faces })))
+    faces[face2].tint = tint;
+  return { kind: "room", params, size: [params.width, params.depth, params.height], at: [0, 0, round7(params.height / 2)], color: [...BODY2], surface: { faces } };
+};
+var init_room_hall = __esm(() => {
+  init_room();
+  init_furniture();
+  BODY2 = [0.6, 0.6, 0.6];
 });
 
 // src/build/kinds/building-gen.js
@@ -6689,6 +6816,7 @@ var init_building_gen = __esm(() => {
   init_mesh();
   init_building_plan();
   init_house_plan();
+  init_room_hall();
   [WALLS2, APART, TRIM2, GLASS3, ROOFING2, FLOORS2, INSIDE2] = [0, 1, 2, 3, 4, 5, 6];
   ORIGIN2 = [0, 0, 0];
   BIAS = Object.freeze([0.06, 0.06, 0.02]);
@@ -6763,6 +6891,7 @@ var init_building_gen = __esm(() => {
           ...lift2.buttons.map((button) => liftOf(PUSH, { ...button, at: [button.at[0], button.at[1], button.at[2] - button.size[2] / 2] }, {}, { button: "stop", stop: button.stop }, button.stop ? BUTTON.storey : BUTTON.ground))
         ] : [],
         ...plan.doors.map((door2) => doorOf(door2, { style: DOOR_STYLES2[door2.style], frame: 0.06, hinge: door2.hinge, lit: 1, jambs: 1 }, { type: "door", trigger: "both", reach: 2.5, stay: 8 })),
+        ...plan.reception ? [receptionPart(hallOf2(plan.reception.hall), { type: plan.reception.type, palette: plan.reception.palette, variant: plan.reception.variant })].map((room2) => ({ ...room2, at: from(room2.at.map((v, k) => v + plan.reception.at[k])) })) : [],
         ...plan.inner.map((door2) => doorOf(door2, { style: DOOR_STYLES2.plain, frame: 0.05, hinge: door2.hinge }, { type: "door", trigger: "both", reach: 1.6, stay: 5 })),
         ...plan.lights.map((light) => ({
           kind: "bevel",
@@ -6913,20 +7042,20 @@ var ringOf2 = ([x, y], radius, sides, from = Math.PI / sides) => Array.from({ le
       face2(slot, [[a0, b0, z1], [a1, b0, z1], [a1, b1, z1], [a0, b1, z1]], [0, 0, 1]);
     if (has.has("bottom"))
       face2(slot, [[a0, y0, z0], [x0, b0, z0], [x0, b1, z0], [a0, y1, z0], [a1, y1, z0], [x1, b1, z0], [x1, b0, z0], [a1, y0, z0]], [0, 0, -1]);
-    const round7 = [
+    const round8 = [
       ["back", [a0, y0], [a1, y0], [0, -1]],
       ["right", [x1, b0], [x1, b1], [1, 0]],
       ["front", [a1, y1], [a0, y1], [0, 1]],
       ["left", [x0, b1], [x0, b0], [-1, 0]]
     ];
-    for (const [i, [name, p, q, [nx, ny]]] of round7.entries()) {
+    for (const [i, [name, p, q, [nx, ny]]] of round8.entries()) {
       if (!has.has(name))
         continue;
       face2(slot, [[...p, z0], [...q, z0], [...q, zt], [...p, zt]], [nx, ny, 0]);
       const [pi, qi] = [[p[0] - nx * r, p[1] - ny * r], [q[0] - nx * r, q[1] - ny * r]];
       face2(slot, [[...p, zt], [...q, zt], [...qi, z1], [...pi, z1]], [nx, ny, 1]);
-      const [, next, , [mx, my]] = round7[(i + 1) % 4];
-      if (!has.has(round7[(i + 1) % 4][0]))
+      const [, next, , [mx, my]] = round8[(i + 1) % 4];
+      if (!has.has(round8[(i + 1) % 4][0]))
         continue;
       face2(slot, [[...q, z0], [...next, z0], [...next, zt], [...q, zt]], [nx + mx, ny + my, 0]);
       face2(slot, [[...q, zt], [...next, zt], [next[0] - mx * r, next[1] - my * r, z1]], [nx + mx, ny + my, 1]);
@@ -7181,17 +7310,17 @@ var FRAME2, COVER, BEDDING, THROW, METAL, TOP, SEAT2 = 0.45, SIT = 0.175, LEAN =
   }
 }, bedSeat = ({ w, d }) => {
   return { pose: LYING, places: bedPlaces(w - 0.08).map((x) => [x, -d / 2 + BED.board + LIE.gap + LIE.head, BED.mattress + LIE.hips]) };
-}, bedSolids = ({ w, d, h }) => [[[-w / 2, -d / 2 + BED.board, 0], [w / 2, d / 2, BED.mattress + 0.03]], [[-w / 2 - 0.06, -d / 2, 0], [w / 2 + 0.06, -d / 2 + BED.board, h]]], topOf = (pen, { w, d, h }, round7, thick, level) => {
-  if (round7)
+}, bedSolids = ({ w, d, h }) => [[[-w / 2, -d / 2 + BED.board, 0], [w / 2, d / 2, BED.mattress + 0.03]], [[-w / 2 - 0.06, -d / 2, 0], [w / 2 + 0.06, -d / 2 + BED.board, h]]], topOf = (pen, { w, d, h }, round8, thick, level) => {
+  if (round8)
     pen.disc(TOP, [0, 0], w / 2, h - thick, h, level >= 3 ? 16 : 10, { bottom: true });
   else
     pen.box(TOP, [-w / 2, -d / 2, h - thick], [w / 2, d / 2, h], ["top", "front", "back", "left", "right", "bottom"]);
 }, table = (pen, dims, level) => {
   const { w, d, h, model, type, stout = 0.5 } = dims;
   const stoutly = by(stout, 0.65, 1.35);
-  const round7 = model === "round";
+  const round8 = model === "round";
   if (level <= 1) {
-    if (round7)
+    if (round8)
       return pen.disc(TOP, [0, 0], w / 2, 0, h, 6, { sideSlot: FRAME2 });
     return pen.box(TOP, [-w / 2, -d / 2, 0], [w / 2, d / 2, h], ["top", "front", "back", "left", "right"]);
   }
@@ -7209,8 +7338,8 @@ var FRAME2, COVER, BEDDING, THROW, METAL, TOP, SEAT2 = 0.45, SIT = 0.175, LEAN =
     }
     return;
   }
-  topOf(pen, dims, round7, thick, level);
-  if (round7) {
+  topOf(pen, dims, round8, thick, level);
+  if (round8) {
     if (type === "table") {
       pen.leg(FRAME2, [0, 0], 0.12 * stoutly, 0.06, under, level >= 3 ? 8 : 6);
       pen.disc(FRAME2, [0, 0], Math.min(0.32, w * 0.3), 0, 0.06, level >= 3 ? 10 : 6);
@@ -7298,13 +7427,13 @@ var FRAME3, COVER2, BEDDING2, THROW2, METAL2, TOP2, ART, SIZES, PICTURE, canvasO
   const inset = PICTURE.bar[model] + (model === "mounted" ? PICTURE.mount : 0);
   return [w - 2 * inset, h - 2 * inset].map((v) => Math.round(v * 1000) / 1000);
 }, rug = (pen, { w, d, h, model }, level) => {
-  const round7 = model === "round";
+  const round8 = model === "round";
   if (level <= 1) {
-    if (round7)
+    if (round8)
       return pen.face(COVER2, ringOf2([0, 0], w / 2, 8).map(([x, y]) => [x, y, h]), [0, 0, 1]);
     return pen.box(COVER2, [-w / 2, -d / 2, 0], [w / 2, d / 2, h], ["top"]);
   }
-  if (round7)
+  if (round8)
     pen.disc(COVER2, [0, 0], w / 2, 0, h, level >= 3 ? 20 : 12);
   else
     pen.box(COVER2, [-w / 2, -d / 2, 0], [w / 2, d / 2, h]);
@@ -8147,7 +8276,7 @@ var init_furniture_gen = __esm(() => {
 });
 
 // src/build/kinds/room-reception.js
-var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most) => Math.min(Math.max(v, least), most), rect2 = (x0, y0, x1, y1) => ({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), x1: Math.max(x0, x1), y1: Math.max(y0, y1) }), overlap = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)), middleOf2 = (r) => [(r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2], distance = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]), YAWS, SIDE_YAW, axesOf = (yaw) => [[Math.round(Math.cos(yaw)), Math.round(Math.sin(yaw))], [-Math.round(Math.sin(yaw)), Math.round(Math.cos(yaw))]], pointOf = (at, yaw, u, v) => {
+var HAND3, round8 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most) => Math.min(Math.max(v, least), most), rect2 = (x0, y0, x1, y1) => ({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), x1: Math.max(x0, x1), y1: Math.max(y0, y1) }), overlap = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)), middleOf2 = (r) => [(r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2], distance = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]), YAWS, SIDE_YAW, axesOf = (yaw) => [[Math.round(Math.cos(yaw)), Math.round(Math.sin(yaw))], [-Math.round(Math.sin(yaw)), Math.round(Math.cos(yaw))]], pointOf = (at, yaw, u, v) => {
   const [[ux, uy], [vx, vy]] = axesOf(yaw);
   return [at[0] + ux * u + vx * v, at[1] + uy * u + vy * v];
 }, spanOf = (at, yaw, u0, v0, u1, v1) => {
@@ -8225,7 +8354,7 @@ var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most
   const gather = (most, behind2) => {
     const { list: found, offer } = bestOf(most);
     for (const [rank, width] of widths.entries()) {
-      const counter2 = shaped("counter", model, { width: round7(width) });
+      const counter2 = shaped("counter", model, { width: round8(width) });
       const [cw, cd, ch] = sizeOf(counter2);
       for (const back of [behind2?.(cw) ?? null]) {
         const [bw, bd, bh] = back ? sizeOf(back) : [0, 0, 0];
@@ -8350,7 +8479,7 @@ var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most
     const r = place.takenBy(at, [long, 1, 0], yaw);
     if (r.x0 < room2.x0 + 0.05 || r.x1 > room2.x1 - 0.05 || r.y0 < room2.y0 + 0.05 || r.y1 > room2.y1 - 0.05 || bodies.some((body) => overlap(body, r) > 0.000001))
       continue;
-    put(shaped("rug", "runner", { width: round7(long), depth: 1 }), at, yaw, { flat: true });
+    put(shaped("rug", "runner", { width: round8(long), depth: 1 }), at, yaw, { flat: true });
     return;
   }
 }, plants = (place, count) => {
@@ -8392,7 +8521,7 @@ var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most
     for (const [x, y, yaw] of [[0, -off, 0], [0, off, Math.PI], [off, 0, Math.PI / 2], [-off, 0, -Math.PI / 2]])
       parts.push({ piece: arm, at: [x, y], yaw, seat: true });
     const across = 2 * off + armBox[1];
-    return { parts, rug: [round7(across - 0.3), round7(across - 0.3)], size: [across + 0.6, across + 0.6], high: armBox[2] };
+    return { parts, rug: [round8(across - 0.3), round8(across - 0.3)], size: [across + 0.6, across + 0.6], high: armBox[2] };
   }
   const sofa = shaped("sofa", pick(random, ["track", "rolled", "modular", "chesterfield"]), { width: 2.2 });
   const sofaBox = sizeOf(sofa);
@@ -8401,7 +8530,7 @@ var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most
   if (kind === "facing") {
     const off = t[1] / 2 + 0.45 + sofaBox[1] / 2;
     parts.push({ piece: table2, at: [0, 0], yaw: 0 }, { piece: sofa, at: [0, -off], yaw: 0, seat: true }, { piece: sofa, at: [0, off], yaw: Math.PI, seat: true });
-    return { parts, rug: [round7(sofaBox[0] + 0.6), round7(2 * off - 0.2)], size: [sofaBox[0] + 0.6, 2 * off + sofaBox[1] + 0.6], high: sofaBox[2] };
+    return { parts, rug: [round8(sofaBox[0] + 0.6), round8(2 * off - 0.2)], size: [sofaBox[0] + 0.6, 2 * off + sofaBox[1] + 0.6], high: sofaBox[2] };
   }
   const tableY = -0.3 + t[1] / 2;
   const sofaY = tableY - t[1] / 2 - 0.45 - sofaBox[1] / 2;
@@ -8411,7 +8540,7 @@ var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most
     parts.push({ piece: arm, at: [s * side2, tableY], yaw: s * Math.PI / 2, seat: true });
   const wide = Math.max(sofaBox[0], 2 * side2 + armBox[1]);
   const top = Math.max(tableY + armBox[0] / 2, tableY + t[1] / 2 + 0.3);
-  return { parts, rug: [round7(sofaBox[0] + 0.8), round7(top - sofaY + 0.2)], rugAt: [0, (top + sofaY) / 2], size: [wide + 0.6, top - (sofaY - sofaBox[1] / 2) + 0.6], middle: [0, (top + sofaY - sofaBox[1] / 2) / 2], high: Math.max(sofaBox[2], armBox[2]) };
+  return { parts, rug: [round8(sofaBox[0] + 0.8), round8(top - sofaY + 0.2)], rugAt: [0, (top + sofaY) / 2], size: [wide + 0.6, top - (sofaY - sofaBox[1] / 2) + 0.6], middle: [0, (top + sofaY - sofaBox[1] / 2) / 2], high: Math.max(sofaBox[2], armBox[2]) };
 }, groups = (place, count) => {
   const { room: room2, random, pick, free, glazed, keepsWays } = place;
   let made4 = 0;
@@ -8469,7 +8598,7 @@ var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most
   const most = clamp9(Math.round(long * 0.2 / 0.6) * 0.6, 2.4, 6);
   const widths = [most, most - 1.2, 2.4].filter((each, i, all) => each >= 2.4 && each <= most && all.indexOf(each) === i);
   const keys2 = pick(random, ["keys", "keys", "cubes"]);
-  const behind = (width) => keys2 === "keys" ? shaped("mailbox", "keys", { width: round7(Math.min(width, 3.2)), depth: 0.4 }) : shaped("shelf", "cubes", { width: round7(Math.min(width, 2.4)) });
+  const behind = (width) => keys2 === "keys" ? shaped("mailbox", "keys", { width: round8(Math.min(width, 3.2)), depth: 0.4 }) : shaped("shelf", "cubes", { width: round8(Math.min(width, 2.4)) });
   const counter2 = desk(place, { widths, model: pick(random, ["panel", "slats", "stone"]), behind, near: [3, 12] });
   if (area >= 30)
     near(place, shaped("stand", pick(random, ["leaflets", "tower"])), place.door, 0.8, 1.6);
@@ -8481,8 +8610,8 @@ var HAND3, round7 = (v) => Math.round(v * 1000) / 1000, clamp9 = (v, least, most
   plants(place, area >= 150 ? 3 : 2);
 };
 var init_room_reception = __esm(() => {
-  init_room();
   init_furniture();
+  init_room_hall();
   HAND3 = 0.1 + 0.000001;
   YAWS = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
   SIDE_YAW = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
@@ -8494,7 +8623,7 @@ var randomOf4 = (seed) => () => {
   let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
   t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
   return ((t ^ t >>> 14) >>> 0) / 4294967296;
-}, round8 = (v) => Math.round(v * 1000) / 1000, pick = (random, list) => list[Math.floor(random() * list.length) % list.length], pieceParams = (type, model, extra = {}) => {
+}, round9 = (v) => Math.round(v * 1000) / 1000, pick = (random, list) => list[Math.floor(random() * list.length) % list.length], pieceParams = (type, model, extra = {}) => {
   const spec = TYPES[type];
   return { type: TYPE_NAMES.indexOf(type), [spec.model]: Math.max(0, Object.keys(spec.models).indexOf(model)), ...extra };
 }, SIDES6, overlap2 = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)), rect3 = (x0, y0, x1, y1) => ({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), x1: Math.max(x0, x1), y1: Math.max(y0, y1) }), hangAt = (height) => Math.min(1.95, Math.max(1.55, height * 0.5)), HAND4, TABLE, CELL = 0.25, SILL = 0.1, OVER = 0.08, TAKES, LYING2, highOf = (piece, box3) => TYPE_NAMES[piece.type] === "kitchen" && dimsOf(piece).model === "counter" ? 0.92 : box3[2], layoutOf3 = (params) => {
@@ -8604,7 +8733,7 @@ var randomOf4 = (seed) => () => {
       mark(body, 1);
     if (!flat)
       taken.push(takenBy(at, box3, yaw, clear));
-    pieces.push({ params: piece, at: [round8(at[0]), round8(at[1]), round8(z)], yaw, seat });
+    pieces.push({ params: piece, at: [round9(at[0]), round9(at[1]), round9(z)], yaw, seat });
     return { box: box3, at, yaw };
   };
   const spotsAgainst = (side2, box3, { clear = 0.6, margin = 0, gap = 0.02, corner = false, tall = box3[2] } = {}) => {
@@ -8659,7 +8788,7 @@ var randomOf4 = (seed) => () => {
   const picture2 = (long) => {
     const [pw, ph] = PAINTINGS[palette.painting].size;
     const k = long / Math.max(pw, ph);
-    return shaped("picture", "framed", { width: round8(pw * k + 0.09), height: round8(ph * k + 0.09) });
+    return shaped("picture", "framed", { width: round9(pw * k + 0.09), height: round9(ph * k + 0.09) });
   };
   const hang2 = (spot, long = 1.2, over = 0) => {
     for (const each of [long, long * 0.75, long * 0.55]) {
@@ -8690,7 +8819,7 @@ var randomOf4 = (seed) => () => {
     const r = takenBy(at, [w, d, 0], yaw);
     if (r.x0 < room2.x0 + 0.05 || r.x1 > room2.x1 - 0.05 || r.y0 < room2.y0 + 0.05 || r.y1 > room2.y1 - 0.05)
       return;
-    put(shaped("rug", "rectangle", { width: round8(w), depth: round8(d) }), at, yaw, { flat: true });
+    put(shaped("rug", "rectangle", { width: round9(w), depth: round9(d) }), at, yaw, { flat: true });
   };
   const sitting = ({ television = true } = {}) => {
     const model = pick(random, ["track", "rolled", "chaise", "modular", "chesterfield"]);
@@ -8833,7 +8962,7 @@ var randomOf4 = (seed) => () => {
       const middle = (stretch.a0 + stretch.a1) / 2;
       const uppers = !windowed(side2, middle - length2 / 2, middle + length2 / 2, 2.3);
       for (const model of uppers ? ["run", "counter"] : ["counter"]) {
-        const piece = shaped("kitchen", model, { width: round8(length2) });
+        const piece = shaped("kitchen", model, { width: round9(length2) });
         const spot = against([side2], boxOf2(dimsOf(piece)), { clear: 1.2, tall: highOf(piece, boxOf2(dimsOf(piece))) });
         if (spot && put(piece, spot.at, spot.yaw))
           return spot;
@@ -9106,14 +9235,14 @@ __export(exports_pool_gen, {
   DROP: () => DROP,
   COPING: () => COPING
 });
-var COPING = 0.45, RIM2 = 0.12, FLOOR3 = 0.25, STEP5 = 0.19, TREAD3 = 0.32, WIDE = 2.4, IN, KEPT = 0.3, OVER2 = 0.15, UNDER = 0.3, SPAN4 = 2.5, CLOSE = 1, DROP = 1.5, TINT, round9 = (v) => Math.round(v * 1000) / 1000, upToMillimetre6 = (v) => Math.ceil(v * 1000 - 0.000001) / 1000, planOf6 = (params) => {
+var COPING = 0.45, RIM2 = 0.12, FLOOR3 = 0.25, STEP5 = 0.19, TREAD3 = 0.32, WIDE = 2.4, IN, KEPT = 0.3, OVER2 = 0.15, UNDER = 0.3, SPAN4 = 2.5, CLOSE = 1, DROP = 1.5, TINT, round10 = (v) => Math.round(v * 1000) / 1000, upToMillimetre6 = (v) => Math.ceil(v * 1000 - 0.000001) / 1000, planOf6 = (params) => {
   const { length: length2, width, depth, deck, plinth, stoop } = params;
   const [hx, hy] = [length2 / 2, width / 2];
   const out = COPING + deck;
-  const basin2 = { x0: round9(-hx), x1: round9(hx), y0: round9(-hy), y1: round9(hy) };
-  const outer = { x0: round9(-hx - out), x1: round9(hx + out), y0: round9(-hy - out), y1: round9(hy + out) };
-  const floor = round9(-(RIM2 + depth));
-  const bottom = round9(-Math.max(plinth, RIM2 + depth + FLOOR3, stoop));
+  const basin2 = { x0: round10(-hx), x1: round10(hx), y0: round10(-hy), y1: round10(hy) };
+  const outer = { x0: round10(-hx - out), x1: round10(hx + out), y0: round10(-hy - out), y1: round10(hy + out) };
+  const floor = round10(-(RIM2 + depth));
+  const bottom = round10(-Math.max(plinth, RIM2 + depth + FLOOR3, stoop));
   const along2 = params.steps === 1 ? 1 : 0;
   const [across, edge, inner] = along2 === 0 ? [width, outer.x1, basin2.x1] : [length2, outer.y1, basin2.y1];
   const half = Math.min(WIDE, across + 2 * out) / 2;
@@ -9121,23 +9250,23 @@ var COPING = 0.45, RIM2 = 0.12, FLOOR3 = 0.25, STEP5 = 0.19, TREAD3 = 0.32, WIDE
   const flight = {
     along: along2,
     at: edge,
-    from: round9(-half),
-    to: round9(half),
-    steps: Array.from({ length: risers - 1 }, (_, i) => ({ top: round9(-((i + 1) * stoop) / risers), a0: round9(edge + i * TREAD3), a1: round9(edge + (i + 1) * TREAD3) }))
+    from: round10(-half),
+    to: round10(half),
+    steps: Array.from({ length: risers - 1 }, (_, i) => ({ top: round10(-((i + 1) * stoop) / risers), a0: round10(edge + i * TREAD3), a1: round10(edge + (i + 1) * TREAD3) }))
   };
   const falls = Math.max(1, Math.ceil((RIM2 + depth) / IN[1] - 0.000000001));
   const reach = (along2 === 0 ? length2 : width) / 2;
   const inside = Math.min(half, across / 2 - KEPT);
   const ladder = (falls - 1) * IN[0] <= reach && inside >= 0.4 ? {
     along: along2,
-    from: round9(-inside),
-    to: round9(inside),
-    steps: Array.from({ length: falls - 1 }, (_, j) => ({ top: round9(-((j + 1) * (RIM2 + depth)) / falls), a0: round9(inner - (j + 1) * IN[0]), a1: round9(inner - j * IN[0]) }))
+    from: round10(-inside),
+    to: round10(inside),
+    steps: Array.from({ length: falls - 1 }, (_, j) => ({ top: round10(-((j + 1) * (RIM2 + depth)) / falls), a0: round10(inner - (j + 1) * IN[0]), a1: round10(inner - j * IN[0]) }))
   } : null;
-  const water = { min: [round9(basin2.x0 + 0.01), round9(basin2.y0 + 0.01), floor], max: [round9(basin2.x1 - 0.01), round9(basin2.y1 - 0.01), round9(-RIM2)] };
+  const water = { min: [round10(basin2.x0 + 0.01), round10(basin2.y0 + 0.01), floor], max: [round10(basin2.x1 - 0.01), round10(basin2.y1 - 0.01), round10(-RIM2)] };
   const far = flight.steps.at(-1)?.a1 ?? edge;
   const min = [outer.x0, outer.y0, bottom];
-  const max = [along2 === 0 ? round9(far) : outer.x1, along2 === 1 ? round9(far) : outer.y1, 0];
+  const max = [along2 === 0 ? round10(far) : outer.x1, along2 === 1 ? round10(far) : outer.y1, 0];
   return { basin: basin2, outer, floor, bottom, flight, ladder, water, min, max };
 }, plan, centreOf7 = (params) => {
   const { min, max } = plan(params);
@@ -9246,7 +9375,7 @@ var init_pool_gen = __esm(() => {
       const { water } = plan(params);
       return [{
         kind: "bevel",
-        size: water.max.map((v, k) => round9(v - water.min[k])),
+        size: water.max.map((v, k) => round10(v - water.min[k])),
         at: water.min.map((v, k) => (v + water.max[k]) / 2 - centre[k]),
         params: { base: 0, edge: 1, radius: 0.01 },
         color: [...TINT],
@@ -14453,6 +14582,15 @@ var BEHAVIOURS = Object.freeze({
     once: { name: "once", description: "Run once: round, or there and back, once from `since` — then where it is kept, as it set off, and still. A ship's Auto: one tour, and back in port." },
     name: { name: "name", description: "What its route is called among its routes (1–32 characters); none, Route 1." },
     routes: { name: "routes", most: 7, description: "Its other routes, kept to be run instead — `{ name, points, speed, stop, at, mode, face, water }` each, as its own are: one recorded by its driver, or chosen at its helm or on its card, takes this one's place and keeps it among them." }
+  },
+  treasure: {
+    label: "Treasure",
+    description: "Found with E: gives its points and coins once to each player who finds it. They count when whoever set it is OVGrid's master account or an issuer it certified: its voucher is signed as it is set.",
+    params: [
+      { name: "points", label: "Points", min: 0, max: 1000, default: 50, step: 5, unit: "XP", description: "The XP it gives each player who finds it, once." },
+      { name: "coins", label: "Coins", min: 0, max: 100, default: 10, step: 1, unit: "coins", description: "The coins it gives each player who finds it, once." }
+    ],
+    voucher: { name: "voucher", description: "Its award, signed by whoever set it as it was set (`db.sm.sign`): `{ k: 'ovg-award', v: 1, id, points, coins, reason, source: 'treasure', planet, land, player: null }` — what a finder claims." }
   }
 });
 var SPACE = Object.freeze({ speed: 2000, accel: 30, highest: HIGHEST, across: 1e6 });
@@ -14487,7 +14625,7 @@ var shapeKey = (shape) => {
   const raw = shape.join(",");
   return normals.get(raw) ?? remember(normals, raw, normalizeShape(shape).join(","));
 };
-var round10 = (a, b) => Math.abs(a - b) <= ALIKE * Math.max(a, b);
+var round11 = (a, b) => Math.abs(a - b) <= ALIKE * Math.max(a, b);
 var isConvex = ({ positions, indices }) => {
   const count = positions.length / 3;
   for (let t = 0;t < indices.length; t += 3) {
@@ -14543,9 +14681,9 @@ var piecesOf4 = (part, meshOf) => {
   const [x, y, z] = size;
   if (key === CUBE)
     return [{ type: "box", half: [x / 2, y / 2, z / 2], radius: Math.min(ROUND7, x / 2, y / 2, z / 2) }];
-  if (key === CYLINDER && round10(x, y))
+  if (key === CYLINDER && round11(x, y))
     return [{ type: "cylinder", half: z / 2, radius: x / 2, rounding: Math.min(ROUND7, z / 2, x / 2) }];
-  if (key === SPHERE && round10(x, y) && round10(y, z))
+  if (key === SPHERE && round11(x, y) && round11(y, z))
     return [{ type: "sphere", radius: x / 2 }];
   return fromMesh(`p:${key}`, meshOf(LEVEL), size);
 };
@@ -16900,11 +17038,11 @@ var frameOf3 = (anchor) => {
           slope = Math.max(slope, Math.abs(at(i, j + 1) - at(i, j)) / (d / ny));
       }
     }
-    const round11 = (v) => +v.toFixed(3);
+    const round12 = (v) => +v.toFixed(3);
     return {
-      min: round11(Math.min(...heights)),
-      max: round11(Math.max(...heights)),
-      mean: round11(heights.reduce((sum, h) => sum + h, 0) / heights.length),
+      min: round12(Math.min(...heights)),
+      max: round12(Math.max(...heights)),
+      mean: round12(heights.reduce((sum, h) => sum + h, 0) / heights.length),
       slope: +(Math.atan(slope) / DEG6).toFixed(1),
       wet: wetAny
     };
