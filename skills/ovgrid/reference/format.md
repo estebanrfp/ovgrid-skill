@@ -15,6 +15,7 @@ the 67 species of trees and plants, the animals — is in **catalog.json**, made
   "clones": [ { "of": "lamp", "at": [-6, -6], "turn": [0, 0, 90] } ],
   "trees": [ { "species": "oak", "at": [24, 30], "seed": 3, "scale": 1.1 } ],
   "animals": [ { "species": "sheep", "at": [40, 36], "count": 5, "seed": 7, "territory": 20 } ],
+  "seeds": [ { "generator": "neighbourhood", "at": [260, 0], "params": { "width": 120, "depth": 80, "seed": 7 } } ],
   "views": [ { "name": "square", "eye": [0, -14], "look": [0, 4, 2], "hour": 16 } ]
 }
 ```
@@ -112,6 +113,11 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `house` | what its `width`, `depth`, `floors` and `roof` make | 0 walls, 1 the walls of the storeys dressed apart, 2 trim (slabs' edges, reveals, the base), 3 glass, 4 roof, 5 floors, 6 walls inside | a whole modern house in one part, worked out from a few numbers — walls with their windows cut and glazed, floors, a stair, terraces with glass rails, its roof, a base down past the ground and steps to its door —, walked into as drawn; its doors parts of their own that open as someone comes — see *A modern house in one part* |
 | `building` | what its `width`, `depth`, `floors`, `storey` and `roof` make | 0 walls, 1 what is dressed apart (its balconies' screens, its spandrels, a pavilion on its roof), 2 trim (frames, slabs' edges, the base, columns, the stair's sides), 3 glass, 4 roof, 5 floors, 6 walls inside | a whole block of flats or a tower in one part, worked out from a few numbers — storeys of flats either side of a core (the street's door, a hall, a stair of two flights behind a slot of glass, a lift in a shaft glazed to the street), windows in columns, balconies between screens, its roof, a base down past the ground and steps to its door —, walked into as drawn, up its stair or its lift into every flat; its doors and its lift's pieces parts of their own — see *A block of flats in one part* |
 | `lift` | its box: a car's across, front to back and floor to top; a leaf's width, thickness and height; a button's plate | 0 frame, 1 floor, 2 glass, 3 what is lit (a car's ceiling, a button's face), 4 panels | a piece of a lift, a few boxes: `piece` `car` (a floor, a lit ceiling, glass behind and at both sides, its way in at its −y, `door` wide and `head` high), `leaf` (one leaf of a door) or `button` (a plate, its −y face lit). What moves it is its `lift` behaviour (effects.md): a building's recipe stands them — write them yourself only for a lift of your own |
+| `hall` | what its `type`, `width`, `depth`, `height` and `floors` make | 0 walls, 1 what is dressed apart (the band over its glass, its canopy, a portico's beam), 2 trim (frames, columns, slabs' edges, its base), 3 glass, 4 roof, 5 floors, 6 walls inside, 7 ceilings | a supermarket, a museum, a shopping centre, a market hall or a filling station in one part, worked out from a few numbers, walked into as drawn; what stands in it parts of their own — see *A hall in one part* |
+| `fixture` | what its `type`, `width` and `depth` make — its height its type's, a person's | 0 frame, 1 boards (shelves, a worktop, a plinth's stone), 2–4 its goods, three colours of them, 5 glass, 6 accent (a rail, an awning, a pump's panel, a sculpture) | what a shop, a market, a museum or a filling station is fitted with: aisle shelving, wall shelving, a chiller, a checkout, a table of goods, a market stall, a plinth and its sculpture, a fuel pump, a moving ramp — see *A hall in one part* |
+| `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, and what is painted on a road: `line`, `arrow` — see *What stands in a street* |
+| `sign` | its `width` — its word's own where 0 — × 0.12 × its `height` | 0 frame, 1 board, 2 letters — the last two tints on one material | a board with a word on it, its letters a font five by seven: `hotel`, `hospital`, `school`, `market`, `supermarket`, `museum`, `mall`, `pharmacy`, `cafe`, `bar`, `books`, `bakery`, `parking`, `police`, `fuel`, `cinema`, `bank`, `library`, `station`, `taxi`, `bus`, `open`, `sale`, `ovgrid` — see *What stands in a street* |
+| `crane` | what its mast's `height` and its `jib` make | 0 paint, 1 concrete (its pad, its counterweight), 2 glass, 3 dark metal | a tower crane: a mast of lattice on a pad, a cab, a jib along its +y and a counter-jib behind — see *What stands in a street* |
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
 | `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, storage, a bathroom's and a kitchen's, a lobby's (`counter`, `mailbox`, `bench`, `trolley`, `stand`), its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
 | `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall`, and on a building's ground storey `lobby` or `reception` (its desk facing its first `ways`) —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
@@ -586,7 +592,7 @@ among them (two to a style) and trees in the gardens. In the editor the Neighbou
 street that closes round, twelve lots at its defaults, a mansion with a pool behind it.
 
 **A block of flats in one part** (`building`): when a street, a square or a city needs buildings, do not build each from walls
-and solids — one part is a whole block of two to sixteen storeys. Its front is its **+y**; `width` (14–40 m) and `depth` (12–24 m)
+and solids — one part is a whole block of two to thirty-two storeys (past what one part holds, its recipe stands it in sections). Its front is its **+y**; `width` (14–40 m) and `depth` (12–24 m)
 are the rectangle it stands on, its `at` the middle of its box — which is not the middle of that rectangle: its box has its
 balconies, its eaves and its steps. It is sized as a house at a game's scale, for an avatar and the camera behind it: storeys of
 4 m (`storey`, 3.6–4.8 m), doors 1.4 m wide and 2.7 m high, the street's door two leaves of 1.4 × 3 m set back 3 m in a recess
@@ -595,8 +601,8 @@ under the storey over it, a stair 2 m wide on risers of 0.19 m, a lift for a doz
 punched windows, balconies between screens of timber, a roof of sheet out past its walls), `brick` (brick walls, tall windows
 close together, a parapet or four pitches), `concrete` (board-marked concrete, slits of glass in pairs, panels of dark metal, a
 pavilion on its roof), `glass` (glass from floor to ceiling between slim piers, a band at each floor's edge), `hipped` (stucco
-walls, wide windows, four pitches of tiles over eaves). `floors` 2–16 — a tower —, and no more than a part's 64 m hold with its
-base and its roof: fifteen of 4 m, sixteen of 3.6 m. `core`: where its door, hall, stair and lift stand — `centre`, flats either
+walls, wide windows, four pitches of tiles over eaves). `floors` 2–32 — a tower —: one part holds what a part's 64 m hold with its
+base and its roof, fifteen of 4 m, sixteen of 3.6 m, and a taller one stands in sections (below). `core`: where its door, hall, stair and lift stand — `centre`, flats either
 side of it, or `left` / `right`, at one end, its lift in the corner (always at an end under 20.4 m wide). `flats`: `through`, one from front
 to back each side of the core, or `double`, one at the front and one at the back (four a landing with the core in the middle).
 `balconies`: `none`, `front` or `both` — one to each flat on the storeys over the ground one, 5 × 2 m between two screens that
@@ -617,6 +623,15 @@ armchairs, a runner, pictures and plants by its size, every way through it — t
 clear. With `ground` `hotel`, a hotel's, in all its ground storey: a long counter with its keys behind it, groups of seats on rugs,
 a luggage trolley, leaflets. For the buildings a visitor walks into. `stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair
 alone, its lift's shaft empty, no reception.
+`floors` up to 32: past what one part holds (64 m — fifteen storeys of 4 m) it stands as a tower in sections, parts of the
+kind its recipe stands on one another (`section` `middle`, `top`: never write those by hand), one lift through all of them.
+`wings`: `none` — a bar —, `left` or `right` — an L: a wing behind that end of the bar (seen from the street), in line with it —,
+or `both` — a U round a court. A wing goes `reach` m back (6–30) and is `wide` m wide (6–24; as wide as the flat it goes on
+from at the most, and no wider than the bar is deep): a room more of that flat on every storey, come into through the bar's
+back wall; never behind the core (one asked there stands behind the other end). Under four pitches its roof and the bar's meet
+in valleys. `corner`: `none`, `left` or `right` — that end stands on a second street: with `ground` `shops` or `hotel` its wall,
+and its wing's along that street, are glazed from the floor as the front is. For the corners of a city's blocks: an L with
+`corner` on its wing's side. A wing costs 200 triangles and 700 more a storey from near, 60 and 135 from a street away.
 
 Every building has its **lift**: a shaft beside the street's door, glass to the street from the ground to the top storey's
 ceiling — and to the side too where the core stands at an end —, a car for a dozen kept on the ground storey, and on the hall of
@@ -646,6 +661,82 @@ while it stands: its parts move only on a ride.
   storey, parts of the `lift` kind: one and three more a storey —; the two leaves of its street door; with `doors`, a door to
   each flat; with `lighting`, a light and a switch a storey; with `reception`, its lobby — one part of the `room` kind, which
   itself stands what is sat on in it (one to five seats).
+
+**A hall in one part** (`hall`): a supermarket, a museum, a shopping centre, a market or a filling station is one part; do not
+build it from walls. `type`: `supermarket` — a front of glass in bays under a band and a canopy, a strip of windows under its
+ceiling along its sides —; `museum` — walls of stone, tall slits of glass, a portico of piers up its steps, a lantern on its roof
+—; `mall` — two storeys of shops either side of a concourse open to a roof of glass, galleries along it, a way in at each end
+—; `market` — a roof of two pitches on columns, open all round —; `station` — a canopy on columns over its pumps' islands, a
+kiosk behind. `width` × `depth` (16–60 × 12–48 m; 36 × 28 where left out; a shopping centre 28 × 24 at the least) the rectangle
+it stands on, its front its +y; `height` a storey's, floor to ceiling (4–10 m: 6 a supermarket's, 8 a museum's, 5 a shopping
+centre's); `floors` 1 or 2 — a supermarket's upper floor up a pair of moving ramps, a museum's gallery round its hall up a stair
+(a shopping centre has two, a market and a station one); `variant` which of its type's it is; `plinth` and `stoop` as a
+building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as left out) or `none`.
+
+```json
+{ "name": "supermarket", "at": [0, 0, 0.2], "prims": [
+  { "name": "hall", "kind": "hall", "type": "supermarket", "look": "red", "width": 36, "depth": 28, "height": 6, "floors": 2,
+    "variant": 2, "plinth": 0.6, "stoop": 0.3, "at": [0, 1.5, 6.9], "light": { "on": true, "range": 0 } } ] }
+```
+
+- **What its recipe stands** (never write them yourself): with `fit` its fixtures (kind `fixture`) — a supermarket's rows of
+  shelving on its columns' lines and between them, its chillers along its back, its checkouts beside its way in; a museum's
+  plinths down its hall and a picture a pier (kind `furniture`, eight of the bank's paintings at the most); a shop's shelving
+  and a table of goods; a market's stalls back to back; a station's pumps at each island's ends and its kiosk's counter —,
+  sixty-four parts at the most, farther apart in a hall too large for them; its moving ramps (a `fixture` of type
+  `travelator` laid along its slope, with the `belt` behaviour: they carry whoever stands on them, up or down) and a museum's
+  stair; four lights at the most, on by night.
+- **Its cost**: a supermarket 2,300 triangles from near at the most and 500 from a street away, a museum 1,800 and 460, a
+  shopping centre 4,800 and 600, a market or a station 500 and 380; a fixture 340 from beside it, a third from a few metres
+  off, nothing from far. Give the hall itself `"light": { "on": true, "range": 0 }`: its ceilings' panels glow of themselves.
+- **Its looks**: four to a type (`red`, `blue`, `green`, `ochre` a supermarket's and a station's; `stone`, `concrete`, `white`,
+  `brick` a museum's; `steel`, `white`, `travertine`, `brick` a shopping centre's; `timber`, `steel`, `red`, `white` a market's).
+- **A fixture by hand** (`fixture`): `type` `gondola` (aisle shelving, goods on both sides), `shelving` (against a wall),
+  `chiller`, `checkout`, `table`, `stall`, `plinth` (a sculpture on it, one in three in a case of glass), `pump` or
+  `travelator` (a moving ramp: its `depth` its length, 3–24 m, along its own y — turn it about x by its slope's angle and give
+  it `"behaviour": { "type": "belt", "speed": 0.6 }`: a flight of steps does not carry, a ramp does); `width`
+  its length along its front and `depth`, each within its type's range (shelving and chillers 1.2–12 m); `goods` what it
+  sells — `mixed`, `produce`, `dairy`, `bottles`, `bakery`, `clothes`, `toys`, `books` —: three colours of one material, tints
+  that shape nothing. Its front is its +y.
+
+**What stands in a street** (`street`, `sign`, `crane`): one part each, a person's size.
+
+```json
+{ "name": "lamp", "kind": "street", "piece": "arm", "height": 8, "at": [4, 0, 4], "turn": [0, 0, 90],
+  "surface": { "faces": { "0": { "texture": "metal/painted/metal-029" }, "1": { "texture": "metal/painted/metal-029" },
+    "2": { "texture": "synthetic/plastic/plastic-013a", "emissive": 0.9, "glow": 0.25 } } },
+  "light": { "on": "night", "range": 0 } }
+```
+
+- **`street`**: `piece` which it is; its front its +y — where a bench faces, a signal and a sign show, an arm reaches over the
+  road: turn it so. `height` (0: its own) for a `lamp` (6 m), an `arm` (8), a `double` (9), a `signal` (3.6), a `roadsign`
+  (2.9); `width` (0: its own) for a `planter` (1.6 m), an `awning` (3) and a `zebra` (7.5: a road's width; lay it on the road,
+  its stripes along the way one drives). `variant`: a `roadsign`'s plate — 0 stop, 1 give way, 2 a limit, 3 a crossing,
+  4 parking, 5 no entry, 6 a roundabout, 7 one way, 8 a bus stop, 9 works —, a bench with a back (even) or without, an awning's
+  stripes. A `bench` and a `shelter` are sat on, three abreast. A `line` is paint across a lane, `width` long (3.4 m: a
+  lane's) and 0.4 m of it — where one stops, before a crossing's stripes —, or 0.12 m with `variant` odd (a parking bay's
+  side); yellow with `variant` 2 or 3. An `arrow` is a lane's, 3.2 m long, pointing along its +y: lay both on the road,
+  a centimetre over it.
+- **`style`**, for a `lamp`, an `arm`, a `double`, a `bench`, a `bin` and a `shelter` — another silhouette, in the same box:
+  `modern` (none given), `classic` (cast iron: a stepped base, a swan's neck, a lantern under a cap; a bench with arms),
+  `oldtown` (a lantern hung from a bracket; a bench of stone — look `stone` —; a bin of slats and a shelter of timber under
+  tiles — look `timber`), `industrial` (a plain post and a flood lamp, a plank on a plinth, a drum). Keep one style to a
+  street or a district: a classic street has `"style": "classic"` on every lamp, bench, bin and shelter of it.
+- **What glows**: a lamp's glass (face 2), a signal's lens (face 4 red, 5 amber, 6 green) and a sign's letters (face 2) glow
+  where the face is given `"emissive": 0.9` and the part `"light": { "on": "night", "range": 0 }` — by night, lighting nothing
+  round it, at no light's cost. Give a lamp a `range` (up to 10) only where the ground under it must be lit: a build holds
+  twelve lights fairly, and a street has more lamps than that. Lamps every 20 m, a bench every 30, a bin by each.
+- **`sign`**: `word` (by name), `height` its board's (0.4–2.4 m; its letters three fifths of it), `width` 0 for its word's own,
+  `colour` — `red`, `blue`, `green` (white letters), `yellow`, `white` (black), `black`, `gold` (gold on black), `cream` (red).
+  Its back is a wall's: stand it 6 cm before the wall's face, its front its +y. A hall stands its own (`sign`), and a building a
+  hotel's and its shops' (`signs`): do not add those.
+- **`crane`**: `height` its mast's, to under its jib (16–54 m: eight over what it builds); `jib` its length (16–40 m), along
+  its +y from its mast: turn it to slew it. Its `at` is its box's middle — its mast's foot is `[−(x0 + x1) / 2, −(y0 + y1) / 2]`
+  from there, its box from `x0 = −2`, `y0 = −jib / 2.4` to `x1 = 3.15`, `y1 = jib`, z from 0.5 m under the ground — its pad's footing — up (with `variant` odd its
+  cab on the other side: `x0 = −3.15`, `x1 = 2`). A building with `"stage": "frame"` stands its own (`crane`).
+- **Their cost**: a street piece 300 triangles at the most from beside it (a lamp 50, a shelter 88), a sign 260 (its letters
+  rectangles: «SUPERMARKET», 138), a crane 1,450; each a third or less from a few metres off; from far a lamp is its post,
+  a crane its mast and jibs, the rest nothing.
 
 **A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
 `length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
@@ -1255,6 +1346,45 @@ prims collide as their mesh, its hull when convex.
 - What it is: no reaction to people, no sound; of a species in sight at once, the 48 nearest are drawn (the check
   says when a build puts more). Each animal is 240–440 triangles, drawn while it covers 4 px; a herd costs a record.
   A dinosaur does not graze; it may run, act at a stop (its attack or its jump) or lie down (its fall), of its own.
+
+## Seeds
+
+```json
+"seeds": [ { "generator": "neighbourhood", "at": [0, 0, 0], "turn": 0,
+             "params": { "width": 120, "depth": 80, "plot": 30, "mix": 0, "mansions": 1, "pools": 1, "trees": 3, "seed": 7 } } ]
+```
+
+- **What a generator makes, kept as what it was made from**: a seed is one record — its generator's name, its numbers,
+  where it stands and how it is turned — and what it makes (a neighbourhood: a street round, a house a lot, pools, paths,
+  trees) is worked out from it by every page that comes, the same for everyone, on the planet's own ground. It is sent
+  as those numbers: a neighbourhood is under 300 bytes on the wire, where its hundred and more records written out are
+  76 kB. Use one wherever a generator makes what is wanted: it loads at once for whoever comes, and costs a land a line.
+- `generator`: `neighbourhood` (its `params`: `width` 90–240 and `depth` 60–200 m of its street's rectangle, `plot` 26–44 m
+  of street a lot, `mix` 0 every style · 1 modern · 2 timber, `mansions` 0–2, `pools` 0 none · 1 the mansions' · 2 some
+  houses' too, `trees` 0–6 a garden, `seed` 0–9999 which of them it is); or `city` — streets in a grid on a level plate,
+  a block a use: flats, towers, halls, a square with its landmark, a public building, parks, a site with its crane, and
+  its streets' lamps, signals, crossings, benches and trees — (its `params`: `width` and `depth` 130–250 m, a block every
+  fifty metres or so; `height` 4–32, the storeys of its tallest; `profile` 0 high at its centre · 1 at its edges · 2 even;
+  `mix` 0 every use · 1 homes · 2 business; `parks` 0–3 blocks; `works` 0–2 buildings in construction; `trees` 0 none ·
+  1 some · 2 many along its streets; `bridges` 0 none · 1 a footbridge over its avenue · 2 and a street carried over
+  the avenue on two ramps · 3 and a railway on a viaduct along its north side; `seed` 0–9999). Numbers only, by name;
+  any left out is its generator's own. A city wants dry ground that falls 5 m at the most under it, whole inside one
+  parcel: 250 × 190 m is twelve blocks, some 1,300 records, 149,000 triangles at the finest.
+- `at`: where its middle stands in the build's frame — `[x, y]` on the ground there, or `[x, y, z]`; `turn`: degrees
+  counter-clockwise from above, as a part's `turn` about z (none: as the build's frame). `key`, optional, as a tree's.
+- `edition`: which of its generator's makings it is of — a `city`'s `2` has districts (a historic centre, an extension, a
+  modern one, an industrial estate: each its own street furniture and flats); its `3`, urban roads besides (an avenue with
+  a planted median and a bike lane through its middle, parking bays along every other street, tree pits, stop lines and
+  arrows, a crossing's stripes on every arm of every junction); its `4`, bridges besides (its `bridges`: a footbridge
+  up a stair from each pavement, an overpass, a viaduct); none, its first, as a city was first made. Write the latest
+  unless a build must stay as it was.
+- **Its ground is the planet's own**, the land's edits aside: what it lays stands as its generator lays it there — a
+  house's base down past the ground, its street levelled over it. Give it ground its generator takes (a neighbourhood:
+  dry, gentle, as far as it covers — 200 × 160 m for the one above) and nothing built where it will stand: it does not
+  see what is there. The check (`check.mjs`) writes a build's seeds out and counts what they make — parts, triangles,
+  materials, trees —, and says what a generator could not lay and why.
+- What a seed lays is laid within 420 m of whoever comes and taken away past 560 m; its houses' doors open and its
+  parts are there to change by whoever keeps it, as any build's. To change what it is, change its numbers.
 
 ## Land
 

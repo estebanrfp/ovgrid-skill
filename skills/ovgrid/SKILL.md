@@ -10,7 +10,7 @@ Second Life. What is built there is a **recipe**, never a mesh: objects of parts
 or a *kind* (door, roof, stairs, rock…) with a few named parameters in metres and degrees, its faces
 dressed from a bank of 3,091 real-size materials, and what it does — its light, its particles
 (smoke, fire, steam…), its behaviour (a door that opens, sails that turn), its script; linked clones
-of objects; trees as a species and a seed; herds of animals as a species, a home and a seed. Every peer meshes the same thing from the same recipe.
+of objects; trees as a species and a seed; herds of animals as a species, a home and a seed; whole neighbourhoods and cities as a seed — a generator's name and a few numbers. Every peer meshes the same thing from the same recipe.
 You write that recipe as one JSON document, anchored at the coordinate the person gives you and
 fitted to a survey of the place; the person brings it into the world — pasted or dropped into the
 editor's *Builds as JSON*, or opened with `?import=` and its address — sees it as a ghost where
@@ -128,7 +128,7 @@ sound, plain build; a page of detail gets that detail, within the budget.
 |---|---|
 | [reference/plan.md](reference/plan.md) | 1 — from a request to a plan; fitting it to the budget; saying what was simplified |
 | [reference/site.md](reference/site.md) | 2 — URLs and coordinates, the survey and its map, reading the ground, standing on it, terraces, ways, bridges, views, what is there |
-| [reference/format.md](reference/format.md) | 3 — the build file: anchor, prims, shapes, kinds, materials by use, surface, mirrors, media (videos, GIFs and stickers on a face), pages (HTML on a face), light, collisions, behaviours, objects, clones, trees, animals, ids |
+| [reference/format.md](reference/format.md) | 3 — the build file: anchor, prims, shapes, kinds, materials by use, surface, mirrors, media (videos, GIFs and stickers on a face), pages (HTML on a face), light, collisions, behaviours, objects, clones, trees, animals, seeds (what a generator makes, kept as its numbers), ids |
 | [reference/sculpt.md](reference/sculpt.md) | 3 — curved and organic shapes as sculpted prims: lathes, boxes, lofts, sweeps, models; bends, twists, noise; examples |
 | [reference/recipes.md](reference/recipes.md) | 3 — carve, gather, clone: each form its recipe, with its JSON; what never to leave (overlaps, boxes round an opening, flickering faces, open joints) |
 | [reference/method.md](reference/method.md) | 4 — the frame, scale and proportions, walls with openings, a cottage as JSON |
