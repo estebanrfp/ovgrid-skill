@@ -671,9 +671,7 @@ kiosk behind. `width` × `depth` (16–60 × 12–48 m; 36 × 28 where left out;
 it stands on, its front its +y; `height` a storey's, floor to ceiling (4–10 m: 6 a supermarket's, 8 a museum's, 5 a shopping
 centre's); `floors` 1 or 2 — a supermarket's upper floor up a pair of moving ramps, a museum's gallery round its hall up a stair
 (a shopping centre has two, a market and a station one); `variant` which of its type's it is; `plinth` and `stoop` as a
-building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as left out) or `none`. `escalators`: `steps` for a
-shopping centre and a museum — a pair of escalators of steps, one up and one down, in the place of a shopping centre's moving
-ramps and of a museum's stair —; `ramps` as left out, and a supermarket's whatever is said: its trolleys go up them.
+building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as left out) or `none`.
 
 ```json
 { "name": "supermarket", "at": [0, 0, 0.2], "prims": [
@@ -687,8 +685,7 @@ ramps and of a museum's stair —; `ramps` as left out, and a supermarket's what
   and a table of goods; a market's stalls back to back; a station's pumps at each island's ends and its kiosk's counter —,
   sixty-four parts at the most, farther apart in a hall too large for them; its moving ramps (a `fixture` of type
   `travelator` laid along its slope, with the `belt` behaviour: they carry whoever stands on them, up or down) and a museum's
-  stair — or, with `escalators` `steps`, a shopping centre's and a museum's escalators: two flights of the `stairs` kind with
-  the `belt` behaviour, which carry a step at a time —; four lights at the most, on by night.
+  stair; four lights at the most, on by night.
 - **Its cost**: a supermarket 2,300 triangles from near at the most and 500 from a street away, a museum 1,800 and 460, a
   shopping centre 4,800 and 600, a market or a station 500 and 380; a fixture 340 from beside it, a third from a few metres
   off, nothing from far. Give the hall itself `"light": { "on": true, "range": 0 }`: its ceilings' panels glow of themselves.
@@ -1423,7 +1420,6 @@ prims collide as their mesh, its hull when convex.
   a planted median and a bike lane through its middle, parking bays along every other street, tree pits, stop lines and
   arrows, a crossing's stripes on every arm of every junction); its `4`, bridges besides (its `bridges`: a footbridge
   up a stair from each pavement, an overpass, a viaduct); its `5`, its street life besides (its `life` 1); its `6`, its green besides (its `life` 2);
-  its `7`, escalators of steps in its shopping centres and its museums besides (a hall's `escalators`);
   none, its first, as a city was first made. Write the latest unless a build must stay as it was.
 - **Its ground is the planet's own**, the land's edits aside: what it lays stands as its generator lays it there — a
   house's base down past the ground, its street levelled over it. Give it ground its generator takes (a neighbourhood:
