@@ -4561,7 +4561,7 @@ var init_hall = __esm(() => {
   hall = Object.freeze({
     name: "hall",
     label: "Hall",
-    description: "A hall worked out from a few numbers: one tall storey of wide spans on columns, or two. A supermarket behind a front of glass under a canopy, a band over it, its upper floor up a pair of moving ramps; a museum behind a portico of piers and steps, lit from a lantern on its roof, a gallery round its hall up a stair; a shopping centre of two storeys, shops either side of a concourse open to a roof of glass, galleries along it, moving ramps in it, come into at both ends; a market's roof of two pitches on columns, open all round; a filling station's canopy on columns over its pumps' islands, a kiosk behind. Its front is its +y. Sized for the avatar and the camera behind it: ways in two doors wide at the least. `width` and `depth` are the rectangle it stands on; its box is what it makes. One part — a supermarket 2,300 triangles from near at the most and 500 from a street away, a shopping centre 4,800 and 600, a market 500 and 380. With `fit` what stands in it are parts of their own, made, moved and taken away with it: its fixtures (kind fixture) — its moving ramps among them, which carry whoever stands on them up or down —, a museum's stair and its pictures (kinds stairs and furniture) — sixty-four at the most. Laid on the ground, give it the `plinth` and `stoop` that ground asks.",
+    description: "A hall worked out from a few numbers: one tall storey of wide spans on columns, or two. A supermarket behind a front of glass under a canopy, a band over it, its upper floor up a pair of moving ramps; a museum behind a portico of piers and steps, lit from a lantern on its roof, a gallery round its hall up a stair; a shopping centre of two storeys, shops either side of a concourse open to a roof of glass, galleries along it, moving ramps in it, come into at both ends — with `escalators` `steps`, a shopping centre's ramps and a museum's stair are escalators of steps, one up and one down —; a market's roof of two pitches on columns, open all round; a filling station's canopy on columns over its pumps' islands, a kiosk behind. Its front is its +y. Sized for the avatar and the camera behind it: ways in two doors wide at the least. `width` and `depth` are the rectangle it stands on; its box is what it makes. One part — a supermarket 2,300 triangles from near at the most and 500 from a street away, a shopping centre 4,800 and 600, a market 500 and 380. With `fit` what stands in it are parts of their own, made, moved and taken away with it: its fixtures (kind fixture) — its moving ramps among them, which carry whoever stands on them up or down —, a museum's stair and its pictures (kinds stairs and furniture), its escalators of steps (kind stairs) — sixty-four at the most. Laid on the ground, give it the `plinth` and `stoop` that ground asks.",
     faces: FACES6,
     shape: "cube",
     sized: true,
@@ -4577,13 +4577,14 @@ var init_hall = __esm(() => {
       { name: "width", label: "Width", min: 16, max: 60, default: 36, step: 0.1, description: "How wide it is, along its front (m)." },
       { name: "depth", label: "Depth", min: 12, max: 48, default: 28, step: 0.1, description: "How deep it is, front to back (m)." },
       { name: "height", label: "Storey height", min: 4, max: 10, default: 6, step: 0.2, description: "How high a storey of it is, from its floor to its ceiling (m): 6 m a supermarket's, 8 m a museum's, 5 m a shopping centre's." },
-      { name: "floors", label: "Storeys", min: 1, max: 2, default: 1, step: 1, description: "How many storeys: one, or two — a supermarket's upper floor up a pair of moving ramps, a museum's gallery round its hall up a stair. A shopping centre has two, a market and a filling station one, whatever is asked." },
+      { name: "floors", label: "Storeys", min: 1, max: 2, default: 1, step: 1, description: "How many storeys: one, or two — a supermarket's upper floor up a pair of moving ramps, a museum's gallery round its hall up a stair, or up its escalators. A shopping centre has two, a market and a filling station one, whatever is asked." },
       { name: "variant", label: "Variation", min: 0, max: 9999, default: 0, step: 1, description: "Which of its type's halls it is: which side its way in stands to, where its moving ramps are, what its fixtures hold. One number, one hall." },
       { name: "plinth", label: "Base", min: 0.1, max: 3, default: 0.3, step: 0.01, description: "How far its base goes down under its floor (m): past the lowest ground under it. Its floor is its box's bottom raised by this." },
       { name: "stoop", label: "Door step", min: 0, max: 1.5, default: 0.15, step: 0.01, description: "How far the ground before its way in lies under its floor (m): steps go down to it all along its front, one for every 0.19 m." },
-      { name: "fit", label: "Fitted", min: 0, max: 1, default: 1, step: 1, options: ["bare", "fitted"], labels: ["Bare", "Fitted out"], description: "What stands in it: bare, nothing; fitted — a supermarket's aisles of shelves, its chillers and its checkouts, a museum's plinths and pictures, a shopping centre's shops' shelving and tables, a market's stalls, a filling station's pumps —, a part each; its moving ramps either way." },
+      { name: "fit", label: "Fitted", min: 0, max: 1, default: 1, step: 1, options: ["bare", "fitted"], labels: ["Bare", "Fitted out"], description: "What stands in it: bare, nothing; fitted — a supermarket's aisles of shelves, its chillers and its checkouts, a museum's plinths and pictures, a shopping centre's shops' shelving and tables, a market's stalls, a filling station's pumps —, a part each; its moving ramps, or its escalators, either way." },
       { name: "sign", label: "Sign", min: 0, max: 1, default: 1, step: 1, options: ["none", "sign"], labels: ["None", "Its name"], description: "A sign over its way in saying what it is (the sign kind's): on the edge of a supermarket's or a shopping centre's canopy, on a museum's portico, under a market's eave, on a filling station's canopy; its letters lit by night. A part of its own." },
-      { name: "lighting", label: "Lights", min: 0, max: 1, default: 1, step: 1, options: ["none", "night"], labels: ["None", "By night"], description: "Lights under its ceiling, on once the sun has set: none; night — four at the most. Its ceiling's own panels glow either way." }
+      { name: "lighting", label: "Lights", min: 0, max: 1, default: 1, step: 1, options: ["none", "night"], labels: ["None", "By night"], description: "Lights under its ceiling, on once the sun has set: none; night — four at the most. Its ceiling's own panels glow either way." },
+      { name: "escalators", label: "Escalators", min: 0, max: 1, default: 0, step: 1, options: ["ramps", "steps"], labels: ["Moving ramps", "Of steps"], description: "What carries one up to its upper floor. Moving ramps: a pair of pitched belts — and a museum's way up a stair one walks. Of steps: a pair of escalators, flights of the stairs kind that carry a step at a time, one up and one down — a shopping centre's between its storeys, a museum's up to its gallery in its stair's place. A supermarket's are ramps either way: its trolleys go up them." }
     ]
   });
 });
@@ -4680,12 +4681,13 @@ var init_street = __esm(() => {
     swing: Object.freeze({ label: "Swing", size: Object.freeze([3.4, 2.2, 2.5]) }),
     slide: Object.freeze({ label: "Slide", size: Object.freeze([1.4, 4.4, 2.7]) }),
     rocker: Object.freeze({ label: "Spring rocker", size: Object.freeze([0.5, 1.1, 0.95]) }),
-    barrier: Object.freeze({ label: "Works barrier", size: Object.freeze([1.8, 0.5, 1.15]) })
+    barrier: Object.freeze({ label: "Works barrier", size: Object.freeze([1.8, 0.5, 1.15]) }),
+    pergola: Object.freeze({ label: "Pergola", size: Object.freeze([4.6, 3.2, 2.9]) })
   });
   PIECE_NAMES = Object.freeze(Object.keys(PIECES2));
   FACES8 = Object.freeze(["metal", "body", "lamp", "glass", "colour", "colour, second", "colour, third", "colour, fourth"]);
   STYLES5 = Object.freeze(["modern", "classic", "oldtown", "industrial"]);
-  STYLED = Object.freeze(["lamp", "arm", "double", "bench", "bin", "shelter", "fountain", "kiosk", "table", "advert"]);
+  STYLED = Object.freeze(["lamp", "arm", "double", "bench", "bin", "shelter", "fountain", "kiosk", "table", "advert", "pergola"]);
   SEATED = Object.freeze({ bench: 3, shelter: 3, table: 2, swing: 2, rocker: 1 });
   SIGNS = Object.freeze(["stop", "yield", "limit", "crossing", "parking", "noentry", "roundabout", "oneway", "bus", "works"]);
   [RED2, WHITE5, BLUE3, BLACK4, AMBER, GREEN2, ORANGE, YELLOW] = [[0.78, 0.07, 0.06], [0.95, 0.95, 0.93], [0.08, 0.26, 0.62], [0.05, 0.05, 0.06], [0.95, 0.6, 0.06], [0.1, 0.62, 0.22], [0.96, 0.36, 0.05], [0.95, 0.78, 0.08]];
@@ -4709,7 +4711,8 @@ var init_street = __esm(() => {
     swing: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
     slide: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
     rocker: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
-    barrier: Object.freeze([RED2, WHITE5, AMBER, BLACK4])
+    barrier: Object.freeze([RED2, WHITE5, AMBER, BLACK4]),
+    pergola: Object.freeze([RED2, WHITE5, GREEN2, BLACK4])
   });
   PLAIN_COLOURS = Object.freeze([RED2, WHITE5, BLUE3, BLACK4]);
   BUDGET7 = Object.freeze({ triangles: 300, simpler: 110, coarse: 40, far: 12, pieces: 4, materials: 5 });
@@ -4739,7 +4742,8 @@ var init_street = __esm(() => {
     swing: Object.freeze({ steel: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, CEDAR3) }),
     slide: Object.freeze({ steel: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, CEDAR3) }),
     rocker: Object.freeze({ steel: look3(ALUMINIUM3, GREY2) }),
-    barrier: Object.freeze({ plain: look3(STEEL6, PLAIN2) })
+    barrier: Object.freeze({ plain: look3(STEEL6, PLAIN2) }),
+    pergola: Object.freeze({ black: look3(STEEL6, STEEL6), green: look3(GREEN_PAINT, GREEN_PAINT), timber: look3(CEDAR3, CEDAR3), aluminium: look3(ALUMINIUM3, SHEET2) })
   });
   LOOK_LABELS8 = Object.freeze({ black: "Black", aluminium: "Aluminium", green: "Green", timber: "Timber", oak: "Oak on green", steel: "Steel", stone: "Stone", plain: "Its own", concrete: "Concrete", cloth: "Cloth" });
   LENS = Object.freeze({ red: 4, amber: 5, green: 6 });
@@ -4753,7 +4757,7 @@ var init_street = __esm(() => {
   street = Object.freeze({
     name: "street",
     label: "Street furniture",
-    description: "What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road; and, for a square or a park: a fountain — its water the bank's, a jet from a nozzle stood in it by whoever stands it —, a kiosk with its counter, a rack of bicycles, a café's table and its two chairs under their parasol, an advertising column, a playground's swing, slide and spring rocker, a barrier round roadworks. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a column a box, the rest nothing. A bench, a shelter, a café's chairs, a swing and a rocker are sat on. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone.",
+    description: "What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road; and, for a square or a park: a fountain — its water the bank's, a jet from a nozzle stood in it by whoever stands it —, a kiosk with its counter, a rack of bicycles, a café's table and its two chairs under their parasol, an advertising column, a playground's swing, slide and spring rocker, a barrier round roadworks, a pergola to shade a bench. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a column a box, the rest nothing. A bench, a shelter, a café's chairs, a swing and a rocker are sat on. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone.",
     faces: FACES8,
     shape: "cube",
     sized: true,
@@ -4764,10 +4768,10 @@ var init_street = __esm(() => {
     looks: LOOKS10,
     lookLabels: LOOK_LABELS8,
     params: [
-      { name: "piece", label: "Piece", min: 0, max: PIECE_NAMES.length - 1, default: 0, step: 1, options: PIECE_NAMES, labels: LABELS6, description: "Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow; a fountain; a kiosk; a rack of bicycles; a café's table; an advertising column; a swing; a slide; a spring rocker; a works barrier." },
+      { name: "piece", label: "Piece", min: 0, max: PIECE_NAMES.length - 1, default: 0, step: 1, options: PIECE_NAMES, labels: LABELS6, description: "Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow; a fountain; a kiosk; a rack of bicycles; a café's table; an advertising column; a swing; a slide; a spring rocker; a works barrier; a pergola." },
       { name: "height", label: "Height", min: 0, max: 12, default: 0, step: 0.1, description: "How high a lamp, a signal or a sign's post stands (m) — 0, its own: a lamp 6 m, one on an arm 8 m, a signal 3.6 m, a sign 2.9 m." },
       { name: "width", label: "Width", min: 0, max: 24, default: 0, step: 0.05, description: "How wide a planter, an awning or a crossing is (m) — 0, its own: a planter 1.6 m, an awning 3 m, a crossing 7.5 m, a road's width." },
-      { name: "style", label: "Style", min: 0, max: STYLES5.length - 1, default: 0, step: 1, options: STYLES5, labels: ["Modern", "Classic, cast iron", "Old town", "Industrial"], when: (params) => STYLED.includes(PIECE_NAMES[params.piece]), description: "Its shape's style, for a lamp, a bench, a bin, a bus shelter, a fountain, a kiosk, a café's table and an advertising column — another silhouette, not another look: modern, the kind's own — a square basin round a block of stone, a kiosk of glass under a flat roof, a square table, a lit panel —; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap; a fountain of two bowls over a basin of eight sides, a kiosk of eight sides under a dome, a round table, a column under a dome —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches; a trough before a pillar with its spout, a hut of timber under tiles, a barrel and two stools, a notice board under a little roof —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch; a round tank and a standpipe, a hut of sheet with a hatch, a table with its two benches, a hoarding on two legs. A district's furniture is of one style." },
+      { name: "style", label: "Style", min: 0, max: STYLES5.length - 1, default: 0, step: 1, options: STYLES5, labels: ["Modern", "Classic, cast iron", "Old town", "Industrial"], when: (params) => STYLED.includes(PIECE_NAMES[params.piece]), description: "Its shape's style, for a lamp, a bench, a bin, a bus shelter, a fountain, a kiosk, a café's table, an advertising column and a pergola — another silhouette, not another look: modern, the kind's own — a square basin round a block of stone, a kiosk of glass under a flat roof, a square table, a lit panel —; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap; a fountain of two bowls over a basin of eight sides, a kiosk of eight sides under a dome, a round table, a column under a dome —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches; a trough before a pillar with its spout, a hut of timber under tiles, a barrel and two stools, a notice board under a little roof —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch; a round tank and a standpipe, a hut of sheet with a hatch, a table with its two benches, a hoarding on two legs. A district's furniture is of one style." },
       { name: "variant", label: "Variation", min: 0, max: 9999, default: 0, step: 1, description: "Which of its piece's it is: a road sign's plate — stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works, in turn —, a bench with a back or without, which lens of a signal is lit, an awning's stripes, a parasol's and a kiosk's, how many bicycles stand in a rack (two, three, one, none), a poster's colours, a swing's and a slide's." }
     ]
   });
@@ -13298,7 +13302,11 @@ var init_pool_gen = __esm(() => {
 });
 
 // src/build/kinds/hall-plan.js
-var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY = 6, PIER = 0.5, BAND = 1.2, STEP6 = 0.19, TREAD5 = 0.32, LANDING2 = 2, RAIL6 = 1.1, SHOPFRONT = 0.2, GALLERY = 3.5, BRIDGE = 5, STAIR, ESCALATOR, LEAST3, FACE4, round14 = (v) => Math.round(v * 1000) / 1000, clamp10 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), baysOf = (length2, wide, odd = false) => {
+var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY = 6, PIER = 0.5, BAND = 1.2, STEP6 = 0.19, TREAD5 = 0.32, LANDING2 = 2, RAIL6 = 1.1, SHOPFRONT = 0.2, GALLERY = 3.5, BRIDGE = 5, STAIR, ESCALATOR, steppedOf = (rise, run) => {
+  const steps = Math.min(40, Math.ceil(rise / ESCALATOR.riser - 0.000000001));
+  const tread = Math.floor(run / steps * 100 + 0.000001) / 100;
+  return { steps, tread, run: round14(steps * tread) };
+}, LEAST3, FACE4, round14 = (v) => Math.round(v * 1000) / 1000, clamp10 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), baysOf = (length2, wide, odd = false) => {
   const count = Math.max(1, Math.round(length2 / wide));
   return odd && count % 2 === 0 ? count + (length2 / (count + 1) >= wide * 0.7 ? 1 : -1) || 1 : count;
 }, linesOf2 = (from, to, count) => Array.from({ length: count + 1 }, (_, i) => round14(from + (to - from) * i / count)), planOf7 = (params) => {
@@ -13318,6 +13326,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
   const stairRun = round14(stairSteps * STAIR.tread + STAIR.landing - STAIR.tread);
   const fits = name === "supermarket" ? inside.y1 - inside.y0 >= run + 6 : name === "museum" ? inside.x1 - inside.x0 - 2 * gallery >= stairRun + 1 : true;
   const F = wanted > 1 && fits ? 2 : type.floors[0] > 1 ? 2 : 1;
+  const stepped = params.escalators === 1 && F > 1 && (name === "mall" || name === "museum") ? steppedOf(S, name === "museum" ? stairRun : run) : null;
   const top = round14(F * S);
   const base = -Math.max(params.plinth, params.stoop);
   const flat = type.roof === "flat" || type.roof === "lantern" || type.roof === "atrium";
@@ -13440,11 +13449,19 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
       voids.push(hole);
       slabs.push({ kind: "floor", rect: inside, top: S, bottom: round14(S - SLAB5), holes: [hole], face: FACE4.floors, under: ceiling, edge: null });
       const way = variant % 2 ? -1 : 1;
-      stair = { y: round14(hole.y0 + M2.lane / 2), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
+      const [edge, lip] = [0.1, 0.2];
+      if (stepped) {
+        const peak = way > 0 ? hole.x1 : hole.x0;
+        const foot = round14(peak - way * stepped.run);
+        const near2 = round14(hole.y0 + edge + ESCALATOR.width / 2);
+        escalators.push({ y: near2, foot, way, speed: ESCALATOR.speed }, { y: round14(near2 + ESCALATOR.width + ESCALATOR.gap), foot, way, speed: -ESCALATOR.speed });
+      } else {
+        stair = { y: round14(hole.y0 + M2.lane / 2), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
+      }
       const [rx0, rx1] = [hole.x0, hole.x1];
       panes.push({ name: "rail", min: [rx0, hole.y0 - 0.01, S], max: [rx1, hole.y0 + 0.01, round14(S + RAIL6)], axis: 1, solid: true });
       for (const x of [rx0, rx1]) {
-        const from = (way > 0 ? x === rx1 : x === rx0) ? round14(hole.y0 + M2.lane) : hole.y0;
+        const from = (way > 0 ? x === rx1 : x === rx0) ? round14(hole.y0 + (stepped ? edge + pair2 + lip : M2.lane)) : hole.y0;
         panes.push({ name: "rail", min: [x - 0.01, from, S], max: [x + 0.01, hole.y1, round14(S + RAIL6)], axis: 0, solid: true });
       }
       for (const x of gridX)
@@ -13499,7 +13516,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
     const landing = [round14(-pair2 / 2), round14(pair2 / 2)];
     panes.push(...[hole.x0, hole.x1].map((x) => ({ name: "rail", min: [x - 0.01, hole.y0, S], max: [x + 0.01, hole.y1, round14(S + RAIL6)], axis: 0, solid: true })), { name: "rail", min: [hole.x0, hole.y1 - 0.01, S], max: [hole.x1, hole.y1 + 0.01, round14(S + RAIL6)], axis: 1, solid: true }, ...[[hole.x0, landing[0]], [landing[1], hole.x1]].map(([x0, x1]) => ({ name: "rail", min: [x0, hole.y0 - 0.01, S], max: [x1, hole.y0 + 0.01, round14(S + RAIL6)], axis: 1, solid: true })));
     lantern2 = { x0: hole.x0, x1: hole.x1, y0: hole.y0, y1: hole.y1, z0: top, z1: round14(top + 1.2), glazed: true };
-    const foot = round14(hole.y0 + run);
+    const foot = round14(hole.y0 + (stepped ? stepped.run : run));
     escalators.push({ x: round14(landing[1] - ESCALATOR.width / 2), foot, way: -1, speed: ESCALATOR.speed }, { x: round14(landing[0] + ESCALATOR.width / 2), foot, way: -1, speed: -ESCALATOR.speed });
     for (const y of gridY)
       for (const x of [round14(hole.x0 - COLUMN2 / 2), round14(hole.x1 + COLUMN2 / 2)])
@@ -13605,6 +13622,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
     voids,
     escalators,
     flight: { run, rise: S, pair: pair2 },
+    stepped,
     board,
     shops,
     gallery: gallery && F > 1 ? gallery : 0,
@@ -13623,7 +13641,7 @@ var init_hall_plan = __esm(() => {
   init_game_scale();
   M2 = GAME;
   STAIR = Object.freeze({ tread: 0.3, landing: 2 });
-  ESCALATOR = Object.freeze({ going: 2, width: 1.5, gap: 0.3, speed: 0.6 });
+  ESCALATOR = Object.freeze({ going: 2, width: 1.5, gap: 0.3, speed: 0.6, riser: 0.2 });
   LEAST3 = Object.freeze({ supermarket: [16, 14], museum: [16, 14], mall: [28, 24], market: [16, 12], station: [20, 16] });
   FACE4 = Object.freeze({ walls: 0, apart: 1, trim: 2, glass: 3, roof: 4, floors: 5, inside: 6, ceiling: 7 });
 });
@@ -13670,7 +13688,15 @@ var round15 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
     behaviour: { type: "belt", speed },
     centre: [x, round15(foot + way * (run / 2 - Math.sin(pitch) * off)), round15(level + rise / 2 + Math.cos(pitch) * off)]
   };
-}, GROCERIES, WARES, fitOf = (plan2, params) => {
+}, STEPS_LOOK, steppedFlight = ({ x, y, foot, way, speed }, { steps, tread, run }, rise) => ({
+  kind: "stairs",
+  size: [ESCALATOR.width, run, rise],
+  ...y === undefined ? { at: [x, round15(foot + way * run / 2), 0], yaw: way > 0 ? 0 : 180 } : { at: [round15(foot + way * run / 2), y, 0], yaw: way > 0 ? -90 : 90 },
+  params: { steps, height: rise, tread, width: ESCALATOR.width, structure: 0, landing: 0, railing: 3 },
+  color: [0.8, 0.8, 0.8],
+  surface: { faces: Object.fromEntries(Object.entries(STEPS_LOOK).map(([face2, texture]) => [face2, { texture }])) },
+  behaviour: { type: "belt", speed }
+}), GROCERIES, WARES, fitOf = (plan2, params) => {
   const most2 = BUDGET5[plan2.name].parts;
   for (const spread of [1, 1.3, 1.7, 2.2, 3, 4, 6]) {
     const parts = fitted(plan2, params, spread);
@@ -13681,7 +13707,7 @@ var round15 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
 }, fitted = (plan2, params, spread) => {
   const { name, inside, rect: rect4, floors, storey: S, clear: H, variant } = plan2;
   const random = randomOf5(variant * 7919 + 101);
-  const parts = plan2.escalators.map((each) => escalator(each, plan2.flight));
+  const parts = plan2.escalators.map((each) => plan2.stepped ? steppedFlight(each, plan2.stepped, S) : escalator(each, plan2.flight));
   if (plan2.stair) {
     const { y, top, way, run, width, height, steps, tread, landing } = plan2.stair;
     parts.push({
@@ -13763,15 +13789,18 @@ var round15 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
     }
   }
   if (name === "museum") {
-    const [y0, y1] = [round15(inside.y0 + (plan2.gallery ? plan2.gallery + 3 : 4)), round15(inside.y1 - 5)];
+    const clear = plan2.stepped ? 5.4 : 3;
+    const [y0, y1] = [round15(inside.y0 + (plan2.gallery ? plan2.gallery + clear : 4)), round15(inside.y1 - 5)];
     const off = round15(Math.min((inside.x1 - inside.x0) * 0.2, 7));
-    const count = Math.max(1, Math.floor((y1 - y0) / (7 * spread)));
+    const count = plan2.stepped && y1 - y0 < 3 ? 0 : Math.max(1, Math.floor((y1 - y0) / (7 * spread)));
     for (let i = 0;i <= count; i++)
       for (const side2 of [-1, 1]) {
         const size = round15(1 + 0.4 * random());
         parts.push(fixture2("plinth", [side2 * off, round15(y0 + (y1 - y0) * i / Math.max(1, count)), 0], side2 < 0 ? 0 : 180, { width: size, depth: size, variant: variant + i * 2 + (side2 > 0 ? 1 : 0), look: ["marble", "concrete", "white"][variant % 3] }));
       }
-    parts.push(fixture2("plinth", [0, 0, 0], 0, { width: 2, depth: 2, variant: variant + 4, look: ["marble", "concrete", "white"][variant % 3] }));
+    const middle = plan2.stepped ? round15(Math.max(0, inside.y0 + plan2.gallery + clear)) : 0;
+    if (!plan2.stepped || middle + 1 <= rect4.y1 - 6)
+      parts.push(fixture2("plinth", [0, middle, 0], 0, { width: 2, depth: 2, variant: variant + 4, look: ["marble", "concrete", "white"][variant % 3] }));
     const names = Object.keys(PAINTINGS);
     const frames = LOOKS5.picture;
     const type = TYPE_NAMES.indexOf("picture");
@@ -13844,6 +13873,7 @@ var init_hall_fit = __esm(() => {
   init_hall();
   init_sign();
   init_hall_plan();
+  STEPS_LOOK = Object.freeze({ 0: "metal/sheet/diamond-plate-001", 1: "metal/painted/metal-029", 2: "metal/painted/metal-016", 3: "metal/painted/metal-029", 4: "metal/painted/metal-029" });
   GROCERIES = ["mixed", "bakery", "bottles", "produce", "mixed", "dairy", "toys", "books"];
   WARES = ["clothes", "toys", "books", "mixed", "bakery", "bottles"];
 });
@@ -14962,13 +14992,67 @@ var TAU, cornerOf2 = (n, half) => half / Math.cos(Math.PI / n), ring = (n, r, z,
       solid: [[[-0.9, -0.06, 0], [0.9, 0.06, h - 0.13]]]
     };
   };
+  const POSTS2 = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const frame = ({ w, d, h }, thick, { foot = 0, beam = 0.16, out = 0 } = {}) => {
+    const [x, y, top] = [w / 2 - 0.2, d / 2 - 0.2, h - 0.42];
+    return {
+      x,
+      y,
+      top,
+      boxes: [
+        ...POSTS2.map(([sx, sy]) => box3([sx * x - thick / 2, sy * y - thick / 2, 0], [sx * x + thick / 2, sy * y + thick / 2, top], sides(METAL6), 2)),
+        ...foot ? POSTS2.map(([sx, sy]) => box3([sx * x - foot / 2, sy * y - foot / 2, 0], [sx * x + foot / 2, sy * y + foot / 2, 0.45], topped2(METAL6, METAL6), 3)) : [],
+        ...[-1, 1].map((sy) => box3([-x - out, sy * y - thick / 2, top], [x + out, sy * y + thick / 2, top + beam], all2(METAL6), 1))
+      ],
+      solid: POSTS2.map(([sx, sy]) => [[sx * x - 0.1, sy * y - 0.1, 0], [sx * x + 0.1, sy * y + 0.1, top]])
+    };
+  };
+  const across = ({ x, y, top }, count, wide, high, slot, beam = 0.16, out = 0.15) => [
+    ...Array.from({ length: count }, (_, k) => {
+      const at = -x + 2 * x * k / (count - 1);
+      return box3([at - wide / 2, -y - out, top + beam], [at + wide / 2, y + out, top + beam + high], over(slot), 3);
+    }),
+    box3([-x, -y - out, top + beam], [x, y + out, top + beam + 0.03], all2(slot), 1, 2)
+  ];
+  const pergola = {
+    modern: (given) => {
+      const made4 = frame(given, 0.08);
+      return { boxes: [...made4.boxes, ...across(made4, 9, 0.06, 0.12, BODY3)], sheets: [], solid: made4.solid };
+    },
+    classic: (given) => {
+      const made4 = frame(given, 0.1, { foot: 0.22 });
+      const { x, y, top } = made4;
+      return {
+        boxes: [...made4.boxes, ...across(made4, 7, 0.07, 0.14, BODY3, 0.16, 0.18)],
+        sheets: POSTS2.map(([sx, sy]) => sheet([[sx * x, sy * y, top - 0.5], [sx * x, sy * y, top - 0.42], [sx * (x - 0.55), sy * y, top], [sx * (x - 0.63), sy * y, top]], METAL6, 3, { both: true })),
+        solid: made4.solid
+      };
+    },
+    oldtown: (given) => {
+      const made4 = frame(given, 0.16, { beam: 0.2, out: 0.2 });
+      return { boxes: [...made4.boxes, ...across(made4, 8, 0.1, 0.16, BODY3, 0.2, 0.2)], sheets: [], solid: made4.solid };
+    },
+    industrial: (given) => {
+      const made4 = frame(given, 0.08);
+      const { x, y, top } = made4;
+      return {
+        boxes: made4.boxes,
+        sheets: [
+          sheet([[-x - 0.2, -y - 0.15, top + 0.16], [x + 0.2, -y - 0.15, top + 0.16], [x + 0.2, y + 0.15, top + 0.28], [-x - 0.2, y + 0.15, top + 0.28]], BODY3, 1, { both: true }),
+          ...POSTS2.map(([sx, sy]) => sheet([[sx * x, sy * y, top - 0.5], [sx * x, sy * y, top - 0.43], [sx * x, sy * (y - 0.5), top], [sx * x, sy * (y - 0.57), top]], METAL6, 3, { both: true }))
+        ],
+        solid: made4.solid
+      };
+    }
+  };
   const { modern: basinOwn, ...basins } = fountain;
   const { modern: kioskOwn, ...kiosks } = kiosk;
   const { modern: tableOwn, ...tables } = table2;
   const { modern: advertOwn, ...adverts } = advert;
+  const { modern: pergolaOwn, ...pergolas } = pergola;
   return {
-    own: { fountain: basinOwn, kiosk: kioskOwn, rack: rack2, table: tableOwn, advert: advertOwn, swing, slide, rocker, barrier },
-    styled: { fountain: basins, kiosk: kiosks, table: tables, advert: adverts }
+    own: { fountain: basinOwn, kiosk: kioskOwn, rack: rack2, table: tableOwn, advert: advertOwn, swing, slide, rocker, barrier, pergola: pergolaOwn },
+    styled: { fountain: basins, kiosk: kiosks, table: tables, advert: adverts, pergola: pergolas }
   };
 };
 var init_street_square = __esm(() => {
@@ -18153,7 +18237,7 @@ var DEG5, seedFor = (name, index) => {
     const key = typeof animal.key === "string" || Number.isInteger(animal.key) ? String(animal.key) : null;
     if (key !== null && !/^[\w.-]{1,64}$/.test(key))
       throw new Error(`${spec.name}: animals ${n}'s key ${key}: letters, digits, dots and dashes`);
-    return { type: "herd", id: idOf(animal.id, `${id}~herd-${key ?? n}`), species: species.name, at: homeOf(placeOf4(animal.at)), seed, ...count !== undefined && { count }, ...territory !== undefined && { territory } };
+    return { type: "herd", id: idOf(animal.id, `${id}~herd-${key ?? n}`), species: species.name, at: homeOf(placeOf4(animal.at)), seed, ...count !== undefined && { count }, ...territory !== undefined && { territory }, ...animal.level === true && { level: true } };
   });
   const seeds = (spec.seeds ?? []).map((seed, n) => {
     if (typeof seed?.generator !== "string")

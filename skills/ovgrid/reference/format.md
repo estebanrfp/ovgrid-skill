@@ -115,7 +115,7 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `lift` | its box: a car's across, front to back and floor to top; a leaf's width, thickness and height; a button's plate | 0 frame, 1 floor, 2 glass, 3 what is lit (a car's ceiling, a button's face), 4 panels | a piece of a lift, a few boxes: `piece` `car` (a floor, a lit ceiling, glass behind and at both sides, its way in at its −y, `door` wide and `head` high), `leaf` (one leaf of a door) or `button` (a plate, its −y face lit). What moves it is its `lift` behaviour (effects.md): a building's recipe stands them — write them yourself only for a lift of your own |
 | `hall` | what its `type`, `width`, `depth`, `height` and `floors` make | 0 walls, 1 what is dressed apart (the band over its glass, its canopy, a portico's beam), 2 trim (frames, columns, slabs' edges, its base), 3 glass, 4 roof, 5 floors, 6 walls inside, 7 ceilings | a supermarket, a museum, a shopping centre, a market hall or a filling station in one part, worked out from a few numbers, walked into as drawn; what stands in it parts of their own — see *A hall in one part* |
 | `fixture` | what its `type`, `width` and `depth` make — its height its type's, a person's | 0 frame, 1 boards (shelves, a worktop, a plinth's stone), 2–4 its goods, three colours of them, 5 glass, 6 accent (a rail, an awning, a pump's panel, a sculpture) | what a shop, a market, a museum or a filling station is fitted with: aisle shelving, wall shelving, a chiller, a checkout, a table of goods, a market stall, a plinth and its sculpture, a fuel pump, a moving ramp — see *A hall in one part* |
-| `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, what is painted on a road: `line`, `arrow`, and what stands in a square or a park: `fountain`, `kiosk`, `rack` (of bicycles), `table` (a café's), `advert` (an advertising column), `swing`, `slide`, `rocker`, `barrier` (round roadworks) — see *What stands in a street* |
+| `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, what is painted on a road: `line`, `arrow`, and what stands in a square or a park: `fountain`, `kiosk`, `rack` (of bicycles), `table` (a café's), `advert` (an advertising column), `swing`, `slide`, `rocker`, `barrier` (round roadworks), `pergola` — see *What stands in a street* |
 | `sign` | its `width` — its word's own where 0 — × 0.12 × its `height` | 0 frame, 1 board, 2 letters — the last two tints on one material | a board with a word on it, its letters a font five by seven: `hotel`, `hospital`, `school`, `market`, `supermarket`, `museum`, `mall`, `pharmacy`, `cafe`, `bar`, `books`, `bakery`, `parking`, `police`, `fuel`, `cinema`, `bank`, `library`, `station`, `taxi`, `bus`, `open`, `sale`, `ovgrid` — see *What stands in a street* |
 | `crane` | what its mast's `height` and its `jib` make | 0 paint, 1 concrete (its pad, its counterweight), 2 glass, 3 dark metal | a tower crane: a mast of lattice on a pad, a cab, a jib along its +y and a counter-jib behind — see *What stands in a street* |
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
@@ -671,7 +671,9 @@ kiosk behind. `width` × `depth` (16–60 × 12–48 m; 36 × 28 where left out;
 it stands on, its front its +y; `height` a storey's, floor to ceiling (4–10 m: 6 a supermarket's, 8 a museum's, 5 a shopping
 centre's); `floors` 1 or 2 — a supermarket's upper floor up a pair of moving ramps, a museum's gallery round its hall up a stair
 (a shopping centre has two, a market and a station one); `variant` which of its type's it is; `plinth` and `stoop` as a
-building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as left out) or `none`.
+building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as left out) or `none`. `escalators`: `steps` for a
+shopping centre and a museum — a pair of escalators of steps, one up and one down, in the place of a shopping centre's moving
+ramps and of a museum's stair —; `ramps` as left out, and a supermarket's whatever is said: its trolleys go up them.
 
 ```json
 { "name": "supermarket", "at": [0, 0, 0.2], "prims": [
@@ -685,7 +687,8 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   and a table of goods; a market's stalls back to back; a station's pumps at each island's ends and its kiosk's counter —,
   sixty-four parts at the most, farther apart in a hall too large for them; its moving ramps (a `fixture` of type
   `travelator` laid along its slope, with the `belt` behaviour: they carry whoever stands on them, up or down) and a museum's
-  stair; four lights at the most, on by night.
+  stair — or, with `escalators` `steps`, a shopping centre's and a museum's escalators: two flights of the `stairs` kind with
+  the `belt` behaviour, which carry a step at a time —; four lights at the most, on by night.
 - **Its cost**: a supermarket 2,300 triangles from near at the most and 500 from a street away, a museum 1,800 and 460, a
   shopping centre 4,800 and 600, a market or a station 500 and 380; a fixture 340 from beside it, a third from a few metres
   off, nothing from far. Give the hall itself `"light": { "on": true, "range": 0 }`: its ceilings' panels glow of themselves.
@@ -718,7 +721,7 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   side); yellow with `variant` 2 or 3. An `arrow` is a lane's, 3.2 m long, pointing along its +y: lay both on the road,
   a centimetre over it.
 - **`style`**, for a `lamp`, an `arm`, a `double`, a `bench`, a `bin` and a `shelter` — and a `fountain`, a `kiosk`, a
-  `table` and an `advert` — another silhouette, in the same box:
+  `table`, an `advert` and a `pergola` — another silhouette, in the same box:
   `modern` (none given), `classic` (cast iron: a stepped base, a swan's neck, a lantern under a cap; a bench with arms),
   `oldtown` (a lantern hung from a bracket; a bench of stone — look `stone` —; a bin of slats and a shelter of timber under
   tiles — look `timber`), `industrial` (a plain post and a flood lamp, a plank on a plinth, a drum). Keep one style to a
@@ -746,11 +749,15 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   - a `rack` (3 × 1.9 × 1.15 m): three hoops and the bicycles leaning on them — `variant` 0 two, 1 three, 2 one, 3 none;
     its long side along the kerb;
   - a playground's `swing` (3.4 × 2.2 × 2.5 m, sat on, two seats), `slide` (1.4 × 4.4 × 2.7 m: its ladder at its back, its
-    chute down to its front) and `rocker` (0.5 × 1.1 × 0.95 m, sat on): looks `steel`, `timber`; `variant` their colours.
+    chute down to its front) and `rocker` (0.5 × 1.1 × 0.95 m, sat on): looks `steel`, `timber` — a rocker `steel` alone —;
+    `variant` their colours.
     Lay a slab of `paving/tiles/rubber-tiles` or `ground/sand/playground-sand` under them;
   - a `barrier` (1.8 × 0.5 × 1.15 m): two boards in red and white on two feet, a lamp on one end (the other with `variant`
     odd) that glows by night where it is lit. Along a trench's side of the road and across its ends, a `cone` at each
-    corner, a `roadsign` of works before it.
+    corner, a `roadsign` of works before it;
+  - a `pergola` (4.6 × 3.2 × 2.9 m): four posts, beams at their heads and what lies across them — `modern` nine slats on
+    slim steel, `classic` rafters on cast posts with brackets, `oldtown` thick timber, `industrial` a sheet of one pitch;
+    looks `black`, `green`, `timber`, `aluminium`. Shade for a bench: stand the bench at the same place, under it.
 - **What glows**: a lamp's glass (face 2), a signal's lens (face 4 red, 5 amber, 6 green) and a sign's letters (face 2) glow
   where the face is given `"emissive": 0.9` and the part `"light": { "on": "night", "range": 0 }` — by night, lighting nothing
   round it, at no light's cost. Give a lamp a `range` (up to 10) only where the ground under it must be lit: a build holds
@@ -1368,6 +1375,10 @@ prims collide as their mesh, its hull when convex.
   build's name and the herd's place in the list. `territory`: how far round its home it walks, in metres — from 5 (a
   pen) up to its species' own (catalog: a cow's 80, a hen's 30, a horse's 150), which is what none gives. `key`,
   optional, as a tree's.
+- **On what is built** — a deck, a terrace, a plate over the land, a roof: `"level": true`, and its home with its height,
+  `"at": [x, y, z]` (z over the place the build is put at, as a part's). It then walks level with its home, at that
+  height wherever its animals are: left out, a herd stands on the land, under whatever is built over it. For what is
+  flat and wide enough for its `territory` — geese on a pond's sheet of water, dogs in a pen of 11 m: it sees no wall.
 - **Its ground**: it walks no steeper than 35°, never into the sea, as far as its territory or nearer where the ground
   does not let it; where none is left round its home — steep all round —, it stays there: another `seed`, or gentler
   ground. It has no collision and does not see what is built: **give it open ground as wide as its territory** — a
@@ -1400,7 +1411,9 @@ prims collide as their mesh, its hull when convex.
   1 some · 2 many along its streets; `bridges` 0 none · 1 a footbridge over its avenue · 2 and a street carried over
   the avenue on two ramps · 3 and a railway on a viaduct along its north side; `life` 0 bare · 1 lived in — awnings
   over its shops, café tables, kiosks, racks of bicycles, advertising columns, a fountain in its square and in each park,
-  a playground, a trench behind its barriers; `seed` 0–9999). Numbers only, by name;
+  a playground, a trench behind its barriers — · 2 and green — a street for walking under its trees, pergolas and a
+  pattern in its square's paving, flower beds, a pond with its geese and a pen with its dogs in each park —; `seed`
+  0–9999). Numbers only, by name;
   any left out is its generator's own. A city wants dry ground that falls 5 m at the most under it, whole inside one
   parcel: 250 × 190 m is twelve blocks, some 1,400 records, 154,000 triangles at the finest.
 - `at`: where its middle stands in the build's frame — `[x, y]` on the ground there, or `[x, y, z]`; `turn`: degrees
@@ -1409,8 +1422,9 @@ prims collide as their mesh, its hull when convex.
   modern one, an industrial estate: each its own street furniture and flats); its `3`, urban roads besides (an avenue with
   a planted median and a bike lane through its middle, parking bays along every other street, tree pits, stop lines and
   arrows, a crossing's stripes on every arm of every junction); its `4`, bridges besides (its `bridges`: a footbridge
-  up a stair from each pavement, an overpass, a viaduct); its `5`, its street life besides (its `life`); none, its
-  first, as a city was first made. Write the latest unless a build must stay as it was.
+  up a stair from each pavement, an overpass, a viaduct); its `5`, its street life besides (its `life` 1); its `6`, its green besides (its `life` 2);
+  its `7`, escalators of steps in its shopping centres and its museums besides (a hall's `escalators`);
+  none, its first, as a city was first made. Write the latest unless a build must stay as it was.
 - **Its ground is the planet's own**, the land's edits aside: what it lays stands as its generator lays it there — a
   house's base down past the ground, its street levelled over it. Give it ground its generator takes (a neighbourhood:
   dry, gentle, as far as it covers — 200 × 160 m for the one above) and nothing built where it will stand: it does not

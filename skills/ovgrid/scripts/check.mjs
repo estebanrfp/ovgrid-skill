@@ -4088,7 +4088,7 @@ var init_hall = __esm(() => {
   hall = Object.freeze({
     name: "hall",
     label: "Hall",
-    description: "A hall worked out from a few numbers: one tall storey of wide spans on columns, or two. A supermarket behind a front of glass under a canopy, a band over it, its upper floor up a pair of moving ramps; a museum behind a portico of piers and steps, lit from a lantern on its roof, a gallery round its hall up a stair; a shopping centre of two storeys, shops either side of a concourse open to a roof of glass, galleries along it, moving ramps in it, come into at both ends; a market's roof of two pitches on columns, open all round; a filling station's canopy on columns over its pumps' islands, a kiosk behind. Its front is its +y. Sized for the avatar and the camera behind it: ways in two doors wide at the least. `width` and `depth` are the rectangle it stands on; its box is what it makes. One part — a supermarket 2,300 triangles from near at the most and 500 from a street away, a shopping centre 4,800 and 600, a market 500 and 380. With `fit` what stands in it are parts of their own, made, moved and taken away with it: its fixtures (kind fixture) — its moving ramps among them, which carry whoever stands on them up or down —, a museum's stair and its pictures (kinds stairs and furniture) — sixty-four at the most. Laid on the ground, give it the `plinth` and `stoop` that ground asks.",
+    description: "A hall worked out from a few numbers: one tall storey of wide spans on columns, or two. A supermarket behind a front of glass under a canopy, a band over it, its upper floor up a pair of moving ramps; a museum behind a portico of piers and steps, lit from a lantern on its roof, a gallery round its hall up a stair; a shopping centre of two storeys, shops either side of a concourse open to a roof of glass, galleries along it, moving ramps in it, come into at both ends — with `escalators` `steps`, a shopping centre's ramps and a museum's stair are escalators of steps, one up and one down —; a market's roof of two pitches on columns, open all round; a filling station's canopy on columns over its pumps' islands, a kiosk behind. Its front is its +y. Sized for the avatar and the camera behind it: ways in two doors wide at the least. `width` and `depth` are the rectangle it stands on; its box is what it makes. One part — a supermarket 2,300 triangles from near at the most and 500 from a street away, a shopping centre 4,800 and 600, a market 500 and 380. With `fit` what stands in it are parts of their own, made, moved and taken away with it: its fixtures (kind fixture) — its moving ramps among them, which carry whoever stands on them up or down —, a museum's stair and its pictures (kinds stairs and furniture), its escalators of steps (kind stairs) — sixty-four at the most. Laid on the ground, give it the `plinth` and `stoop` that ground asks.",
     faces: FACES6,
     shape: "cube",
     sized: true,
@@ -4104,13 +4104,14 @@ var init_hall = __esm(() => {
       { name: "width", label: "Width", min: 16, max: 60, default: 36, step: 0.1, description: "How wide it is, along its front (m)." },
       { name: "depth", label: "Depth", min: 12, max: 48, default: 28, step: 0.1, description: "How deep it is, front to back (m)." },
       { name: "height", label: "Storey height", min: 4, max: 10, default: 6, step: 0.2, description: "How high a storey of it is, from its floor to its ceiling (m): 6 m a supermarket's, 8 m a museum's, 5 m a shopping centre's." },
-      { name: "floors", label: "Storeys", min: 1, max: 2, default: 1, step: 1, description: "How many storeys: one, or two — a supermarket's upper floor up a pair of moving ramps, a museum's gallery round its hall up a stair. A shopping centre has two, a market and a filling station one, whatever is asked." },
+      { name: "floors", label: "Storeys", min: 1, max: 2, default: 1, step: 1, description: "How many storeys: one, or two — a supermarket's upper floor up a pair of moving ramps, a museum's gallery round its hall up a stair, or up its escalators. A shopping centre has two, a market and a filling station one, whatever is asked." },
       { name: "variant", label: "Variation", min: 0, max: 9999, default: 0, step: 1, description: "Which of its type's halls it is: which side its way in stands to, where its moving ramps are, what its fixtures hold. One number, one hall." },
       { name: "plinth", label: "Base", min: 0.1, max: 3, default: 0.3, step: 0.01, description: "How far its base goes down under its floor (m): past the lowest ground under it. Its floor is its box's bottom raised by this." },
       { name: "stoop", label: "Door step", min: 0, max: 1.5, default: 0.15, step: 0.01, description: "How far the ground before its way in lies under its floor (m): steps go down to it all along its front, one for every 0.19 m." },
-      { name: "fit", label: "Fitted", min: 0, max: 1, default: 1, step: 1, options: ["bare", "fitted"], labels: ["Bare", "Fitted out"], description: "What stands in it: bare, nothing; fitted — a supermarket's aisles of shelves, its chillers and its checkouts, a museum's plinths and pictures, a shopping centre's shops' shelving and tables, a market's stalls, a filling station's pumps —, a part each; its moving ramps either way." },
+      { name: "fit", label: "Fitted", min: 0, max: 1, default: 1, step: 1, options: ["bare", "fitted"], labels: ["Bare", "Fitted out"], description: "What stands in it: bare, nothing; fitted — a supermarket's aisles of shelves, its chillers and its checkouts, a museum's plinths and pictures, a shopping centre's shops' shelving and tables, a market's stalls, a filling station's pumps —, a part each; its moving ramps, or its escalators, either way." },
       { name: "sign", label: "Sign", min: 0, max: 1, default: 1, step: 1, options: ["none", "sign"], labels: ["None", "Its name"], description: "A sign over its way in saying what it is (the sign kind's): on the edge of a supermarket's or a shopping centre's canopy, on a museum's portico, under a market's eave, on a filling station's canopy; its letters lit by night. A part of its own." },
-      { name: "lighting", label: "Lights", min: 0, max: 1, default: 1, step: 1, options: ["none", "night"], labels: ["None", "By night"], description: "Lights under its ceiling, on once the sun has set: none; night — four at the most. Its ceiling's own panels glow either way." }
+      { name: "lighting", label: "Lights", min: 0, max: 1, default: 1, step: 1, options: ["none", "night"], labels: ["None", "By night"], description: "Lights under its ceiling, on once the sun has set: none; night — four at the most. Its ceiling's own panels glow either way." },
+      { name: "escalators", label: "Escalators", min: 0, max: 1, default: 0, step: 1, options: ["ramps", "steps"], labels: ["Moving ramps", "Of steps"], description: "What carries one up to its upper floor. Moving ramps: a pair of pitched belts — and a museum's way up a stair one walks. Of steps: a pair of escalators, flights of the stairs kind that carry a step at a time, one up and one down — a shopping centre's between its storeys, a museum's up to its gallery in its stair's place. A supermarket's are ramps either way: its trolleys go up them." }
     ]
   });
 });
@@ -4220,12 +4221,13 @@ var init_street = __esm(() => {
     swing: Object.freeze({ label: "Swing", size: Object.freeze([3.4, 2.2, 2.5]) }),
     slide: Object.freeze({ label: "Slide", size: Object.freeze([1.4, 4.4, 2.7]) }),
     rocker: Object.freeze({ label: "Spring rocker", size: Object.freeze([0.5, 1.1, 0.95]) }),
-    barrier: Object.freeze({ label: "Works barrier", size: Object.freeze([1.8, 0.5, 1.15]) })
+    barrier: Object.freeze({ label: "Works barrier", size: Object.freeze([1.8, 0.5, 1.15]) }),
+    pergola: Object.freeze({ label: "Pergola", size: Object.freeze([4.6, 3.2, 2.9]) })
   });
   PIECE_NAMES = Object.freeze(Object.keys(PIECES2));
   FACES8 = Object.freeze(["metal", "body", "lamp", "glass", "colour", "colour, second", "colour, third", "colour, fourth"]);
   STYLES5 = Object.freeze(["modern", "classic", "oldtown", "industrial"]);
-  STYLED = Object.freeze(["lamp", "arm", "double", "bench", "bin", "shelter", "fountain", "kiosk", "table", "advert"]);
+  STYLED = Object.freeze(["lamp", "arm", "double", "bench", "bin", "shelter", "fountain", "kiosk", "table", "advert", "pergola"]);
   SEATED = Object.freeze({ bench: 3, shelter: 3, table: 2, swing: 2, rocker: 1 });
   SIGNS = Object.freeze(["stop", "yield", "limit", "crossing", "parking", "noentry", "roundabout", "oneway", "bus", "works"]);
   [RED2, WHITE5, BLUE3, BLACK4, AMBER, GREEN2, ORANGE, YELLOW] = [[0.78, 0.07, 0.06], [0.95, 0.95, 0.93], [0.08, 0.26, 0.62], [0.05, 0.05, 0.06], [0.95, 0.6, 0.06], [0.1, 0.62, 0.22], [0.96, 0.36, 0.05], [0.95, 0.78, 0.08]];
@@ -4249,7 +4251,8 @@ var init_street = __esm(() => {
     swing: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
     slide: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
     rocker: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
-    barrier: Object.freeze([RED2, WHITE5, AMBER, BLACK4])
+    barrier: Object.freeze([RED2, WHITE5, AMBER, BLACK4]),
+    pergola: Object.freeze([RED2, WHITE5, GREEN2, BLACK4])
   });
   PLAIN_COLOURS = Object.freeze([RED2, WHITE5, BLUE3, BLACK4]);
   BUDGET7 = Object.freeze({ triangles: 300, simpler: 110, coarse: 40, far: 12, pieces: 4, materials: 5 });
@@ -4279,7 +4282,8 @@ var init_street = __esm(() => {
     swing: Object.freeze({ steel: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, CEDAR3) }),
     slide: Object.freeze({ steel: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, CEDAR3) }),
     rocker: Object.freeze({ steel: look3(ALUMINIUM3, GREY2) }),
-    barrier: Object.freeze({ plain: look3(STEEL6, PLAIN2) })
+    barrier: Object.freeze({ plain: look3(STEEL6, PLAIN2) }),
+    pergola: Object.freeze({ black: look3(STEEL6, STEEL6), green: look3(GREEN_PAINT, GREEN_PAINT), timber: look3(CEDAR3, CEDAR3), aluminium: look3(ALUMINIUM3, SHEET2) })
   });
   LOOK_LABELS8 = Object.freeze({ black: "Black", aluminium: "Aluminium", green: "Green", timber: "Timber", oak: "Oak on green", steel: "Steel", stone: "Stone", plain: "Its own", concrete: "Concrete", cloth: "Cloth" });
   LENS = Object.freeze({ red: 4, amber: 5, green: 6 });
@@ -4293,7 +4297,7 @@ var init_street = __esm(() => {
   street = Object.freeze({
     name: "street",
     label: "Street furniture",
-    description: "What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road; and, for a square or a park: a fountain — its water the bank's, a jet from a nozzle stood in it by whoever stands it —, a kiosk with its counter, a rack of bicycles, a café's table and its two chairs under their parasol, an advertising column, a playground's swing, slide and spring rocker, a barrier round roadworks. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a column a box, the rest nothing. A bench, a shelter, a café's chairs, a swing and a rocker are sat on. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone.",
+    description: "What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road; and, for a square or a park: a fountain — its water the bank's, a jet from a nozzle stood in it by whoever stands it —, a kiosk with its counter, a rack of bicycles, a café's table and its two chairs under their parasol, an advertising column, a playground's swing, slide and spring rocker, a barrier round roadworks, a pergola to shade a bench. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a column a box, the rest nothing. A bench, a shelter, a café's chairs, a swing and a rocker are sat on. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone.",
     faces: FACES8,
     shape: "cube",
     sized: true,
@@ -4304,10 +4308,10 @@ var init_street = __esm(() => {
     looks: LOOKS10,
     lookLabels: LOOK_LABELS8,
     params: [
-      { name: "piece", label: "Piece", min: 0, max: PIECE_NAMES.length - 1, default: 0, step: 1, options: PIECE_NAMES, labels: LABELS6, description: "Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow; a fountain; a kiosk; a rack of bicycles; a café's table; an advertising column; a swing; a slide; a spring rocker; a works barrier." },
+      { name: "piece", label: "Piece", min: 0, max: PIECE_NAMES.length - 1, default: 0, step: 1, options: PIECE_NAMES, labels: LABELS6, description: "Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow; a fountain; a kiosk; a rack of bicycles; a café's table; an advertising column; a swing; a slide; a spring rocker; a works barrier; a pergola." },
       { name: "height", label: "Height", min: 0, max: 12, default: 0, step: 0.1, description: "How high a lamp, a signal or a sign's post stands (m) — 0, its own: a lamp 6 m, one on an arm 8 m, a signal 3.6 m, a sign 2.9 m." },
       { name: "width", label: "Width", min: 0, max: 24, default: 0, step: 0.05, description: "How wide a planter, an awning or a crossing is (m) — 0, its own: a planter 1.6 m, an awning 3 m, a crossing 7.5 m, a road's width." },
-      { name: "style", label: "Style", min: 0, max: STYLES5.length - 1, default: 0, step: 1, options: STYLES5, labels: ["Modern", "Classic, cast iron", "Old town", "Industrial"], when: (params) => STYLED.includes(PIECE_NAMES[params.piece]), description: "Its shape's style, for a lamp, a bench, a bin, a bus shelter, a fountain, a kiosk, a café's table and an advertising column — another silhouette, not another look: modern, the kind's own — a square basin round a block of stone, a kiosk of glass under a flat roof, a square table, a lit panel —; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap; a fountain of two bowls over a basin of eight sides, a kiosk of eight sides under a dome, a round table, a column under a dome —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches; a trough before a pillar with its spout, a hut of timber under tiles, a barrel and two stools, a notice board under a little roof —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch; a round tank and a standpipe, a hut of sheet with a hatch, a table with its two benches, a hoarding on two legs. A district's furniture is of one style." },
+      { name: "style", label: "Style", min: 0, max: STYLES5.length - 1, default: 0, step: 1, options: STYLES5, labels: ["Modern", "Classic, cast iron", "Old town", "Industrial"], when: (params) => STYLED.includes(PIECE_NAMES[params.piece]), description: "Its shape's style, for a lamp, a bench, a bin, a bus shelter, a fountain, a kiosk, a café's table, an advertising column and a pergola — another silhouette, not another look: modern, the kind's own — a square basin round a block of stone, a kiosk of glass under a flat roof, a square table, a lit panel —; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap; a fountain of two bowls over a basin of eight sides, a kiosk of eight sides under a dome, a round table, a column under a dome —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches; a trough before a pillar with its spout, a hut of timber under tiles, a barrel and two stools, a notice board under a little roof —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch; a round tank and a standpipe, a hut of sheet with a hatch, a table with its two benches, a hoarding on two legs. A district's furniture is of one style." },
       { name: "variant", label: "Variation", min: 0, max: 9999, default: 0, step: 1, description: "Which of its piece's it is: a road sign's plate — stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works, in turn —, a bench with a back or without, which lens of a signal is lit, an awning's stripes, a parasol's and a kiosk's, how many bicycles stand in a rack (two, three, one, none), a poster's colours, a swing's and a slide's." }
     ]
   });
@@ -12838,7 +12842,11 @@ var init_pool_gen = __esm(() => {
 });
 
 // src/build/kinds/hall-plan.js
-var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY = 6, PIER = 0.5, BAND = 1.2, STEP6 = 0.19, TREAD5 = 0.32, LANDING2 = 2, RAIL6 = 1.1, SHOPFRONT = 0.2, GALLERY = 3.5, BRIDGE = 5, STAIR, ESCALATOR, LEAST3, FACE4, round13 = (v) => Math.round(v * 1000) / 1000, clamp10 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), baysOf = (length2, wide, odd = false) => {
+var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY = 6, PIER = 0.5, BAND = 1.2, STEP6 = 0.19, TREAD5 = 0.32, LANDING2 = 2, RAIL6 = 1.1, SHOPFRONT = 0.2, GALLERY = 3.5, BRIDGE = 5, STAIR, ESCALATOR, steppedOf = (rise, run) => {
+  const steps = Math.min(40, Math.ceil(rise / ESCALATOR.riser - 0.000000001));
+  const tread = Math.floor(run / steps * 100 + 0.000001) / 100;
+  return { steps, tread, run: round13(steps * tread) };
+}, LEAST3, FACE4, round13 = (v) => Math.round(v * 1000) / 1000, clamp10 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), baysOf = (length2, wide, odd = false) => {
   const count = Math.max(1, Math.round(length2 / wide));
   return odd && count % 2 === 0 ? count + (length2 / (count + 1) >= wide * 0.7 ? 1 : -1) || 1 : count;
 }, linesOf = (from, to, count) => Array.from({ length: count + 1 }, (_, i) => round13(from + (to - from) * i / count)), planOf7 = (params) => {
@@ -12858,6 +12866,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
   const stairRun = round13(stairSteps * STAIR.tread + STAIR.landing - STAIR.tread);
   const fits = name === "supermarket" ? inside.y1 - inside.y0 >= run + 6 : name === "museum" ? inside.x1 - inside.x0 - 2 * gallery >= stairRun + 1 : true;
   const F = wanted > 1 && fits ? 2 : type.floors[0] > 1 ? 2 : 1;
+  const stepped = params.escalators === 1 && F > 1 && (name === "mall" || name === "museum") ? steppedOf(S, name === "museum" ? stairRun : run) : null;
   const top = round13(F * S);
   const base = -Math.max(params.plinth, params.stoop);
   const flat = type.roof === "flat" || type.roof === "lantern" || type.roof === "atrium";
@@ -12980,11 +12989,19 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
       voids.push(hole);
       slabs.push({ kind: "floor", rect: inside, top: S, bottom: round13(S - SLAB5), holes: [hole], face: FACE4.floors, under: ceiling, edge: null });
       const way = variant % 2 ? -1 : 1;
-      stair = { y: round13(hole.y0 + M2.lane / 2), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
+      const [edge, lip] = [0.1, 0.2];
+      if (stepped) {
+        const peak = way > 0 ? hole.x1 : hole.x0;
+        const foot = round13(peak - way * stepped.run);
+        const near2 = round13(hole.y0 + edge + ESCALATOR.width / 2);
+        escalators.push({ y: near2, foot, way, speed: ESCALATOR.speed }, { y: round13(near2 + ESCALATOR.width + ESCALATOR.gap), foot, way, speed: -ESCALATOR.speed });
+      } else {
+        stair = { y: round13(hole.y0 + M2.lane / 2), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
+      }
       const [rx0, rx1] = [hole.x0, hole.x1];
       panes.push({ name: "rail", min: [rx0, hole.y0 - 0.01, S], max: [rx1, hole.y0 + 0.01, round13(S + RAIL6)], axis: 1, solid: true });
       for (const x of [rx0, rx1]) {
-        const from = (way > 0 ? x === rx1 : x === rx0) ? round13(hole.y0 + M2.lane) : hole.y0;
+        const from = (way > 0 ? x === rx1 : x === rx0) ? round13(hole.y0 + (stepped ? edge + pair2 + lip : M2.lane)) : hole.y0;
         panes.push({ name: "rail", min: [x - 0.01, from, S], max: [x + 0.01, hole.y1, round13(S + RAIL6)], axis: 0, solid: true });
       }
       for (const x of gridX)
@@ -13039,7 +13056,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
     const landing = [round13(-pair2 / 2), round13(pair2 / 2)];
     panes.push(...[hole.x0, hole.x1].map((x) => ({ name: "rail", min: [x - 0.01, hole.y0, S], max: [x + 0.01, hole.y1, round13(S + RAIL6)], axis: 0, solid: true })), { name: "rail", min: [hole.x0, hole.y1 - 0.01, S], max: [hole.x1, hole.y1 + 0.01, round13(S + RAIL6)], axis: 1, solid: true }, ...[[hole.x0, landing[0]], [landing[1], hole.x1]].map(([x0, x1]) => ({ name: "rail", min: [x0, hole.y0 - 0.01, S], max: [x1, hole.y0 + 0.01, round13(S + RAIL6)], axis: 1, solid: true })));
     lantern2 = { x0: hole.x0, x1: hole.x1, y0: hole.y0, y1: hole.y1, z0: top, z1: round13(top + 1.2), glazed: true };
-    const foot = round13(hole.y0 + run);
+    const foot = round13(hole.y0 + (stepped ? stepped.run : run));
     escalators.push({ x: round13(landing[1] - ESCALATOR.width / 2), foot, way: -1, speed: ESCALATOR.speed }, { x: round13(landing[0] + ESCALATOR.width / 2), foot, way: -1, speed: -ESCALATOR.speed });
     for (const y of gridY)
       for (const x of [round13(hole.x0 - COLUMN2 / 2), round13(hole.x1 + COLUMN2 / 2)])
@@ -13145,6 +13162,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
     voids,
     escalators,
     flight: { run, rise: S, pair: pair2 },
+    stepped,
     board,
     shops,
     gallery: gallery && F > 1 ? gallery : 0,
@@ -13163,7 +13181,7 @@ var init_hall_plan = __esm(() => {
   init_game_scale();
   M2 = GAME;
   STAIR = Object.freeze({ tread: 0.3, landing: 2 });
-  ESCALATOR = Object.freeze({ going: 2, width: 1.5, gap: 0.3, speed: 0.6 });
+  ESCALATOR = Object.freeze({ going: 2, width: 1.5, gap: 0.3, speed: 0.6, riser: 0.2 });
   LEAST3 = Object.freeze({ supermarket: [16, 14], museum: [16, 14], mall: [28, 24], market: [16, 12], station: [20, 16] });
   FACE4 = Object.freeze({ walls: 0, apart: 1, trim: 2, glass: 3, roof: 4, floors: 5, inside: 6, ceiling: 7 });
 });
@@ -13210,7 +13228,15 @@ var round14 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
     behaviour: { type: "belt", speed },
     centre: [x, round14(foot + way * (run / 2 - Math.sin(pitch) * off)), round14(level + rise / 2 + Math.cos(pitch) * off)]
   };
-}, GROCERIES, WARES, fitOf = (plan2, params) => {
+}, STEPS_LOOK, steppedFlight = ({ x, y, foot, way, speed }, { steps, tread, run }, rise) => ({
+  kind: "stairs",
+  size: [ESCALATOR.width, run, rise],
+  ...y === undefined ? { at: [x, round14(foot + way * run / 2), 0], yaw: way > 0 ? 0 : 180 } : { at: [round14(foot + way * run / 2), y, 0], yaw: way > 0 ? -90 : 90 },
+  params: { steps, height: rise, tread, width: ESCALATOR.width, structure: 0, landing: 0, railing: 3 },
+  color: [0.8, 0.8, 0.8],
+  surface: { faces: Object.fromEntries(Object.entries(STEPS_LOOK).map(([face2, texture]) => [face2, { texture }])) },
+  behaviour: { type: "belt", speed }
+}), GROCERIES, WARES, fitOf = (plan2, params) => {
   const most2 = BUDGET5[plan2.name].parts;
   for (const spread of [1, 1.3, 1.7, 2.2, 3, 4, 6]) {
     const parts = fitted(plan2, params, spread);
@@ -13221,7 +13247,7 @@ var round14 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
 }, fitted = (plan2, params, spread) => {
   const { name, inside, rect: rect4, floors, storey: S, clear: H, variant } = plan2;
   const random = randomOf5(variant * 7919 + 101);
-  const parts = plan2.escalators.map((each) => escalator(each, plan2.flight));
+  const parts = plan2.escalators.map((each) => plan2.stepped ? steppedFlight(each, plan2.stepped, S) : escalator(each, plan2.flight));
   if (plan2.stair) {
     const { y, top, way, run, width, height, steps, tread, landing } = plan2.stair;
     parts.push({
@@ -13303,15 +13329,18 @@ var round14 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
     }
   }
   if (name === "museum") {
-    const [y0, y1] = [round14(inside.y0 + (plan2.gallery ? plan2.gallery + 3 : 4)), round14(inside.y1 - 5)];
+    const clear = plan2.stepped ? 5.4 : 3;
+    const [y0, y1] = [round14(inside.y0 + (plan2.gallery ? plan2.gallery + clear : 4)), round14(inside.y1 - 5)];
     const off = round14(Math.min((inside.x1 - inside.x0) * 0.2, 7));
-    const count = Math.max(1, Math.floor((y1 - y0) / (7 * spread)));
+    const count = plan2.stepped && y1 - y0 < 3 ? 0 : Math.max(1, Math.floor((y1 - y0) / (7 * spread)));
     for (let i = 0;i <= count; i++)
       for (const side2 of [-1, 1]) {
         const size = round14(1 + 0.4 * random());
         parts.push(fixture2("plinth", [side2 * off, round14(y0 + (y1 - y0) * i / Math.max(1, count)), 0], side2 < 0 ? 0 : 180, { width: size, depth: size, variant: variant + i * 2 + (side2 > 0 ? 1 : 0), look: ["marble", "concrete", "white"][variant % 3] }));
       }
-    parts.push(fixture2("plinth", [0, 0, 0], 0, { width: 2, depth: 2, variant: variant + 4, look: ["marble", "concrete", "white"][variant % 3] }));
+    const middle = plan2.stepped ? round14(Math.max(0, inside.y0 + plan2.gallery + clear)) : 0;
+    if (!plan2.stepped || middle + 1 <= rect4.y1 - 6)
+      parts.push(fixture2("plinth", [0, middle, 0], 0, { width: 2, depth: 2, variant: variant + 4, look: ["marble", "concrete", "white"][variant % 3] }));
     const names = Object.keys(PAINTINGS);
     const frames = LOOKS5.picture;
     const type = TYPE_NAMES.indexOf("picture");
@@ -13384,6 +13413,7 @@ var init_hall_fit = __esm(() => {
   init_hall();
   init_sign();
   init_hall_plan();
+  STEPS_LOOK = Object.freeze({ 0: "metal/sheet/diamond-plate-001", 1: "metal/painted/metal-029", 2: "metal/painted/metal-016", 3: "metal/painted/metal-029", 4: "metal/painted/metal-029" });
   GROCERIES = ["mixed", "bakery", "bottles", "produce", "mixed", "dairy", "toys", "books"];
   WARES = ["clothes", "toys", "books", "mixed", "bakery", "bottles"];
 });
@@ -14502,13 +14532,67 @@ var TAU, cornerOf2 = (n, half) => half / Math.cos(Math.PI / n), ring = (n, r, z,
       solid: [[[-0.9, -0.06, 0], [0.9, 0.06, h - 0.13]]]
     };
   };
+  const POSTS2 = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const frame = ({ w, d, h }, thick, { foot = 0, beam = 0.16, out = 0 } = {}) => {
+    const [x, y, top] = [w / 2 - 0.2, d / 2 - 0.2, h - 0.42];
+    return {
+      x,
+      y,
+      top,
+      boxes: [
+        ...POSTS2.map(([sx, sy]) => box3([sx * x - thick / 2, sy * y - thick / 2, 0], [sx * x + thick / 2, sy * y + thick / 2, top], sides(METAL6), 2)),
+        ...foot ? POSTS2.map(([sx, sy]) => box3([sx * x - foot / 2, sy * y - foot / 2, 0], [sx * x + foot / 2, sy * y + foot / 2, 0.45], topped2(METAL6, METAL6), 3)) : [],
+        ...[-1, 1].map((sy) => box3([-x - out, sy * y - thick / 2, top], [x + out, sy * y + thick / 2, top + beam], all2(METAL6), 1))
+      ],
+      solid: POSTS2.map(([sx, sy]) => [[sx * x - 0.1, sy * y - 0.1, 0], [sx * x + 0.1, sy * y + 0.1, top]])
+    };
+  };
+  const across = ({ x, y, top }, count, wide, high, slot, beam = 0.16, out = 0.15) => [
+    ...Array.from({ length: count }, (_, k) => {
+      const at = -x + 2 * x * k / (count - 1);
+      return box3([at - wide / 2, -y - out, top + beam], [at + wide / 2, y + out, top + beam + high], over(slot), 3);
+    }),
+    box3([-x, -y - out, top + beam], [x, y + out, top + beam + 0.03], all2(slot), 1, 2)
+  ];
+  const pergola = {
+    modern: (given) => {
+      const made4 = frame(given, 0.08);
+      return { boxes: [...made4.boxes, ...across(made4, 9, 0.06, 0.12, BODY3)], sheets: [], solid: made4.solid };
+    },
+    classic: (given) => {
+      const made4 = frame(given, 0.1, { foot: 0.22 });
+      const { x, y, top } = made4;
+      return {
+        boxes: [...made4.boxes, ...across(made4, 7, 0.07, 0.14, BODY3, 0.16, 0.18)],
+        sheets: POSTS2.map(([sx, sy]) => sheet([[sx * x, sy * y, top - 0.5], [sx * x, sy * y, top - 0.42], [sx * (x - 0.55), sy * y, top], [sx * (x - 0.63), sy * y, top]], METAL6, 3, { both: true })),
+        solid: made4.solid
+      };
+    },
+    oldtown: (given) => {
+      const made4 = frame(given, 0.16, { beam: 0.2, out: 0.2 });
+      return { boxes: [...made4.boxes, ...across(made4, 8, 0.1, 0.16, BODY3, 0.2, 0.2)], sheets: [], solid: made4.solid };
+    },
+    industrial: (given) => {
+      const made4 = frame(given, 0.08);
+      const { x, y, top } = made4;
+      return {
+        boxes: made4.boxes,
+        sheets: [
+          sheet([[-x - 0.2, -y - 0.15, top + 0.16], [x + 0.2, -y - 0.15, top + 0.16], [x + 0.2, y + 0.15, top + 0.28], [-x - 0.2, y + 0.15, top + 0.28]], BODY3, 1, { both: true }),
+          ...POSTS2.map(([sx, sy]) => sheet([[sx * x, sy * y, top - 0.5], [sx * x, sy * y, top - 0.43], [sx * x, sy * (y - 0.5), top], [sx * x, sy * (y - 0.57), top]], METAL6, 3, { both: true }))
+        ],
+        solid: made4.solid
+      };
+    }
+  };
   const { modern: basinOwn, ...basins } = fountain;
   const { modern: kioskOwn, ...kiosks } = kiosk;
   const { modern: tableOwn, ...tables } = table2;
   const { modern: advertOwn, ...adverts } = advert;
+  const { modern: pergolaOwn, ...pergolas } = pergola;
   return {
-    own: { fountain: basinOwn, kiosk: kioskOwn, rack: rack2, table: tableOwn, advert: advertOwn, swing, slide, rocker, barrier },
-    styled: { fountain: basins, kiosk: kiosks, table: tables, advert: adverts }
+    own: { fountain: basinOwn, kiosk: kioskOwn, rack: rack2, table: tableOwn, advert: advertOwn, swing, slide, rocker, barrier, pergola: pergolaOwn },
+    styled: { fountain: basins, kiosk: kiosks, table: tables, advert: adverts, pergola: pergolas }
   };
 };
 var init_street_square = __esm(() => {
@@ -15871,7 +15955,7 @@ var init_building_site = __esm(() => {
 });
 
 // src/build/city.js
-var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3.5, KERB2 = 0.15, RIM3 = 2, BLOCK2 = 50, BLOCK_MOST = 60, BLOCK_LEAST = 36, FALL2 = 5, OVER6 = 0.05, UNDER5 = 0.6, TILE = 60, SET = 0.5, MEDIAN = 3, BIKE = 2.4, BAY3 = 2.2, WALK_WIDE = 5, SECTIONS, CLEAR2 = 5.2, VIADUCT = 8, STAIR2, CONCRETE6 = "plaster/concrete/concrete-046", STEEL7 = "metal/painted/metal-029", RAILS2 = "paving/roads/rails-001", SOIL3 = "ground/soil/brown-mud-02", RUBBER = "paving/tiles/rubber-tiles", ROUND8, overlap3 = (a, b) => a[0] < b[1] - 0.01 && b[0] < a[1] - 0.01 && a[2] < b[3] - 0.01 && b[2] < a[3] - 0.01, around = ([x, y], r) => [x - r, x + r, y - r, y + r], boundsOfPoints = (points) => [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1])), Math.max(...points.map((p) => p[1]))], BIKE_TINT, LANES2 = "paving/roads/road-007", ASPHALT3 = "paving/asphalt/asphalt-024a", PAVEMENT = "paving/asphalt/concrete-pavement-02", PLAZA = "paving/stone/granite-tile-04", GRASS = "ground/grass/grass-004", SPECIES4, HALLS, CIVIC, CIVIC_COLOURS, DISTRICTS, round23 = (v) => Math.round(v * 1000) / 1000, clamp15 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), even = (v) => Math.round(v / 2) * 2, randomOf8 = (seed) => {
+var EDITION = 7, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3.5, KERB2 = 0.15, RIM3 = 2, BLOCK2 = 50, BLOCK_MOST = 60, BLOCK_LEAST = 36, FALL2 = 5, OVER6 = 0.05, UNDER5 = 0.6, TILE = 60, SET = 0.5, MEDIAN = 3, BIKE = 2.4, BAY3 = 2.2, WALK_WIDE = 5, SECTIONS, CLEAR2 = 5.2, VIADUCT = 8, STAIR2, CONCRETE6 = "plaster/concrete/concrete-046", STEEL7 = "metal/painted/metal-029", RAILS2 = "paving/roads/rails-001", SOIL3 = "ground/soil/brown-mud-02", RUBBER = "paving/tiles/rubber-tiles", SAND2 = "ground/sand/park-sand", STONE3 = "masonry/stone-blocks/sandstone-blocks-08", WATER2 = "effects/water/calm", TIMBER = "wood/planks/japanese-cedar-planks", FLOWERS, REEDS, SHAPES3 = 6, PAVINGS, POND_TINT, ROUND8, overlap3 = (a, b) => a[0] < b[1] - 0.01 && b[0] < a[1] - 0.01 && a[2] < b[3] - 0.01 && b[2] < a[3] - 0.01, around = ([x, y], r) => [x - r, x + r, y - r, y + r], boundsOfPoints = (points) => [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1])), Math.max(...points.map((p) => p[1]))], BIKE_TINT, LANES2 = "paving/roads/road-007", ASPHALT3 = "paving/asphalt/asphalt-024a", PAVEMENT = "paving/asphalt/concrete-pavement-02", PLAZA = "paving/stone/granite-tile-04", GRASS = "ground/grass/grass-004", SPECIES4, HALLS, CIVIC, CIVIC_COLOURS, DISTRICTS, round23 = (v) => Math.round(v * 1000) / 1000, clamp15 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), even = (v) => Math.round(v / 2) * 2, randomOf8 = (seed) => {
   let state = seed * 2654435761 >>> 0;
   return () => {
     state = state + 1831565813 >>> 0;
@@ -15893,25 +15977,29 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
   while (count > 2 && side2(count) < BLOCK_LEAST)
     count--;
   return { count, side: round23(side2(count)) };
-}, kindsAlong = (count, wide, urban) => Array.from({ length: count + 1 }, (_, k) => !urban || k === 0 || k === count ? "street" : wide ? k === Math.round(count / 2) ? "avenue" : "street" : k % 2 ? "parking" : "street"), laidAlong = (length2, wide, urban) => {
+}, kindsAlong = (count, wide, urban, green = false) => {
+  const avenue = Math.round(count / 2);
+  const walk = !green || !wide ? -1 : avenue - 1 >= 1 ? avenue - 1 : avenue + 1 <= count - 1 ? avenue + 1 : -1;
+  return Array.from({ length: count + 1 }, (_, k) => !urban || k === 0 || k === count ? "street" : wide ? k === avenue ? "avenue" : k === walk ? "walk" : "street" : k % 2 ? "parking" : "street");
+}, laidAlong = (length2, wide, urban, green = false) => {
   let { count } = blocksAlong(length2);
-  const sideOf = (n) => (length2 - 2 * RIM3 - kindsAlong(n, wide, urban).reduce((sum, kind) => sum + SECTIONS[kind], 0)) / n;
+  const sideOf = (n) => (length2 - 2 * RIM3 - kindsAlong(n, wide, urban, green).reduce((sum, kind) => sum + SECTIONS[kind], 0)) / n;
   while (count > 2 && sideOf(count) < BLOCK_LEAST)
     count--;
   while (sideOf(count) > BLOCK_MOST)
     count++;
   const side2 = sideOf(count);
   let at = -length2 / 2 + RIM3;
-  const lines = kindsAlong(count, wide, urban).map((kind) => {
+  const lines = kindsAlong(count, wide, urban, green).map((kind) => {
     const line = { kind, width: SECTIONS[kind], from: round23(at), to: round23(at + SECTIONS[kind]), mid: round23(at + SECTIONS[kind] / 2) };
     at += SECTIONS[kind] + side2;
     return line;
   });
   return { count, side: round23(side2), lines };
 }, gridOf2 = (given, edition = EDITION) => {
-  const { width: W, depth: D2 } = constrainCity(given);
+  const { width: W, depth: D2, life } = constrainCity(given);
   if (edition >= 3) {
-    const [across2, along4] = [laidAlong(W, false, true), laidAlong(D2, true, true)];
+    const [across2, along4] = [laidAlong(W, false, true), laidAlong(D2, true, true, edition >= 6 && life >= 2)];
     const blocks3 = [];
     for (let j = 0;j < along4.count; j++) {
       for (let i = 0;i < across2.count; i++) {
@@ -16009,6 +16097,10 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
   const params = constrainCity(given);
   const urban = edition >= 3;
   const lived = edition >= 5 && params.life >= 1;
+  const green = edition >= 6 && params.life >= 2;
+  const flowers = [0, 2, 4].map((k) => FLOWERS[(params.seed + k) % FLOWERS.length]);
+  const reed = REEDS[params.seed % REEDS.length];
+  const shaped = (n) => SHAPES3 * (Math.abs(Math.round(n)) % 166);
   const grid = gridOf2(params, edition);
   const { width: W, depth: D2 } = grid;
   const bounds = boundsOf3(params);
@@ -16157,6 +16249,11 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
         for (const [dx, dy] of arms) {
           const line = dy ? grid.xs[node.i] : grid.ys[node.j];
           const reach = dy ? hy : hx;
+          if (line.kind === "walk") {
+            for (const across2 of [-2.25, 0, 2.25])
+              stand3("bollard", "bollard", [node.x + dx * (reach + 0.5), line.mid + across2], [dx, 0], { on: KERB2, look: "black" });
+            continue;
+          }
           const across = Math.min(line.width, 24);
           stand3(`crossing ${across}`, "zebra", dy ? [line.mid, node.y + dy * (reach + 2.2)] : [node.x + dx * (reach + 2.2), line.mid], dy ? [0, 1] : [1, 0], { on: 0.005, width: across });
           const [rx, ry] = [-dy, dx];
@@ -16210,7 +16307,7 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
     };
   };
   const blockPiece = (block) => {
-    const [objects2, clones2, trees2] = [[], [], []];
+    const [objects2, clones2, trees2, animals2] = [[], [], [], []];
     const furnish = furnisher(objects2, clones2);
     const [taken, grounds] = [[], []];
     const stand3 = (name, piece, at2, ...rest) => {
@@ -16232,7 +16329,10 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
       const [w, d] = [Math.min(11, round23(ix / 2 - 4)), Math.min(8, round23(iy / 2 - 4))];
       return w >= 8 && d >= 6 ? { x: round23(block.x + cx + ix / 4 + 0.6), y: round23(block.y + cy + iy / 4 + 0.6), w, d } : null;
     })() : null;
-    const cleared = (x, y) => Boolean(pad) && Math.abs(x - pad.x) < pad.w / 2 + 1.2 && Math.abs(y - pad.y) < pad.d / 2 + 1.2;
+    const quarterOf = (qx, qy, w, d) => ({ x: round23(block.x + cx + qx * (ix / 4 + 0.6)), y: round23(block.y + cy + qy * (iy / 4 + 0.6)), w, d });
+    const pond = green && role === "park" && ix >= 30 && iy >= 28 ? quarterOf(-1, -1, Math.min(10, round23(ix / 2 - 6)), Math.min(6.5, round23(iy / 2 - 7))) : null;
+    const pen = green && role === "park" && ix >= 30 && iy >= 30 ? quarterOf(-1, 1, 11.6, 11.6) : null;
+    const cleared = (x, y) => [pad, pond, pen].some((each) => each && Math.abs(x - each.x) < each.w / 2 + 1.2 && Math.abs(y - each.y) < each.d / 2 + 1.2);
     const pit = (x, y) => {
       const at2 = [round23(x), round23(y), round23(level + KERB2 + 0.011)];
       if (objects2.some((object) => object.name === "tree pit"))
@@ -16251,6 +16351,8 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
     };
     const paved = role === "plaza" ? PLAZA : PAVEMENT;
     const ground = [slab("pavement", [0, 0, KERB2 / 2], [sx, sy, KERB2], paved)];
+    if (green && role === "plaza")
+      ground[0].surface = { faces: { 0: { texture: PLAZA, pattern: { name: PAVINGS[params.seed % PAVINGS.length], scale: 0.5, width: 0.05, glow: 0, speed: 0, background: 1, colors: ["#4a4640", "#8c8377"] } } } };
     const lanes = (side2, at2, size, runs2) => ground.push(slab(`lanes ${side2}`, at2, size, ASPHALT3, runs2));
     if (!urban) {
       lanes("south", [0, -(sy + ROAD) / 2, 0], [sx, ROAD, 0.04], "x");
@@ -16276,7 +16378,8 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
     const beside = ({ way, out, edge }, s, back) => onBlock(way[0] * s + out[0] * (Math.abs(edge) - back), way[1] * s + out[1] * (Math.abs(edge) - back));
     for (const [k, side2] of sides2.entries()) {
       const under = viaduct && side2.out[1] === 1;
-      for (const s of under ? [] : [-side2.length / 4, side2.length / 4]) {
+      const walked = green && k === 0 && grid.ys[block.j].kind === "walk";
+      for (const s of under || walked ? [] : [-side2.length / 4, side2.length / 4]) {
         if (stand3("lamp", "arm", beside(side2, s, 0.5), side2.out, { look: quarter.lamp, lit: true, ...styled }) !== null)
           stats.lamps++;
       }
@@ -16299,7 +16402,7 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
           plant2(...onBlock((n - (count2 - 1) / 2) * 10 + 2, out * (sy / 2 - 2.7)), 0.8, true);
       }
     }
-    if ((block.i * 2 + block.j * 3 + params.seed) % 3 === 0 && role !== "park") {
+    if ((block.i * 2 + block.j * 3 + params.seed) % 3 === 0 && role !== "park" && !(green && grid.ys[block.j].kind === "walk")) {
       stand3("shelter", "shelter", beside(sides2[0], -sx / 2 + 6, 1.2), sides2[0].out, { look: quarter.shelter, ...styled });
       stand3("bus stop", "roadsign", beside(sides2[0], -sx / 2 + 2.6, 0.6), [1, 0], { variant: SIGNS.indexOf("bus") });
     }
@@ -16402,7 +16505,7 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
         name: `${type} ${block.i + 1}-${block.j + 1}`,
         at: [round23(block.x), round23(block.y + y), round23(level + KERB2 + fitted2.floor)],
         turn: [0, 0, turnTo(facing)],
-        prims: [{ name: "hall", kind: "hall", type, width: given2.width, depth: given2.depth, height: given2.height, floors: given2.floors, variant: given2.variant, look: pick3(Object.keys(LOOKS8[type]), own()), plinth: fitted2.params.plinth, stoop: fitted2.params.stoop, at: min.map((v, k) => round23((v + max[k]) / 2)), light: { on: true, range: 0 } }]
+        prims: [{ name: "hall", kind: "hall", type, width: given2.width, depth: given2.depth, height: given2.height, floors: given2.floors, variant: given2.variant, ...edition >= 7 && (type === "mall" || type === "museum") && { escalators: "steps" }, look: pick3(Object.keys(LOOKS8[type]), own()), plinth: fitted2.params.plinth, stoop: fitted2.params.stoop, at: min.map((v, k) => round23((v + max[k]) / 2)), light: { on: true, range: 0 } }]
       });
       stats.halls++;
       const front2 = y + facing[1] * (depth / 2);
@@ -16576,6 +16679,108 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
           more("playgrounds");
         }
       }
+      if (green) {
+        const flower = ([x, y], on, species2, k) => {
+          trees2.push({ species: species2, at: [round23(x), round23(y), round23(level + on)], scale: round23(0.8 + 0.3 * (k * 7 % 5) / 4), seed: shaped(params.seed * 13 + block.i * 5 + block.j * 3 + k), turn: k * 97 % 360 });
+          more("flowers");
+        };
+        const pergola = (spot, facing, on = KERB2) => {
+          const took = takes("pergola", spot, facing, { style: district });
+          const inside = (each) => each[0] >= took.whole[0] - 0.01 && each[1] <= took.whole[1] + 0.01 && each[2] >= took.whole[2] - 0.01 && each[3] <= took.whole[3] + 0.01;
+          if (kept2(spot[0], spot[1]) || taken.some((each) => !inside(each) && overlap3(took.whole, each)) || grounds.some((each) => overlap3(took.solid, each)))
+            return false;
+          taken.push(took.whole);
+          furnish("pergola", "pergola", spot, facing, { look: quarter.pergola, on, ...styled });
+          more("pergolas");
+          return true;
+        };
+        if (role === "plaza") {
+          const [tower] = stood;
+          const front2 = tower.at[1] - block.y - cy - tower.prims[0].depth / 2;
+          const room2 = front2 + iy / 2;
+          for (const [k, x] of [-ix / 4, ix / 4].entries()) {
+            if (room2 >= 10)
+              pergola(at(x, front2 - room2 * 0.55), south);
+            for (const [n, off] of [-0.5, 0, 0.5].entries())
+              flower(at(x + off, front2 - room2 * 0.35), KERB2 + 0.7, flowers[k % flowers.length], k * 3 + n);
+          }
+        }
+        if (role === "park") {
+          const lawn = KERB2 + 0.06;
+          for (const each of [pad, pond, pen])
+            if (each)
+              taken.push([each.x - each.w / 2 - 0.5, each.x + each.w / 2 + 0.5, each.y - each.d / 2 - 0.5, each.y + each.d / 2 + 0.5]);
+          const open = (rect5) => taken.every((each) => !overlap3(rect5, each));
+          let beds = 0;
+          for (const [sideX, sideY] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+            const found = [11.5, 9.5, 13.5, 7.5].filter((c) => c + 2.5 <= ix / 2 - 1).map((c) => at(sideX * c, sideY * 3.4)).find(([x2, y2]) => open([x2 - 2.5, x2 + 2.5, y2 - 0.7, y2 + 0.7]));
+            if (!found)
+              continue;
+            const [x, y] = found;
+            taken.push([x - 2.5, x + 2.5, y - 0.7, y + 0.7]);
+            const where = [round23(x), round23(y), level];
+            if (beds)
+              clones2.push({ of: "flower bed", at: where, turn: [0, 0, 0] });
+            else
+              objects2.push({ name: "flower bed", at: where, prims: [slab("soil", [0, 0, lawn + 0.05], [5, 1.4, 0.1], SOIL3)] });
+            for (let n = 0;n < 5; n++)
+              flower([x - 2 + n, y], lawn + 0.1, flowers[(block.i + beds) % flowers.length], beds * 5 + n);
+            beds++;
+          }
+          if (beds)
+            more("beds", beds);
+          if (pond) {
+            const [w, d] = [pond.w, pond.d];
+            objects2.push({
+              name: "pond",
+              at: [pond.x, pond.y, level],
+              prims: [
+                ...[[0, -1], [0, 1]].map(([, side2]) => slab(`border ${side2 < 0 ? "south" : "north"}`, [0, side2 * (d / 2 - 0.175), lawn + 0.02], [w, 0.35, 0.04], STONE3)),
+                ...[[-1, 0], [1, 0]].map(([side2]) => slab(`border ${side2 < 0 ? "west" : "east"}`, [side2 * (w / 2 - 0.175), 0, lawn + 0.02], [0.35, d - 0.7, 0.04], STONE3)),
+                { name: "water", shape: "cube", at: [0, 0, round23(lawn + 0.06)], size: [round23(w - 0.7), round23(d - 0.7), 0.12], material: WATER2, color: [...POND_TINT], phantom: true }
+              ]
+            });
+            for (const [k, [sideX, sideY]] of [[-1, -1], [1, 1], [-1, 1]].entries())
+              trees2.push({ species: reed, at: [round23(pond.x + sideX * (w / 2 - 1)), round23(pond.y + sideY * (d / 2 - 0.9)), round23(level + lawn)], scale: 0.5, seed: shaped(params.seed + k * 31), turn: k * 131 % 360 });
+            more("reeds", 3);
+            animals2.push({ species: "goose", at: [pond.x, pond.y, round23(level + lawn)], count: 4, seed: params.seed * 7 + block.i * 3 + block.j, territory: 6, level: true });
+            more("ponds");
+          }
+          if (pen) {
+            const [half, high2] = [pen.w / 2, 1];
+            const path = [[0.8, -half], [half, -half], [half, half], [-half, half], [-half, -half], [-0.8, -half]].map(([x, y]) => [x, y, -high2 / 2]);
+            objects2.push({
+              name: "dog pen",
+              at: [pen.x, pen.y, level],
+              prims: [
+                slab("sand", [0, 0, lawn + 0.02], [pen.w, pen.d, 0.04], SAND2),
+                { name: "fence", kind: "fence", style: "rails", rails: 2, height: high2, spacing: 2.4, post: 0.08, thickness: 0.08, points: path, at: [0, 0, round23(lawn + 0.04 + high2 / 2)], material: TIMBER },
+                { name: "ramp", shape: "prism", at: [-half + 3, half - 3, round23(lawn + 0.04 + 0.25)], size: [1.8, 0.9, 0.5], material: TIMBER },
+                ...[-0.75, 0.75].map((x) => ({ name: "hurdle post", shape: "cube", at: [half - 3 + x, -half + 3.2, round23(lawn + 0.04 + 0.3)], size: [0.08, 0.08, 0.6], material: TIMBER })),
+                { name: "hurdle bar", shape: "cube", at: [half - 3, -half + 3.2, round23(lawn + 0.04 + 0.42)], size: [1.5, 0.05, 0.05], material: TIMBER }
+              ]
+            });
+            animals2.push({ species: "dog", at: [pen.x, pen.y, round23(level + lawn + 0.04)], count: 2, seed: params.seed * 11 + block.i + block.j * 5, territory: 5, level: true });
+            more("pens");
+          }
+          const shade2 = [[0, 0], [3, 0], [-3, 0], [0, -3], [0, 3], [3, -3], [-3, 3]].map(([dx, dy]) => at(ix / 4 + 0.6 + dx, -iy / 4 - 0.6 + dy)).find((spot) => pergola(spot, north, lawn));
+          if (shade2)
+            furnish("bench", "bench", shade2, north, { look: quarter.bench, variant: 0, on: lawn, ...styled });
+          const [hx, hy] = [ix / 2 - 1.6, iy / 2 - 1.6];
+          const round82 = (half, fixed, along4) => {
+            const count2 = Math.max(2, Math.round(2 * half / 8));
+            return Array.from({ length: count2 }, (_, k) => along4(-half + (k + 0.5) * 2 * half / count2, fixed));
+          };
+          for (const [x, y] of [...round82(hx, -hy, (v, f) => [v, f]), ...round82(hx, hy, (v, f) => [v, f]), ...round82(hy, -hx, (v, f) => [f, v]), ...round82(hy, hx, (v, f) => [f, v])]) {
+            if (Math.abs(x) < 2.8 || Math.abs(y) < 2.8)
+              continue;
+            const [px, py] = at(x, y);
+            if (!open(around([px, py], ROUND8.tree)))
+              continue;
+            plant2(px, py, 0.9);
+          }
+        }
+      }
       if (["hall", "civic", "park"].includes(role) && place("rack", "rack", along3(sides2[0], 1.3, 9), sides2[0].out, { look: district === "modern" || district === "industrial" ? "aluminium" : "black", variant: (block.i + block.j) % 3 }))
         more("racks");
       if (role !== "park" && (block.i + 2 * block.j + params.seed) % 2 === 0 && place("column", "advert", along3(sides2[1], 1.2, -8), sides2[1].out, { look: quarter.advert, lit: true, variant: block.i + block.j, ...styled }))
@@ -16583,7 +16788,7 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
     };
     if (lived)
       livedIn();
-    return { objects: objects2, clones: clones2, trees: trees2 };
+    return { objects: objects2, clones: clones2, trees: trees2, ...animals2.length && { animals: animals2 } };
   };
   const linePiece = (wide, k) => {
     const [objects2, clones2, trees2] = [[], [], []];
@@ -16601,6 +16806,46 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
         prims.push({ name, shape: "cube", at: (wide ? [0, across, z] : [across, 0, z]).map(round23), size: (wide ? [long, c1 - c0, thick2] : [c1 - c0, long, thick2]).map(round23), material, ...extra });
       };
       const laned = { surface: { faces: { 0: { texture: LANES2, ...wide && { rotation: 90 } } } } };
+      if (line.kind === "walk") {
+        strip("paving", 0, ROAD, KERB2 / 2, KERB2, PLAZA);
+        const beside = grid.blocks.find((block) => block.j === Math.min(k, grid.ny - 1) && block.i === n);
+        const district = districted && beside ? districtOf(params, beside, edition) : null;
+        const quarter = district ? DISTRICTS[district] : FIRST;
+        const styled = district ? { style: district } : {};
+        const middle = ROAD / 2;
+        const count = Math.max(2, Math.floor((long - 10) / 10));
+        for (let m = 0;m < count; m++) {
+          const s = (m - (count - 1) / 2) * 10;
+          if (params.trees) {
+            const [x3, y3] = here(s, middle);
+            trees2.push({ species: pick3(species, own()), at: [round23(x3), round23(y3), round23(level + KERB2)], scale: round23(0.75 + 0.2 * own()), seed: Math.floor(own() * 1000), turn: Math.floor(own() * 360) });
+            stats.trees++;
+            const pit = [round23(x3), round23(y3), round23(level + KERB2 + 0.011)];
+            if (objects2.some((object) => object.name === "tree pit"))
+              clones2.push({ of: "tree pit", at: pit, turn: [0, 0, 0] });
+            else
+              objects2.push({ name: "tree pit", at: pit, prims: [{ name: "soil", shape: "cube", at: [0, 0, 0], size: [1.2, 1.2, 0.02], material: SOIL3 }] });
+          }
+          if (m + 1 < count) {
+            if (m % 2) {
+              stand3("walk lamp", "lamp", here(s + 5, middle), [0, 1], { on: KERB2, look: quarter.lamp, lit: true, ...styled });
+              stats.lamps++;
+            } else
+              stand3("walk bench", "bench", here(s + 5, middle), [0, m % 4 ? 1 : -1], { on: KERB2, look: quarter.bench, variant: 0, ...styled });
+          }
+        }
+        for (const [e, end] of [-1, 1].entries()) {
+          const [x3, y3] = here(end * (long / 2 - 2.6), middle);
+          stand3("walk planter", "planter", [x3, y3], [0, 1], { on: KERB2, look: "concrete" });
+          for (const [f, off] of [-0.5, 0, 0.5].entries())
+            trees2.push({ species: flowers[(k + n + e) % flowers.length], at: [round23(x3 + off), round23(y3), round23(level + KERB2 + 0.7)], scale: 0.9, seed: shaped(params.seed + n * 7 + e * 3 + f), turn: (f * 97 + e * 31) % 360 });
+          stats.flowers = (stats.flowers ?? 0) + 3;
+        }
+        stats.walks = (stats.walks ?? 0) + 1;
+        const [x2, y2] = [mid, line.mid];
+        objects2.push({ name: `stretch ${n + 1}`, at: [round23(x2), round23(y2), level], prims });
+        continue;
+      }
       strip("lanes", 0, ROAD, 0, 0.04, ASPHALT3, laned);
       if (line.kind === "avenue") {
         strip("median", ROAD, ROAD + MEDIAN, KERB2 / 2, KERB2, GRASS);
@@ -16758,7 +17003,8 @@ var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
   const objects = whole2.flatMap((piece, k) => piece.objects.map((object) => ({ ...object, name: named(piece, k)(object.name) })));
   const clones = whole2.flatMap((piece, k) => piece.clones.map((clone) => ({ ...clone, of: named(piece, k)(clone.of) })));
   const trees = whole2.flatMap((piece) => piece.trees);
-  return { params, objects, clones, trees, pieces, reasons: [], notes, stats, bounds, level };
+  const animals = whole2.flatMap((piece) => piece.animals ?? []);
+  return { params, objects, clones, trees, ...animals.length && { animals }, pieces, reasons: [], notes, stats, bounds, level };
 };
 var init_city = __esm(async () => {
   init_building();
@@ -16782,11 +17028,15 @@ var init_city = __esm(async () => {
     { name: "works", label: "In construction", min: 0, max: 2, default: 1, step: 1, description: "How many of its buildings are in construction, a crane beside each." },
     { name: "trees", label: "Street trees", min: 0, max: 2, default: 1, step: 1, options: ["none", "some", "many"], labels: ["None", "Some", "Many"], description: "How many trees stand along its pavements." },
     { name: "bridges", label: "Bridges", min: 0, max: 3, default: 3, step: 1, options: ["none", "footbridge", "overpass", "all"], labels: ["None", "A footbridge", "And an overpass", "And a viaduct"], description: "What crosses over its streets: none; a footbridge over its avenue, up a stair from each pavement; that, and a street carried over the avenue on two ramps, where it is three blocks long and more; those, and a railway on a viaduct along its north side." },
-    { name: "life", label: "Street life", min: 0, max: 1, default: 1, step: 1, options: ["bare", "lived"], labels: ["Bare", "Lived in"], description: "What its streets and squares have besides their lamps and their benches: bare, none; lived in — an awning over every shop's window, café tables on its avenue's pavements and in its square, kiosks, racks of bicycles, advertising columns, a fountain in its square and in each park, a playground in each park, a trench behind its barriers by a kerb." },
+    { name: "life", label: "Street life", min: 0, max: 2, default: 2, step: 1, options: ["bare", "lived", "green"], labels: ["Bare", "Lived in", "Lived in, and green"], description: "What its streets and squares have besides their lamps and their benches: bare, none; lived in — an awning over every shop's window, café tables on its avenue's pavements and in its square, kiosks, racks of bicycles, advertising columns, a fountain in its square and in each park, a playground in each park, a trench behind its barriers by a kerb —; and green — a street for walking under its trees, pergolas and a pattern in its square's paving, flower beds, a pond with its geese and a pen for dogs in each park." },
     { name: "seed", label: "Variation", min: 0, max: 9999, default: 1, step: 1, description: "Which of its cities it is: one number, one city." }
   ]);
-  SECTIONS = Object.freeze({ street: ROAD, parking: ROAD + BAY3, avenue: 2 * ROAD + MEDIAN + BIKE });
+  SECTIONS = Object.freeze({ street: ROAD, parking: ROAD + BAY3, avenue: 2 * ROAD + MEDIAN + BIKE, walk: ROAD });
   STAIR2 = Object.freeze({ steps: 30, tread: 0.3, landing: 1.6, width: 2 });
+  FLOWERS = Object.freeze(["daisy", "poppy", "rudbeckia", "lily", "columbine", "heather"]);
+  REEDS = Object.freeze(["cattail", "rush"]);
+  PAVINGS = Object.freeze(["hex", "grid", "plaid", "dots"]);
+  POND_TINT = Object.freeze([0.6, 0.85, 0.8]);
   ROUND8 = Object.freeze({ arm: 0.4, lamp: 0.4, double: 0.4, signal: 0.3, bench: 1.1, bin: 0.4, hydrant: 0.35, shelter: 2.4, roadsign: 0.3, planter: 0.9, bollard: 0.2, cone: 0.3, tree: 0.9 });
   BIKE_TINT = Object.freeze([0.35, 0.75, 0.45]);
   SPECIES4 = Object.freeze(["plane", "zelkova", "maple", "cherry", "oak", "birch", "beech", "chestnut"]);
@@ -16794,10 +17044,10 @@ var init_city = __esm(async () => {
   CIVIC = Object.freeze(["hospital", "school", "library", "police", "bank", "cinema"]);
   CIVIC_COLOURS = Object.freeze({ hospital: "white", school: "yellow", library: "cream", police: "blue", bank: "black", cinema: "red" });
   DISTRICTS = Object.freeze({
-    oldtown: Object.freeze({ label: "Historic centre", flats: Object.freeze(["hipped", "brick"]), lamp: "black", bench: "stone", bin: "timber", shelter: "timber", fountain: "stone", kiosk: "timber", table: "timber", advert: "timber" }),
-    classic: Object.freeze({ label: "Extension", flats: Object.freeze(["brick", "block"]), lamp: "green", bench: "oak", bin: "green", shelter: "green", fountain: "stone", kiosk: "green", table: "oak", advert: "green" }),
-    modern: Object.freeze({ label: "Modern extension", flats: Object.freeze(["concrete", "glass"]), lamp: "aluminium", bench: "timber", bin: "black", shelter: "black", fountain: "concrete", kiosk: "aluminium", table: "steel", advert: "aluminium" }),
-    industrial: Object.freeze({ label: "Industrial estate", flats: Object.freeze(["concrete", "block"]), lamp: "aluminium", bench: "steel", bin: "aluminium", shelter: "aluminium", fountain: "concrete", kiosk: "steel", table: "steel", advert: "black" })
+    oldtown: Object.freeze({ label: "Historic centre", flats: Object.freeze(["hipped", "brick"]), lamp: "black", bench: "stone", bin: "timber", shelter: "timber", fountain: "stone", kiosk: "timber", table: "timber", advert: "timber", pergola: "timber" }),
+    classic: Object.freeze({ label: "Extension", flats: Object.freeze(["brick", "block"]), lamp: "green", bench: "oak", bin: "green", shelter: "green", fountain: "stone", kiosk: "green", table: "oak", advert: "green", pergola: "green" }),
+    modern: Object.freeze({ label: "Modern extension", flats: Object.freeze(["concrete", "glass"]), lamp: "aluminium", bench: "timber", bin: "black", shelter: "black", fountain: "concrete", kiosk: "aluminium", table: "steel", advert: "aluminium", pergola: "black" }),
+    industrial: Object.freeze({ label: "Industrial estate", flats: Object.freeze(["concrete", "block"]), lamp: "aluminium", bench: "steel", bin: "aluminium", shelter: "aluminium", fountain: "concrete", kiosk: "steel", table: "steel", advert: "black", pergola: "aluminium" })
   });
 });
 
@@ -19526,7 +19776,7 @@ var placeBuild = (spec, { groundRadius, bareRadius = groundRadius, waterRadius =
     const key = typeof animal.key === "string" || Number.isInteger(animal.key) ? String(animal.key) : null;
     if (key !== null && !/^[\w.-]{1,64}$/.test(key))
       throw new Error(`${spec.name}: animals ${n}'s key ${key}: letters, digits, dots and dashes`);
-    return { type: "herd", id: idOf(animal.id, `${id}~herd-${key ?? n}`), species: species.name, at: homeOf(placeOf3(animal.at)), seed, ...count !== undefined && { count }, ...territory !== undefined && { territory } };
+    return { type: "herd", id: idOf(animal.id, `${id}~herd-${key ?? n}`), species: species.name, at: homeOf(placeOf3(animal.at)), seed, ...count !== undefined && { count }, ...territory !== undefined && { territory }, ...animal.level === true && { level: true } };
   });
   const seeds = (spec.seeds ?? []).map((seed, n) => {
     if (typeof seed?.generator !== "string")
