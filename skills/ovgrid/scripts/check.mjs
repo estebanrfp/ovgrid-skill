@@ -4180,7 +4180,7 @@ var init_fixture = __esm(() => {
 });
 
 // src/build/kinds/street.js
-var PIECES2, PIECE_NAMES, FACES8, STYLES5, STYLED, SIGNS, RED2, WHITE5, BLUE3, BLACK4, AMBER, GREEN2, ORANGE, YELLOW, COLOURS, PLAIN_COLOURS, coloursOf = (piece) => COLOURS[piece] ?? PLAIN_COLOURS, BUDGET7, STEEL6 = "metal/painted/metal-029", ALUMINIUM3 = "metal/painted/metal-016", GREEN_PAINT = "metal/painted/painted-metal-006", GREY2 = "metal/painted/painted-metal-012", PLAIN2 = "synthetic/plastic/plastic-013a", GLASS3 = "glass/clear/float", CEDAR3 = "wood/planks/japanese-cedar-planks", OAK4 = "wood/panel/oak-veneer-01", CONCRETE3 = "plaster/concrete/concrete-046", SHEET2 = "metal/corrugated/corrugated-steel-009", CLOTH3 = "fabric/cloth/rough-linen", SOIL2 = "ground/soil/brown-mud-02", STONE = "masonry/stone-blocks/sandstone-blocks-08", TILES3 = "roofing/tiles/clay-roof-tiles-03", look3 = (metal, body, plain = PLAIN2) => Object.freeze([metal, body, plain, GLASS3, plain, plain, plain, plain]), POSTS, LOOKS10, LOOK_LABELS8, LENS, streetDressing = (piece, look4 = null, lit = false) => {
+var PIECES2, PIECE_NAMES, FACES8, STYLES5, STYLED, SEATED, SIGNS, RED2, WHITE5, BLUE3, BLACK4, AMBER, GREEN2, ORANGE, YELLOW, WATER_TINT, COLOURS, PLAIN_COLOURS, coloursOf = (piece) => COLOURS[piece] ?? PLAIN_COLOURS, BUDGET7, STEEL6 = "metal/painted/metal-029", ALUMINIUM3 = "metal/painted/metal-016", GREEN_PAINT = "metal/painted/painted-metal-006", GREY2 = "metal/painted/painted-metal-012", PLAIN2 = "synthetic/plastic/plastic-013a", GLASS3 = "glass/clear/float", CEDAR3 = "wood/planks/japanese-cedar-planks", OAK4 = "wood/panel/oak-veneer-01", CONCRETE3 = "plaster/concrete/concrete-046", SHEET2 = "metal/corrugated/corrugated-steel-009", CLOTH3 = "fabric/cloth/rough-linen", SOIL2 = "ground/soil/brown-mud-02", STONE = "masonry/stone-blocks/sandstone-blocks-08", TILES3 = "roofing/tiles/clay-roof-tiles-03", WATER = "effects/water/rippled", look3 = (metal, body, plain = PLAIN2) => Object.freeze([metal, body, plain, GLASS3, plain, plain, plain, plain]), POSTS, basin = (metal, body) => Object.freeze([metal, body, PLAIN2, GLASS3, PLAIN2, PLAIN2, PLAIN2, WATER]), LOOKS10, LOOK_LABELS8, LENS, streetDressing = (piece, look4 = null, lit = false) => {
   const materials = LOOKS10[piece][look4] ?? Object.values(LOOKS10[piece])[0];
   const colours = coloursOf(piece);
   const glows = Number.isInteger(LENS[lit]) ? LENS[lit] : lit ? 2 : -1;
@@ -4190,12 +4190,15 @@ var PIECES2, PIECE_NAMES, FACES8, STYLES5, STYLED, SIGNS, RED2, WHITE5, BLUE3, B
     surface: { faces },
     ...glows >= 0 && { light: typeof lit === "number" ? { on: "night", range: Math.min(lit, 10), color: [1, 0.86, 0.62], intensity: 0.9, cone: { angle: 75, softness: 0.6 } } : { on: "night", range: 0 } }
   };
+}, JETS, fountainJet = (style = "modern", [x, y, z] = [0, 0, 0]) => {
+  const jet = JETS[style] ?? JETS[STYLES5[style]] ?? JETS.modern;
+  return { name: "jet", shape: "cube", size: [0.06, 0.06, 0.06], at: [x + jet.at[0], y + jet.at[1], Math.round((z + jet.at[2]) * 1000) / 1000], turn: [...jet.turn], material: STEEL6, phantom: true, particles: structuredClone(jet.particles) };
 }, LABELS6, street;
 var init_street = __esm(() => {
   PIECES2 = Object.freeze({
-    lamp: Object.freeze({ label: "Street lamp", size: Object.freeze([0.5, 0.5, 6]), tall: Object.freeze([3.5, 10]) }),
-    arm: Object.freeze({ label: "Lamp on an arm", size: Object.freeze([0.4, 2.6, 8]), tall: Object.freeze([5, 12]) }),
-    double: Object.freeze({ label: "Lamp of two arms", size: Object.freeze([0.4, 5, 9]), tall: Object.freeze([6, 12]) }),
+    lamp: Object.freeze({ label: "Street lamp", size: Object.freeze([0.5, 0.5, 6]), tall: Object.freeze([3.5, 10]), far: 8 }),
+    arm: Object.freeze({ label: "Lamp on an arm", size: Object.freeze([0.4, 2.6, 8]), tall: Object.freeze([5, 12]), far: 8 }),
+    double: Object.freeze({ label: "Lamp of two arms", size: Object.freeze([0.4, 5, 9]), tall: Object.freeze([6, 12]), far: 8 }),
     signal: Object.freeze({ label: "Traffic signal", size: Object.freeze([0.5, 0.5, 3.6]), tall: Object.freeze([3, 6]) }),
     bench: Object.freeze({ label: "Bench", size: Object.freeze([1.8, 0.62, 0.86]) }),
     bin: Object.freeze({ label: "Litter bin", size: Object.freeze([0.5, 0.5, 1]) }),
@@ -4208,14 +4211,25 @@ var init_street = __esm(() => {
     awning: Object.freeze({ label: "Awning", size: Object.freeze([3, 1.3, 0.9]), wide: Object.freeze([1.2, 12]) }),
     zebra: Object.freeze({ label: "Crossing", size: Object.freeze([7.5, 3, 0.03]), wide: Object.freeze([3, 24]) }),
     line: Object.freeze({ label: "Painted line", size: Object.freeze([3.4, 0.4, 0.02]), wide: Object.freeze([0.3, 24]) }),
-    arrow: Object.freeze({ label: "Lane arrow", size: Object.freeze([1, 3.2, 0.02]) })
+    arrow: Object.freeze({ label: "Lane arrow", size: Object.freeze([1, 3.2, 0.02]) }),
+    fountain: Object.freeze({ label: "Fountain", size: Object.freeze([5, 5, 3.2]), far: 10 }),
+    kiosk: Object.freeze({ label: "Kiosk", size: Object.freeze([3.2, 2.6, 3.4]), far: 10 }),
+    rack: Object.freeze({ label: "Rack of bicycles", size: Object.freeze([3, 1.9, 1.15]) }),
+    table: Object.freeze({ label: "Café table", size: Object.freeze([2.6, 2.6, 2.7]) }),
+    advert: Object.freeze({ label: "Advertising column", size: Object.freeze([1.5, 1.5, 3.8]), far: 8 }),
+    swing: Object.freeze({ label: "Swing", size: Object.freeze([3.4, 2.2, 2.5]) }),
+    slide: Object.freeze({ label: "Slide", size: Object.freeze([1.4, 4.4, 2.7]) }),
+    rocker: Object.freeze({ label: "Spring rocker", size: Object.freeze([0.5, 1.1, 0.95]) }),
+    barrier: Object.freeze({ label: "Works barrier", size: Object.freeze([1.8, 0.5, 1.15]) })
   });
   PIECE_NAMES = Object.freeze(Object.keys(PIECES2));
   FACES8 = Object.freeze(["metal", "body", "lamp", "glass", "colour", "colour, second", "colour, third", "colour, fourth"]);
   STYLES5 = Object.freeze(["modern", "classic", "oldtown", "industrial"]);
-  STYLED = Object.freeze(["lamp", "arm", "double", "bench", "bin", "shelter"]);
+  STYLED = Object.freeze(["lamp", "arm", "double", "bench", "bin", "shelter", "fountain", "kiosk", "table", "advert"]);
+  SEATED = Object.freeze({ bench: 3, shelter: 3, table: 2, swing: 2, rocker: 1 });
   SIGNS = Object.freeze(["stop", "yield", "limit", "crossing", "parking", "noentry", "roundabout", "oneway", "bus", "works"]);
   [RED2, WHITE5, BLUE3, BLACK4, AMBER, GREEN2, ORANGE, YELLOW] = [[0.78, 0.07, 0.06], [0.95, 0.95, 0.93], [0.08, 0.26, 0.62], [0.05, 0.05, 0.06], [0.95, 0.6, 0.06], [0.1, 0.62, 0.22], [0.96, 0.36, 0.05], [0.95, 0.78, 0.08]];
+  WATER_TINT = [0.55, 0.85, 0.9];
   COLOURS = Object.freeze({
     signal: Object.freeze([RED2, AMBER, GREEN2, BLACK4]),
     cone: Object.freeze([ORANGE, WHITE5, ORANGE, BLACK4]),
@@ -4226,7 +4240,16 @@ var init_street = __esm(() => {
     awning: Object.freeze([RED2, WHITE5, GREEN2, BLUE3]),
     zebra: Object.freeze([WHITE5, WHITE5, YELLOW, BLACK4]),
     line: Object.freeze([WHITE5, WHITE5, YELLOW, BLACK4]),
-    arrow: Object.freeze([WHITE5, WHITE5, YELLOW, BLACK4])
+    arrow: Object.freeze([WHITE5, WHITE5, YELLOW, BLACK4]),
+    fountain: Object.freeze([WHITE5, WHITE5, WHITE5, WATER_TINT]),
+    kiosk: Object.freeze([RED2, WHITE5, GREEN2, BLACK4]),
+    rack: Object.freeze([RED2, BLUE3, GREEN2, BLACK4]),
+    table: Object.freeze([RED2, WHITE5, GREEN2, BLUE3]),
+    advert: Object.freeze([RED2, WHITE5, BLUE3, YELLOW]),
+    swing: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
+    slide: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
+    rocker: Object.freeze([RED2, YELLOW, BLUE3, GREEN2]),
+    barrier: Object.freeze([RED2, WHITE5, AMBER, BLACK4])
   });
   PLAIN_COLOURS = Object.freeze([RED2, WHITE5, BLUE3, BLACK4]);
   BUDGET7 = Object.freeze({ triangles: 300, simpler: 110, coarse: 40, far: 12, pieces: 4, materials: 5 });
@@ -4247,15 +4270,30 @@ var init_street = __esm(() => {
     awning: Object.freeze({ cloth: look3(STEEL6, CLOTH3, CLOTH3) }),
     zebra: Object.freeze({ plain: look3(STEEL6, PLAIN2) }),
     line: Object.freeze({ plain: look3(STEEL6, PLAIN2) }),
-    arrow: Object.freeze({ plain: look3(STEEL6, PLAIN2) })
+    arrow: Object.freeze({ plain: look3(STEEL6, PLAIN2) }),
+    fountain: Object.freeze({ stone: basin(STEEL6, STONE), concrete: basin(ALUMINIUM3, CONCRETE3) }),
+    kiosk: Object.freeze({ green: look3(GREEN_PAINT, GREEN_PAINT), black: look3(STEEL6, STEEL6), aluminium: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, TILES3), steel: look3(STEEL6, SHEET2) }),
+    rack: Object.freeze({ aluminium: look3(ALUMINIUM3, GREY2), black: look3(STEEL6, STEEL6) }),
+    table: Object.freeze({ timber: look3(STEEL6, CEDAR3, CLOTH3), oak: look3(GREEN_PAINT, OAK4, CLOTH3), steel: look3(ALUMINIUM3, GREY2, CLOTH3) }),
+    advert: Object.freeze({ green: look3(GREEN_PAINT, GREEN_PAINT), black: look3(STEEL6, STEEL6), aluminium: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, TILES3) }),
+    swing: Object.freeze({ steel: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, CEDAR3) }),
+    slide: Object.freeze({ steel: look3(ALUMINIUM3, GREY2), timber: look3(CEDAR3, CEDAR3) }),
+    rocker: Object.freeze({ steel: look3(ALUMINIUM3, GREY2) }),
+    barrier: Object.freeze({ plain: look3(STEEL6, PLAIN2) })
   });
   LOOK_LABELS8 = Object.freeze({ black: "Black", aluminium: "Aluminium", green: "Green", timber: "Timber", oak: "Oak on green", steel: "Steel", stone: "Stone", plain: "Its own", concrete: "Concrete", cloth: "Cloth" });
   LENS = Object.freeze({ red: 4, amber: 5, green: 6 });
+  JETS = Object.freeze({
+    modern: Object.freeze({ at: [0, 0, 1.1], turn: [0, 0, 0], particles: { preset: "fountain", scale: 0.7, floor: -0.75 } }),
+    classic: Object.freeze({ at: [0, 0, 2.58], turn: [0, 0, 0], particles: { preset: "fountain", scale: 0.45, floor: -1 } }),
+    oldtown: Object.freeze({ at: [0, -0.02, 1.14], turn: [-90, 0, 0], particles: { preset: "fountain", speed: [0.7, 0.9], floor: -0.66 } }),
+    industrial: Object.freeze({ at: [0, 0.7, 2.02], turn: [180, 0, 0], particles: { preset: "fountain", speed: [0.2, 0.4], floor: -1.37 } })
+  });
   LABELS6 = Object.freeze(PIECE_NAMES.map((name) => PIECES2[name].label));
   street = Object.freeze({
     name: "street",
     label: "Street furniture",
-    description: "What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, the rest nothing. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone.",
+    description: "What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road; and, for a square or a park: a fountain — its water the bank's, a jet from a nozzle stood in it by whoever stands it —, a kiosk with its counter, a rack of bicycles, a café's table and its two chairs under their parasol, an advertising column, a playground's swing, slide and spring rocker, a barrier round roadworks. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a column a box, the rest nothing. A bench, a shelter, a café's chairs, a swing and a rocker are sat on. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone.",
     faces: FACES8,
     shape: "cube",
     sized: true,
@@ -4266,11 +4304,11 @@ var init_street = __esm(() => {
     looks: LOOKS10,
     lookLabels: LOOK_LABELS8,
     params: [
-      { name: "piece", label: "Piece", min: 0, max: PIECE_NAMES.length - 1, default: 0, step: 1, options: PIECE_NAMES, labels: LABELS6, description: "Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow." },
+      { name: "piece", label: "Piece", min: 0, max: PIECE_NAMES.length - 1, default: 0, step: 1, options: PIECE_NAMES, labels: LABELS6, description: "Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow; a fountain; a kiosk; a rack of bicycles; a café's table; an advertising column; a swing; a slide; a spring rocker; a works barrier." },
       { name: "height", label: "Height", min: 0, max: 12, default: 0, step: 0.1, description: "How high a lamp, a signal or a sign's post stands (m) — 0, its own: a lamp 6 m, one on an arm 8 m, a signal 3.6 m, a sign 2.9 m." },
       { name: "width", label: "Width", min: 0, max: 24, default: 0, step: 0.05, description: "How wide a planter, an awning or a crossing is (m) — 0, its own: a planter 1.6 m, an awning 3 m, a crossing 7.5 m, a road's width." },
-      { name: "style", label: "Style", min: 0, max: STYLES5.length - 1, default: 0, step: 1, options: STYLES5, labels: ["Modern", "Classic, cast iron", "Old town", "Industrial"], when: (params) => STYLED.includes(PIECE_NAMES[params.piece]), description: "Its shape's style, for a lamp, a bench, a bin and a bus shelter — another silhouette, not another look: modern, the kind's own; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch. A district's furniture is of one style." },
-      { name: "variant", label: "Variation", min: 0, max: 9999, default: 0, step: 1, description: "Which of its piece's it is: a road sign's plate — stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works, in turn —, a bench with a back or without, which lens of a signal is lit, an awning's stripes." }
+      { name: "style", label: "Style", min: 0, max: STYLES5.length - 1, default: 0, step: 1, options: STYLES5, labels: ["Modern", "Classic, cast iron", "Old town", "Industrial"], when: (params) => STYLED.includes(PIECE_NAMES[params.piece]), description: "Its shape's style, for a lamp, a bench, a bin, a bus shelter, a fountain, a kiosk, a café's table and an advertising column — another silhouette, not another look: modern, the kind's own — a square basin round a block of stone, a kiosk of glass under a flat roof, a square table, a lit panel —; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap; a fountain of two bowls over a basin of eight sides, a kiosk of eight sides under a dome, a round table, a column under a dome —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches; a trough before a pillar with its spout, a hut of timber under tiles, a barrel and two stools, a notice board under a little roof —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch; a round tank and a standpipe, a hut of sheet with a hatch, a table with its two benches, a hoarding on two legs. A district's furniture is of one style." },
+      { name: "variant", label: "Variation", min: 0, max: 9999, default: 0, step: 1, description: "Which of its piece's it is: a road sign's plate — stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works, in turn —, a bench with a back or without, which lens of a signal is lit, an awning's stripes, a parasol's and a kiosk's, how many bicycles stand in a rack (two, three, one, none), a poster's colours, a swing's and a slide's." }
     ]
   });
 });
@@ -10536,8 +10574,8 @@ var FRAME2, COVER, BEDDING, THROW, METAL, TOP, SEAT2 = 0.45, SIT = 0.175, LEAN =
     const angle = Math.PI * i / steps;
     return [centre[0] + radius * Math.cos(angle), centre[1] + radius * Math.sin(angle)];
   })];
-}, SEATED, layoutOf2 = ({ model, w, d, h, legs = 0.5, stout = 0.5 }) => {
-  const own = SEATED[model];
+}, SEATED2, layoutOf2 = ({ model, w, d, h, legs = 0.5, stout = 0.5 }) => {
+  const own = SEATED2[model];
   const spec = { ...own, arm: own.arm * by(stout, 0.6, 1.4), foot: own.foot * by(legs, 0.4, 1.6), armTop: own.under ? h - own.under : own.armTop };
   const [x0, x1] = [-w / 2, w / 2];
   const y0 = -d / 2;
@@ -10801,7 +10839,7 @@ var FRAME2, COVER, BEDDING, THROW, METAL, TOP, SEAT2 = 0.45, SIT = 0.175, LEAN =
 var init_furniture_pieces = __esm(() => {
   init_furniture_shapes();
   [FRAME2, COVER, BEDDING, THROW, METAL, TOP] = [0, 1, 2, 3, 4, 5];
-  SEATED = Object.freeze({
+  SEATED2 = Object.freeze({
     track: { arm: 0.2, back: 0.22, seat: SEAT2, foot: 0.12, base: 0.3, armTop: 0.62, legs: FRAME2 },
     rolled: { arm: 0.24, back: 0.22, seat: SEAT2, foot: 0.12, base: 0.3, armTop: 0.64, rolled: true, legs: FRAME2 },
     chaise: { arm: 0.2, back: 0.22, seat: SEAT2, foot: 0.12, base: 0.3, armTop: 0.62, lounge: 0.85, legs: METAL },
@@ -11180,7 +11218,7 @@ var FRAME4, COVER3, BEDDING3, THROW3, METAL3, TOP3, SIT2 = 0.175, ON_CHAIR2 = "d
     soft(TOP3, [-w / 2, y0, 0.41], [w / 2, y0 + 0.18, h - 0.006], 0.02);
     pen.box(METAL3, [-0.03, y0 + 0.07, h - 0.006], [0.03, y0 + 0.11, h], ["top", "front", "back", "left", "right"]);
   }
-}, basin = (pen, { w, d, h, model }, level) => {
+}, basin2 = (pen, { w, d, h, model }, level) => {
   const [x0, x1, y0, y1] = [-w / 2, w / 2, -d / 2, d / 2];
   const counter = 0.85;
   const sides = level >= 3 ? 12 : 8;
@@ -11371,7 +11409,7 @@ var init_furniture_fittings = __esm(() => {
       seat: ({ d }) => ({ pose: ON_CHAIR2, places: [[0, d / 2 - 0.24, 0.44 + SIT2]] }),
       solids: ({ w, d, h, model }) => [[[-w / 2, -d / 2, model === "wall" ? 0.26 : 0], [w / 2, d / 2, 0.44]], [[-w / 2, -d / 2, 0.44], [w / 2, -d / 2 + 0.18, model === "wall" ? 0.6 : h]]]
     },
-    basin: { draw: basin, seat: null, solids: ({ w, d }) => [[[-w / 2, -d / 2, 0], [w / 2, d / 2, 0.85]]] },
+    basin: { draw: basin2, seat: null, solids: ({ w, d }) => [[[-w / 2, -d / 2, 0], [w / 2, d / 2, 0.85]]] },
     bath: { draw: bath, seat: bathSeat, solids: ({ w, d, model }) => [[[-w / 2, -d / 2, 0], [w / 2, d / 2, RIM[model]]]] },
     shower: { draw: shower, seat: null, solids: () => [] },
     kitchen: { draw: kitchen, seat: null, solids: kitchenSolids }
@@ -12429,10 +12467,10 @@ var randomOf4 = (seed) => () => {
     const toiletSpot = against(sides.filter((side2) => side2 !== bathSpot?.side).concat(sides), boxOf3(dimsOf(toilet3)), { clear: 0.7, margin: 0.2 });
     if (toiletSpot)
       put(toilet3, toiletSpot.at, toiletSpot.yaw, { seat: true });
-    const basin2 = shaped("basin", W >= 3 ? pick(random, ["vanity", "double"]) : "vanity", { width: 1.2 });
-    const basinSpot = against(sides, boxOf3(dimsOf(basin2)), { clear: 0.7 });
+    const basin3 = shaped("basin", W >= 3 ? pick(random, ["vanity", "double"]) : "vanity", { width: 1.2 });
+    const basinSpot = against(sides, boxOf3(dimsOf(basin3)), { clear: 0.7 });
     if (basinSpot)
-      put(basin2, basinSpot.at, basinSpot.yaw);
+      put(basin3, basinSpot.at, basinSpot.yaw);
     const shower2 = shaped("shower", "tray");
     const showerSpot = against(sides, boxOf3(dimsOf(shower2)), { clear: 0.6, corner: true });
     if (showerSpot)
@@ -12444,10 +12482,10 @@ var randomOf4 = (seed) => () => {
     const spot = against(sides, boxOf3(dimsOf(piece)), { clear: 0.7, margin: 0.15 });
     if (spot)
       put(piece, spot.at, spot.yaw, { seat: true });
-    const basin2 = shaped("basin", "pedestal");
-    const basinSpot = against(sides, boxOf3(dimsOf(basin2)), { clear: 0.6 });
+    const basin3 = shaped("basin", "pedestal");
+    const basinSpot = against(sides, boxOf3(dimsOf(basin3)), { clear: 0.6 });
     if (basinSpot)
-      put(basin2, basinSpot.at, basinSpot.yaw);
+      put(basin3, basinSpot.at, basinSpot.yaw);
   };
   const study = () => {
     const desk2 = shaped("desk", pick(random, ["legs", "drawers"]), { width: 1.5 });
@@ -12648,12 +12686,12 @@ var COPING = 0.45, RIM2 = 0.12, FLOOR3 = 0.25, STEP5 = 0.19, TREAD4 = 0.32, WIDE
   const { length: length2, width, depth, deck, plinth, stoop } = params;
   const [hx, hy] = [length2 / 2, width / 2];
   const out = COPING + deck;
-  const basin2 = { x0: round12(-hx), x1: round12(hx), y0: round12(-hy), y1: round12(hy) };
+  const basin3 = { x0: round12(-hx), x1: round12(hx), y0: round12(-hy), y1: round12(hy) };
   const outer = { x0: round12(-hx - out), x1: round12(hx + out), y0: round12(-hy - out), y1: round12(hy + out) };
   const floor = round12(-(RIM2 + depth));
   const bottom = round12(-Math.max(plinth, RIM2 + depth + FLOOR3, stoop));
   const along2 = params.steps === 1 ? 1 : 0;
-  const [across, edge, inner] = along2 === 0 ? [width, outer.x1, basin2.x1] : [length2, outer.y1, basin2.y1];
+  const [across, edge, inner] = along2 === 0 ? [width, outer.x1, basin3.x1] : [length2, outer.y1, basin3.y1];
   const half = Math.min(WIDE2, across + 2 * out) / 2;
   const risers = Math.max(1, Math.ceil(stoop / STEP5 - 0.000000001));
   const flight = {
@@ -12672,19 +12710,19 @@ var COPING = 0.45, RIM2 = 0.12, FLOOR3 = 0.25, STEP5 = 0.19, TREAD4 = 0.32, WIDE
     to: round12(inside),
     steps: Array.from({ length: falls - 1 }, (_, j) => ({ top: round12(-((j + 1) * (RIM2 + depth)) / falls), a0: round12(inner - (j + 1) * IN[0]), a1: round12(inner - j * IN[0]) }))
   } : null;
-  const water = { min: [round12(basin2.x0 + 0.01), round12(basin2.y0 + 0.01), floor], max: [round12(basin2.x1 - 0.01), round12(basin2.y1 - 0.01), round12(-RIM2)] };
+  const water = { min: [round12(basin3.x0 + 0.01), round12(basin3.y0 + 0.01), floor], max: [round12(basin3.x1 - 0.01), round12(basin3.y1 - 0.01), round12(-RIM2)] };
   const far = flight.steps.at(-1)?.a1 ?? edge;
   const min = [outer.x0, outer.y0, bottom];
   const max = [along2 === 0 ? round12(far) : outer.x1, along2 === 1 ? round12(far) : outer.y1, 0];
-  return { basin: basin2, outer, floor, bottom, flight, ladder, water, min, max };
+  return { basin: basin3, outer, floor, bottom, flight, ladder, water, min, max };
 }, plan, centreOf7 = (params) => {
   const { min, max } = plan(params);
   return min.map((v, k) => (v + max[k]) / 2);
-}, stepBox = ({ along: along2, from, to }, { a0, a1, top }, z0) => along2 === 0 ? { min: [a0, from, z0], max: [a1, to, top] } : { min: [from, a0, z0], max: [to, a1, top] }, wallsOf2 = ({ basin: basin2, outer, floor }) => [
-  { min: [outer.x0, outer.y0, floor], max: [basin2.x0, outer.y1, 0] },
-  { min: [basin2.x1, outer.y0, floor], max: [outer.x1, outer.y1, 0] },
-  { min: [basin2.x0, outer.y0, floor], max: [basin2.x1, basin2.y0, 0] },
-  { min: [basin2.x0, basin2.y1, floor], max: [basin2.x1, outer.y1, 0] }
+}, stepBox = ({ along: along2, from, to }, { a0, a1, top }, z0) => along2 === 0 ? { min: [a0, from, z0], max: [a1, to, top] } : { min: [from, a0, z0], max: [to, a1, top] }, wallsOf2 = ({ basin: basin3, outer, floor }) => [
+  { min: [outer.x0, outer.y0, floor], max: [basin3.x0, outer.y1, 0] },
+  { min: [basin3.x1, outer.y0, floor], max: [outer.x1, outer.y1, 0] },
+  { min: [basin3.x0, outer.y0, floor], max: [basin3.x1, basin3.y0, 0] },
+  { min: [basin3.x0, basin3.y1, floor], max: [basin3.x1, outer.y1, 0] }
 ], PAVING, LINING, SIDES7, build3 = (pool2, level) => {
   const mesh = createMesh(3);
   const uvOf = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1);
@@ -12709,14 +12747,14 @@ var COPING = 0.45, RIM2 = 0.12, FLOOR3 = 0.25, STEP5 = 0.19, TREAD4 = 0.32, WIDE
           plate(slot, axis, sign2, sign2 > 0 ? max[axis] : min[axis], min, max);
       }
   };
-  const { basin: basin2, outer, floor, bottom, flight, ladder } = pool2;
+  const { basin: basin3, outer, floor, bottom, flight, ladder } = pool2;
   for (const [axis, sign2, at] of [[0, -1, outer.x0], [0, 1, outer.x1], [1, -1, outer.y0], [1, 1, outer.y1]])
     plate(SIDES7, axis, sign2, at, [outer.x0, outer.y0, bottom], [outer.x1, outer.y1, 0]);
-  for (const [x0, x1, y0, y1] of [[outer.x0, outer.x1, outer.y0, basin2.y0], [outer.x0, outer.x1, basin2.y1, outer.y1], [outer.x0, basin2.x0, basin2.y0, basin2.y1], [basin2.x1, outer.x1, basin2.y0, basin2.y1]])
+  for (const [x0, x1, y0, y1] of [[outer.x0, outer.x1, outer.y0, basin3.y0], [outer.x0, outer.x1, basin3.y1, outer.y1], [outer.x0, basin3.x0, basin3.y0, basin3.y1], [basin3.x1, outer.x1, basin3.y0, basin3.y1]])
     plate(PAVING, 2, 1, 0, [x0, y0, 0], [x1, y1, 0]);
-  for (const [axis, sign2, at] of [[0, 1, basin2.x0], [0, -1, basin2.x1], [1, 1, basin2.y0], [1, -1, basin2.y1]])
-    plate(LINING, axis, sign2, at, [basin2.x0, basin2.y0, floor], [basin2.x1, basin2.y1, 0]);
-  plate(LINING, 2, 1, floor, [basin2.x0, basin2.y0, 0], [basin2.x1, basin2.y1, 0]);
+  for (const [axis, sign2, at] of [[0, 1, basin3.x0], [0, -1, basin3.x1], [1, 1, basin3.y0], [1, -1, basin3.y1]])
+    plate(LINING, axis, sign2, at, [basin3.x0, basin3.y0, floor], [basin3.x1, basin3.y1, 0]);
+  plate(LINING, 2, 1, floor, [basin3.x0, basin3.y0, 0], [basin3.x1, basin3.y1, 0]);
   const steps = (flight2, foot, sign2, [tread, flank]) => flight2.steps.forEach((step, i) => {
     const block = stepBox(flight2, step, foot);
     box3(block, (axis, way) => axis === 2 ? way > 0 ? tread : null : axis === flight2.along ? null : flank);
@@ -13999,6 +14037,484 @@ var corner = (k, y, r, z) => {
   return { lamp: lamp2, arm, double, bench: bench2, bin, shelter };
 };
 
+// src/build/kinds/street-square.js
+var TAU, cornerOf2 = (n, half) => half / Math.cos(Math.PI / n), ring = (n, r, z, cx = 0, cy = 0) => Array.from({ length: n }, (_, i) => {
+  const a = Math.PI / n + Math.PI / 2 + TAU * i / n;
+  return [cx + r * Math.cos(a), cy + r * Math.sin(a), z];
+}), rectangle = (x0, x1, y0, y1, z) => [[x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z]], drumSolid = (half, z0, z1, cx = 0, cy = 0) => {
+  const [side2, square] = [half * Math.tan(Math.PI / 8), half * Math.SQRT1_2];
+  return [[half, side2], [side2, half], [square, square]].map(([x, y]) => [[cx - x, cy - y, z0], [cx + x, cy + y, z1]]);
+}, squareOf = ({ all: all2, sides, topped: topped2, METAL: METAL6, BODY: BODY3, LAMP, GLASS: GLASS10, A, B, C, D, SEAT: SEAT4 }) => {
+  const box3 = (min, max, slots, level, upTo) => ({ min, max, slots, level, ...upTo !== undefined && { upTo } });
+  const sheet = (points, slot, level, { both: both2 = false, upTo } = {}) => ({ points, slot, level, ...both2 && { both: both2 }, ...upTo !== undefined && { upTo } });
+  const walls = (low, high, slot, level, { inward = false, both: both2 = false } = {}) => low.map((p, i) => {
+    const j = (i + 1) % low.length;
+    return sheet(inward ? [low[j], p, high[i], high[j]] : [p, low[j], high[j], high[i]], typeof slot === "function" ? slot(i) : slot, level, { both: both2 });
+  });
+  const band = (inner, outer, slot, level) => outer.map((p, i) => {
+    const j = (i + 1) % outer.length;
+    return sheet([p, outer[j], inner[j], inner[i]], slot, level);
+  });
+  const lid = (points, slot, level, options) => sheet(points, slot, level, options);
+  const slopes = (points, apex, slot, level, options) => points.map((p, i) => sheet([p, points[(i + 1) % points.length], apex], typeof slot === "function" ? slot(i) : slot, level, options));
+  const facing = ([nx, ny], out, half, z0, z1, slot, level, along2 = 0) => {
+    const at = (s, z) => [nx * out + ny * (along2 + s), ny * out - nx * (along2 + s), z];
+    return sheet([at(half, z0), at(-half, z0), at(-half, z1), at(half, z1)], slot, level);
+  };
+  const over = (slot) => (axis, sign2) => axis === 2 && sign2 < 0 ? null : slot;
+  const basin3 = (outer, inner, high, water, stand3) => ({
+    boxes: [box3([stand3[0], stand3[1], 0], [stand3[2], stand3[3], high], topped2(BODY3, BODY3), 0, 1)],
+    sheets: [
+      ...walls(outer(0), outer(high), BODY3, 2),
+      ...band(inner(high), outer(high), BODY3, 2),
+      ...walls(inner(water), inner(high), BODY3, 3, { inward: true }),
+      lid(inner(water), D, 2),
+      lid(rectangle(stand3[0] + 0.3, stand3[2] - 0.3, stand3[1] + 0.3, stand3[3] - 0.3, high + 0.005), D, -1)
+    ]
+  });
+  const round82 = (half, cx = 0, cy = 0) => (z) => ring(8, cornerOf2(8, half), z, cx, cy);
+  const fountain = {
+    modern: () => {
+      const made4 = basin3((z) => rectangle(-2.3, 2.3, -2.3, 2.3, z), (z) => rectangle(-1.9, 1.9, -1.9, 1.9, z), 0.45, 0.35, [-2.3, -2.3, 2.3, 2.3]);
+      return {
+        boxes: [
+          ...made4.boxes,
+          box3([-1, -1, 0], [1, 1, 0.6], topped2(BODY3, D), 3),
+          box3([-0.6, -0.6, 0], [0.6, 0.6, 1.1], topped2(BODY3, D), 1),
+          ...[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => box3([sx * 1.6 - 0.04, sy * 1.6 - 0.04, 0.3], [sx * 1.6 + 0.04, sy * 1.6 + 0.04, 0.5], sides(METAL6), 3))
+        ],
+        sheets: made4.sheets,
+        solid: [[[-2.3, -2.3, 0], [2.3, 2.3, 0.45]], [[-0.6, -0.6, 0], [0.6, 0.6, 1.1]]]
+      };
+    },
+    classic: ({ h }) => {
+      const made4 = basin3(round82(2.3), round82(1.95), 0.5, 0.38, [-2.1, -2.1, 2.1, 2.1]);
+      const at = (half) => (z) => round82(half)(z);
+      return {
+        boxes: [
+          ...made4.boxes,
+          box3([-0.16, -0.16, 1.6], [0.16, 0.16, 2.3], sides(BODY3), 2),
+          box3([-0.07, -0.07, 2.58], [0.07, 0.07, h], topped2(METAL6, METAL6), 3),
+          box3([-0.3, -0.3, 0.5], [0.3, 0.3, 2.6], sides(BODY3), -1),
+          box3([-0.95, -0.95, 1.4], [0.95, 0.95, 1.6], all2(BODY3), -1)
+        ],
+        sheets: [
+          ...made4.sheets,
+          ...walls(at(0.5)(0), at(0.42)(1.2), BODY3, 2),
+          ...walls(at(0.3)(1.2), at(1.2)(1.6), BODY3, 2),
+          lid(at(1.12)(1.56), D, 2),
+          ...walls(at(0.2)(2.3), at(0.68)(2.58), BODY3, 3),
+          lid(at(0.62)(2.55), D, 3),
+          ...walls(rectangle(-0.2, 0.2, -0.2, 0.2, 2.3), rectangle(-0.62, 0.62, -0.62, 0.62, 2.58), BODY3, -2),
+          lid(rectangle(-0.56, 0.56, -0.56, 0.56, 2.55), D, -2)
+        ],
+        solid: [...drumSolid(2.3, 0, 0.5), [[-0.5, -0.5, 0], [0.5, 0.5, h]]]
+      };
+    },
+    oldtown: () => {
+      const made4 = basin3((z) => rectangle(-1.6, 1.6, -0.5, 1.6, z), (z) => rectangle(-1.35, 1.35, -0.25, 1.35, z), 0.6, 0.48, [-1.6, -0.5, 1.6, 1.6]);
+      return {
+        boxes: [
+          ...made4.boxes,
+          box3([-0.45, -1.2, 0], [0.45, -0.5, 2.2], topped2(BODY3, BODY3), 1),
+          box3([-0.55, -1.3, 2.2], [0.55, -0.4, 2.35], all2(BODY3), 2),
+          box3([-0.04, -0.5, 1.1], [0.04, -0.05, 1.18], all2(METAL6), 2),
+          ...[-0.5, 0.5].map((x) => box3([x - 0.02, -0.25, 0.56], [x + 0.02, 1.35, 0.6], over(METAL6), 3))
+        ],
+        sheets: [...made4.sheets, ...slopes(rectangle(-0.4, 0.4, -1.25, -0.45, 2.35), [0, -0.85, 2.9], BODY3, 3)],
+        solid: [[[-1.6, -0.5, 0], [1.6, 1.6, 0.6]], [[-0.55, -1.3, 0], [0.55, -0.4, 2.35]]]
+      };
+    },
+    industrial: () => {
+      const made4 = basin3(round82(1.75), round82(1.55), 0.8, 0.65, [-1.6, -1.6, 1.6, 1.6]);
+      return {
+        boxes: [
+          ...made4.boxes,
+          box3([-0.06, -0.06, 0], [0.06, 0.06, 2.4], sides(METAL6), 1),
+          box3([-0.06, -0.06, 2.3], [0.06, 0.76, 2.42], all2(METAL6), 2),
+          box3([-0.06, 0.64, 2.05], [0.06, 0.76, 2.3], sides(METAL6), 3)
+        ],
+        sheets: [...made4.sheets, sheet(ring(8, 0.2, 0).map(([x, y]) => [0.07, y, 1.1 + x]), A, 3, { both: true })],
+        solid: [...drumSolid(1.75, 0, 0.8), [[-0.1, -0.1, 0], [0.1, 0.1, 2.4]]]
+      };
+    }
+  };
+  const valance = (x0, x1, y, z0, z1, variant, level, count = 6) => Array.from({ length: count }, (_, i) => {
+    const [a, b] = [x0 + (x1 - x0) * i / count, x0 + (x1 - x0) * (i + 1) / count];
+    return sheet([[a, y, z1], [b, y, z1], [b, y, z0], [a, y, z0]], i % 2 ? B : variant % 2 ? C : A, level, { both: true });
+  });
+  const kiosk = {
+    modern: ({ variant }) => ({
+      boxes: [
+        box3([-1.3, -1.2, 0], [1.3, 0.7, 2.5], topped2(BODY3, METAL6), 0, 1),
+        box3([-1.3, -1.2, 0], [1.3, 0.7, 1], sides(BODY3), 2),
+        ...[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => box3([sx * 1.27 - 0.03, (sy < 0 ? -1.17 : 0.67) - 0.03, 1], [sx * 1.27 + 0.03, (sy < 0 ? -1.17 : 0.67) + 0.03, 2.15], sides(METAL6), 2)),
+        box3([-1.3, -1.2, 2.15], [1.3, 0.7, 2.5], (axis, sign2) => axis === 2 ? null : axis === 1 && sign2 > 0 ? LAMP : BODY3, 2),
+        box3([-1.6, -1.3, 2.5], [1.6, 1.3, 2.62], all2(METAL6), 1),
+        box3([-1.25, 0.7, 1], [1.25, 1, 1.06], all2(METAL6), 3)
+      ],
+      sheets: [
+        sheet([[-1.24, 0.68, 1.06], [1.24, 0.68, 1.06], [1.24, 0.68, 2.15], [-1.24, 0.68, 2.15]], GLASS10, 2, { both: true }),
+        ...[-1, 1].map((side2) => sheet([[side2 * 1.28, -1.14, 1], [side2 * 1.28, 0.64, 1], [side2 * 1.28, 0.64, 2.15], [side2 * 1.28, -1.14, 2.15]], GLASS10, 2, { both: true })),
+        sheet([[1.24, -1.18, 1], [-1.24, -1.18, 1], [-1.24, -1.18, 2.15], [1.24, -1.18, 2.15]], BODY3, 2, { both: true }),
+        ...valance(-1.6, 1.6, 1.3, 2.5, 2.3, variant, 3)
+      ],
+      solid: [[[-1.3, -1.2, 0], [1.3, 0.7, 2.5]]]
+    }),
+    classic: ({ h }) => {
+      const at = (half) => (z) => round82(half)(z);
+      return {
+        boxes: [
+          box3([-0.9, -0.9, 0], [0.9, 0.9, 2.5], topped2(BODY3, BODY3), 0, 1),
+          box3([-0.05, -0.05, 3.22], [0.05, 0.05, h], topped2(METAL6, METAL6), 3)
+        ],
+        sheets: [
+          ...walls(at(1)(0), at(1)(1), BODY3, 2),
+          ...band(at(1)(1), at(1.12)(1), METAL6, 3),
+          ...walls(at(0.98)(1), at(0.98)(2.2), GLASS10, 2),
+          ...walls(at(1.02)(2.2), at(1.02)(2.5), METAL6, 2),
+          facing([0, 1], 1.03, 0.36, 2.25, 2.45, LAMP, 2),
+          ...walls(at(1.02)(2.5), at(1.28)(2.6), BODY3, 3),
+          ...walls(at(1.28)(2.6), at(0.5)(3.05), BODY3, 2),
+          ...slopes(at(0.5)(3.05), [0, 0, 3.24], BODY3, 3),
+          ...slopes(rectangle(-1, 1, -1, 1, 2.5), [0, 0, 3.1], BODY3, -1)
+        ],
+        solid: drumSolid(1, 0, 2.5)
+      };
+    },
+    oldtown: () => ({
+      boxes: [
+        box3([-1.2, -1.1, 0], [1.2, 0.5, 2.1], topped2(METAL6, BODY3), 0, 1),
+        box3([-1.2, -1.1, 0], [1.2, 0.5, 2.1], sides(METAL6), 2),
+        box3([-1, 0.5, 0.95], [1, 0.8, 1], all2(METAL6), 3)
+      ],
+      sheets: [
+        facing([0, 1], 0.505, 0.9, 1, 1.85, D, 2),
+        facing([0, 1], 0.51, 0.9, 1.9, 2.05, A, 3),
+        sheet([[-0.95, 0.5, 1.9], [0.95, 0.5, 1.9], [0.95, 1.15, 2.2], [-0.95, 1.15, 2.2]], METAL6, 2, { both: true }),
+        ...[-0.9, 0.9].map((x) => sheet([[x, 0.5, 1.05], [x, 0.56, 1.05], [x, 1.12, 2.18], [x, 1.06, 2.18]], METAL6, 3, { both: true })),
+        ...[-1, 1].map((side2) => sheet(side2 < 0 ? [[-1.45, -1.3, 2.05], [1.45, -1.3, 2.05], [1.45, -0.3, 2.85], [-1.45, -0.3, 2.85]] : [[1.45, 0.7, 2.05], [-1.45, 0.7, 2.05], [-1.45, -0.3, 2.85], [1.45, -0.3, 2.85]], BODY3, 2, { both: true })),
+        ...[-1, 1].map((side2) => sheet(side2 > 0 ? [[1.2, -1.1, 2.1], [1.2, 0.5, 2.1], [1.2, -0.3, 2.74]] : [[-1.2, 0.5, 2.1], [-1.2, -1.1, 2.1], [-1.2, -0.3, 2.74]], METAL6, 3)),
+        ...[-1, 1].map((side2) => sheet(side2 < 0 ? [[-1.45, -1.3, 2.05], [1.45, -1.3, 2.05], [1.45, -0.3, 2.85], [-1.45, -0.3, 2.85]] : [[1.45, 0.7, 2.05], [-1.45, 0.7, 2.05], [-1.45, -0.3, 2.85], [1.45, -0.3, 2.85]], BODY3, -1))
+      ],
+      solid: [[[-1.2, -1.1, 0], [1.2, 0.5, 2.1]]]
+    }),
+    industrial: () => ({
+      boxes: [
+        box3([-1.4, -1, 0], [1.4, 0.6, 2.45], topped2(BODY3, METAL6), 0, 1),
+        box3([-1.4, -1, 0.15], [1.4, 0.6, 2.45], topped2(BODY3, METAL6), 2),
+        ...[-0.9, 0.9].map((x) => box3([x - 0.08, -1, 0], [x + 0.08, 0.6, 0.15], sides(METAL6), 3)),
+        box3([-1, 0.6, 1], [1, 0.9, 1.05], all2(METAL6), 3),
+        box3([0.5, -0.7, 2.45], [0.95, -0.25, 2.7], topped2(METAL6, METAL6), 3)
+      ],
+      sheets: [
+        facing([0, 1], 0.605, 0.9, 1.05, 1.9, D, 2),
+        facing([0, 1], 0.61, 0.9, 1.98, 2.1, LAMP, 2),
+        sheet([[-0.95, 0.6, 1.95], [0.95, 0.6, 1.95], [0.95, 1.25, 2.25], [-0.95, 1.25, 2.25]], BODY3, 2, { both: true }),
+        ...[-0.9, 0.9].map((x) => sheet([[x, 0.6, 1.1], [x, 0.66, 1.1], [x, 1.22, 2.23], [x, 1.16, 2.23]], METAL6, 3, { both: true })),
+        facing([1, 0], 1.405, 0.4, 0.15, 2.1, METAL6, 3, 0.2)
+      ],
+      solid: [[[-1.4, -1, 0], [1.4, 0.6, 2.45]]]
+    })
+  };
+  const TABLE2 = 0.15;
+  const CHAIRS = [-0.42, 0.42];
+  const CHAIR = -0.62;
+  const sat = { y: CHAIR + 0.04, places: CHAIRS };
+  const chairSolids2 = (high) => CHAIRS.map((x) => [[x - 0.21, CHAIR - 0.21, 0], [x + 0.21, CHAIR + 0.21, high]]);
+  const chairFar = (high) => CHAIRS.map((x) => box3([x - 0.2, CHAIR - 0.2, 0], [x + 0.2, CHAIR + 0.2, high], sides(BODY3), -1));
+  const cloth = (corners, top, variant, level = 1) => slopes(corners, [0, TABLE2, top], (i) => i % 2 ? B : variant % 2 ? C : A, level, { both: true });
+  const pole = (top, r = 0.03) => box3([-r, TABLE2 - r, 0], [r, TABLE2 + r, top], sides(METAL6), 1);
+  const table2 = {
+    modern: ({ h, variant }) => ({
+      boxes: [
+        pole(h - 0.05),
+        box3([-0.4, TABLE2 - 0.4, 0.72], [0.4, TABLE2 + 0.4, 0.76], all2(BODY3), 2),
+        box3([-0.25, TABLE2 - 0.25, 0], [0.25, TABLE2 + 0.25, 0.03], topped2(METAL6, METAL6), 3),
+        ...CHAIRS.flatMap((x) => [
+          box3([x - 0.21, CHAIR - 0.21, SEAT4 - 0.04], [x + 0.21, CHAIR + 0.21, SEAT4], all2(BODY3), 2),
+          box3([x - 0.21, CHAIR - 0.21, SEAT4], [x + 0.21, CHAIR - 0.17, 0.86], over(BODY3), 2),
+          ...[-1, 1].map((side2) => box3([x + side2 * 0.195 - 0.015, CHAIR - 0.21, 0], [x + side2 * 0.195 + 0.015, CHAIR + 0.21, SEAT4 - 0.04], sides(METAL6), 3))
+        ]),
+        ...chairFar(0.86)
+      ],
+      sheets: [
+        ...cloth(rectangle(-1.15, 1.15, TABLE2 - 1.15, TABLE2 + 1.15, h - 0.45), h - 0.08, variant),
+        ...walls(rectangle(-1.15, 1.15, TABLE2 - 1.15, TABLE2 + 1.15, h - 0.57), rectangle(-1.15, 1.15, TABLE2 - 1.15, TABLE2 + 1.15, h - 0.45), (i) => i % 2 ? B : variant % 2 ? C : A, 3, { both: true })
+      ],
+      solid: [[[-0.4, TABLE2 - 0.4, 0], [0.4, TABLE2 + 0.4, 0.76]], ...chairSolids2(0.86)],
+      seat: sat
+    }),
+    classic: ({ h, variant }) => {
+      const round17 = (half, z) => ring(8, cornerOf2(8, half), z, 0, TABLE2);
+      return {
+        boxes: [
+          pole(h - 0.05),
+          ...CHAIRS.flatMap((x) => [
+            box3([x - 0.2, CHAIR - 0.2, SEAT4 - 0.03], [x + 0.2, CHAIR + 0.2, SEAT4], all2(BODY3), 2),
+            box3([x - 0.2, CHAIR - 0.2, 0.76], [x + 0.2, CHAIR - 0.17, 0.88], all2(BODY3), 2),
+            ...[-1, 1].map((side2) => box3([x + side2 * 0.185 - 0.015, CHAIR - 0.2, SEAT4], [x + side2 * 0.185 + 0.015, CHAIR - 0.17, 0.76], sides(METAL6), 3)),
+            ...[-1, 1].map((side2) => box3([x + side2 * 0.185 - 0.015, CHAIR - 0.2, 0], [x + side2 * 0.185 + 0.015, CHAIR + 0.2, SEAT4 - 0.03], sides(METAL6), 3))
+          ]),
+          ...chairFar(0.88)
+        ],
+        sheets: [
+          ...walls(round17(0.36, 0.72), round17(0.36, 0.75), BODY3, 2),
+          lid(round17(0.36, 0.75), BODY3, 2),
+          ...walls(round17(0.28, 0), round17(0.05, 0.07), METAL6, 3),
+          ...cloth(round17(1.1, h - 0.5), h - 0.08, variant),
+          ...walls(round17(1.1, h - 0.62), round17(1.1, h - 0.5), (i) => i % 2 ? B : variant % 2 ? C : A, 3, { both: true })
+        ],
+        solid: [[[-0.36, TABLE2 - 0.36, 0], [0.36, TABLE2 + 0.36, 0.75]], ...chairSolids2(0.88)],
+        seat: sat
+      };
+    },
+    oldtown: ({ h, variant }) => {
+      const round17 = (half, z) => ring(8, cornerOf2(8, half), z, 0, TABLE2);
+      const corners = rectangle(-1.05, 1.05, TABLE2 - 1.05, TABLE2 + 1.05, h - 0.5);
+      return {
+        boxes: [
+          pole(h - 0.05, 0.04),
+          ...CHAIRS.flatMap((x) => [
+            box3([x - 0.17, CHAIR - 0.17, SEAT4 - 0.05], [x + 0.17, CHAIR + 0.17, SEAT4], all2(BODY3), 2),
+            ...[-1, 1].map((side2) => box3([x + side2 * 0.13 - 0.02, CHAIR - 0.15, 0], [x + side2 * 0.13 + 0.02, CHAIR + 0.15, SEAT4 - 0.05], sides(BODY3), 3))
+          ]),
+          ...chairFar(SEAT4),
+          box3([-0.3, TABLE2 - 0.3, 0], [0.3, TABLE2 + 0.3, 0.95], sides(BODY3), -1)
+        ],
+        sheets: [
+          ...walls(round17(0.3, 0), round17(0.37, 0.48), BODY3, 2),
+          ...walls(round17(0.37, 0.48), round17(0.3, 0.95), BODY3, 2),
+          lid(round17(0.3, 0.95), BODY3, 2),
+          ...cloth(corners, h - 0.08, variant),
+          ...corners.map(([x, y, z]) => sheet([[0, TABLE2, z - 0.5], [0, TABLE2, z - 0.44], [x, y, z], [x, y, z - 0.06]], METAL6, 3, { both: true }))
+        ],
+        solid: [[[-0.37, TABLE2 - 0.37, 0], [0.37, TABLE2 + 0.37, 0.95]], ...chairSolids2(SEAT4)],
+        seat: sat
+      };
+    },
+    industrial: () => ({
+      boxes: [
+        box3([-0.9, -0.1, 0.72], [0.9, 0.6, 0.77], all2(BODY3), 1),
+        box3([-0.9, -0.85, SEAT4 - 0.05], [0.9, -0.5, SEAT4], all2(BODY3), 1),
+        box3([-0.9, 0.95, SEAT4 - 0.05], [0.9, 1.3, SEAT4], all2(BODY3), 1),
+        ...[-0.75, 0.75].flatMap((x) => [
+          box3([x - 0.03, -0.85, SEAT4 - 0.12], [x + 0.03, 1.3, SEAT4 - 0.05], all2(METAL6), 3),
+          ...[0.02, 0.48].map((y) => box3([x - 0.03, y - 0.03, 0], [x + 0.03, y + 0.03, 0.72], sides(METAL6), 3))
+        ])
+      ],
+      sheets: [],
+      solid: [[[-0.9, -0.1, 0], [0.9, 0.6, 0.77]], [[-0.9, -0.85, 0], [0.9, -0.5, SEAT4]], [[-0.9, 0.95, 0], [0.9, 1.3, SEAT4]]],
+      seat: { y: -0.675, places: [-0.45, 0.45] }
+    })
+  };
+  const poster = (x0, x1, y, z0, z1, slot, level, way = 1) => facing([0, way], Math.abs(y), (x1 - x0) / 2, z0, z1, slot, level, way * (x0 + x1) / 2);
+  const advert = {
+    modern: ({ variant }) => {
+      const [first, second, third, fourth] = variant % 2 ? [C, D, A, B] : [A, B, C, D];
+      return {
+        boxes: [
+          box3([-0.6, -0.11, 0], [0.6, 0.11, 3], sides(METAL6), 0, 0),
+          box3([-0.35, -0.18, 0], [0.35, 0.18, 0.5], sides(METAL6), 2),
+          box3([-0.6, -0.11, 0.5], [0.6, 0.11, 3], (axis, sign2) => axis === 1 ? LAMP : axis === 2 && sign2 < 0 ? null : METAL6, 1),
+          box3([-0.62, -0.13, 3], [0.62, 0.13, 3.08], all2(METAL6), 3)
+        ],
+        sheets: [
+          poster(-0.5, 0.5, 0.115, 0.9, 2.9, first, 2),
+          poster(-0.3, 0.3, 0.12, 1.5, 2.3, second, 2),
+          poster(-0.5, 0.5, -0.115, 0.9, 2.9, third, 2, -1),
+          poster(-0.3, 0.3, -0.12, 1.5, 2.3, fourth, 2, -1)
+        ],
+        solid: [[[-0.6, -0.18, 0], [0.6, 0.18, 3]]]
+      };
+    },
+    classic: ({ h, variant }) => {
+      const at = (half) => (z) => round82(half)(z);
+      const posters = [[0, 1], [1, 0], [0, -1], [-1, 0]].map((normal, k) => facing(normal, 0.61, 0.21, 0.7, 2.6, [A, C, B, D][(k + variant) % 4], 2));
+      return {
+        boxes: [
+          box3([-0.55, -0.55, 0], [0.55, 0.55, 3], sides(BODY3), 0, 0),
+          box3([-0.04, -0.04, 3.6], [0.04, 0.04, h], topped2(METAL6, METAL6), 3)
+        ],
+        sheets: [
+          ...walls(at(0.7)(0), at(0.7)(0.3), METAL6, 2),
+          ...walls(at(0.6)(0.3), at(0.6)(2.9), BODY3, 1),
+          ...posters,
+          ...walls(at(0.72)(2.9), at(0.72)(3.05), METAL6, 2),
+          ...band(at(0.6)(2.9), at(0.72)(2.9), METAL6, 3).map((each) => ({ ...each, points: each.points.toReversed() })),
+          ...walls(at(0.72)(3.05), at(0.3)(3.45), METAL6, 2),
+          ...slopes(at(0.3)(3.45), [0, 0, 3.62], METAL6, 3),
+          ...slopes(rectangle(-0.6, 0.6, -0.6, 0.6, 2.9), [0, 0, 3.5], METAL6, -1)
+        ],
+        solid: [[[-0.65, -0.65, 0], [0.65, 0.65, h]]]
+      };
+    },
+    oldtown: () => ({
+      boxes: [
+        box3([-0.67, -0.05, 0], [0.67, 0.05, 2.6], sides(METAL6), 0, 0),
+        ...[-0.62, 0.62].map((x) => box3([x - 0.05, -0.05, 0], [x + 0.05, 0.05, 2.6], sides(METAL6), 1)),
+        box3([-0.6, -0.03, 1], [0.6, 0.03, 2.3], all2(METAL6), 1)
+      ],
+      sheets: [
+        poster(-0.5, -0.05, 0.035, 1.45, 2.2, A, 2),
+        poster(0.05, 0.5, 0.035, 1.6, 2.2, B, 2),
+        poster(0.02, 0.4, 0.035, 1.1, 1.5, C, 2),
+        poster(-0.4, 0.4, -0.035, 1.2, 2.1, D, 2, -1),
+        ...[-1, 1].map((side2) => sheet(side2 < 0 ? [[-0.72, -0.45, 2.6], [0.72, -0.45, 2.6], [0.72, 0, 2.95], [-0.72, 0, 2.95]] : [[0.72, 0.45, 2.6], [-0.72, 0.45, 2.6], [-0.72, 0, 2.95], [0.72, 0, 2.95]], BODY3, 2, { both: true })),
+        ...[-1, 1].map((side2) => sheet(side2 > 0 ? [[0.67, -0.4, 2.6], [0.67, 0.4, 2.6], [0.67, 0, 2.91]] : [[-0.67, 0.4, 2.6], [-0.67, -0.4, 2.6], [-0.67, 0, 2.91]], METAL6, 3, { both: true }))
+      ],
+      solid: [[[-0.67, -0.06, 0], [0.67, 0.06, 2.6]]]
+    }),
+    industrial: ({ variant }) => {
+      const [first, second, third] = variant % 2 ? [C, B, A] : [A, B, C];
+      return {
+        boxes: [
+          box3([-0.72, -0.04, 0], [0.72, 0.04, 3.6], sides(BODY3), 0, 0),
+          ...[-0.5, 0.5].map((x) => box3([x - 0.05, -0.04, 0], [x + 0.05, 0.04, 1.9], sides(METAL6), 1)),
+          box3([-0.72, -0.04, 1.9], [0.72, 0.04, 3.6], all2(BODY3), 1),
+          box3([-0.6, 0.04, 3.54], [0.6, 0.3, 3.6], (axis, sign2) => axis === 2 && sign2 < 0 ? LAMP : METAL6, 2)
+        ],
+        sheets: [
+          poster(-0.66, 0.66, 0.045, 1.96, 3.5, first, 2),
+          poster(-0.66, 0.66, 0.05, 2.1, 2.5, second, 2),
+          poster(-0.4, 0.2, 0.05, 2.7, 3.3, third, 2),
+          ...[-0.5, 0.5].map((x) => sheet([[x, -0.04, 2.5], [x, -0.04, 2.6], [x, -0.7, 0.1], [x, -0.7, 0]], METAL6, 3, { both: true }))
+        ],
+        solid: [[[-0.72, -0.06, 0], [0.72, 0.06, 3.6]]]
+      };
+    }
+  };
+  const HOOPS = [-0.9, 0, 0.9];
+  const rack2 = ({ variant }) => {
+    const count = [2, 3, 1, 0][variant % 4];
+    const bicycle = (hoop, slot) => {
+      const x0 = hoop + 0.12;
+      const p = (y, z) => [x0 + 0.1 * y, y, z];
+      const wheel = (y, n, level) => sheet(ring(n, 0.33, 0).map(([a, b]) => p(y + a, 0.33 + b)), D, level, { both: true });
+      const tube = (a, b, level = 3) => {
+        const length2 = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const [oy, oz] = [-(b[1] - a[1]) / length2 * 0.018, (b[0] - a[0]) / length2 * 0.018];
+        return sheet([p(a[0] - oy, a[1] - oz), p(b[0] - oy, b[1] - oz), p(b[0] + oy, b[1] + oz), p(a[0] + oy, a[1] + oz)], slot, level, { both: true });
+      };
+      const [head, crank, saddle, back, front2] = [[0.36, 0.82], [0.02, 0.33], [-0.12, 0.78], [-0.52, 0.33], [0.52, 0.33]];
+      return {
+        boxes: [
+          box3([x0 + 0.036 - 0.22, 0.34, 0.9], [x0 + 0.036 + 0.22, 0.38, 0.93], all2(METAL6), 3),
+          box3([x0 - 0.012 - 0.06, -0.24, 0.84], [x0 - 0.012 + 0.06, 0, 0.88], topped2(D, D), 3)
+        ],
+        sheets: [
+          wheel(-0.52, 8, 3),
+          wheel(0.52, 8, 3),
+          tube(saddle, head),
+          tube(head, crank),
+          tube(crank, saddle),
+          tube(saddle, back),
+          tube(head, front2),
+          wheel(-0.52, 4, -2),
+          wheel(0.52, 4, -2),
+          tube(saddle, head, -2),
+          tube([-0.6, 0.5], [0.6, 0.5], -1)
+        ]
+      };
+    };
+    const bicycles = HOOPS.slice(0, count).map((hoop, k) => bicycle(hoop, [A, B, C][k]));
+    return {
+      boxes: [
+        ...HOOPS.flatMap((x) => [
+          ...[-0.3, 0.3].map((y) => box3([x - 0.02, y - 0.02, 0], [x + 0.02, y + 0.02, 0.8], sides(METAL6), 3)),
+          box3([x - 0.02, -0.32, 0.78], [x + 0.02, 0.32, 0.82], all2(METAL6), 2),
+          box3([x - 0.02, -0.32, 0], [x + 0.02, 0.32, 0.82], sides(METAL6), -1)
+        ]),
+        ...bicycles.flatMap((each) => each.boxes)
+      ],
+      sheets: bicycles.flatMap((each) => each.sheets),
+      solid: [count ? [[-1, -0.9, 0], [1.25, 0.9, 1]] : [[-1, -0.35, 0], [1, 0.35, 0.82]]]
+    };
+  };
+  const SWINGS = [-0.7, 0.7];
+  const swing = ({ variant }) => ({
+    boxes: [
+      ...[-1.6, 1.6].map((x) => box3([x - 0.05, -0.05, 0], [x + 0.05, 0.05, 2.4], sides(METAL6), 1)),
+      box3([-1.65, -0.05, 2.35], [1.65, 0.05, 2.45], all2(METAL6), 1),
+      ...SWINGS.flatMap((x, k) => [
+        box3([x - 0.25, -0.1, 0.46], [x + 0.25, 0.1, 0.5], all2([A, C, B, D][(variant + k) % 4]), 2),
+        ...[-1, 1].map((side2) => box3([x + side2 * 0.22 - 0.008, -0.008, 0.5], [x + side2 * 0.22 + 0.008, 0.008, 2.35], sides(METAL6), 3))
+      ])
+    ],
+    sheets: [-1.6, 1.6].flatMap((x) => [-1, 1].map((way) => sheet([[x, way * 0.95, 0], [x, way * 0.87, 0], [x, 0, 1.55], [x, 0, 1.65]], METAL6, 3, { both: true }))),
+    solid: [-1.6, 1.6].map((x) => [[x - 0.08, -0.08, 0], [x + 0.08, 0.08, 2.4]]),
+    seat: { y: 0, places: SWINGS, z: 0.5 }
+  });
+  const slide = ({ h, variant }) => {
+    const [chute, roof2] = [[A, B, C][variant % 3], [B, C, A][variant % 3]];
+    return {
+      boxes: [
+        box3([-0.5, -1.5, 1.4], [0.5, -0.6, 1.5], all2(BODY3), 1),
+        ...[[-1, -1.5], [1, -1.5], [-1, -0.6], [1, -0.6]].map(([sx, y]) => box3([sx * 0.47 - 0.03, y - 0.03 + (y < -1 ? 0.03 : -0.03), 0], [sx * 0.47 + 0.03, y + 0.03 + (y < -1 ? 0.03 : -0.03), h - 0.2], sides(METAL6), 2)),
+        box3([-0.04, 0.6, 0], [0.04, 0.68, 0.86], sides(METAL6), 3),
+        box3([-0.5, -1.5, 0], [0.5, -0.6, h - 0.2], sides(METAL6), -1)
+      ],
+      sheets: [
+        sheet([[-0.35, -0.6, 1.5], [0.35, -0.6, 1.5], [0.35, 2.1, 0.28], [-0.35, 2.1, 0.28]], chute, 1, { both: true }),
+        ...[-1, 1].map((side2) => sheet([[side2 * 0.35, -0.6, 1.5], [side2 * 0.35, 2.1, 0.28], [side2 * 0.35, 2.1, 0.48], [side2 * 0.35, -0.6, 1.72]], chute, 2, { both: true })),
+        ...[-1, 1].map((side2) => sheet(side2 < 0 ? [[-0.6, -1.6, h - 0.2], [-0.6, -0.5, h - 0.2], [0, -0.5, h], [0, -1.6, h]] : [[0.6, -0.5, h - 0.2], [0.6, -1.6, h - 0.2], [0, -1.6, h], [0, -0.5, h]], roof2, 2, { both: true })),
+        ...[-1, 1].map((side2) => sheet([[side2 * 0.3, -2.15, 0], [side2 * 0.3, -2.05, 0], [side2 * 0.3, -1.5, 1.4], [side2 * 0.3, -1.6, 1.4]], METAL6, 2, { both: true })),
+        ...[1, 2, 3, 4, 5].map((n) => {
+          const [y, z] = [-2.1 + n * 0.1, n * 0.2333];
+          return sheet([[-0.3, y - 0.05, z], [0.3, y - 0.05, z], [0.3, y + 0.05, z], [-0.3, y + 0.05, z]], METAL6, 3, { both: true });
+        })
+      ],
+      solid: [[[-0.5, -1.5, 0], [0.5, -0.6, 1.5]], [[-0.35, -0.6, 0], [0.35, 0.7, 0.9]], [[-0.35, 0.7, 0], [0.35, 2.1, 0.4]]]
+    };
+  };
+  const rocker = ({ variant }) => {
+    const [body, saddle] = [[A, C, B, D][variant % 4], [B, A, D, C][variant % 4]];
+    return {
+      boxes: [
+        box3([-0.06, -0.06, 0], [0.06, 0.06, 0.4], sides(METAL6), 2),
+        box3([-0.15, -0.15, 0], [0.15, 0.15, 0.03], topped2(METAL6, METAL6), 3),
+        box3([-0.05, -0.45, 0.4], [0.05, 0.32, 0.6], all2(body), 1),
+        box3([-0.05, 0.2, 0.6], [0.05, 0.5, 0.9], over(body), 1),
+        box3([-0.14, -0.32, 0.6], [0.14, 0.05, 0.64], over(saddle), 2),
+        box3([-0.2, 0.28, 0.78], [0.2, 0.32, 0.82], all2(METAL6), 3),
+        box3([-0.2, 0.05, 0.36], [0.2, 0.13, 0.4], all2(METAL6), 3)
+      ],
+      sheets: [],
+      solid: [[[-0.14, -0.45, 0], [0.14, 0.5, 0.9]]],
+      seat: { y: -0.12, places: [0], z: 0.64 }
+    };
+  };
+  const barrier = ({ h, variant }) => {
+    const end = variant % 2 ? -1 : 1;
+    const striped = (z0, z1, from) => Array.from({ length: 6 }, (_, i) => box3([-0.9 + i * 0.3, -0.02, z0], [-0.9 + (i + 1) * 0.3, 0.02, z1], (axis, sign2) => axis === 1 ? (i + from) % 2 ? B : A : axis === 2 ? sign2 > 0 ? B : null : null, 2));
+    return {
+      boxes: [
+        ...[-0.75, 0.75].flatMap((x) => [
+          box3([x - 0.025, -0.045, 0], [x + 0.025, -0.02, h - 0.13], sides(METAL6), 1),
+          box3([x - 0.03, -0.25, 0], [x + 0.03, 0.25, 0.05], topped2(METAL6, METAL6), 3)
+        ]),
+        ...striped(0.5, 0.7, 0),
+        ...striped(0.82, h - 0.13, 1),
+        box3([end * 0.75 - 0.06, -0.06, h - 0.13], [end * 0.75 + 0.06, 0.06, h], over(LAMP), 2),
+        ...[[0.5, 0.7], [0.82, h - 0.13]].map(([z0, z1]) => box3([-0.9, -0.02, z0], [0.9, 0.02, z1], (axis) => axis === 1 ? A : null, -1))
+      ],
+      sheets: [],
+      solid: [[[-0.9, -0.06, 0], [0.9, 0.06, h - 0.13]]]
+    };
+  };
+  const { modern: basinOwn, ...basins } = fountain;
+  const { modern: kioskOwn, ...kiosks } = kiosk;
+  const { modern: tableOwn, ...tables } = table2;
+  const { modern: advertOwn, ...adverts } = advert;
+  return {
+    own: { fountain: basinOwn, kiosk: kioskOwn, rack: rack2, table: tableOwn, advert: advertOwn, swing, slide, rocker, barrier },
+    styled: { fountain: basins, kiosk: kiosks, table: tables, advert: adverts }
+  };
+};
+var init_street_square = __esm(() => {
+  TAU = Math.PI * 2;
+});
+
 // src/build/kinds/street-gen.js
 var exports_street_gen = {};
 __export(exports_street_gen, {
@@ -14019,11 +14535,11 @@ var METAL6, BODY3, LAMP, GLASS10, A, B, C, D, SEAT4 = 0.45, SIT4 = 0.175, ON_CHA
 }, all2 = (slot) => () => slot, sides = (slot) => (axis) => axis === 2 ? null : slot, topped2 = (side2, top) => (axis, sign2) => axis === 2 ? sign2 > 0 ? top : null : side2, disc = (y, z, r, n, turn3 = 0) => Array.from({ length: n }, (_, i) => {
   const a = turn3 + 2 * Math.PI * i / n;
   return [-r * Math.sin(a), y, z + r * Math.cos(a)];
-}), rect4 = (y, x0, x1, z0, z1) => [[x1, y, z0], [x0, y, z0], [x0, y, z1], [x1, y, z1]], post = (x, y, r, top, level = 0) => ({ min: [x - r, y - r, 0], max: [x + r, y + r, top], slots: sides(METAL6), level }), PLATES2, MAKERS2, STYLED2, madeOf2 = (params) => {
+}), rect4 = (y, x0, x1, z0, z1) => [[x1, y, z0], [x0, y, z0], [x0, y, z1], [x1, y, z1]], post = (x, y, r, top, level = 0) => ({ min: [x - r, y - r, 0], max: [x + r, y + r, top], slots: sides(METAL6), level }), PLATES2, MAKERS2, PARTS, SQUARE2, STYLED2, OWN2, madeOf2 = (params) => {
   const dims = dimsOf3(params);
-  const made4 = (STYLED2[dims.name]?.[STYLES5[params.style ?? 0]] ?? MAKERS2[dims.name])(dims);
+  const made4 = (STYLED2[dims.name]?.[STYLES5[params.style ?? 0]] ?? OWN2[dims.name])(dims);
   return { ...dims, boxes: made4.boxes, sheets: made4.sheets ?? [], solid: made4.solid, seat: made4.seat ?? null };
-}, shown3 = (list, level) => list.filter((each) => each.level < 0 ? level === -each.level : level >= each.level), tintsOf3 = (params) => {
+}, shown3 = (list, level) => list.filter((each) => each.level < 0 ? level === -each.level : level >= each.level && level <= (each.upTo ?? 3)), tintsOf3 = (params) => {
   const name = PIECE_NAMES[params.piece] ?? PIECE_NAMES[0];
   const [a, b, c, d] = coloursOf(name);
   return { 4: a, 5: b, 6: c, 7: d };
@@ -14031,6 +14547,7 @@ var METAL6, BODY3, LAMP, GLASS10, A, B, C, D, SEAT4 = 0.45, SIT4 = 0.175, ON_CHA
 var init_street_gen = __esm(() => {
   init_mesh();
   init_street();
+  init_street_square();
   [METAL6, BODY3, LAMP, GLASS10, A, B, C, D] = [0, 1, 2, 3, 4, 5, 6, 7];
   PLATES2 = {
     stop: (y, z) => [[disc(y, z, 0.37, 8, Math.PI / 8), A, 1], [rect4(y + 0.003, -0.25, 0.25, z - 0.07, z + 0.07), B, 3]],
@@ -14224,7 +14741,10 @@ var init_street_gen = __esm(() => {
       solid: [[[-0.45, -1.6, 0], [0.45, 1.6, h]]]
     })
   };
-  STYLED2 = stylesOf({ post, all: all2, sides, topped: topped2, METAL: METAL6, BODY: BODY3, LAMP, GLASS: GLASS10, A, B, C, D, SEAT: SEAT4 });
+  PARTS = { post, all: all2, sides, topped: topped2, METAL: METAL6, BODY: BODY3, LAMP, GLASS: GLASS10, A, B, C, D, SEAT: SEAT4 };
+  SQUARE2 = squareOf(PARTS);
+  STYLED2 = { ...stylesOf(PARTS), ...SQUARE2.styled };
+  OWN2 = { ...MAKERS2, ...SQUARE2.own };
   street_gen_default = Object.freeze({
     fit: (params) => {
       const { w, d, h } = dimsOf3(params);
@@ -14274,7 +14794,7 @@ var init_street_gen = __esm(() => {
       const { seat, h } = madeOf2(params);
       if (!seat)
         return null;
-      const [first, ...places] = seat.places.map((x) => [round17(x), round17(seat.y), round17(SEAT4 + SIT4 - h / 2)]);
+      const [first, ...places] = seat.places.map((x) => [round17(x), round17(seat.y), round17((seat.z ?? SEAT4) + SIT4 - h / 2)]);
       return { at: first, turn: 0, pose: ON_CHAIR4, ...places.length && { places } };
     },
     tints: tintsOf3
@@ -15351,7 +15871,7 @@ var init_building_site = __esm(() => {
 });
 
 // src/build/city.js
-var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3.5, KERB2 = 0.15, RIM3 = 2, BLOCK2 = 50, BLOCK_MOST = 60, BLOCK_LEAST = 36, FALL2 = 5, OVER6 = 0.05, UNDER5 = 0.6, TILE = 60, SET = 0.5, MEDIAN = 3, BIKE = 2.4, BAY3 = 2.2, WALK_WIDE = 5, SECTIONS, CLEAR2 = 5.2, VIADUCT = 8, STAIR2, CONCRETE6 = "plaster/concrete/concrete-046", STEEL7 = "metal/painted/metal-029", RAILS2 = "paving/roads/rails-001", SOIL3 = "ground/soil/brown-mud-02", BIKE_TINT, LANES2 = "paving/roads/road-007", ASPHALT3 = "paving/asphalt/asphalt-024a", PAVEMENT = "paving/asphalt/concrete-pavement-02", PLAZA = "paving/stone/granite-tile-04", GRASS = "ground/grass/grass-004", SPECIES4, HALLS, CIVIC, CIVIC_COLOURS, DISTRICTS, round23 = (v) => Math.round(v * 1000) / 1000, clamp15 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), even = (v) => Math.round(v / 2) * 2, randomOf8 = (seed) => {
+var EDITION = 5, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3.5, KERB2 = 0.15, RIM3 = 2, BLOCK2 = 50, BLOCK_MOST = 60, BLOCK_LEAST = 36, FALL2 = 5, OVER6 = 0.05, UNDER5 = 0.6, TILE = 60, SET = 0.5, MEDIAN = 3, BIKE = 2.4, BAY3 = 2.2, WALK_WIDE = 5, SECTIONS, CLEAR2 = 5.2, VIADUCT = 8, STAIR2, CONCRETE6 = "plaster/concrete/concrete-046", STEEL7 = "metal/painted/metal-029", RAILS2 = "paving/roads/rails-001", SOIL3 = "ground/soil/brown-mud-02", RUBBER = "paving/tiles/rubber-tiles", ROUND8, overlap3 = (a, b) => a[0] < b[1] - 0.01 && b[0] < a[1] - 0.01 && a[2] < b[3] - 0.01 && b[2] < a[3] - 0.01, around = ([x, y], r) => [x - r, x + r, y - r, y + r], boundsOfPoints = (points) => [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1])), Math.max(...points.map((p) => p[1]))], BIKE_TINT, LANES2 = "paving/roads/road-007", ASPHALT3 = "paving/asphalt/asphalt-024a", PAVEMENT = "paving/asphalt/concrete-pavement-02", PLAZA = "paving/stone/granite-tile-04", GRASS = "ground/grass/grass-004", SPECIES4, HALLS, CIVIC, CIVIC_COLOURS, DISTRICTS, round23 = (v) => Math.round(v * 1000) / 1000, clamp15 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), even = (v) => Math.round(v / 2) * 2, randomOf8 = (seed) => {
   let state = seed * 2654435761 >>> 0;
   return () => {
     state = state + 1831565813 >>> 0;
@@ -15488,6 +16008,7 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
 }, cityOf = (given, survey, { lazy = false, edition = EDITION } = {}) => {
   const params = constrainCity(given);
   const urban = edition >= 3;
+  const lived = edition >= 5 && params.life >= 1;
   const grid = gridOf2(params, edition);
   const { width: W, depth: D2 } = grid;
   const bounds = boundsOf3(params);
@@ -15543,6 +16064,16 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
   })() : null;
   const overpass = bridged2 >= 2 && avenue && grid.nx >= 3 && grid.ys[avenueAt - 1] && grid.ys[avenueAt + 1] ? { k: 2, line: grid.xs[2], rise: round23(CLEAR2 + 0.6) } : null;
   const viaduct = bridged2 >= 3 ? { line: grid.ys[grid.ny] } : null;
+  const worksAt = (k, n) => {
+    if (!lived || !params.works)
+      return null;
+    const first = grid.xs.findIndex((line) => line.kind === "parking");
+    if (k !== first || n !== params.seed % grid.ny)
+      return null;
+    const long = grid.sy;
+    const s = -long / 2 + 8 + 6;
+    return long >= 34 ? { s: round23(s), long: 9.4, closed: [round23(s - 9), round23(s + 6)] } : null;
+  };
   const kept2 = (x, y) => Boolean(footbridge) && [footbridge.south, footbridge.north].some((stair) => x > stair.x0 - 1 && x < stair.x1 + 1 && Math.abs(y - stair.y) < STAIR2.width / 2 + 1.3);
   if (footbridge)
     stats.footbridges = 1;
@@ -15622,7 +16153,7 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
         if (overpass && node.i === overpass.k && node.j === avenueAt)
           continue;
         const [hx, hy] = [grid.xs[node.i].width / 2, grid.ys[node.j].width / 2];
-        const ring = node.inner ? null : [node.i === 0 && [1, 0], node.i === grid.nx && [-1, 0], node.j === 0 && [0, 1], node.j === grid.ny && [0, -1]].find(Boolean);
+        const ring2 = node.inner ? null : [node.i === 0 && [1, 0], node.i === grid.nx && [-1, 0], node.j === 0 && [0, 1], node.j === grid.ny && [0, -1]].find(Boolean);
         for (const [dx, dy] of arms) {
           const line = dy ? grid.xs[node.i] : grid.ys[node.j];
           const reach = dy ? hy : hx;
@@ -15639,8 +16170,10 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
             stand3("arrow", "arrow", along3(11), [-dx, -dy], { on: 0.012 });
           if (node.inner)
             stand3(dy ? "signal green" : "signal red", "signal", [node.x - dx * (hx + 0.7) + rx * (hx + 0.7), node.y - dy * (hy + 0.7) + ry * (hy + 0.7)], [dx, dy], { look: "black", lit: dy ? "green" : "red" });
-          else if (dx === ring[0] && dy === ring[1])
+          else if (dx === ring2[0] && dy === ring2[1])
             stand3("give way", "roadsign", [node.x + dx * (hx + 4.4) + rx * (hx + 0.7), node.y + dy * (hy + 4.4) + ry * (hy + 0.7)], [dx, dy], { variant: SIGNS.indexOf("yield") });
+          else if (lived && rx === -ring2[0] && ry === -ring2[1])
+            stand3("crossing sign", "roadsign", [node.x + dx * (reach + 6.5) + rx * (line.width / 2 + 0.9), node.y + dy * (reach + 6.5) + ry * (line.width / 2 + 0.9)], [dx, dy], { variant: SIGNS.indexOf("crossing") });
         }
       }
       return { objects: objects2, clones: clones2, trees: [] };
@@ -15650,9 +16183,9 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
       const arms = [[0, -1, node.j > 0], [0, 1, node.j < grid.ny], [-1, 0, node.i > 0], [1, 0, node.i < grid.nx]].filter(([, , has]) => has);
       if (arms.length < 3)
         continue;
-      const ring = [node.i === 0 && [1, 0], node.i === grid.nx && [-1, 0], node.j === 0 && [0, 1], node.j === grid.ny && [0, -1]].find(Boolean);
+      const ring2 = [node.i === 0 && [1, 0], node.i === grid.nx && [-1, 0], node.j === 0 && [0, 1], node.j === grid.ny && [0, -1]].find(Boolean);
       for (const [dx, dy] of arms) {
-        if (!node.inner && (dx !== ring[0] || dy !== ring[1]))
+        if (!node.inner && (dx !== ring2[0] || dy !== ring2[1]))
           continue;
         stand3("crossing", "zebra", [node.x + dx * (half + 2.2), node.y + dy * (half + 2.2)], dy ? [0, 1] : [1, 0], { on: 0.005 });
         const [rx, ry] = [-dy, dx];
@@ -15679,7 +16212,13 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
   const blockPiece = (block) => {
     const [objects2, clones2, trees2] = [[], [], []];
     const furnish = furnisher(objects2, clones2);
-    const stand3 = (name, piece, at2, ...rest) => kept2(at2[0], at2[1]) ? null : furnish(name, piece, at2, ...rest);
+    const [taken, grounds] = [[], []];
+    const stand3 = (name, piece, at2, ...rest) => {
+      if (kept2(at2[0], at2[1]))
+        return null;
+      taken.push(around(at2, ROUND8[piece] ?? 0.5));
+      return furnish(name, piece, at2, ...rest);
+    };
     const own = randomOf8(params.seed * 131 + block.i * 17 + block.j * 53 + 7);
     const { role, type: asked2, word } = roles.get(block);
     const district = districted ? districtOf(params, block, edition) : null;
@@ -15689,6 +16228,11 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
     const { walk } = block;
     const [ix, iy] = [sx - walk.w - walk.e, sy - walk.s - walk.n];
     const [cx, cy] = [(walk.w - walk.e) / 2, (walk.s - walk.n) / 2];
+    const pad = lived && role === "park" ? (() => {
+      const [w, d] = [Math.min(11, round23(ix / 2 - 4)), Math.min(8, round23(iy / 2 - 4))];
+      return w >= 8 && d >= 6 ? { x: round23(block.x + cx + ix / 4 + 0.6), y: round23(block.y + cy + iy / 4 + 0.6), w, d } : null;
+    })() : null;
+    const cleared = (x, y) => Boolean(pad) && Math.abs(x - pad.x) < pad.w / 2 + 1.2 && Math.abs(y - pad.y) < pad.d / 2 + 1.2;
     const pit = (x, y) => {
       const at2 = [round23(x), round23(y), round23(level + KERB2 + 0.011)];
       if (objects2.some((object) => object.name === "tree pit"))
@@ -15697,9 +16241,10 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
     };
     const plant2 = (x, y, scale4 = 1, pitted = false) => {
       const tree = { species: pick3(species, own()), at: [round23(x), round23(y), round23(level + KERB2)], scale: round23(scale4 * (0.85 + 0.3 * own())), seed: Math.floor(own() * 1000), turn: Math.floor(own() * 360) };
-      if (kept2(x, y))
+      if (kept2(x, y) || cleared(x, y))
         return;
       trees2.push(tree);
+      taken.push(around([x, y], ROUND8.tree));
       stats.trees++;
       if (pitted && urban)
         pit(x, y);
@@ -15779,11 +16324,13 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
       variant: Math.floor(own() * 1000),
       ...rest
     });
+    const stood = [];
     const count = (made4) => {
       stats.buildings++;
       if (made4.prims[0].floors >= 12)
         stats.towers++;
       objects2.push(made4);
+      stood.push(made4);
     };
     const south = [0, -1], north = [0, 1], west = [-1, 0];
     if (role === "row") {
@@ -15850,6 +16397,7 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
       fitted2.params = { ...fitted2.params, plinth: Math.max(0.1, round23(fitted2.floor)) };
       const { min, max } = KINDS.hall.footprint(fitted2.params);
       const y = -facing[1] * (iy / 2 - depth / 2 - 2);
+      grounds.push(boundsOfPoints([[min[0], min[1]], [max[0], max[1]]].map(([px, py]) => [block.x + px * facing[1], block.y + y + py * facing[1]])));
       objects2.push({
         name: `${type} ${block.i + 1}-${block.j + 1}`,
         at: [round23(block.x), round23(block.y + y), round23(level + KERB2 + fitted2.floor)],
@@ -15898,6 +16446,143 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
         stand3("post lamp", "lamp", at(x, y), south, { look: quarter.lamp, lit: true, ...styled });
       stand3("bin", "bin", at(7.4, 2.2), south, { look: quarter.bin, ...styled });
     }
+    const livedIn = () => {
+      const more = (key, by2 = 1) => {
+        stats[key] = (stats[key] ?? 0) + by2;
+      };
+      const takes = (piece, [x, y], [fx, fy], own2) => {
+        const fitted2 = constrainKind("street", { piece, ...own2 }).params;
+        const size = KINDS.street.fit(fitted2);
+        const solids5 = KINDS.street.collider(fitted2, 0, size);
+        const turned2 = (corners) => boundsOfPoints(corners.map(([px, py]) => [x + px * fy + py * fx, y - px * fx + py * fy]));
+        return {
+          whole: turned2([[-size[0] / 2, -size[1] / 2], [size[0] / 2, size[1] / 2]]),
+          solid: turned2([[Math.min(...solids5.map(({ half, at: at2 }) => at2[0] - half[0])), Math.min(...solids5.map(({ half, at: at2 }) => at2[1] - half[1]))], [Math.max(...solids5.map(({ half, at: at2 }) => at2[0] + half[0])), Math.max(...solids5.map(({ half, at: at2 }) => at2[1] + half[1]))]])
+        };
+      };
+      const free = ({ whole: whole3, solid: solid2 }) => !kept2((whole3[0] + whole3[1]) / 2, (whole3[2] + whole3[3]) / 2) && taken.every((each) => !overlap3(whole3, each)) && grounds.every((each) => !overlap3(solid2, each));
+      const place = (name, piece, places, facing, { look: look4, lit, on, ...own2 } = {}) => {
+        for (const found of places) {
+          const took = takes(piece, found, facing, own2);
+          if (!free(took))
+            continue;
+          taken.push(took.whole);
+          furnish(name, piece, found, facing, { look: look4, lit, ...on !== undefined && { on }, ...own2 });
+          return found;
+        }
+        return null;
+      };
+      for (const made4 of stood) {
+        const plan2 = planOf4(constrainKind("building", made4.prims[0]).params);
+        const turned2 = made4.turn[2] * Math.PI / 180;
+        const [cos, sin] = [Math.round(Math.cos(turned2)), Math.round(Math.sin(turned2))];
+        for (const rect5 of [plan2.rect, ...plan2.wings.map((wing) => wing.rect), plan2.porch])
+          grounds.push(boundsOfPoints([[rect5.x0, rect5.y0], [rect5.x1, rect5.y1]].map(([px, py]) => [made4.at[0] + px * cos - py * sin, made4.at[1] + px * sin + py * cos])));
+      }
+      const fountain = ([x, y], facing, on = KERB2) => {
+        const fitted2 = constrainKind("street", { piece: "fountain", style: district }).params;
+        const size = KINDS.street.fit(fitted2);
+        const took = takes("fountain", [x, y], facing, { style: district });
+        if (!free(took))
+          return;
+        taken.push(took.whole);
+        objects2.push({
+          name: "fountain",
+          at: [round23(x), round23(y), round23(level + on)],
+          turn: [0, 0, turnTo(facing)],
+          prims: [{ name: "fountain", kind: "street", piece: "fountain", style: district, at: [0, 0, round23(size[2] / 2)], ...streetDressing("fountain", quarter.fountain) }, fountainJet(district)]
+        });
+        more("fountains");
+      };
+      const along3 = (side2, back, from) => {
+        const reach = side2.length / 2 - 5;
+        return [...Array.from({ length: 40 }, (_, n) => from + n * 1.5), ...Array.from({ length: 40 }, (_, n) => from - (n + 1) * 1.5)].filter((s) => Math.abs(s) <= reach).map((s) => beside(side2, s, back));
+      };
+      for (const made4 of stood) {
+        const plan2 = planOf4(constrainKind("building", made4.prims[0]).params);
+        if (!plan2.shops.length)
+          continue;
+        const turned2 = made4.turn[2] * Math.PI / 180;
+        const [cos, sin] = [Math.round(Math.cos(turned2)), Math.round(Math.sin(turned2))];
+        const out = ([x, y2]) => [made4.at[0] + x * cos - y2 * sin, made4.at[1] + x * sin + y2 * cos];
+        const raise = Math.min(2.5, plan2.clear - 0.95);
+        for (const wall of plan2.walls) {
+          if (wall.partition || !wall.out)
+            continue;
+          for (const opening of wall.openings ?? []) {
+            if (opening.kind !== "window" || opening.z0 !== 0 || Math.abs(opening.z1 - plan2.clear) > 0.000001)
+              continue;
+            const middle = (opening.a0 + opening.a1) / 2;
+            const width = clamp15(Math.round((opening.a1 - opening.a0 + 0.4) * 20) / 20, 1.2, 12);
+            const [here, facing] = wall.along === 0 ? [[middle, wall.at + wall.out * 0.65], [0, wall.out]] : [[wall.at + wall.out * 0.65, middle], [wall.out, 0]];
+            const variant = ((wall.along === 0 ? middle > plan2.mid : wall.out > 0) ? 1 : 0) ^ (block.i + block.j) % 2;
+            made4.prims.push({ name: `awning ${made4.prims.length}`, kind: "street", piece: "awning", width, variant, at: [round23(here[0]), round23(here[1]), round23(raise + 0.45)], turn: [0, 0, turnTo(facing)], ...streetDressing("awning") });
+            more("awnings");
+          }
+        }
+        const south2 = cos < 0;
+        const avenue2 = (south2 ? walk.s : walk.n) === WALK_WIDE;
+        const y = south2 ? block.y0 + (avenue2 ? 2.5 : 1.3) : block.y1 - (avenue2 ? 2.5 : 1.3);
+        for (const [n, shop] of plan2.shops.entries()) {
+          const [x0, x1] = [out([shop.x0, 0])[0], out([shop.x1, 0])[0]].sort((a, b) => a - b);
+          let tables = 0;
+          for (let x = x0 + 1.5;x <= x1 - 1.5 && tables < (avenue2 ? 2 : 1); x += 0.5) {
+            if (!place(`table ${(n + tables) % 2}`, "table", [[round23(x), y]], south2 ? [0, -1] : [0, 1], { look: quarter.table, variant: (n + tables) % 2, ...styled }))
+              continue;
+            tables++;
+            more("tables");
+            x += 2.7;
+          }
+        }
+      }
+      if (walk.s === WALK_WIDE && (block.i + params.seed) % 2 === 0 && place("kiosk", "kiosk", along3(sides2[0], 1.75, sides2[0].length / 2 - 8), north, { look: quarter.kiosk, lit: true, variant: block.i + block.j, ...styled }))
+        more("kiosks");
+      if (role === "plaza") {
+        const [tower] = stood;
+        const front2 = tower.at[1] - block.y - cy - tower.prims[0].depth / 2;
+        const room2 = front2 + iy / 2;
+        if (room2 >= 11)
+          fountain(at(0, front2 - room2 * 0.5), south);
+        const kiosk = place("kiosk", "kiosk", [at(-ix / 2 + 6.5, -iy / 2 + 5), at(ix / 2 - 6.5, -iy / 2 + 5)], north, { look: quarter.kiosk, lit: true, variant: block.i + block.j, ...styled });
+        if (kiosk) {
+          more("kiosks");
+          const way = kiosk[0] < block.x ? 1 : -1;
+          for (const [n, reach] of [3.7, 6.7].entries())
+            if (place(`table ${n}`, "table", [[kiosk[0] + way * reach, kiosk[1]]], north, { look: quarter.table, variant: n, ...styled }))
+              more("tables");
+        }
+      }
+      if (role === "park") {
+        objects2.push({ name: "round", at: [round23(block.x + cx), round23(block.y + cy), level], prims: [slab("paving", [0, 0, KERB2 + 0.085], [7.4, 7.4, 0.02], PAVEMENT)] });
+        fountain(at(0, 0), south, KERB2 + 0.095);
+        if (pad) {
+          const on = KERB2 + 0.1;
+          const piece = (name, x, y, turn3 = 0, own2 = {}) => {
+            const size = KINDS.street.fit(constrainKind("street", { piece: name, ...own2 }).params);
+            return { name, kind: "street", piece: name, ...own2, at: [x, y, round23(on + size[2] / 2)], turn: [0, 0, turn3], ...streetDressing(name, name === "slide" ? "timber" : null) };
+          };
+          const [w, d] = [pad.w, pad.d];
+          objects2.push({
+            name: "playground",
+            at: [pad.x, pad.y, level],
+            prims: [
+              slab("rubber", [0, 0, KERB2 + 0.08], [w, d, 0.04], RUBBER),
+              piece("swing", -w / 2 + 2.4, d / 2 - 1.6, 0, { variant: block.i + block.j }),
+              piece("slide", 0.8, -0.2, 0, { variant: block.i + 2 * block.j }),
+              piece("rocker", w / 2 - 1.6, d / 2 - 1.4, 0, { variant: block.i }),
+              piece("rocker", w / 2 - 1.4, -d / 2 + 1.6, 40, { variant: block.j + 1 })
+            ]
+          });
+          more("playgrounds");
+        }
+      }
+      if (["hall", "civic", "park"].includes(role) && place("rack", "rack", along3(sides2[0], 1.3, 9), sides2[0].out, { look: district === "modern" || district === "industrial" ? "aluminium" : "black", variant: (block.i + block.j) % 3 }))
+        more("racks");
+      if (role !== "park" && (block.i + 2 * block.j + params.seed) % 2 === 0 && place("column", "advert", along3(sides2[1], 1.2, -8), sides2[1].out, { look: quarter.advert, lit: true, variant: block.i + block.j, ...styled }))
+        more("columns");
+    };
+    if (lived)
+      livedIn();
     return { objects: objects2, clones: clones2, trees: trees2 };
   };
   const linePiece = (wide, k) => {
@@ -15945,9 +16630,26 @@ var EDITION = 4, FIRST, FIRST_STYLES, KINDS_READ, PARAMS2, ROAD = 7.5, WALK2 = 3
           stand3("bike arrow", "arrow", here(s, line.width - BIKE / 2), [-1, 0], { on: 0.04 });
       }
       if (line.kind === "parking") {
-        for (let s = -long / 2 + 8;s <= long / 2 - 8 + 0.000001; s += 6)
+        const works = worksAt(k, n);
+        for (let s = -long / 2 + 8;s <= long / 2 - 8 + 0.000001; s += 6) {
+          if (works && Math.abs(s - works.s) < 1)
+            continue;
           stand3("bay", "line", here(s, ROAD + BAY3 / 2), [0, 1], { on: 0.012, width: BAY3, variant: 1 });
+        }
         stand3("parking", "roadsign", here(-long / 2 + 5, line.width + 0.6), [0, -1], { variant: SIGNS.indexOf("parking") });
+        if (works) {
+          const [c, half] = [ROAD + BAY3 / 2 + 0.1, works.long / 2];
+          prims.push({ name: "trench", shape: "cube", at: [round23(c - line.width / 2), round23(works.s), 0.045], size: [BAY3 - 0.7, works.long, 0.05], material: SOIL3 });
+          for (let m = 0;m < 5; m++)
+            stand3(`barrier ${m % 2}`, "barrier", here(works.s - half + 0.95 + m * ((works.long - 1.9) / 4), ROAD + 0.3), [-1, 0], { on: 0.02, variant: m % 2 });
+          for (const end of [-1, 1]) {
+            stand3(end < 0 ? "barrier south" : "barrier north", "barrier", here(works.s + end * (half + 0.35), c), [0, end], { on: 0.02, lit: true, variant: end < 0 ? 0 : 1 });
+            for (const across of [ROAD + 0.25, ROAD + BAY3 - 0.1])
+              stand3("cone", "cone", here(works.s + end * (half + 1), across), [0, 1], { on: 0.02 });
+          }
+          stand3("works", "roadsign", here(works.s - half - 3, c), [0, -1], { on: 0.02, variant: SIGNS.indexOf("works") });
+          stats.roadworks = 1;
+        }
       }
       const [x, y] = wide ? [mid, line.mid] : [line.mid, mid];
       objects2.push({ name: `stretch ${n + 1}`, at: [round23(x), round23(y), level], prims });
@@ -16080,20 +16782,22 @@ var init_city = __esm(async () => {
     { name: "works", label: "In construction", min: 0, max: 2, default: 1, step: 1, description: "How many of its buildings are in construction, a crane beside each." },
     { name: "trees", label: "Street trees", min: 0, max: 2, default: 1, step: 1, options: ["none", "some", "many"], labels: ["None", "Some", "Many"], description: "How many trees stand along its pavements." },
     { name: "bridges", label: "Bridges", min: 0, max: 3, default: 3, step: 1, options: ["none", "footbridge", "overpass", "all"], labels: ["None", "A footbridge", "And an overpass", "And a viaduct"], description: "What crosses over its streets: none; a footbridge over its avenue, up a stair from each pavement; that, and a street carried over the avenue on two ramps, where it is three blocks long and more; those, and a railway on a viaduct along its north side." },
+    { name: "life", label: "Street life", min: 0, max: 1, default: 1, step: 1, options: ["bare", "lived"], labels: ["Bare", "Lived in"], description: "What its streets and squares have besides their lamps and their benches: bare, none; lived in — an awning over every shop's window, café tables on its avenue's pavements and in its square, kiosks, racks of bicycles, advertising columns, a fountain in its square and in each park, a playground in each park, a trench behind its barriers by a kerb." },
     { name: "seed", label: "Variation", min: 0, max: 9999, default: 1, step: 1, description: "Which of its cities it is: one number, one city." }
   ]);
   SECTIONS = Object.freeze({ street: ROAD, parking: ROAD + BAY3, avenue: 2 * ROAD + MEDIAN + BIKE });
   STAIR2 = Object.freeze({ steps: 30, tread: 0.3, landing: 1.6, width: 2 });
+  ROUND8 = Object.freeze({ arm: 0.4, lamp: 0.4, double: 0.4, signal: 0.3, bench: 1.1, bin: 0.4, hydrant: 0.35, shelter: 2.4, roadsign: 0.3, planter: 0.9, bollard: 0.2, cone: 0.3, tree: 0.9 });
   BIKE_TINT = Object.freeze([0.35, 0.75, 0.45]);
   SPECIES4 = Object.freeze(["plane", "zelkova", "maple", "cherry", "oak", "birch", "beech", "chestnut"]);
   HALLS = Object.freeze(["supermarket", "mall", "museum", "market", "station"]);
   CIVIC = Object.freeze(["hospital", "school", "library", "police", "bank", "cinema"]);
   CIVIC_COLOURS = Object.freeze({ hospital: "white", school: "yellow", library: "cream", police: "blue", bank: "black", cinema: "red" });
   DISTRICTS = Object.freeze({
-    oldtown: Object.freeze({ label: "Historic centre", flats: Object.freeze(["hipped", "brick"]), lamp: "black", bench: "stone", bin: "timber", shelter: "timber" }),
-    classic: Object.freeze({ label: "Extension", flats: Object.freeze(["brick", "block"]), lamp: "green", bench: "oak", bin: "green", shelter: "green" }),
-    modern: Object.freeze({ label: "Modern extension", flats: Object.freeze(["concrete", "glass"]), lamp: "aluminium", bench: "timber", bin: "black", shelter: "black" }),
-    industrial: Object.freeze({ label: "Industrial estate", flats: Object.freeze(["concrete", "block"]), lamp: "aluminium", bench: "steel", bin: "aluminium", shelter: "aluminium" })
+    oldtown: Object.freeze({ label: "Historic centre", flats: Object.freeze(["hipped", "brick"]), lamp: "black", bench: "stone", bin: "timber", shelter: "timber", fountain: "stone", kiosk: "timber", table: "timber", advert: "timber" }),
+    classic: Object.freeze({ label: "Extension", flats: Object.freeze(["brick", "block"]), lamp: "green", bench: "oak", bin: "green", shelter: "green", fountain: "stone", kiosk: "green", table: "oak", advert: "green" }),
+    modern: Object.freeze({ label: "Modern extension", flats: Object.freeze(["concrete", "glass"]), lamp: "aluminium", bench: "timber", bin: "black", shelter: "black", fountain: "concrete", kiosk: "aluminium", table: "steel", advert: "aluminium" }),
+    industrial: Object.freeze({ label: "Industrial estate", flats: Object.freeze(["concrete", "block"]), lamp: "aluminium", bench: "steel", bin: "aluminium", shelter: "aluminium", fountain: "concrete", kiosk: "steel", table: "steel", advert: "black" })
   });
 });
 
@@ -16167,9 +16871,9 @@ var recordOfCompanion = (wanted, id, object = null) => {
 // src/vegetation/record.js
 var TREE_SCALE = [0.25, 4];
 var BUILT_IN = /^[a-z][a-zA-Z]{0,31}$/;
-var OWN2 = /^[^/\s]{1,80}:[^/\s]{1,80}$/;
+var OWN3 = /^[^/\s]{1,80}:[^/\s]{1,80}$/;
 var finite = (value, length2) => Array.isArray(value) && value.length === length2 && value.every(Number.isFinite);
-var speciesName = (value) => typeof value === "string" && (BUILT_IN.test(value) || OWN2.test(value));
+var speciesName = (value) => typeof value === "string" && (BUILT_IN.test(value) || OWN3.test(value));
 var wrapYaw = (degrees) => (degrees % 360 + 360) % 360;
 var SPECIES_PARAMS = {
   scale: [0.3, 40],
@@ -20345,7 +21049,7 @@ var createWater = ({ field, bare }) => {
     tables.set(name, table2);
     return table2;
   };
-  const cornerOf2 = (name, { face: face2, x, y }, a, b) => {
+  const cornerOf3 = (name, { face: face2, x, y }, a, b) => {
     if (!corners.has(name))
       corners.set(name, new Float64Array((CELLS + 1) ** 2).fill(NaN));
     const heights = corners.get(name);
@@ -20361,7 +21065,7 @@ var createWater = ({ field, bare }) => {
       if (!cells[k])
         continue;
       const [a, b] = [k % CELLS, Math.floor(k / CELLS)];
-      const around = [[a, b], [a + 1, b], [a, b + 1], [a + 1, b + 1]].map(([i, j]) => ground[j * (CELLS + 1) + i] = cornerOf2(name, parcel, i, j) - SEA2);
+      const around = [[a, b], [a + 1, b], [a, b + 1], [a + 1, b + 1]].map(([i, j]) => ground[j * (CELLS + 1) + i] = cornerOf3(name, parcel, i, j) - SEA2);
       if (around.every((height) => height <= 0))
         cells[k] = 0;
     }

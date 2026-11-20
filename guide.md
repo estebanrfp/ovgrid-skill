@@ -398,7 +398,7 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `lift` | its box: a car's across, front to back and floor to top; a leaf's width, thickness and height; a button's plate | 0 frame, 1 floor, 2 glass, 3 what is lit (a car's ceiling, a button's face), 4 panels | a piece of a lift, a few boxes: `piece` `car` (a floor, a lit ceiling, glass behind and at both sides, its way in at its −y, `door` wide and `head` high), `leaf` (one leaf of a door) or `button` (a plate, its −y face lit). What moves it is its `lift` behaviour (effects.md): a building's recipe stands them — write them yourself only for a lift of your own |
 | `hall` | what its `type`, `width`, `depth`, `height` and `floors` make | 0 walls, 1 what is dressed apart (the band over its glass, its canopy, a portico's beam), 2 trim (frames, columns, slabs' edges, its base), 3 glass, 4 roof, 5 floors, 6 walls inside, 7 ceilings | a supermarket, a museum, a shopping centre, a market hall or a filling station in one part, worked out from a few numbers, walked into as drawn; what stands in it parts of their own — see *A hall in one part* |
 | `fixture` | what its `type`, `width` and `depth` make — its height its type's, a person's | 0 frame, 1 boards (shelves, a worktop, a plinth's stone), 2–4 its goods, three colours of them, 5 glass, 6 accent (a rail, an awning, a pump's panel, a sculpture) | what a shop, a market, a museum or a filling station is fitted with: aisle shelving, wall shelving, a chiller, a checkout, a table of goods, a market stall, a plinth and its sculpture, a fuel pump, a moving ramp — see *A hall in one part* |
-| `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, and what is painted on a road: `line`, `arrow` — see *What stands in a street* |
+| `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, what is painted on a road: `line`, `arrow`, and what stands in a square or a park: `fountain`, `kiosk`, `rack` (of bicycles), `table` (a café's), `advert` (an advertising column), `swing`, `slide`, `rocker`, `barrier` (round roadworks) — see *What stands in a street* |
 | `sign` | its `width` — its word's own where 0 — × 0.12 × its `height` | 0 frame, 1 board, 2 letters — the last two tints on one material | a board with a word on it, its letters a font five by seven: `hotel`, `hospital`, `school`, `market`, `supermarket`, `museum`, `mall`, `pharmacy`, `cafe`, `bar`, `books`, `bakery`, `parking`, `police`, `fuel`, `cinema`, `bank`, `library`, `station`, `taxi`, `bus`, `open`, `sale`, `ovgrid` — see *What stands in a street* |
 | `crane` | what its mast's `height` and its `jib` make | 0 paint, 1 concrete (its pad, its counterweight), 2 glass, 3 dark metal | a tower crane: a mast of lattice on a pad, a cab, a jib along its +y and a counter-jib behind — see *What stands in a street* |
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
@@ -977,7 +977,7 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
 - **A fixture by hand** (`fixture`): `type` `gondola` (aisle shelving, goods on both sides), `shelving` (against a wall),
   `chiller`, `checkout`, `table`, `stall`, `plinth` (a sculpture on it, one in three in a case of glass), `pump` or
   `travelator` (a moving ramp: its `depth` its length, 3–24 m, along its own y — turn it about x by its slope's angle and give
-  it `"behaviour": { "type": "belt", "speed": 0.6 }`: a flight of steps does not carry, a ramp does); `width`
+  it `"behaviour": { "type": "belt", "speed": 0.6 }`; a flight of the stairs kind given it carries too, a step at a time); `width`
   its length along its front and `depth`, each within its type's range (shelving and chillers 1.2–12 m); `goods` what it
   sells — `mixed`, `produce`, `dairy`, `bottles`, `bakery`, `clothes`, `toys`, `books` —: three colours of one material, tints
   that shape nothing. Its front is its +y.
@@ -1000,11 +1000,40 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   lane's) and 0.4 m of it — where one stops, before a crossing's stripes —, or 0.12 m with `variant` odd (a parking bay's
   side); yellow with `variant` 2 or 3. An `arrow` is a lane's, 3.2 m long, pointing along its +y: lay both on the road,
   a centimetre over it.
-- **`style`**, for a `lamp`, an `arm`, a `double`, a `bench`, a `bin` and a `shelter` — another silhouette, in the same box:
+- **`style`**, for a `lamp`, an `arm`, a `double`, a `bench`, a `bin` and a `shelter` — and a `fountain`, a `kiosk`, a
+  `table` and an `advert` — another silhouette, in the same box:
   `modern` (none given), `classic` (cast iron: a stepped base, a swan's neck, a lantern under a cap; a bench with arms),
   `oldtown` (a lantern hung from a bracket; a bench of stone — look `stone` —; a bin of slats and a shelter of timber under
   tiles — look `timber`), `industrial` (a plain post and a flood lamp, a plank on a plinth, a drum). Keep one style to a
   street or a district: a classic street has `"style": "classic"` on every lamp, bench, bin and shelter of it.
+- **In a square or a park**, each one part, its front its +y:
+  - a `fountain` (5 × 5 × 3.2 m): `modern` a square basin round a block of stone, `classic` a basin of eight sides under two
+    bowls, `oldtown` a trough before a pillar with its spout (the trough to its front), `industrial` a round tank and a
+    standpipe. Looks `stone`, `concrete`. Its water is its own — face 7, `effects/water/rippled`, tinted —; **its jet is a
+    part more, beside it in the same object**: a bead that throws it,
+    `{ "name": "jet", "shape": "cube", "size": [0.06, 0.06, 0.06], "at": [x, y, z + 1.1], "material": "metal/painted/metal-029", "phantom": true, "particles": { "preset": "fountain", "scale": 0.7, "floor": -0.75 } }`
+    where the fountain's foot is at `[x, y, z]` — `modern` as written; `classic` 2.58 m up, `"scale": 0.45, "floor": -1`;
+    `oldtown` at its spout, `[x, y − 0.02, z + 1.14]` turned `[-90, 0, 0]`, `"speed": [0.7, 0.9], "floor": -0.66`;
+    `industrial` at its pipe's mouth, `[x, y + 0.7, z + 2.02]` turned `[180, 0, 0]`, `"speed": [0.2, 0.4], "floor": -1.37`
+    (the fountain unturned: turn the whole object, not the part). One or two fountains to a build: their drops are blended;
+  - a `kiosk` (3.2 × 2.6 × 3.4 m), its counter to its front: `modern` glass under a flat roof, `classic` eight sides under a
+    dome, `oldtown` a hut of timber under tiles (look `timber`), `industrial` a hut of sheet (look `steel`); looks `green`,
+    `black`, `aluminium` too. Its band glows by night as a lamp's glass does (face 2);
+  - a `table` (2.6 × 2.6 × 2.7 m): a café's table, its two chairs side by side behind it, facing its front — the street —,
+    under a parasol; `classic` a round one, `oldtown` a barrel and two stools, `industrial` a table of planks with its two
+    benches and no parasol. Looks `timber`, `oak`, `steel`; `variant` its parasol's cloth (red, or green, and white).
+    **Sat on**, two abreast. Stand it 1.3 m from a kerb or 1.5 m before a shop's landing, never against the wall;
+  - an `advert` (1.5 × 1.5 × 3.8 m): `modern` a lit panel on a foot (face 2 glows), `classic` a column of eight sides under
+    a dome, posters on four of them, `oldtown` a notice board under a little roof, `industrial` a hoarding on two legs;
+    `variant` its posters' colours;
+  - a `rack` (3 × 1.9 × 1.15 m): three hoops and the bicycles leaning on them — `variant` 0 two, 1 three, 2 one, 3 none;
+    its long side along the kerb;
+  - a playground's `swing` (3.4 × 2.2 × 2.5 m, sat on, two seats), `slide` (1.4 × 4.4 × 2.7 m: its ladder at its back, its
+    chute down to its front) and `rocker` (0.5 × 1.1 × 0.95 m, sat on): looks `steel`, `timber`; `variant` their colours.
+    Lay a slab of `paving/tiles/rubber-tiles` or `ground/sand/playground-sand` under them;
+  - a `barrier` (1.8 × 0.5 × 1.15 m): two boards in red and white on two feet, a lamp on one end (the other with `variant`
+    odd) that glows by night where it is lit. Along a trench's side of the road and across its ends, a `cone` at each
+    corner, a `roadsign` of works before it.
 - **What glows**: a lamp's glass (face 2), a signal's lens (face 4 red, 5 amber, 6 green) and a sign's letters (face 2) glow
   where the face is given `"emissive": 0.9` and the part `"light": { "on": "night", "range": 0 }` — by night, lighting nothing
   round it, at no light's cost. Give a lamp a `range` (up to 10) only where the ground under it must be lit: a build holds
@@ -1017,9 +1046,10 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   its +y from its mast: turn it to slew it. Its `at` is its box's middle — its mast's foot is `[−(x0 + x1) / 2, −(y0 + y1) / 2]`
   from there, its box from `x0 = −2`, `y0 = −jib / 2.4` to `x1 = 3.15`, `y1 = jib`, z from 0.5 m under the ground — its pad's footing — up (with `variant` odd its
   cab on the other side: `x0 = −3.15`, `x1 = 2`). A building with `"stage": "frame"` stands its own (`crane`).
-- **Their cost**: a street piece 300 triangles at the most from beside it (a lamp 50, a shelter 88), a sign 260 (its letters
-  rectangles: «SUPERMARKET», 138), a crane 1,450; each a third or less from a few metres off; from far a lamp is its post,
-  a crane its mast and jibs, the rest nothing.
+- **Their cost**: a street piece 300 triangles at the most from beside it (a lamp 50, a shelter 88, a classic fountain
+  132, a classic table 206, a rack with three bicycles 282), a sign 260 (its letters rectangles: «SUPERMARKET», 138), a crane
+  1,450; each a third or less from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a
+  column a box, a crane its mast and jibs, the rest nothing.
 
 **A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
 `length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
@@ -1646,21 +1676,24 @@ prims collide as their mesh, its hull when convex.
   of street a lot, `mix` 0 every style · 1 modern · 2 timber, `mansions` 0–2, `pools` 0 none · 1 the mansions' · 2 some
   houses' too, `trees` 0–6 a garden, `seed` 0–9999 which of them it is); or `city` — streets in a grid on a level plate,
   a block a use: flats, towers, halls, a square with its landmark, a public building, parks, a site with its crane, and
-  its streets' lamps, signals, crossings, benches and trees — (its `params`: `width` and `depth` 130–250 m, a block every
+  its streets' lamps, signals, crossings, benches and trees, its shops' awnings, café tables, kiosks, fountains and a
+  playground — (its `params`: `width` and `depth` 130–250 m, a block every
   fifty metres or so; `height` 4–32, the storeys of its tallest; `profile` 0 high at its centre · 1 at its edges · 2 even;
   `mix` 0 every use · 1 homes · 2 business; `parks` 0–3 blocks; `works` 0–2 buildings in construction; `trees` 0 none ·
   1 some · 2 many along its streets; `bridges` 0 none · 1 a footbridge over its avenue · 2 and a street carried over
-  the avenue on two ramps · 3 and a railway on a viaduct along its north side; `seed` 0–9999). Numbers only, by name;
+  the avenue on two ramps · 3 and a railway on a viaduct along its north side; `life` 0 bare · 1 lived in — awnings
+  over its shops, café tables, kiosks, racks of bicycles, advertising columns, a fountain in its square and in each park,
+  a playground, a trench behind its barriers; `seed` 0–9999). Numbers only, by name;
   any left out is its generator's own. A city wants dry ground that falls 5 m at the most under it, whole inside one
-  parcel: 250 × 190 m is twelve blocks, some 1,300 records, 149,000 triangles at the finest.
+  parcel: 250 × 190 m is twelve blocks, some 1,400 records, 154,000 triangles at the finest.
 - `at`: where its middle stands in the build's frame — `[x, y]` on the ground there, or `[x, y, z]`; `turn`: degrees
   counter-clockwise from above, as a part's `turn` about z (none: as the build's frame). `key`, optional, as a tree's.
 - `edition`: which of its generator's makings it is of — a `city`'s `2` has districts (a historic centre, an extension, a
   modern one, an industrial estate: each its own street furniture and flats); its `3`, urban roads besides (an avenue with
   a planted median and a bike lane through its middle, parking bays along every other street, tree pits, stop lines and
   arrows, a crossing's stripes on every arm of every junction); its `4`, bridges besides (its `bridges`: a footbridge
-  up a stair from each pavement, an overpass, a viaduct); none, its first, as a city was first made. Write the latest
-  unless a build must stay as it was.
+  up a stair from each pavement, an overpass, a viaduct); its `5`, its street life besides (its `life`); none, its
+  first, as a city was first made. Write the latest unless a build must stay as it was.
 - **Its ground is the planet's own**, the land's edits aside: what it lays stands as its generator lays it there — a
   house's base down past the ground, its street levelled over it. Give it ground its generator takes (a neighbourhood:
   dry, gentle, as far as it covers — 200 × 160 m for the one above) and nothing built where it will stand: it does not
@@ -2694,7 +2727,7 @@ example; catalog.json → `behaviours` every range).
 | `bounce` | a ball, a toy, a sign that jumps | `{ "type": "bounce", "height": 0.6 }`: up along its own z and back as a ball falls, over and over; whoever stands on it goes with it |
 | `move` | an elevator, a lift bridge, a ferry, a moving platform | an object, `{ "type": "move", "z": 3.2, "speed": 1.5, "wait": 4 }` — its own axes, there and back |
 | `lift` | a lift between floors that waits to be called: in a house, a tower, a vessel | its platform, rails and buttons, parts of one object, each `{ "type": "lift", "stops": [-3.8, -7], "group": "lift", "button": "none" }` — a floor's button `"button": "stop", "stop": 1` —, a `call` button at each stop; with doors: each leaf `"door": 0.85` (how far it slides open along its own x) and, a landing's, `"landing": 1, "button": "stop", "stop": 1` — it stays there, opens while the lift stands there and calls it on a click (a `building` has all of this by itself) |
-| `belt` | a conveyor, an escalator, a moving walkway | `{ "type": "belt", "speed": 0.6 }` carries along its own y; stairs rise along their y |
+| `belt` | a conveyor, an escalator, a moving walkway | `{ "type": "belt", "speed": 0.6 }` carries along its own y; stairs rise along their y: a flight of the stairs kind given it carries one up it (or down it, below 0) a step at a time, a box pitched along its slope smoothly |
 | `passage` | in and out of a vehicle — or anything closed — by a click, standing | its hull's parts `{ "type": "passage", "way": "in", "x": 0.6, "y": 3, "z": 1.6 }` (its floor inside, in its object's frame), its door's `"way": "both"` with the same place: a click on its door from inside puts one out past it |
 | `route` | a tour boat, a train, a cart on its round | an object, `{ "type": "route", "points": [[0, 40, 0], [30, 60, 0], [60, 20, 0]], "speed": 3, "stop": 10 }` — through its points and on again (`"mode": "back"`: there and back), turning to where it goes, stopping at each (`"at": "ends"`: only where it is kept) |
 
@@ -3935,12 +3968,12 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
   - `depth` 0.45–24, default 1.1: How deep it is, from front to back (m): within its type's range — a moving ramp's length, 3 to 24 m.
   - `variant` 0–9999, default 0: Which of its type's it is: how its goods are laid along its shelves, which figure stands on a plinth and whether in a case. One number, one fixture.
   - `goods` `mixed` / `produce` / `dairy` / `bottles` / `bakery` / `clothes` / `toys` / `books`, default `mixed`: The colours of its goods and of its accent: what it sells. They tint its faces; its shape is the same.
-- **`street`** — What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, the rest nothing. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone. Faces: 0 metal, 1 body, 2 lamp, 3 glass, 4 colour, 5 colour, second, 6 colour, third, 7 colour, fourth. Size: its piece's own (m); a lamp's, a signal's and a sign's height its `height`, a planter's, an awning's and a crossing's width its `width`: a size given sets those.
-  - `piece` `lamp` / `arm` / `double` / `signal` / `bench` / `bin` / `shelter` / `cone` / `bollard` / `planter` / `hydrant` / `roadsign` / `awning` / `zebra` / `line` / `arrow`, default `lamp`: Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow.
+- **`street`** — What stands in a street, worked out from a few numbers: a lamp on its post, one on an arm over the carriageway, one of two arms for the middle of a road; a traffic signal; a bench one sits on; a litter bin; a bus stop's shelter with its bench; a cone; a bollard; a planter; a hydrant; a road sign on its post — which, its `variant` says: stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works —; an awning over a shop's window; the stripes of a crossing, laid on the road; and, for a square or a park: a fountain — its water the bank's, a jet from a nozzle stood in it by whoever stands it —, a kiosk with its counter, a rack of bicycles, a café's table and its two chairs under their parasol, an advertising column, a playground's swing, slide and spring rocker, a barrier round roadworks. Its front is its +y. Its sizes are a person's: a bench's seat 0.45 m, a lamp 6 m unless its `height` says. One part, 300 triangles at the most from beside it, a third from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a column a box, the rest nothing. A bench, a shelter, a café's chairs, a swing and a rocker are sat on. Its lamp's glass and a signal's lens glow where its part is lit: give a lamp a light by night, or leave it its glow alone. Faces: 0 metal, 1 body, 2 lamp, 3 glass, 4 colour, 5 colour, second, 6 colour, third, 7 colour, fourth. Size: its piece's own (m); a lamp's, a signal's and a sign's height its `height`, a planter's, an awning's and a crossing's width its `width`: a size given sets those.
+  - `piece` `lamp` / `arm` / `double` / `signal` / `bench` / `bin` / `shelter` / `cone` / `bollard` / `planter` / `hydrant` / `roadsign` / `awning` / `zebra` / `line` / `arrow` / `fountain` / `kiosk` / `rack` / `table` / `advert` / `swing` / `slide` / `rocker` / `barrier`, default `lamp`: Which it is: a lamp on its post; one on an arm over the carriageway; one of two arms; a traffic signal; a bench; a litter bin; a bus shelter; a cone; a bollard; a planter; a hydrant; a road sign; an awning; a crossing's stripes; a painted line; a lane's arrow; a fountain; a kiosk; a rack of bicycles; a café's table; an advertising column; a swing; a slide; a spring rocker; a works barrier.
   - `height` 0–12, default 0: How high a lamp, a signal or a sign's post stands (m) — 0, its own: a lamp 6 m, one on an arm 8 m, a signal 3.6 m, a sign 2.9 m.
   - `width` 0–24, default 0: How wide a planter, an awning or a crossing is (m) — 0, its own: a planter 1.6 m, an awning 3 m, a crossing 7.5 m, a road's width.
-  - `style` `modern` / `classic` / `oldtown` / `industrial`, default `modern`: Its shape's style, for a lamp, a bench, a bin and a bus shelter — another silhouette, not another look: modern, the kind's own; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch. A district's furniture is of one style.
-  - `variant` 0–9999, default 0: Which of its piece's it is: a road sign's plate — stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works, in turn —, a bench with a back or without, which lens of a signal is lit, an awning's stripes.
+  - `style` `modern` / `classic` / `oldtown` / `industrial`, default `modern`: Its shape's style, for a lamp, a bench, a bin, a bus shelter, a fountain, a kiosk, a café's table and an advertising column — another silhouette, not another look: modern, the kind's own — a square basin round a block of stone, a kiosk of glass under a flat roof, a square table, a lit panel —; classic, cast iron — a stepped base, a swan's neck, a lantern of four panes under a cap; a fountain of two bowls over a basin of eight sides, a kiosk of eight sides under a dome, a round table, a column under a dome —; old town — a lantern hung from a bracket, a bench of stone, a bin of slats, a shelter of timber under two pitches; a trough before a pillar with its spout, a hut of timber under tiles, a barrel and two stools, a notice board under a little roof —; industrial — a plain post and a flood lamp, a plank on a plinth, a drum, a roof of one pitch; a round tank and a standpipe, a hut of sheet with a hatch, a table with its two benches, a hoarding on two legs. A district's furniture is of one style.
+  - `variant` 0–9999, default 0: Which of its piece's it is: a road sign's plate — stop, give way, a limit, a crossing, parking, no entry, a roundabout, one way, a bus stop, works, in turn —, a bench with a back or without, which lens of a signal is lit, an awning's stripes, a parasol's and a kiosk's, how many bicycles stand in a rack (two, three, one, none), a poster's colours, a swing's and a slide's.
 - **`sign`** — A board with a word on it, worked out from a few numbers: which word — hotel, hospital, school, market, supermarket, museum, mall, pharmacy, cafe, bar, books, bakery, parking, police, fuel, cinema, bank, library, station, taxi, bus, open, sale, ovgrid —, how wide and how high its board is, and its colours. Its back is a wall's: its front is its +y. Its letters are a font five by seven, a few rectangles each: 260 triangles at the most from before it, each letter one rectangle from a few metres off, the board alone from farther, nothing from far. Its letters glow where its part is lit: give it a light by night that lights nothing round it. Faces: 0 frame, 1 board, 2 letters. Size: its `width` — its word's own where 0 — and its `height` (m); 0.12 m thick: a size given sets them.
   - `word` `hotel` / `hospital` / `school` / `market` / `supermarket` / `museum` / `mall` / `pharmacy` / `cafe` / `bar` / `books` / `bakery` / `parking` / `police` / `fuel` / `cinema` / `bank` / `library` / `station` / `taxi` / `bus` / `open` / `sale` / `ovgrid`, default `hotel`: The word on it.
   - `width` 0–16, default 0: How wide its board is (m) — 0, as wide as its word asks at its height; narrower than that, its letters are smaller.
