@@ -199,6 +199,12 @@ roadster, 3.9 m long:
 Its power: 400–800 for a car people can drive round a village, more for a truck (and its `mass`
 with it).
 
+## A car that is not the subject
+
+A street's parked cars, a car park's, a taxi rank's: one part each of the `vehicle` kind (format.md, *A car in one
+part*) — a body from a few numbers, its wheels and its passengers' door its recipe's, 500 to 670 triangles whole, driven
+as any car here is. Build a car from parts, as below, when it is what the build is about.
+
 ## A closed car
 
 A car with a roof and its windows' glass, its driver and passengers seen through them. Rethink it from its form (a model
@@ -327,7 +333,10 @@ A car drives itself too, on its object's route — a coach round its car park, a
 along the way, round and back into where it is kept, its turns as wide as its length asks (a coach's 11–12 m) and clear of
 whatever stands near —, held where it is kept till its Auto is set on. It goes on the land under it wherever it is kept,
 read as it goes, standing on it by its wheels — its nose up a rise, its side down across a slope: its points' z are not
-its heights, so the same car on other land runs the same round over it. Aimed at its
+its heights, so the same car on other land runs the same round over it. **On what is built** — a deck, a bridge, a
+street on a plate over the land — say `"built": true`: it then keeps the heights its points say, on its axles along its
+line, as a train does; the land knows nothing of what stands over it. A bus's line calls at its stops: `"calls"`
+(effects.md). Aimed at its
 seat at the wheel, O is its Auto for whoever may drive it: its whole way is read first, and over water or land steeper than
 35 % it does not set off (its hint says so); else it runs its route once and is off again where it is kept, its wheels
 turning as it goes, whoever is in it carried; sat at its wheel, one takes it from where it has got to. Its driver may record

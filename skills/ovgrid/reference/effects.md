@@ -91,6 +91,13 @@ and each preset's own values: catalog.json → `particles`. A string names a kit
 - **Fires are lights**: an inn's hearth can be its only lamp; a campfire lights a square.
 - **What only glows**: `light: { "range": 0 }` — a lantern for looks, embers — lights nothing and
   costs nothing.
+- **On a cycle**: `"cycle": [every, from, to]` (seconds) in a part's `light` — it is on only from
+  `from` to `to` of every `every` seconds of the clock every peer shares, its glow with it, and off the
+  rest: a traffic signal's lamp, a beacon, a barrier's lamp that blinks (`[1.2, 0, 0.6]`). `to` before
+  `from`, on across its cycle's turn. With `"on": true` by day as by night; with `"on": "night"`, by
+  night alone. Nothing is sent of it: every peer works it out. A signal is three such parts —
+  `{ "shape": "cube", "size": [0.2, 0.016, 0.2], "color": [0.1, 1, 0.35], "surface": { "emissive": 1,
+  "glow": 0.4 }, "light": { "on": true, "range": 0, "cycle": [32, 0, 5] } }` its green.
 - **Every house lived in has its lamp**, and every chimney over a burning hearth its smoke: a dark
   house — a lamp `on: false`, a cold hearth, no smoke — is for a story that asks for one.
 
@@ -133,8 +140,16 @@ Through several stops, a **`route`**: its `points` in its own frame (up to 64, `
 where it is kept through each in turn), on a smooth curve, `"mode": "round"` and on again or
 `"back"` the way it came, `"stop"` seconds at each point — or, with `"at": "ends"`, only where it is
 kept (and, there and back, at its last point too): its port, its station — slowing into it and
-away, turning to face its way (`"face": "yes"`). A boat takes `"water": "yes"`: it keeps its height over
-the sea wherever its points are. It carries whoever stands on it, as `move` does.
+away, turning to face its way (`"face": "yes"`). Or at the points it **calls** at:
+`"calls": [2, 5, [7, 20]]` — its points' numbers (1 its first), each a stop as long as `stop` says,
+or `[n, seconds]` that long; it then goes through its other points and stops besides only where it
+is kept: a bus at its shelters, with points between them that shape its way — its waits to the
+millisecond. **By a timetable**: `"every": 600` — its round takes that many seconds exactly, what is
+left of it waited out where it is kept: a train every ten minutes, a car written to find its signals
+green. Say it for whatever must keep time with something else on the shared clock: a round of
+95.83 s is anywhere on that clock by now, one of 96 s where it was written to be. A boat takes
+`"water": "yes"`: it keeps its height over the sea wherever its points are. It carries whoever stands
+on it, as `move` does.
 
 A tour boat round from its port and back, stopping only there — 30 s to get on and off:
 

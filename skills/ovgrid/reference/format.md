@@ -118,6 +118,8 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, what is painted on a road: `line`, `arrow`, and what stands in a square or a park: `fountain`, `kiosk`, `rack` (of bicycles), `table` (a café's), `advert` (an advertising column), `swing`, `slide`, `rocker`, `barrier` (round roadworks), `pergola` — see *What stands in a street* |
 | `sign` | its `width` — its word's own where 0 — × 0.12 × its `height` | 0 frame, 1 board, 2 letters — the last two tints on one material | a board with a word on it, its letters a font five by seven: `hotel`, `hospital`, `school`, `market`, `supermarket`, `museum`, `mall`, `pharmacy`, `cafe`, `bar`, `books`, `bakery`, `parking`, `police`, `fuel`, `cinema`, `bank`, `library`, `station`, `taxi`, `bus`, `open`, `sale`, `ovgrid` — see *What stands in a street* |
 | `crane` | what its mast's `height` and its `jib` make | 0 paint, 1 concrete (its pad, its counterweight), 2 glass, 3 dark metal | a tower crane: a mast of lattice on a pad, a cab, a jib along its +y and a counter-jib behind — see *What stands in a street* |
+| `castle` | a wall: its `length` × 3.12 × its `height` + 2.08 + its `plinth`; a tower: its `girth` + 0.24 (0.6 under a cone) square × its `height` + `rise` + 2 (or its cone) + its `plinth` | 0 walls, 1 what is walked on (the wall walk, a tower's platform), 2 trim (base course, merlons' caps), 3 glass, 4 roof (a tower's cone), 5 floors (a tower's chamber's), 6 walls inside (that chamber's) | a piece of a castle: a stretch of curtain wall with its wall walk and merlons, a tower the walk goes through, a gatehouse, its portcullis, or a keep — see *A castle* |
+| `vehicle` | its body's own — a saloon 2.56 × 5.1 × 2 m, its mirrors with it —; a wheel's; its door's | 0 paint, 1 glass, 2 what is dark (bumpers, arches, tyres), 3 headlamps, 4 rear lamps, 5 its inside, 6 its second tone (a livery's band, a lorry's box), 7 a livery's sign or lights; a wheel's rim | a car's body in one part, driven as any car is: its front its +y, its driver at +x — see *A car in one part* |
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
 | `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, storage, a bathroom's and a kitchen's, a lobby's (`counter`, `mailbox`, `bench`, `trolley`, `stand`), its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
 | `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall`, and on a building's ground storey `lobby` or `reception` (its desk facing its first `ways`) —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
@@ -699,6 +701,53 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   sells — `mixed`, `produce`, `dairy`, `bottles`, `bakery`, `clothes`, `toys`, `books` —: three colours of one material, tints
   that shape nothing. Its front is its +y.
 
+**A castle** (`castle`): one part a piece, sized for the avatar and the camera behind it. Whole castles are a seed's
+(`"generator": "castle"`, under *Seeds*): write pieces by hand only for a wall or a tower of your own.
+
+- **`piece` `wall`**: a stretch of curtain wall along its x, `length` 4–60 m, three metres thick, its outside its +y. Its
+  wall walk is `height` (5–10 m) over its floor, 2.2 m wide between a parapet of merlons outside and a rail inside, open at
+  both ends so that the walk goes on into what it meets. `gap` 1 opens 2.4 m of its inner rail at its middle: stand a
+  flight of the `stairs` kind there, square to the wall, its top at the wall's inner face (1.5 m in from its middle line)
+  and level with the walk.
+- **`piece` `tower`**: `shape` `round` (twelve flat faces) or `square`, `girth` 8–14 m face to face, solid up to the wall
+  walk, a chamber there level with it; `joins` says where the ways through that chamber are — `through`: its −x and its +x
+  (a tower along a wall, its outside its +y) · `corner`: its −x and its −y (a corner's, its outside between its +x and its
+  +y; turn it 90°, 180°, −90° for the other corners). `rise` 4–9 m is how far its platform stands over the walk; `top`
+  `battlements` or `cone`.
+- **A tower's `stair`** (1, under `battlements`): a winding stair from its chamber up to its platform — steps two metres
+  wide round a solid core, a hatch in the platform where they come up. With it the way between the tower's two ways goes
+  round the core.
+- **`piece` `keep`**: the great tower inside the walls, one part: `length` × `depth` (16–26 × 12–20 m; 18 × 14 where left
+  out), its front its +y. An undercroft 4 m high (a kitchen, an armoury, a dungeon) come into by a door in its front; over
+  it a hall `height` high (5–10 m) come into by a flight of stone along its front up to a porch and a door of two leaves;
+  over that chambers and a chapel; a roof behind battlements. Off its −x side at its back a square turret (7.2 m) with a
+  winding stair from the ground to the roof, a door from it into each storey. Windows of leaded glass, lit by night. Its
+  doors come with it (the door kind's, opening inwards as one comes near). Its box is `length` + 6.82 × `depth` + 2.9 ×
+  15.6 + `height` + `plinth`; its floor is its box's bottom raised by `plinth`. Stand it on the land, 4 m and more clear of
+  walls and towers, its front to where one comes from: 2,450 triangles from beside it, 714 from a street away, 196 from far.
+- **Where a wall meets a tower**: put the wall's end inside the tower's stone — `girth / 2 − 0.02` from the tower's middle,
+  and for a round tower no farther than `(girth / 2 − 0.75) / 0.866 − 0.02` (a 10 m round tower: 4.89 m; an 8 m one: 3.73).
+  Both at one `height`, on one floor (the same z for their feet): the walk then goes through.
+- **`piece` `gate`**: a gatehouse `length` long (2–60 m; between two towers 6 m apart, some 6.4 m), its front 3.5 m out from
+  the wall's middle line: a way through 3.6 m wide (narrower where its length leaves less: 0.8 m of stone either side)
+  under a pointed arch that springs at 2.6 m and rises to 4.8 m at the most, floored level with its floor; the wall walk
+  over it; a house over its way at its front, 3.2 m high, that its portcullis rises into. Its box is `length` × 5 ×
+  `height` + 3.2 + `plinth`; its `at` `[0, 1, (height + 3.2 − plinth) / 2]` over its foot.
+- **`piece` `portcullis`**: a grille of iron bars `length` wide (the way's width less 0.1: 3.5 m), as high as the crown of
+  the way of a gatehouse of its `height` (4.8 m for 7 m and over). Stand it 2.6 m out from the wall's middle line, its
+  foot on the gatehouse's floor — its looks are of iron, `iron` (its own) or `rusted` — with, on it or on its object,
+  `"behaviour": { "type": "slide", "z": 2.4, "trigger": "both", "reach": 7, "time": 3, "stay": 3 }`: it rises as someone
+  comes near and falls once all have gone.
+- **A drawbridge** is a box on a door's hinges laid on its side: `"size": [span, 0.25, 3.6]`, `"turn": [90, 0, 90]` in an
+  object whose +y looks out from the gate, its middle at `[0, span / 2, −0.125]`, with `"behaviour": { "type": "door",
+  "angle": 78, "hinge": "left", "trigger": "click", "time": 4, "stay": 10 }` — a click raises its far end about its edge at
+  the gate, and it comes down by itself.
+- **`plinth`** (0.1–9 m): how far its base goes down under its floor. A piece's `at` is its box's middle: for a wall
+  `[0, 0.06, (height + 2.08 − plinth) / 2]` over its foot. Give each piece the plinth the ground under it asks.
+- **Looks**: `grey` (its own), `blocks`, `sandstone`, `varied` — `"look": "sandstone"`; a portcullis's, `iron` and `rusted`.
+- A wall is 548 triangles at the most from beside it (60 m), a round tower with battlements 280, a gatehouse 146, a
+  portcullis 154; from far 20, 22, 44 and none.
+
 **What stands in a street** (`street`, `sign`, `crane`): one part each, a person's size.
 
 ```json
@@ -771,6 +820,30 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   132, a classic table 206, a rack with three bicycles 282), a sign 260 (its letters rectangles: «SUPERMARKET», 138), a crane
   1,450; each a third or less from a few metres off; from far a lamp is its post, a fountain its basin, a kiosk and a
   column a box, a crane its mast and jibs, the rest nothing.
+
+**A car in one part** (`vehicle`): when a street, a car park or a city needs cars and none of them is the subject, do not
+build each from parts (vehicles.md is for a car that is the subject: twenty parts and 3,000 triangles and more). `body`:
+`compact` (4.3 m), `saloon` (5.1), `estate` and `suv` (5.2), `pickup` (5.9), `van` (5.7), `lorry` (8.2) or `bus` (11.6);
+`length` longer or shorter within what its body takes; `paint` — `white`, `silver`, `graphite`, `black`, `red`,
+`burgundy`, `blue`, `navy`, `green`, `sand`, `yellow`, `orange`: a tint, so cars alike but for it share a mesh —;
+`livery` `taxi`, `police`, `ambulance` or `ices` (an ice cream van's) in its paint's place, a sign or a bar of lights on
+its roof; `variant` odd, a
+van with windows (a minibus), a pickup's cab of two rows. Its body is the one part you write, in an object that says it
+is a car; its `at` is its box's middle — half its height over the ground —, its front its +y:
+
+```json
+{ "name": "taxi", "at": [12, -4], "turn": [0, 0, 90], "vehicle": { "type": "car", "power": 700, "speed": 26, "steer": 32, "mass": 1400, "drive": "rear" }, "prims": [
+  { "name": "body", "kind": "vehicle", "body": "saloon", "livery": "taxi", "at": [0, 0, 1.12], "light": { "on": "night", "range": 0 } } ] }
+```
+
+- **What its recipe stands** (never write them yourself): its four wheels, each a radius over the ground — it is found a
+  car by them, and driven as any (vehicles.md, *A car's handling*: a compact 600 N·m and 1,100 kg on its front wheels, an
+  SUV 1,000 and 2,000 on all four, a van 900 and 2,400, a lorry or a bus 2,600 and 5,000) —, and its passengers' door, on
+  the side away from its driver: whoever acts on its body sits at its wheel, whoever acts on its door rides — beside the
+  driver, or in a row behind (a bus's eight rows).
+- **Its cost**: whole — body, wheels, door: six parts — 500 to 670 triangles from beside it, 260 to 290 from a street
+  away, 20 to 32 from far: a seventh of a car built of parts. Its lamps and a livery's sign glow by night where its part
+  says `"light": { "on": "night", "range": 0 }`, lighting nothing round them.
 
 **A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
 `length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
@@ -1249,7 +1322,7 @@ prims collide as their mesh, its hull when convex.
   | `switch` | switches its object's lights in its zones, for everyone: on a click on or off — a switch by a room's door, one for a floor, one for every light — or, `"near"`, a presence detector: on while someone stands under it on its floor, off once all have gone; prims only | `zones` (a list of zone names, or `"all"`: every light of its object in a zone), `trigger` (`"click"`, the default; `"near"`; `"both"`), `reach` (m, 4: how far across under it a presence detector senses), `stay` (s, 30: how long its lights stay on once all have gone) |
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
   | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
-  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
+  | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `calls` (the points it stops at in the place of either, by their number — `[2, 5, [7, 20]]`: its second and its fifth as long as `stop` says, its seventh 20 s — and where it is kept: a bus at its shelters), `built` (`true`, a car's: it keeps the heights its points say — on a deck, a bridge, a plate — where a car's route lies on the land under it), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
   | `treasure` | found with E by whoever touches it: its points (XP) and coins, once to each player, by its id; the voucher is signed as it is set, by whoever sets it, and counts only when that is OVGrid's master account or an issuer it certified — anyone else's treasure is found and gives nothing; a prim, an object or a clone | `points` (XP, 0–1000, 50), `coins` (0–100, 10); its `voucher` is the page's, never written in a build |
 
 - **Treasures to find** (`treasure`): hide one anywhere — a chest in a cellar, a box behind a waterfall, a
@@ -1413,6 +1486,19 @@ prims collide as their mesh, its hull when convex.
   0–9999). Numbers only, by name;
   any left out is its generator's own. A city wants dry ground that falls 5 m at the most under it, whole inside one
   parcel: 250 × 190 m is twelve blocks, some 1,400 records, 154,000 triangles at the finest.
+  Or `castle` — curtain walls round a courtyard on the land as it lies, a tower at each corner and along each side, a way in
+  through a gatehouse at the middle of its south side (its −y), stairs of stone up to its wall walk — (its `params`: `width`
+  and `depth` 48–140 m, the rectangle of its walls' middle lines; `height` 5–9 m, its wall walk's; `towers` 0 round ·
+  1 square · 2 round at its corners, square along its walls; `tops` 0 battlements · 1 cones · 2 cones at its corners;
+  `look` 0 grey stone · 1 old blocks · 2 sandstone · 3 mixed stone; `moat` 0 none · 1 a moat; `seed` 0–9999). Its gatehouse
+  stands between the two towers of its way in, a portcullis in it that rises as one comes near; with a moat — water from
+  its walls 14 m out, held by a bank of stone, laid where the ground round it falls 2 m at the most (elsewhere it says so
+  and has none) — a drawbridge spans it before the gate, raised on a click, and its floor stands over the water. A castle
+  wants dry ground that falls 5 m at the most under its walls, and 28 m of its own round its walls' lines with a moat, 16
+  without: 76 × 64 m is nine towers, eight walls, a gatehouse, a keep and two stairs, some 50 parts, 11,300 triangles at the finest.
+  In its courtyard's north stands its keep, its front to the gate, and every tower under battlements has its winding stair.
+  Its `edition` `1` is its walls and towers alone, a plain way in; its `2`, its gatehouse, portcullis, drawbridge and moat
+  besides; its `3`, its keep and its towers' stairs.
 - `at`: where its middle stands in the build's frame — `[x, y]` on the ground there, or `[x, y, z]`; `turn`: degrees
   counter-clockwise from above, as a part's `turn` about z (none: as the build's frame). `key`, optional, as a tree's.
 - `edition`: which of its generator's makings it is of — a `city`'s `2` has districts (a historic centre, an extension, a
@@ -1420,6 +1506,14 @@ prims collide as their mesh, its hull when convex.
   a planted median and a bike lane through its middle, parking bays along every other street, tree pits, stop lines and
   arrows, a crossing's stripes on every arm of every junction); its `4`, bridges besides (its `bridges`: a footbridge
   up a stair from each pavement, an overpass, a viaduct); its `5`, its street life besides (its `life` 1); its `6`, its green besides (its `life` 2);
+  its `7`, as its `6` (the escalators of steps it gave its halls were withdrawn); its `8`, its
+  buses besides (its `vehicles`: `buses`, or `none`): two of ours along its avenue, both ways, stopping at its shelters;
+  its `9`, what is parked besides (its `vehicles`: `parked`, which has its buses too): in its bays, most of every other
+  one, a car of ours and one of the vehicle kind in turn, their lamps off; two taxis on a rank by its square; an ambulance
+  or two police cars by its hospital or its police station; an ice cream van by a park; a lorry on each site;
+  its `10`, its traffic besides (its `vehicles`: `traffic`, which has the rest too): cars round its blocks, each in
+  its lane — a police car and a taxi of ours among those of the vehicle kind —, waiting at its junctions, its buses
+  with them, its signals' lamps on a cycle: all of it by the shared clock;
   none, its first, as a city was first made. Write the latest unless a build must stay as it was.
 - **Its ground is the planet's own**, the land's edits aside: what it lays stands as its generator lays it there — a
   house's base down past the ground, its street levelled over it. Give it ground its generator takes (a neighbourhood:
