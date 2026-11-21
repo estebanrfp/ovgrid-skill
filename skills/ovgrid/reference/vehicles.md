@@ -144,6 +144,9 @@ A vehicle one walks in — a coach — is walked into as a helicopter is: its hu
 `"way": "both"`, out from inside across its thinnest side. What it collides and drives as, collision only, is slabs round its
 cabin, each convex — the block under its floor, its sides, its ends, its roof, 8 cm thick and into one another —, not its
 solid outline, and its seats are solid (no `phantom`), so that one walks its aisle between them and stands up there.
+A van or an ambulance is walked in the same way by its back doors: two leaves in an opening through its back, each
+`"way": "both"`, one standing in its load space or its box by them; a box wider than its cab has its own sides and roof as
+it drives. Its roof stands 1.8 m over its floor at least, room for a body; where one stands up in it — off an ambulance's bench — 1.9 m.
 
 ```jsonc
 // A bench for three across a van's box: one part, three places.

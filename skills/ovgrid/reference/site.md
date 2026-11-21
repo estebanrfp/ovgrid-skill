@@ -81,6 +81,13 @@ from the centre. Look at it before you plan.
 | over 30° | leave it — a cliff, a view — or stand a platform on posts, or bridge it |
 | sea | keep off, or stand on piles: a pier, a jetty, a boathouse (`water` and `elevation` say where); a boat where `depths` is 0.5 m or more — a shore may stay a hand deep for a hundred metres and more |
 
+### Trees by where it stands
+
+Plant what suits the ground: by the sea, palms (`coconut`, `fanPalm`, `date`) and its flowers (`agave`, `strelitzia`,
+`oleander`); in temperate green, broadleaves (`plane`, `zelkova`, `maple`, `cherry`, `oak`, `birch`, `beech`, `chestnut`);
+on heights, `blackPine`, `fir`, `birch`; in the snow, `fir`, `sugi`, `blackPine` and no flowers. `christmas` is a palm, not a
+fir. Three species a place, each in one shape (one seed of each), as every species and shape planted near is draws a frame.
+
 ## Standing on the ground
 
 The terrain is a function; what you build is not.

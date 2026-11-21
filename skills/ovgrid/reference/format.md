@@ -115,11 +115,15 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `lift` | its box: a car's across, front to back and floor to top; a leaf's width, thickness and height; a button's plate | 0 frame, 1 floor, 2 glass, 3 what is lit (a car's ceiling, a button's face), 4 panels | a piece of a lift, a few boxes: `piece` `car` (a floor, a lit ceiling, glass behind and at both sides, its way in at its −y, `door` wide and `head` high), `leaf` (one leaf of a door) or `button` (a plate, its −y face lit). What moves it is its `lift` behaviour (effects.md): a building's recipe stands them — write them yourself only for a lift of your own |
 | `hall` | what its `type`, `width`, `depth`, `height` and `floors` make | 0 walls, 1 what is dressed apart (the band over its glass, its canopy, a portico's beam), 2 trim (frames, columns, slabs' edges, its base), 3 glass, 4 roof, 5 floors, 6 walls inside, 7 ceilings | a supermarket, a museum, a shopping centre, a market hall or a filling station in one part, worked out from a few numbers, walked into as drawn; what stands in it parts of their own — see *A hall in one part* |
 | `fixture` | what its `type`, `width` and `depth` make — its height its type's, a person's | 0 frame, 1 boards (shelves, a worktop, a plinth's stone), 2–4 its goods, three colours of them, 5 glass, 6 accent (a rail, an awning, a pump's panel, a sculpture) | what a shop, a market, a museum or a filling station is fitted with: aisle shelving, wall shelving, a chiller, a checkout, a table of goods, a market stall, a plinth and its sculpture, a fuel pump, a moving ramp — see *A hall in one part* |
-| `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, what is painted on a road: `line`, `arrow`, and what stands in a square or a park: `fountain`, `kiosk`, `rack` (of bicycles), `table` (a café's), `advert` (an advertising column), `swing`, `slide`, `rocker`, `barrier` (round roadworks), `pergola` — see *What stands in a street* |
+| `street` | its piece's own — a lamp 0.5 × 0.5 × 6 m, a bench 1.8 × 0.62 × 0.86 —; `height` a lamp's, a signal's, a sign's post's; `width` a planter's, an awning's, a crossing's | 0 metal, 1 body (a bench's slats, a bin's, a planter's earth, a shelter's roof), 2 lamp (the glass that glows), 3 glass, 4–7 its colours, tints on one material | what stands in a street: `lamp`, `arm` (a lamp on an arm over the road), `double`, `signal`, `bench`, `bin`, `shelter`, `cone`, `bollard`, `planter`, `hydrant`, `roadsign`, `awning`, `zebra`, what is painted on a road: `line`, `arrow`, and what stands in a square or a park: `fountain`, `kiosk`, `rack` (of bicycles), `table` (a café's), `advert` (an advertising column), `swing`, `slide`, `rocker`, `barrier` (round roadworks), `pergola`, and along a shore: `railing` (a promenade's, its `width` its length), `shower` (a beach's), `lifeguard` (a tower, its chair sat on), `pontoon` (a marina's, its `width` its length, walked on: its foot 0.2 m under the water), `mooring` (a quay's bollard), `buoy` — a promenade's lamps a classic `lamp`, its benches `bench` — see *What stands in a street* |
 | `sign` | its `width` — its word's own where 0 — × 0.12 × its `height` | 0 frame, 1 board, 2 letters — the last two tints on one material | a board with a word on it, its letters a font five by seven: `hotel`, `hospital`, `school`, `market`, `supermarket`, `museum`, `mall`, `pharmacy`, `cafe`, `bar`, `books`, `bakery`, `parking`, `police`, `fuel`, `cinema`, `bank`, `library`, `station`, `taxi`, `bus`, `open`, `sale`, `ovgrid` — see *What stands in a street* |
+| `billboard` | its format's, `scale` times, over its `lift` | 0 frame, 1 advert | a place for an advert: `format` `billboard` 6 × 3, `poster` 1.2 × 1.75, `banner` 1.4 × 5, `mural` 8 × 5, `screen` 4 × 2.25 m; `mount` `wall`, `posts`, `roof` — see *Adverts* |
 | `crane` | what its mast's `height` and its `jib` make | 0 paint, 1 concrete (its pad, its counterweight), 2 glass, 3 dark metal | a tower crane: a mast of lattice on a pad, a cab, a jib along its +y and a counter-jib behind — see *What stands in a street* |
+| `castle` | a wall: its `length` × 3.12 × its `height` + 2.08 + its `plinth`; a tower: its `girth` + 0.24 (0.6 under a cone) square × its `height` + `rise` + 2 (or its cone) + its `plinth` | 0 walls, 1 what is walked on (the wall walk, a tower's platform), 2 trim (base course, merlons' caps), 3 glass, 4 roof (a tower's cone), 5 floors (a tower's chamber's), 6 walls inside (that chamber's), 7 stained glass (a keep's chapel's windows) | a piece of a castle: a stretch of curtain wall with its wall walk and merlons, a tower the walk goes through, a gatehouse, its portcullis, or a keep — see *A castle* |
 | `castle` | a wall: its `length` × 3.12 × its `height` + 2.08 + its `plinth`; a tower: its `girth` + 0.24 (0.6 under a cone) square × its `height` + `rise` + 2 (or its cone) + its `plinth` | 0 walls, 1 what is walked on (the wall walk, a tower's platform), 2 trim (base course, merlons' caps), 3 glass, 4 roof (a tower's cone), 5 floors (a tower's chamber's), 6 walls inside (that chamber's) | a piece of a castle: a stretch of curtain wall with its wall walk and merlons, a tower the walk goes through, a gatehouse, its portcullis, or a keep — see *A castle* |
+| `ride` | its piece's own: a carousel `radius` + 0.3 round × 6.1; a wheel `radius` + 0.35 round × 1.8 (its axle its z); its stand 4.8 × its spread × its hub + 0.6; a drop tower 6 × 6 × its `height` + 2; a booth 3.2 (a gallery 4.8) × 3.45 × 3.3; a gondola 5.1 × 2.2 × 1.9; a roundabout 3.1 × 3.1 × 1.1 (2.5 under a canopy) | 0 paint, 1 trim, 2 cloth (a canopy, an awning), 3 bulbs (glow by night where the part is lit), 4 floor, 5 plastic, 6 glass | a piece of a fair: a carousel and its horse, a Ferris wheel, its gondola and its stand, a drop tower and its ring, a booth, a gallery's target — see *A fair* |
 | `vehicle` | its body's own — a saloon 2.56 × 5.1 × 2 m, its mirrors with it —; a wheel's; its door's | 0 paint, 1 glass, 2 what is dark (bumpers, arches, tyres), 3 headlamps, 4 rear lamps, 5 its inside, 6 its second tone (a livery's band, a lorry's box), 7 a livery's sign or lights; a wheel's rim | a car's body in one part, driven as any car is: its front its +y, its driver at +x — see *A car in one part* |
+| `auditorium` | what its `width`, `rows`, `rise`, `stage` and `clear` make — 19.2 × 19.4 × 7.9 m at its defaults | 0 floors, 1 wood, 2 seats, 3 glass, 4 ceiling, 5 screen wall | its stage at its −y; it stands its screen, voice and drop — see *An auditorium in one part* |
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
 | `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, storage, a bathroom's and a kitchen's, a lobby's (`counter`, `mailbox`, `bench`, `trolley`, `stand`), a castle's (`throne`, `banquet`, `barrel`, `chest`, `weapons`, `trophy`, `tapestry`, `sconce`, `brazier`, `chandelier`, `hearth`, `altar`, `cage`, `fourposter`), its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
 | `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall`, and on a building's ground storey `lobby` or `reception` (its desk facing its first `ways`), and a castle's `greathall`, `solar`, `chapel`, `cookhouse`, `armoury` or `dungeon` —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
@@ -500,10 +504,10 @@ and at the back); `floors` 1–3; `roof` `flat`, `mono` (one pitch rising to the
 the storey under it open up to them — the chalet's own; on any other style, a barn's roof) or `hip` (four pitches up from the
 eaves to a ridge along the longer side, on a flat slab that is the top storey's ceiling: the house under it as under a flat roof); `glazing` 0–1 (0.5 the style's own); `variant` 0–9999, which of its style's houses it is — where its door
 and stair are, which storeys stand back, which bays are glazed: one number, one house, the same for everyone. A `look` dresses it
-from the bank, six to each style and a seventh to the cabin — box: `white`, `stucco`, `concrete`, `grey`, `charcoal`, `ochre`; wood: `cedar`, `dark`, `oak`,
+from the bank, six to each style and a seventh to the cabin, the chalet and the lodge — box: `white`, `stucco`, `concrete`, `grey`, `charcoal`, `ochre`; wood: `cedar`, `dark`, `oak`,
 `boards`, `charred`, `solar`; glass: `concrete`, `travertine`, `walnut`, `white`, `steel`, `board`; stack: `cedar`, `concrete`,
-`stone`, `charcoal`, `ochre`, `boards`; chalet: `white`, `blue`, `timber`, `alpine`, `stone`, `ochre`; lodge: `walnut`,
-`charred`, `white`, `cedar`, `stone`, `boards`; barn: `black`, `white`, `brick`, `cedar`, `concrete`, `boards`; manor: `stone`, `white`, `brick`, `ochre`,
+`stone`, `charcoal`, `ochre`, `boards`; chalet: `white`, `blue`, `timber`, `alpine`, `stone`, `ochre`, `snowy` (its roof under snow); lodge: `walnut`,
+`charred`, `white`, `cedar`, `stone`, `boards`, `snowy` (its roof under snow: a mountain lodge); barn: `black`, `white`, `brick`, `cedar`, `concrete`, `boards`; manor: `stone`, `white`, `brick`, `ochre`,
 `grey`, `slate`; villa: `travertine`, `concrete`, `white`, `cedar`, `black`, `marble`; cabin: `logs`, `beams`, `dark`, `pine`, `brown`, `weathered`, `fieldstone` (its walls of stone, its timber dark, its roof of sheet metal);
 cantilever: `white`, `cedar`, `concrete`, `stone`, `black`, `walnut`; plates: `walnut`, `white`, `cedar`, `charcoal`, `board`,
 `travertine`; terrace: `white`, `travertine`, `concrete`, `ochre`, `stone`, `charcoal`; ell: `white`, `concrete`, `brick`,
@@ -701,6 +705,21 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   sells — `mixed`, `produce`, `dairy`, `bottles`, `bakery`, `clothes`, `toys`, `books` —: three colours of one material, tints
   that shape nothing. Its front is its +y.
 
+**A fair** (`ride`): one part a piece. Whole parks are a seed's (`"generator": "park"`, under *Seeds*): write pieces by hand
+only for a ride of your own, and make it move with the behaviours there are. A carousel's object `spin`s (about 24 °/s), its
+horses parts of it on its deck (0.55 m over its foot), each a `bounce` of 0.2–0.4 m — give them different heights and they
+hop out of step. A wheel's object stands at its stand's hub (`radius` + 3.25 m over its foot), turned `[90, 0, 90]` so that its
+axle lies along the stand's x, with a `spin` (about 5 °/s); its gondolas are parts at its ties (`radius` out, every 360/`count`
+degrees in its own x–y), turned `[0, 0, 90]`, each with a `spin` as fast the other way: they hang level; four `lights` parts
+(`variant` 0–3) with a light's `cycle` each chase round its rims by night. A drop ring's object stands on its tower's
+floor (0.3 m) with a `move` up its z to 4.5 m under its `height`, `ease` 1. What turns or rises collides as nothing: make it
+`phantom`. A horse and a gondola are sat on — give them their `seat` (a gondola's back bench, two places) —; the drop ring not yet. A booth's counter is its −y; a target given a
+`treasure` is a prize found with E. A roller coaster: lay its line's stretches of `rail` (`length` up to 8 m, turned along it — pitch about x, then heading) on posts, and
+its `car`s each an object at the line's frame with a `track` behaviour (its `points` the line, closed, its station first; `lift`,
+`brake`, `stop`; `behind` 0 for the first car, then its gap more each): they run by their height. A `roundabout` is a playground's (2.8 m across; `variant` 0 rails, 1 a canopy, 2 a
+bowl; looks `playground`, `meadow`, `cups`): give its object a slow `spin`, make it `phantom` and give it its `seat`. Light a ride's bulbs with a light of range 0 by night (`"light": { "on": "night",
+"range": 0 }` and face 3 emissive); a real light, few — one under a canopy, one over a counter.
+
 **A castle** (`castle`): one part a piece, sized for the avatar and the camera behind it. Whole castles are a seed's
 (`"generator": "castle"`, under *Seeds*): write pieces by hand only for a wall or a tower of your own.
 
@@ -724,6 +743,10 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
 - **A tower's `stair`** (1, under `battlements`): a winding stair from its chamber up to its platform — steps two metres
   wide round a solid core, a hatch in the platform where they come up. With it the way between the tower's two ways goes
   round the core.
+- **A tower's `armed`** (1, under `battlements`): a cannon on its truck (the furniture kind's, its recipe's) on a step of
+  stone against its parapet, behind the crenel nearest the way it looks out — its +y along a wall, between its +x and its +y
+  at a corner —, its barrel through the crenel, clear of its stair's hatch; none where no crenel that looks out is clear.
+  Ten triangles more from beside it, a piece more to collide with. Stand no cannon of your own on a tower's platform.
 - **`piece` `keep`**: the great tower inside the walls, one part: `length` × `depth` (16–26 × 12–20 m; 18 × 14 where left
   out), its front its +y. An undercroft 4 m high (a kitchen, an armoury, a dungeon) come into by a door in its front; over
   it a hall `height` high (5–10 m) come into by a flight of stone along its front up to a porch and a door of two leaves;
@@ -732,6 +755,17 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   doors come with it (the door kind's, opening inwards as one comes near). Its box is `length` + 6.82 × `depth` + 2.9 ×
   15.6 + `height` + `plinth`; its floor is its box's bottom raised by `plinth`. Stand it on the land, 4 m and more clear of
   walls and towers, its front to where one comes from: 2,450 triangles from beside it, 714 from a street away, 196 from far.
+  `dressed` 1 gives it a pier at each corner but its turret's (0.3 m out past its faces: its box 0.28 m wider along +x), a
+  pinnacle over each and a course of trim under its battlements: 106 triangles more from beside it, nothing changed inside.
+  `bays` 1 puts it in bays: each side of the walls inside it cut into bays of about 4.5 m (its left side's from its turret
+  on), a window in the middle of each in its hall's storey and in its chambers' — none in its undercroft, none where its
+  hall's door stands —, and a course of trim under each of those two floors round its walls (0.1 m out: its box that much
+  wider along +x where it is not dressed). A keep 18 m long and longer has four windows a storey along its front and its
+  back where it had two; one of 16 m keeps its windows where they were. Up to 430 triangles more from beside a keep a
+  castle's seed stands, 920 on the largest keep there is; its rooms are told of its windows and furnished as ever.
+  `stained` 1 glazes its chapel's windows (in its chambers' storey, where its front meets its right side) in the bank's
+  stained glass, on the castle's eighth face: nothing else of it changes. `rooms` 2 lays a furnished keep's rooms out by the
+  room kind's second layouts: its chapel's candles on two standing candelabra either side of its altar.
 - **A keep's `furnished`**: `heraldic` or `azure` (left out, or `none`: bare) — its seven rooms furnished by what they
   are, each a part of the `room` kind its recipe stands (a cookhouse, an armoury and a dungeon in its undercroft; its great
   hall; two solars and a chapel over it), told of its walls, its windows and its doorways from the keep's own plan; what
@@ -745,6 +779,9 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   back, a barrel and a chest; a smithy its forge — which burns: its flame comes with it —, its anvil, a quench barrel and a
   rack of spears. What is in them comes with them, parts of the `furniture` kind: write none yourself. On a floor of its
   own: its `at` z the highest ground under it, its `plinth` down past the lowest.
+- **`piece` `lodging`**: the same lean-to closed — its front a wall of stone, a door at its middle (the `door` kind's, opening
+  as one comes near: it comes with it), a window in each bay but the door's —; in it a pallet of straw a bay and a chest at
+  each end, its floor of boards. Stand it as a stable: its back at a wall's inner face, the floor before its door clear.
 - **Where a wall meets a tower**: put the wall's end inside the tower's stone — `girth / 2 − 0.02` from the tower's middle,
   and for a round tower no farther than `(girth / 2 − 0.75) / 0.866 − 0.02` (a 10 m round tower: 4.89 m; an 8 m one: 3.73).
   Both at one `height`, on one floor (the same z for their feet): the walk then goes through.
@@ -843,6 +880,13 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   `colour` — `red`, `blue`, `green` (white letters), `yellow`, `white` (black), `black`, `gold` (gold on black), `cream` (red).
   Its back is a wall's: stand it 6 cm before the wall's face, its front its +y. A hall stands its own (`sign`), and a building a
   hotel's and its shops' (`signs`): do not add those.
+- **`billboard`** (*Adverts*): a place for an advert, its front its +y. `format` by name (`billboard` 6 × 3 m by a road or on a
+  roof, `poster` 1.2 × 1.75 at eye height, in a shelter or on a column's face, `banner` 1.4 × 5 down a wall, `mural` 8 × 5 on a
+  blank wall or a gable, `screen` 4 × 2.25), `mount` (`wall`: flat, 8 cm deep — stand it on the wall's face; `posts`: two posts,
+  its board `lift` m up, 3.5 by default; `roof`: legs, 1.2 m), `scale` 0.5–2, `slot` its number among the places dealt. Face 1
+  shows its advert as a face's `page` or `media` does, and the world deals it OVGrid's list — GenosDB's, GenosRTC's and OVGrid's own pages where there is none, never the
+  same advert within 40 m while another may go there. 40 triangles at the most, its board's two sides from far: leave face 1
+  bare, the world fills it.
 - **`crane`**: `height` its mast's, to under its jib (16–54 m: eight over what it builds); `jib` its length (16–40 m), along
   its +y from its mast: turn it to slew it. Its `at` is its box's middle — its mast's foot is `[−(x0 + x1) / 2, −(y0 + y1) / 2]`
   from there, its box from `x0 = −2`, `y0 = −jib / 2.4` to `x1 = 3.15`, `y1 = jib`, z from 0.5 m under the ground — its pad's footing — up (with `variant` odd its
@@ -876,6 +920,15 @@ is a car; its `at` is its box's middle — half its height over the ground —, 
 - **Its cost**: whole — body, wheels, door: six parts — 500 to 670 triangles from beside it, 260 to 290 from a street
   away, 20 to 32 from far: a seventh of a car built of parts. Its lamps and a livery's sign glow by night where its part
   says `"light": { "on": "night", "range": 0 }`, lighting nothing round them.
+
+**An auditorium in one part** (`auditorium`): a hall for talks and streams — raked tiers of seats in two blocks either side of an aisle down its middle, as a cinema's, every seat sat on, aisles of steps, a stage, a
+huge screen on its dark front wall, glass at its back, a door at the foot of each aisle. Its front (the stage) is its −y; its
+origin its box's middle, its pit's floor 0.2 m over its box's bottom. `style` `oak`, `walnut` or `white`; `width` 12–32 m inside,
+`rows` 3–16 (1.1 m deep each), `rise` 0.2–0.6 m a row, `stage` 3–10 m deep, `clear` 3–8 m over its last row. It stands its own live
+parts: a screen, the stage's voice (`who: "stage"`) and a drop on the lectern — give them none. Stand it on a plinth of its own
+with steps down to the ground at its doors. A streaming lounge is a `room` of `type` `streaming` (a large screen over a console, its voice, shell chairs in rows: its own);
+a talk corner two benches and a `voice` of `radius` 3. Faces: 0 floors, 1 wood, 2 seats, 3 glass, 4 ceiling, 5 screen wall.
+`{ "name": "hall", "kind": "auditorium", "style": "oak", "width": 18.6, "rows": 7, "at": [0, 0, 3.73], "turn": [0, 0, 180] }`
 
 **A pool in one part** (`pool`): a pool to swim in — beside a house, in a garden — is one part; do not carve it from solids.
 `length` × `width` (4–30 × 2.5–15 m; 10 × 5 where left out) are its basin's, inside; `depth` its water's (0.4–2 m, 1.4 where left
@@ -997,9 +1050,10 @@ and the cushions one sits on, a bed's padded headboard and its sheets, a rug) �
 `sage`, `teal`, `sky`, `slate`, `plum`, `graphite` —, and `"wood"`, the tone of whatever of it is dressed in a wood of the bank
 (its frame, its legs, a top, fronts) — `honey`, `amber`, `chestnut`, `mahogany`, `smoke`, `ebony`. They are tints the import lays
 over its look's own materials (a face's `tint`: write none yourself), so pieces that differ by them alone share one mesh and a
-street of them costs nothing more. A tint darkens: dress what is to take a colour in a light look (a sofa's `linen`, a chair's
-`white`, an armchair's `leather`; a table's `oak` or `white` for a tone) — a charcoal sofa stays charcoal —, and its scatter
-cushions and its duvet stay its look's, the accent beside the colour. Three shape it, each 0–1 with 0.5 its model's own:
+street of them costs nothing more. A colour is what the cloth comes out as, whatever look it is dressed in — a charcoal sofa
+`sand` comes out sand, lighter than it was, a white one `slate` darker — and a tone the same on any wood; a cloth near black in a
+channel (a cognac leather's blue) comes out a little short of the colour there. Its scatter cushions and its duvet stay its
+look's, the accent beside the colour. Three shape it, each 0–1 with 0.5 its model's own:
 `"tall"`, how tall what stands up of it is (a seat's back, a bed's headboard, a stool, a coffee or a side table, a wardrobe,
 shelves, a sideboard — a sofa 0.75 to 0.99 m, a padded headboard 0.9 to 1.54); `"legs"`, how high a sofa, an armchair or a bed
 stands on its feet; `"stout"`, how thick its arms, its legs and its top are. A seat's top, a mattress's and a dining table's stay
@@ -1056,6 +1110,9 @@ of spears and halberds, suits of armour, chests banded with iron, trophies. A du
 a barrel, a torch. What is sat or lain on (a throne, benches, a chair, a four-poster, a pallet) and each flame are parts of
 their own, the room's recipe's. A keep of the `castle` kind furnishes its own (its `"furnished"`): write a castle's room only
 where there is no such keep.
+A room's `"edition"` (left out, 1) is which of its layouts it is laid out by: `2` stands a chapel's candles on two standing
+candelabra either side of its altar, where its first hangs them on the wall over it; every other room is laid out by its second
+as by its first. Give a castle's room you write `"edition": 2`.
 
 Its look is its palette, given twice, as `palette` and as `look`: `oak` (oak and linen), `walnut` (walnut and bouclé), `white` (white
 and charcoal) — what is sat on in it dressed alike. Its variety is the furniture kind's five, given to the whole room: `"fabric"`
@@ -1207,7 +1264,8 @@ the file itself, so nothing of it travels between people.
 A prim may carry a live module, people's own media peer to peer for whoever comes near — `"live": { "type": "voice" }`
 (whoever stands within `radius` m hears the others on air), `{ "type": "screen", "face": 3 }` (that face shows a
 camera or a screen someone shares), `{ "type": "drop" }` (a file dropped on it reaches everyone near, or with
-`"to": "owner"` its owner alone). Each takes `"who": "anyone" | "owner"` (who goes on air), `radius` (m) and
+`"to": "owner"` its owner alone). Each takes `"who": "anyone" | "owner" | "stage"` (who goes on air — `stage`: only those
+standing within its `stage` m, 1–30, the rest listening; the audience raises a hand and is brought onto it), `radius` (m) and
 `quality` (voice kb/s, a screen's height in px, a drop's largest file in MB); a screen also `fps`. Values are held
 to their ranges. Put a screen on a thin panel facing where people stand; a received screen counts as a video
 (4 play at once). Nothing to stream is in the file: people bring it. And `{ "type": "mirror" }`: its `face` (3, +y, by
@@ -1399,7 +1457,8 @@ prims collide as their mesh, its hull when convex.
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
   | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
   | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `calls` (the points it stops at in the place of either, by their number — `[2, 5, [7, 20]]`: its second and its fifth as long as `stop` says, its seventh 20 s — and where it is kept: a bus at its shelters), `built` (`true`, a car's: it keeps the heights its points say — on a deck, a bridge, a plate — where a car's route lies on the land under it), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
-  | `treasure` | found with E by whoever touches it: its points (XP) and coins, once to each player, by its id; the voucher is signed as it is set, by whoever sets it, and counts only when that is OVGrid's master account or an issuer it certified — anyone else's treasure is found and gives nothing; a prim, an object or a clone | `points` (XP, 0–1000, 50), `coins` (0–100, 10); its `voucher` is the page's, never written in a build |
+  | `treasure` | found with E by whoever touches it: its points (XP) and coins, once to each player, by its id; the voucher is signed as it is set, by whoever sets it, and counts only when that is OVGrid's master account or an issuer it certified — anyone else's treasure is found and gives nothing; a prim, an object or a clone | `points` (XP, 0–1000, 50), `coins` (0–100, 10), `hunt` (the treasure hunt it is a chest of: found, the next chest's clue is said; the hunt's caps over all its chests); its `voucher` is the page's, never written in a build |
+  | `game` | a piece of a game with prizes: a race passed through — its start, its checkpoints in `order`, its finish —, a shooting gallery clicked — its start (a bell: a round of `par` s) and its targets, from up to 15 m —, a treasure hunt's board (clicked: where its first chest is). Its owner's page referees it: signs what a match gives within its game's caps | `game` (`"race"`, `"gallery"`, `"hunt"`), `role` (`"start"`, `"checkpoint"`, `"finish"`, `"target"`), `order` (a checkpoint's, 1 first), `par` (s, 60: a race at par or under gives all its game allows, slower less; a gallery's round), `reach` (m, 4: how near a race's piece's middle one passes), `set` (the game's name, the same on all its pieces; the hunt's for a board) |
 
 - **Treasures to find** (`treasure`): hide one anywhere — a chest in a cellar, a box behind a waterfall, a
   shell on the sea floor — as any part is placed, and give it `"behaviour": { "type": "treasure", "points": 120, "coins": 20 }`
@@ -1407,6 +1466,13 @@ prims collide as their mesh, its hull when convex.
   the land it is in, so the land's standing (the Profile's «This land») counts who found what there. A build only says what it is
   worth: its voucher is signed by the page of whoever places it, so a build imported by OVGrid's master account gives points and
   the same build placed by anyone else gives none. Keep it small and in reach of the avatar (5 m): it is aimed at as any part.
+
+- **Games with prizes** (`game`): a race is gates — two posts and a banner, 6 m apart, one object each with the `game`
+  behaviour, the same `set` on all of them —, a shooting gallery a stall — a counter, a back wall 5 m behind it, a bell on the
+  counter (role `start`) and targets on the wall (role `target`) —, a treasure hunt a board (game `hunt`, role `start`) and
+  chests with `"hunt": <its set>`. What a match gives is capped by its game (race 150 XP / 20 coins a match, 10 min apart;
+  gallery 100 / 15, 5 min; hunt 900 / 120 over its chests) and signed by the page of whoever placed the game: the master account's builds give prizes. Keep a race's
+  gates 6 m wide on open ground, a checkpoint every 30–60 m.
 
 - **Doors the avatar walks through**: a door's leaf collides where it stands, so a shut door is a
   wall. Build it shut and give it `"behaviour": { "type": "door", "trigger": "both", "reach": 2.5,
@@ -1594,7 +1660,16 @@ prims collide as their mesh, its hull when convex.
   wall; by its `seed` a market (two stalls, a hand cart), a gallows and stocks, a yard of arms (racks of spears and
   halberds, a suit of armour, bales) or a cross of stone and a knight; a flag and two standards on its keep's roof; a
   tree or two of its style's species; five hens before its stables. Stand nothing of these beside a castle's seed: it
-  has them. Its `9`, its walls and its towers dressed (`dressed`): buttresses, courses of trim, loops.
+  has them. Its `9`, its walls and its towers dressed (`dressed`): buttresses, courses of trim, loops. Its `10`, its
+  towers closer or farther apart by its `seed` — 38, 30 or 24 m between two at the most, fourteen towers at the most: a
+  castle of nine to thirteen towers may have more with another seed, one of fourteen or more is as it was. Try a few
+  seeds: its towers, its keep, what its bailey is given to and its flags change with it. Its `11`, its keep dressed too: a
+  pier at each corner but its turret's, a pinnacle over each, a course of trim under its battlements. Its `12`, its
+  lodgings: a lean-to closed with a wall of stone, a door and windows, pallets and chests in it, against the stretch of its
+  west wall and of its east nearest its northern half that takes one — where all else leaves room. Its `13`, its keep in
+  bays: a window a bay a storey, a course of trim under each storey's floor. Its `14`, its keep's chapel in stained glass.
+  Its `15`, its corner towers and its gate's under battlements armed: a cannon on each one's platform. Its `16`, its keep's
+  rooms by their second layouts (`rooms` 2).
   Its styles: Norman — square towers under battlements, broad and low, old blocks —; Gothic — round towers, cones on its
   corners, grey stone —; a Spanish alcázar — square towers, cones on its corners, pointed merlons, sandstone or brick —;
   Moorish — square towers, stepped merlons, a horseshoe gate, lime and ochre —; a fairy tale's — slender round towers under
@@ -1605,6 +1680,14 @@ prims collide as their mesh, its hull when convex.
   castle's by hand, chests of the build beside its seed with the `treasure` behaviour (*Treasures to find*) — behind its
   keep, in a corner tower's chamber, on a tower's platform up its stair, on its keep's roof, in its dungeon, on its moat's
   bed —, the harder to come to the more they give (40 to 150 XP, 5 to 25 coins).
+  Or `park` — an amusement park on a level ground of grass: an avenue from its gate at the middle of its south side (its −y),
+  one across, a walk round; a Ferris wheel, a drop tower and a carousel in three of its quarters, going by themselves for
+  everyone; a fair in the fourth — three food stalls, two games, a shooting gallery, café tables —; benches, bins and lamps
+  along its avenues, trees round its edge, its rides' bulbs and its stalls lit by night (its `params`: `width` 120–220 and
+  `depth` 110–200 m, `seed` 0–9999: its wheel's size and its tower's height, its rides' and stalls' colours). It wants dry
+  land that falls 4 m at the most under it: 150 × 130 m is 110 parts, 22,100 triangles at the finest, 7 lights. Its wheel (40–54 m
+  across, 24–32 cabins of glass) and its carousel are ridden; its drop ring not yet. A seed makes no prize: lay the gallery's targets by hand, `ride` targets with the `treasure` behaviour on
+  its shelves (ten, 30–80 XP and 5–10 coins each).
 - `at`: where its middle stands in the build's frame — `[x, y]` on the ground there, or `[x, y, z]`; `turn`: degrees
   counter-clockwise from above, as a part's `turn` about z (none: as the build's frame). `key`, optional, as a tree's.
 - `edition`: which of its generator's makings it is of — a `city`'s `2` has districts (a historic centre, an extension, a
@@ -1651,6 +1734,8 @@ the planet's ground, edited, wherever it is imported — a hill a castle stands 
   counted from there. Its objects stand on the land as written: give them their z over the origin.
 - Only the parcel's owner may shape its land: imported by anyone else, the build is placed and its land
   is not (said in the console). Within +32 m and −32 m of the planet's own ground.
+
+A land may name its own adverts' list: `"ads": "https://…/ads.json"` at its top, beside `sky` — `{ "ads": [ { "id", "page": { "html" } or "image", "formats", "weight", "from", "until", "link" } ] }`. Its places for adverts (`billboard`) show those first.
 
 ## Ids and changing a build
 

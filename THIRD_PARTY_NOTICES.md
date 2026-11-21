@@ -349,6 +349,16 @@ is licensed under the Creative Commons Attribution 4.0 International licence
   Rebuilt with OVGrid's pieces, the model taken as the plan, at 1.2 times its size: its wheels, crank, frame, saddle and
   bars from its measurements, its saddle and bars raised and set back for its rider; its rider's pedalling, its lamp and
   its materials OVGrid's own.
+- The amusement park's roller coaster (`src/build/park.js` `COASTER_LINE`, the ride kind's `rail` and `car`): «Animated
+  Kiddie-coaster» by ansonweese (Sketchfab: ansonweese),
+  https://sketchfab.com/3d-models/animated-kiddie-coaster-cb700fbf73dd4f32aff34a2996fb5b0c, licence CC-BY-4.0. Its size and the
+  look of its layout taken as the plan of our own: its track drawn again and its cars made in OVGrid's pieces, its train run
+  by OVGrid's own physics (`src/build/track.js`); nothing of its mesh or its animation used.
+- The ride kind's playground roundabout (`src/build/kinds/ride-gen.js`, its three styles; stood by `src/build/park.js` and by whoever
+  stands the piece): «carousels» by TeenWolf (Sketchfab: Teen-Wolf),
+  https://sketchfab.com/3d-models/carousels-b309e6b1b99d4b0983699c8aeec36817, licence CC-BY-4.0. Rebuilt with OVGrid's pieces,
+  the model taken as the plan, at a seventh of its size: its three roundabouts' decks, posts, rails, canopy and bowl from its
+  measurements, in its colourings; its materials the bank's.
 - `assets/builds/jet.json` (`tools/build-jet.js`, `tools/jet-outside.js`): «Cartoon Low Poly Private Jet» by antonmoek
   (Sketchfab: antonmoek), https://sketchfab.com/3d-models/cartoon-low-poly-private-jet-d34c32118cd14bd18e3ced888f6f3d70.
   Rebuilt with OVGrid's pieces, the model taken as the plan, coarser, at 5.75 times its size: its fuselage's rings, its

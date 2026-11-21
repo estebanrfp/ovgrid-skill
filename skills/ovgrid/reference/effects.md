@@ -117,6 +117,7 @@ example; catalog.json → `behaviours` every range).
 | `belt` | a conveyor, an escalator, a moving walkway | `{ "type": "belt", "speed": 0.6 }` carries along its own y; stairs rise along their y: a flight of the stairs kind given it carries one up it (or down it, below 0) a step at a time, a box pitched along its slope smoothly |
 | `passage` | in and out of a vehicle — or anything closed — by a click, standing | its hull's parts `{ "type": "passage", "way": "in", "x": 0.6, "y": 3, "z": 1.6 }` (its floor inside, in its object's frame), its door's `"way": "both"` with the same place: a click on its door from inside puts one out past it |
 | `route` | a tour boat, a train, a cart on its round | an object, `{ "type": "route", "points": [[0, 40, 0], [30, 60, 0], [60, 20, 0]], "speed": 3, "stop": 10 }` — through its points and on again (`"mode": "back"`: there and back — a train tail first, its front kept; anything else turned round at each end), turning to where it goes, stopping at each (`"at": "ends"`: only where it is kept) |
+| a chairlift | a ski slope's lift | its stations, pylons and cable standing still; each chair an object on a `route` round the cable's loop — every one the same points and speed, set off a share of its round apart (`since`, ms), so they keep their spacing —, `phantom`, its seat sat on two abreast and carried; round each bullwheel its points gone through along handles, as a circle's quarters are drawn |
 
 - **What people ride carries them**: a behaviour on an object carries the avatar standing on it, and so
   does a part moving inside its object — a lift's platform in a building or a vessel, as it goes.
@@ -177,7 +178,8 @@ WebAssembly): no page, no network, no storage, nothing but its API.
 | `keep(props)` | the same, kept: written by its owner's peer, signed, for everyone — at most once a second |
 | `get()` | its properties as shown |
 | `touch()` | opens or shuts what opens on a click (its door or slide, or its object's), as a click would |
-| `award(who, points, reason)` | gives `who` (a click's `who`) points (XP), once per call: signed on its owner's peer alone, and counted only if its owner is OVGrid's master account or an issuer it certified — a bell rung, a race won |
+| `award(who, points, reason, match, score)` | gives `who` (a click's `who`) points (XP), once per call: signed on its owner's peer alone, and counted only if its owner is OVGrid's master account or an issuer it certified — a bell rung, a race won. Its match (`startMatch`'s; none, the hour's) gives one player at most 50 XP, and a match begun within 5 min of the last gives nothing; `score` is shown as their best in the Profile |
+| `startMatch(name)` | a match's id, to give `award`: one round of the script's game |
 | `hasUnlock(id)` | whether the player of the peer running it has an unlock (a level's title, one bought with coins): what each peer shows its own player |
 | `print(…)` | a line in its owner's Script tab |
 | `random()`, `now()`, `self` | alike on every peer; the shared time (s); `{ id, owner }` |
