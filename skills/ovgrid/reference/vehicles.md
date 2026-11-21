@@ -327,6 +327,7 @@ The other vehicles' numbers, each held to its range, its default where it is lef
 | starship | `ceiling` | 10–3,000 m | 500 |
 | train | `speed` | 1–60 m/s | 20 |
 | train | `accel` | 0.1–3 m/s² | 0.8 |
+| train | `driven` | `helm` / `no` | `helm` |
 
 ## A car's round
 
@@ -748,6 +749,34 @@ its whole line askew, and its rollers, lying along no axis of it, are no wheels.
 (`"mode": "back"`) a train keeps its front: it runs back the way it came, tail first — give it ends alike, or its
 engine at the end it sets off from. A `railcar` of the vehicle kind (format.md, *A car in one part*) is a train's car in
 one part: two on the same route, the second kept a car's length behind the first along its line, run coupled.
+
+**A train one walks into** is made of the `coach` kind's cars (format.md), one object a coach: its body hollow — a floor
+0.78 m over its rails, a band of windows, two doorways a side 1.5 m wide, benches along its sides, poles, a ceiling that
+lights it, a bogie under each end —, 3 m across and 3.6 m high, `length` 10 to 20 m (16 its own) along its y, its front
++y. `ends` says what each end is: `lead` a cab with a rounded nose at its front and a gangway at its back, `middle` a
+gangway at both, `tail` a cab at its back, `single` a cab at both — a train of two is a lead and a tail, of four two
+middles between them. `doors` is the side its platforms are on (`left`, its −x; `right`; `both`): its recipe stands two
+leaves to each doorway there, which slide aside while the train stands at a stop of its route and shut before it leaves
+(the `slide` behaviour, `"trigger": "stops"`), and benches, sat on; the other side's doors are drawn shut. One walks in
+from the platform, along it and through its gangways into the next coach, and is carried as it goes. Give every coach of
+a train the same route, each kept a coach's length behind the one before along its line — their gangways' bellows meet —,
+and `"vehicle": { "type": "train", "driven": "no" }`: nobody drives it, its seats are its passengers'. Lay its track with
+the `track` kind — two rails on sleepers, 0.27 m high — and put each coach's `at` on the rails' tops; a platform level
+with its floor stands 1.05 m over what the track lies on, a hand's gap (15 cm) from the coaches' sides. A stop its doors
+open at lasts 6 s at the least; give its line curves wide for its length.
+
+```json
+{ "name": "coach", "at": [0, 0, 0.27], "turn": [0, 0, 90],
+  "vehicle": { "type": "train", "driven": "no" },
+  "behaviour": { "type": "route", "points": [[0, 120, 0, 0, 2, 0]], "speed": 12, "accel": 0.8, "stop": 20, "mode": "back", "face": "yes" },
+  "prims": [{ "name": "car", "kind": "coach", "ends": "single", "doors": "left", "length": 16, "at": [0, 0, 1.8] }] }
+```
+
+(A coach alone, a cab at each end. A train of two: a second object as this one, 16 m behind it along its line, the first
+`"ends": "lead"`, the second `"tail"`. Its track, in an object of its own: `{ "name": "track 1", "kind": "track",
+"length": 64, "at": [-32, 0, 0.135], "turn": [0, 0, 90] }`, a part every 64 m of its line.)
+
+A train built of parts by hand, with its driver:
 
 ```json
 { "name": "train", "at": [0, 0], "turn": [0, 0, -90],

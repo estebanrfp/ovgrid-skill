@@ -127,6 +127,9 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
 | `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, storage, a bathroom's and a kitchen's, a lobby's (`counter`, `mailbox`, `bench`, `trolley`, `stand`), a castle's (`throne`, `banquet`, `barrel`, `chest`, `weapons`, `trophy`, `tapestry`, `sconce`, `brazier`, `chandelier`, `hearth`, `altar`, `cage`, `fourposter`), its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
 | `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall`, and on a building's ground storey `lobby` or `reception` (its desk facing its first `ways`), and a castle's `greathall`, `solar`, `chapel`, `cookhouse`, `armoury` or `dungeon` —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
+| `track` | its sleepers' length across (2.4 m), its `length` along its y (1–64 m), its rails' height (0.27 m) | 0 rails, 1 sleepers, 2 bed | a length of railway track in one part: two steel rails a standard gauge apart on sleepers every 0.65 m, its rails' tops its box's top; `bed` `ballast` lays a bed under it, for track on the ground (on a deck, none). Nothing collides with it: what it lies on is what one stands on. Looks: `concrete` or `timber` sleepers |
+| `coach` | a car's 3 × `length` × 3.6 m from its rails' tops (10–20 m, 16 its own); a leaf's 0.75 × 0.05 × 2.08 m; a bench's `long` × 0.5 × 0.95 m | 0 its paint, 1 its stripe, 2 the dark band its windows are in, 3 glass, 4 its underframe and its roof, 5 its floor, 6 its lining, 7 its seats, 8 its metal, 9 what is lit, 10 its tail lamps | a piece of a train one walks into, by `piece`: `car` — a coach's body, hollow, two doorways a side, a cab or a gangway at each end (`ends`), its recipe standing its doors' leaves on the sides that open (`doors`) and its benches —, `leaf` and `bench` (vehicles.md, *A train one walks into*) |
+| `flat` | its floor, `width` × `depth`, and its `height` | 0 walls | a flat's inside in one part — its partitions, each with its doorways —, laid out from where it is come into (`door`, on its left side) and what is in its walls (`windows`, `ways`): a living room and, behind it, a row of a bedroom, a bathroom and bedrooms, the kitchen open past it; its recipe stands each room furnished (the room kind) and what is sat on |
 | `lantern` | its own: 0.3 × 0.3 × 0.46 m | 0 glass (it glows), 1 frame | a lamp's housing — a base, a box of glass, a pointed cap — whose middle is its flame, where a part's light sits: give it `"light": { "on": "night", "range": 8 }` and `"surface": { "emissive": 0.9 }` to light it; under a metre, so its light passes it as its own fixture. A bridge's `lamps` stand one on each of its posts |
 | `column` | plinth width, depth, height | 0 shaft, 1 base, 2 capital | upright |
 | `arch` | width, wall depth, height | 0 its two faces, 1 the opening, 2 outside, 3 feet | wall in x–z, opening through y |
@@ -627,7 +630,18 @@ presence switch a storey: light the one or two a visitor walks into, not a whole
 facing the street's door (in the hall's wing beside the stair, where it has room), mailboxes by the door, a bench or a pair of
 armchairs, a runner, pictures and plants by its size, every way through it — to the lift, the stair, each flat's door — kept
 clear. With `ground` `hotel`, a hotel's, in all its ground storey: a long counter with its keys behind it, groups of seats on rugs,
-a luggage trolley, leaflets. For the buildings a visitor walks into. `stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair
+a luggage trolley, leaflets. `lounge`: that, and in a hotel's hall a streaming lounge at its end away from its core — a third
+of the hall, 6–9 m, open onto the reception across its depth: a big screen whoever stands before it shares to the room, a voice
+zone of its own, rows of armchairs — where the hall is wide enough to keep its reception. For the buildings a visitor walks into. `premises`: `empty`, or `furnished` — with `ground` `shops`,
+each shop furnished by what it is, the word over its way in: by its `variant` a `cafe`, a `bakery`, `books`, a `pharmacy`, a `bar`
+or a `market`, or what `"shop"` (its left one, or its only one) and `"shop2"` (its right) name — those, a `restaurant`, `fashion`
+(a clothes shop: over its rails, boards of the wardrobe's items — one put on with a click or E, kept as one's look, taken off with
+another), `news`, an `office`. One part a shop and one to each row of seats and each board: furnish the shops of a street a visitor walks
+along, not every block of a city by hand (a city does it itself, its `life` `open`). `inside`: left out, or `near` — its flats
+furnished (a `flat` to each, below: partitions, rooms, what is sat on, a door on the hall) and every storey's inside — its flats',
+its lobby (`reception`), its shops' (`premises`) — no part of the build: laid for whoever is at that storey's level within twenty
+metres of the building, from outside or from inside, and taken away past twenty-eight. From farther the building is its shell,
+whatever it holds: the way to furnish every building of a street. `stage`: `finished`, or `frame` — a building in construction: its columns, floors, core and stair
 alone, its lift's shaft empty, no reception.
 `floors` up to 32: past what one part holds (64 m — fifteen storeys of 4 m) it stands as a tower in sections, parts of the
 kind its recipe stands on one another (`section` `middle`, `top`: never write those by hand), one lift through all of them.
@@ -977,7 +991,7 @@ floor, a table 0.75, a coffee table 0.4, a side table 0.52, a mattress 0.52.
 | `side` | `side`: `cube` (a drawer), `legs`, `round` | 0.38–0.65 × 0.34–0.6 |
 | `desk` | `desk`: `legs`, `drawers` | 1–2 × 0.55–0.85 |
 | `rug` | `rug`: `rectangle`, `round`, `runner`, `fitted` (a carpet wall to wall, 8 mm) | 0.6–6 × 0.6–5 (`round` 0.8–4 across; `runner` 1.8–6 × 0.6–1; `fitted` 1–10 × 1–10), 12 mm thick |
-| `picture` | `picture`: `framed`, `canvas` (wrapped, no frame), `mounted` (a white mount in a slim frame) | `width` × `height` 0.25–3 each, 4.5 cm deep: hung, its back on the wall (its −y), its bottom where it hangs |
+| `picture` | `picture`: `framed`, `canvas` (wrapped, no frame), `mounted` (a white mount in a slim frame), `board` (a slim frame round a canvas whose uvs run 0–1 across it: what its face shows — a picture as `media` — lies across it whole; a clothes shop's boards) | `width` × `height` 0.25–3 each, 4.5 cm deep: hung, its back on the wall (its −y), its bottom where it hangs |
 | `plant` | `plant`: `tall` (1.4 m), `bush` (0.85 m), `cactus` (1.3 m) — in a pot | its model's |
 | `ornament` | `ornament`: `vase`, `bowl`, `jar`, `books`, `sculpture`, `candles` — on a table, a shelf, a plinth | its model's (0.1–0.44 m tall) |
 | `lamp` | `lamp`: `floor` (1.62 m), `arc` (2 m, over 1.3 m), `table` (0.56 m) — no light of its own: give the part one if it is to light (Light) | its model's |
@@ -1020,6 +1034,11 @@ floor, a table 0.75, a coffee table 0.4, a side table 0.52, a mattress 0.52.
 | `lantern` | `lantern`: `stone` (a lantern of stone on its shaft, 1.5 m), `post` (on a post of iron, 2.6 m), `candelabrum` (standing, five candles, 1.7 m: indoors) — lit by night | its model's |
 | `campfire` | `campfire`: `logs` (logs in a ring of stones), `spit` (two stakes, a bar and a cauldron over it: 1.6 × 1.1 × 1.2) — it burns | its model's |
 | `statue` | `statue`: `knight` (on his plinth, his sword before him: 0.8 × 0.8 × 2.6), `cross` (a cross of stone on three steps: 1.4 × 1.4 × 3.2) | its model's |
+| `till` | `till`: `plain` (a carcass under a top, its till at one end), `display` (open to its front, three tiers of what it sells, its till), `bar` (taller, its top out over its front, a foot rail, taps) — a shop's counter: its front (+y) the customer's side, its top 1 m up (a bar's 1.1) | 1.2–6 × 0.6–0.9 |
+| `shelving` | `shelving`: `goods` (packets and boxes), `bottles`, `bread` (baskets of loaves), `magazines` (leaning in tiers), `folded` (stacks of clothes) — shop shelving, its back to a wall, 2 m | 0.9–2.4 × 0.35–0.6 |
+| `gondola` | `gondola`: `goods` (shelves either side of a panel, 1.4 m), `crates` (two steps of crates of fruit either side), `table` (a table of stacks: books, folded clothes) — a shop's island, seen from both sides | 0.9–2.4 × 0.7–1.1 |
+| `garments` | `garments`: `rail` (two uprights, a rail, clothes along it), `round` (a round rack, 1.1 m across) — clothes on a rail, 1.6 m | 1–2.4 × 0.5–0.6 |
+| `mannequin` | `mannequin`: `standing` (1.8 m), `torso` (on a pole) — what it wears its look's cover and bedding | its model's |
 
 **A picture**: its look is its painting — `"look": "tivoli"`, one of the bank's paintings in the frame that suits it (catalog.json
 → `kinds`: `mondrian`, `cafe`, `cottage`, `tivoli`, `twilight`, `snow`, `kashmir`, `yosemite`, `garden`, `bath`, `bottle`, `bamboo`,
@@ -1114,6 +1133,19 @@ A room's `"edition"` (left out, 1) is which of its layouts it is laid out by: `2
 candelabra either side of its altar, where its first hangs them on the wall over it; every other room is laid out by its second
 as by its first. Give a castle's room you write `"edition": 2`.
 
+**A premise** — a room come into from a street, a building's shop — is laid out the same, its way in its first `ways`: `type` `bar`
+(a bar's counter facing the way in, its taps on it, bottles on shelves behind it, a row of stools along its front; long tables
+between two rows of chairs), `cafe` (a display counter; a bench along a wall with a table and chairs across it; a table between its
+rows; armchairs where it is large), `restaurant` (tables between rows of chairs, four at the most, a sideboard; a bar at its back
+where it is large), `office` (a desk facing the way in, desks along the walls each with its chair, a table to meet at, bookcases)
+and `shop` — its counter and its till facing the way in, shelving side by side along its walls and islands on its floor, by its
+`"trade"`: `grocer` (packets, bottles, crates of fruit), `bakery` (a display counter, baskets of bread), `books` (bookcases, tables of
+books), `pharmacy`, `news` (magazines in tiers, a tower of postcards), `clothes` (rails along its walls and round racks, folded
+clothes, mannequins at its window — the only thing that stands before glass). What is sat on is few parts: a row of chairs or of
+stools is one. Give it its glass as `windows` with `sill` 0: nothing but a clothes shop's mannequins stands before it. A building
+with `"ground": "shops"` and `"premises": "furnished"` stands these itself (below): write a room of them by hand only for a shop
+you build of prims.
+
 Its look is its palette, given twice, as `palette` and as `look`: `oak` (oak and linen), `walnut` (walnut and bouclé), `white` (white
 and charcoal) — what is sat on in it dressed alike. Its variety is the furniture kind's five, given to the whole room: `"fabric"`
 colours its rugs and what is sat on in it, `"wood"` its wood, its fronts and its seats' frames, and `"tall"`, `"legs"` and
@@ -1125,6 +1157,27 @@ house that comes furnished picks all five itself, by its `variant`. A part's `at
 { "name": "bedroom", "kind": "room", "type": "bedroom", "palette": "walnut", "look": "walnut", "width": 5, "depth": 4.5, "height": 3.75,
   "walls": [[0, -2.5, 2.5], [1, -2.25, 2.25], [2, -2.5, 1], [3, -2.25, 2.25]], "windows": [[0, -1, 1, 0.9]],
   "ways": [[0.7, 0.85, 2.5, 2.25]], "keep": [[0.7, 0.85, 2.5, 2.25]], "at": [0, 0, 1.875] }
+```
+
+**A flat** (`"kind": "flat"`) is a floor between four walls divided into rooms and furnished, in one part: its partitions, each
+with its doorways 1.4 m wide; its recipe stands each room (the room kind, furnished by what it is) and what is sat on in it.
+Give it its floor — `width` from the wall its way in is in (its left, −x) to the wall farthest from it, `depth` along that wall,
+`height` —, where its way in is (`door`: its middle along y, from the flat's middle) and what is in its walls, so that no
+partition stands across a window and each room knows its own: `windows` `[[side, from, to, sill], …]` and `ways`
+`[[side, from, to], …]` (a way onto a balcony, into a room behind) — sides 0 its back (−y), 1 its right (+x), 2 its front (+y),
+3 its left; `from` and `to` along x (its back and front) or y (its sides), from its middle. It lays itself out as a house of one
+storey is: 7.6 m wide or more, a living room on the wall its way in is in and behind it a row along the far wall — a bedroom, a
+bathroom, bedrooms after it as its length suits (`beds`: `suits`, `1`–`3`), each with its door on the living room, the kitchen
+past the row, open, a dining room past that; a living room wider than ten metres with a dining room and a lounge open to it —;
+narrower, a bedroom across the end away from its way in and a bathroom beside it; small, a room to live in and its bathroom
+(`beds` `none` asks that of any: a flat whose bedroom is elsewhere). `palette` (`oak`, `walnut`, `white`) and `variant` furnish
+it; `cloth` 0–11 turns its rooms' cloth colours — flats alike but for it share every mesh —; `doors`: `doors` (a door to each
+bathroom) or `open`. Looks, its walls: `plaster`, `stucco`, `boards`, `concrete`. A building of the building kind furnishes its
+own flats (`"inside": "near"`): write a flat by hand to furnish a floor you build of prims — a loft over a shop, a cabin's floor.
+
+```json
+{ "name": "flat", "kind": "flat", "look": "plaster", "palette": "oak", "width": 10.8, "depth": 15.5, "height": 3.75, "door": 0.8,
+  "windows": [[1, -5.7, -3.8, 0.9], [1, -1, 1, 0.9], [1, 3.8, 5.7, 0.9], [0, -3.4, -1.4, 0.9], [2, -3.4, -1.4, 0.9]], "at": [0, 0, 1.875] }
 ```
 
 A kind's uvs are in metres: its material lies at real size on every face. A kind whose mesh
@@ -1447,7 +1500,7 @@ prims collide as their mesh, its hull when convex.
   | Type | Does | Parameters |
   |---|---|---|
   | `door` | swings open and shuts by itself; a `door` kind opens its own leaf, up to 110° | `angle`, `hinge`, `trigger` — `"click"` (within 5 m), `"near"` (someone within `reach` m; it shuts once all have gone) or `"both"` — `reach` (m, 2.5), `time`, `stay` (s after a click; 0: until clicked again); prims only |
-  | `slide` | slides aside and back by itself: a sliding door, a window, a hatch | `x`, `y`, `z` (m, its own axes), `trigger`, `reach`, `time`, `stay` |
+  | `slide` | slides aside and back by itself: a sliding door, a window, a hatch; a train's door, at its stops | `x`, `y`, `z` (m, its own axes), `trigger` — a door's three, or `"stops"`: a part of an object that follows a route opens once its vehicle has come to a stop it waits at and shuts before it sets off, by the world's clock, the same for everyone —, `reach`, `time`, `stay` |
   | `spin` | turns round its own z all the time: a sign, a windmill's sails, a carousel | `speed` (°/s) |
   | `bounce` | hops along its own z and falls back, over and over, as a ball does: a ball, a toy, a sign that jumps | `height` (m, 0.05–20) |
   | `move` | goes to a point and back, waiting at either end: an elevator, a ferry, a platform | `x`, `y` (m, ±64), `z` (m, −64 to 100 km), `speed` (m/s), `ease` (`"smooth"`, the default: eased over its whole way, `speed` its average; `"accel"`: speeding up at `accel` and slowing down at `decel`, m/s² — over speed² / (2 × either) m — `speed` its fastest), `wait` (s) |
@@ -1457,6 +1510,7 @@ prims collide as their mesh, its hull when convex.
   | `belt` | carries whoever stands on it along its own y: an escalator, a walkway | `speed` (m/s) |
   | `passage` | a click on it, or E, takes whoever aims at it in or out, standing: from outside its object to its place inside — into a vehicle by a click on its hull —, from inside out across its thinnest side onto what is there — out by its door; inside its object is within the box round its solid parts' middles | `way` (`"both"`, the default; `"in"`: only in, its hull; `"out"`: only out), `x`, `y`, `z` (m, in its object's frame: where one stands going in, on its floor), `depth` (m, 1: how far past it one stands going out) |
   | `route` | goes through its points on a smooth curve, round and on again or there and back, stopping a while at each if asked: a boat on a tour, a train on its line | `points` (up to 64, `[x, y, z]` m in its own frame — or `[x, y, z, hx, hy, hz]`, gone through along its handle, leaving towards its tip; `[x, y, z, 0, 0, 0]` a corner, where it slows to a stop and turns), `speed` (m/s), `stop` (s), `at` (`"each"`: stops at every point; `"ends"`: only where it is kept and, there and back, at its last), `calls` (the points it stops at in the place of either, by their number — `[2, 5, [7, 20]]`: its second and its fifth as long as `stop` says, its seventh 20 s — and where it is kept: a bus at its shelters), `built` (`true`, a car's: it keeps the heights its points say — on a deck, a bridge, a plate — where a car's route lies on the land under it), `mode` (`"round"`, `"back"`), `face` (`"yes"`: turns to where it goes), `water` (`"yes"`: keeps its height over the sea), `name` (what this route is called among its routes; none, Route 1), `routes` (up to 7 other routes kept to be run instead, `{ name, points, speed, stop, at, mode, face, water }` each); on a starship, its trip to space: its points' z its height over the planet's round, up to 100 km, x and y across it, 1,000 km at most, `speed` up to 2,000 m/s and `accel` up to 30 m/s², facing where it goes (vehicles.md, A starship) |
+  | `garment` | a click on it, or E, puts an item of the wardrobe on whoever acts on it, at once, kept as their look — what of its category they wore put back by a second click; the hint says «Put on», then «Take off». A clothes shop's boards are its (their face's picture the item's, from the avatar library) | `item`: the item's id in the avatar library, `collection/name` (a clothes shop's boards show fifty everyday ones) |
   | `treasure` | found with E by whoever touches it: its points (XP) and coins, once to each player, by its id; the voucher is signed as it is set, by whoever sets it, and counts only when that is OVGrid's master account or an issuer it certified — anyone else's treasure is found and gives nothing; a prim, an object or a clone | `points` (XP, 0–1000, 50), `coins` (0–100, 10), `hunt` (the treasure hunt it is a chest of: found, the next chest's clue is said; the hunt's caps over all its chests); its `voucher` is the page's, never written in a build |
   | `game` | a piece of a game with prizes: a race passed through — its start, its checkpoints in `order`, its finish —, a shooting gallery clicked — its start (a bell: a round of `par` s) and its targets, from up to 15 m —, a treasure hunt's board (clicked: where its first chest is). Its owner's page referees it: signs what a match gives within its game's caps | `game` (`"race"`, `"gallery"`, `"hunt"`), `role` (`"start"`, `"checkpoint"`, `"finish"`, `"target"`), `order` (a checkpoint's, 1 first), `par` (s, 60: a race at par or under gives all its game allows, slower less; a gallery's round), `reach` (m, 4: how near a race's piece's middle one passes), `set` (the game's name, the same on all its pieces; the hunt's for a board) |
 
@@ -1624,7 +1678,9 @@ prims collide as their mesh, its hull when convex.
   the avenue on two ramps · 3 and a railway on a viaduct along its north side; `life` 0 bare · 1 lived in — awnings
   over its shops, café tables, kiosks, racks of bicycles, advertising columns, a fountain in its square and in each park,
   a playground, a trench behind its barriers — · 2 and green — a street for walking under its trees, pergolas and a
-  pattern in its square's paving, flower beds, a pond with its geese and a pen with its dogs in each park —; `seed`
+  pattern in its square's paving, flower beds, a pond with its geese and a pen with its dogs in each park — · 3 and its
+  shops open: the shops on its buildings' ground storeys furnished, each by what it is, in turn along a street — · 4 and
+  its homes furnished: every building `inside` `near`, its flats in rooms, a lobby in each, laid by nearness —; `seed`
   0–9999). Numbers only, by name;
   any left out is its generator's own. A city wants dry ground that falls 5 m at the most under it, whole inside one
   parcel: 250 × 190 m is twelve blocks, some 1,400 records, 154,000 triangles at the finest.
@@ -1686,8 +1742,9 @@ prims collide as their mesh, its hull when convex.
   along its avenues, trees round its edge, its rides' bulbs and its stalls lit by night (its `params`: `width` 120–220 and
   `depth` 110–200 m, `seed` 0–9999: its wheel's size and its tower's height, its rides' and stalls' colours). It wants dry
   land that falls 4 m at the most under it: 150 × 130 m is 110 parts, 22,100 triangles at the finest, 7 lights. Its wheel (40–54 m
-  across, 24–32 cabins of glass) and its carousel are ridden; its drop ring not yet. A seed makes no prize: lay the gallery's targets by hand, `ride` targets with the `treasure` behaviour on
-  its shelves (ten, 30–80 XP and 5–10 coins each).
+  across, 24–32 cabins of glass) and its carousel are ridden; its drop ring not yet. A seed makes no prize: its `edition` 2 leaves room for its shooting gallery south of its game stalls, by
+  the avenue up its middle — stand a gallery stall of the games there, as a record of the build (*Games with prizes*); its
+  `1` stood a booth whose targets were treasures laid by hand.
 - `at`: where its middle stands in the build's frame — `[x, y]` on the ground there, or `[x, y, z]`; `turn`: degrees
   counter-clockwise from above, as a part's `turn` about z (none: as the build's frame). `key`, optional, as a tree's.
 - `edition`: which of its generator's makings it is of — a `city`'s `2` has districts (a historic centre, an extension, a
@@ -1707,7 +1764,18 @@ prims collide as their mesh, its hull when convex.
   on it and round the city on its tour every few minutes; a pad on its hospital's roof; its `12`, its railway besides
   (its `vehicles`: `rail`, which has the rest too): a station on its viaduct — a platform level with its train's floor, a
   stair and a lift up from the street —, a train of two railcars between its viaduct's ends, calling at it; a lift at each
-  end of its footbridge;
+  end of its footbridge; its `13`, its shops open besides (its `life` 3): cafés, bars and restaurants with their tables,
+  shops with what they sell, offices, the word over each way in saying which;
+  its `14`, its train made right: track of rails on sleepers along its viaduct's north half (the `track` kind) and a
+  train of two coaches one walks into (the `coach` kind) — a cab at each end of the train and a gangway between them,
+  their doors sliding open on its platform's side at its station —, its platform as long as its train;
+  a `city`'s `15`, its bicycles besides (its `vehicles`: `bikes`, which has the rest too): two of ours between the hoops of
+  each of its racks, sat on and ridden;
+  its `16`, its homes furnished besides (its `life` 4): every finished building's storeys furnished inside and laid by
+  nearness — its flats in rooms, a lobby in every one, its shops —, from farther its shell;
+  its `17`, its cars ours: every car in its bays and every car round its blocks one of our own, in a car's palette, two
+  alike never side by side (its taxis' rank but), their lamps glowing and lighting nothing; its `18`, a streaming lounge in
+  every ground hall it furnishes as a hotel's (its hotels, its public buildings' halls) beside its reception;
   none, its first, as a city was first made. Write the latest unless a build must stay as it was.
 - **Its ground is the planet's own**, the land's edits aside: what it lays stands as its generator lays it there — a
   house's base down past the ground, its street levelled over it. Give it ground its generator takes (a neighbourhood:
