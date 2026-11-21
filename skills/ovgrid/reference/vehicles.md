@@ -741,7 +741,10 @@ from there. One object makes the whole train — an engine and a carriage or two
 so give its line curves of 10 m or more and keep it short (8–12 m). Lay the line's bed as a `road`
 through the same points (format.md), in the build's frame. Build it along its +y, its engine ahead, facing the way its
 route sets off: a route turns what follows it from how it stands at its start, so a train laid aslant of its way runs
-its whole line askew, and its rollers, lying along no axis of it, are no wheels.
+its whole line askew, and its rollers, lying along no axis of it, are no wheels. On a line there and back
+(`"mode": "back"`) a train keeps its front: it runs back the way it came, tail first — give it ends alike, or its
+engine at the end it sets off from. A `railcar` of the vehicle kind (format.md, *A car in one part*) is a train's car in
+one part: two on the same route, the second kept a car's length behind the first along its line, run coupled.
 
 ```json
 { "name": "train", "at": [0, 0], "turn": [0, 0, -90],

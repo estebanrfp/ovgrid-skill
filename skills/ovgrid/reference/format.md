@@ -121,8 +121,8 @@ its parameters (range, default, step, what each does), its faces and its triangl
 | `castle` | a wall: its `length` × 3.12 × its `height` + 2.08 + its `plinth`; a tower: its `girth` + 0.24 (0.6 under a cone) square × its `height` + `rise` + 2 (or its cone) + its `plinth` | 0 walls, 1 what is walked on (the wall walk, a tower's platform), 2 trim (base course, merlons' caps), 3 glass, 4 roof (a tower's cone), 5 floors (a tower's chamber's), 6 walls inside (that chamber's) | a piece of a castle: a stretch of curtain wall with its wall walk and merlons, a tower the walk goes through, a gatehouse, its portcullis, or a keep — see *A castle* |
 | `vehicle` | its body's own — a saloon 2.56 × 5.1 × 2 m, its mirrors with it —; a wheel's; its door's | 0 paint, 1 glass, 2 what is dark (bumpers, arches, tyres), 3 headlamps, 4 rear lamps, 5 its inside, 6 its second tone (a livery's band, a lorry's box), 7 a livery's sign or lights; a wheel's rim | a car's body in one part, driven as any car is: its front its +y, its driver at +x — see *A car in one part* |
 | `pool` | what its `length`, `width`, `depth`, `deck` and the ground under it make | 0 paving (coping, deck, the steps' treads), 1 lining (the basin, the steps in the water), 2 sides (its base, the steps' flanks) | a pool to swim in, in one part: a basin lined with tiles and raised over the ground (a build does not dig), a coping and a deck round it at its rim, steps up to the deck and steps down into the water; its water comes with it — «A pool in one part» below |
-| `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, storage, a bathroom's and a kitchen's, a lobby's (`counter`, `mailbox`, `bench`, `trolley`, `stand`), its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
-| `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall`, and on a building's ground storey `lobby` or `reception` (its desk facing its first `ways`) —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
+| `furniture` | what its `type`, its model, `width` and `depth` make — its height its type's, a person's | 0 frame (wood or painted; a picture's frame), 1 cover (upholstery; a rug; a picture's mount), 2 bedding (mattress, sheets, pillows; a lamp's shade), 3 throw (a duvet, cushions; leaves), 4 metal, 5 top (a table's; a pot, a vase), 6 art (a picture's painting) | one piece in one part, its front +y, its bottom the floor: `type` `sofa`, `armchair`, `chair`, `stool`, `bed`, `table`, `coffee`, `side`, `desk`, `rug`, `picture`, `plant`, `ornament`, `lamp` or `rack`, storage, a bathroom's and a kitchen's, a lobby's (`counter`, `mailbox`, `bench`, `trolley`, `stand`), a castle's (`throne`, `banquet`, `barrel`, `chest`, `weapons`, `trophy`, `tapestry`, `sconce`, `brazier`, `chandelier`, `hearth`, `altar`, `cage`, `fourposter`), its model by the parameter named for it (`"sofa": "chaise"`, `"headboard": "tufted"`, `"rug": "fitted"`), and a `look` (a picture's: its painting); sat on where its recipe says (its `seat` given by the import); varied with no material more by `fabric`, `wood`, `tall`, `legs`, `stout` — see *A piece of furniture* |
+| `room` | its floor, `width` × `depth`, and its `height` | 0 wood, 1 fronts, 2 rug, 3 soft, 4 throw, 5 metal, 6 stone, 7 ceramic, 8 leaves, 9 dark, 10 art | a room furnished whole by what it is — `type` `living`, `dining`, `kitchen`, `bedroom`, `bath`, `toilet`, `study`, `lounge`, `passage`, `landing`, `closet` or `hall`, and on a building's ground storey `lobby` or `reception` (its desk facing its first `ways`), and a castle's `greathall`, `solar`, `chapel`, `cookhouse`, `armoury` or `dungeon` —: what nobody sits on in it in one part, what is sat on parts of their own of the `furniture` kind that its recipe stands, seats; laid out from its `walls`, `windows` and where it is come into (`ways`), in a `palette` and its `look` alike — see *A furnished room* |
 | `lantern` | its own: 0.3 × 0.3 × 0.46 m | 0 glass (it glows), 1 frame | a lamp's housing — a base, a box of glass, a pointed cap — whose middle is its flame, where a part's light sits: give it `"light": { "on": "night", "range": 8 }` and `"surface": { "emissive": 0.9 }` to light it; under a metre, so its light passes it as its own fixture. A bridge's `lamps` stand one on each of its posts |
 | `column` | plinth width, depth, height | 0 shaft, 1 base, 2 capital | upright |
 | `arch` | width, wall depth, height | 0 its two faces, 1 the opening, 2 outside, 3 feet | wall in x–z, opening through y |
@@ -708,12 +708,19 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   wall walk is `height` (5–10 m) over its floor, 2.2 m wide between a parapet of merlons outside and a rail inside, open at
   both ends so that the walk goes on into what it meets. `gap` 1 opens 2.4 m of its inner rail at its middle: stand a
   flight of the `stairs` kind there, square to the wall, its top at the wall's inner face (1.5 m in from its middle line)
-  and level with the walk.
+  and level with the walk. On a slope a wall and the towers it meets stand on floors of their own: `drop0` and `drop1`
+  (0–12 m, left out for none) are how far its walk steps down at its −x end and at its +x, to a tower that stands lower —
+  a flight of steps 0.19 m by 0.30 m, its parapet and its rail down with it, walked as a slope; the two together no more
+  than its length leaves with 2 m of level walk between them (0.19 m for every 0.30 m of what is left), and its `gap` is
+  then at the middle of that level walk. Give it the `plinth` its lowest ground asks: up to 24 m. `dressed` 1 gives it
+  buttresses along its outside, one every 7.5 m at the most, and a course of trim under its parapet: it then stands 0.9 m
+  out past its face (3.9 m deep, where plain it is 3.12).
 - **`piece` `tower`**: `shape` `round` (twelve flat faces) or `square`, `girth` 8–14 m face to face, solid up to the wall
   walk, a chamber there level with it; `joins` says where the ways through that chamber are — `through`: its −x and its +x
   (a tower along a wall, its outside its +y) · `corner`: its −x and its −y (a corner's, its outside between its +x and its
   +y; turn it 90°, 180°, −90° for the other corners). `rise` 4–9 m is how far its platform stands over the walk; `top`
-  `battlements` or `cone`.
+  `battlements` or `cone`. `dressed` 1 gives it a course of trim round it at its wall walk and loops through its
+  chamber's wall — narrow slits one looks out by —, on each face that is no way through (every other, of a round one's).
 - **A tower's `stair`** (1, under `battlements`): a winding stair from its chamber up to its platform — steps two metres
   wide round a solid core, a hatch in the platform where they come up. With it the way between the tower's two ways goes
   round the core.
@@ -725,9 +732,29 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
   doors come with it (the door kind's, opening inwards as one comes near). Its box is `length` + 6.82 × `depth` + 2.9 ×
   15.6 + `height` + `plinth`; its floor is its box's bottom raised by `plinth`. Stand it on the land, 4 m and more clear of
   walls and towers, its front to where one comes from: 2,450 triangles from beside it, 714 from a street away, 196 from far.
+- **A keep's `furnished`**: `heraldic` or `azure` (left out, or `none`: bare) — its seven rooms furnished by what they
+  are, each a part of the `room` kind its recipe stands (a cookhouse, an armoury and a dungeon in its undercroft; its great
+  hall; two solars and a chapel over it), told of its walls, its windows and its doorways from the keep's own plan; what
+  is sat on and what burns in them come with them. Give it no rooms, no furniture and no lights of your own. With it a keep
+  of 18 × 14 m is 51 parts, 11,500 triangles from beside it, 8 lights by night and 11 fires — within what is fair for a build.
+- **`piece` `well`**: a well, 3.2 × 2.6 m under its roof, 3.1 m high: a curb of stone 2.2 m across and 0.9 m high round its
+  shaft, a windlass between two posts, a bucket on the curb. One stands on its curb; nobody falls in.
+- **`piece` `stable`** and **`smithy`**: a lean-to `length` long (6–20 m) and 4.6 m deep, its back (its −y) to a wall — stand
+  it with its back at a curtain wall's inner face, 1.52 m in from the wall's middle line —, its open front its +y: posts no
+  more than 3.2 m apart, a roof falling from 4.2 m at its back. A stable has stalls between its posts, a manger along its
+  back, a barrel and a chest; a smithy its forge — which burns: its flame comes with it —, its anvil, a quench barrel and a
+  rack of spears. What is in them comes with them, parts of the `furniture` kind: write none yourself. On a floor of its
+  own: its `at` z the highest ground under it, its `plinth` down past the lowest.
 - **Where a wall meets a tower**: put the wall's end inside the tower's stone — `girth / 2 − 0.02` from the tower's middle,
   and for a round tower no farther than `(girth / 2 − 0.75) / 0.866 − 0.02` (a 10 m round tower: 4.89 m; an 8 m one: 3.73).
   Both at one `height`, on one floor (the same z for their feet): the walk then goes through.
+- **A piece's `style`** (left out: its own, as above): `norman` — broad square merlons, a round arch over its gate, low
+  caps, a keep's windows narrow —; `gothic` — tall cones, battlements out on corbels —; `alcazar` — merlons with pointed
+  caps, a round arch, corbels —; `moorish` — stepped merlons, a horseshoe arch —; `fairytale` — cones one and a half times
+  a tower's girth, their roofs blue —; `ruined` — its parapet breached, some merlons gone, a tower open to the sky (no
+  cone), a keep's turret without its cap. Give every piece of one castle the same `style`, a portcullis its gatehouse's
+  (it is as high as that style's arch). Four looks more suit them: `plaster` (lime and ochre), `white` (white under zinc
+  scales), `mossy` (weathered stone), `brick` (brick and sandstone). A seed's `style` does all of it for a whole castle.
 - **`piece` `gate`**: a gatehouse `length` long (2–60 m; between two towers 6 m apart, some 6.4 m), its front 3.5 m out from
   the wall's middle line: a way through 3.6 m wide (narrower where its length leaves less: 0.8 m of stone either side)
   under a pointed arch that springs at 2.6 m and rises to 4.8 m at the most, floored level with its floor; the wall walk
@@ -803,7 +830,11 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
     corner, a `roadsign` of works before it;
   - a `pergola` (4.6 × 3.2 × 2.9 m): four posts, beams at their heads and what lies across them — `modern` nine slats on
     slim steel, `classic` rafters on cast posts with brackets, `oldtown` thick timber, `industrial` a sheet of one pitch;
-    looks `black`, `green`, `timber`, `aluminium`. Shade for a bench: stand the bench at the same place, under it.
+    looks `black`, `green`, `timber`, `aluminium`. Shade for a bench: stand the bench at the same place, under it;
+  - a `helipad` (16 m across and 0.44 high; `width` 10–24): a disc of concrete of twelve sides, its yellow ring and its
+    white H painted, a lamp at each corner — give it `"emissive": 0.9` on face 6 and `"light": { "on": "night", "range": 0 }`
+    and they glow green by night. Its slab's top is 0.3 m over what it lies on: on the ground, or on a flat roof clear of
+    what stands there. A `windsock` (0.5 × 2.1 × 5.2 m) beside it: a mast at its back, its sock out along its front.
 - **What glows**: a lamp's glass (face 2), a signal's lens (face 4 red, 5 amber, 6 green) and a sign's letters (face 2) glow
   where the face is given `"emissive": 0.9` and the part `"light": { "on": "night", "range": 0 }` — by night, lighting nothing
   round it, at no light's cost. Give a lamp a `range` (up to 10) only where the ground under it must be lit: a build holds
@@ -823,7 +854,8 @@ building's. `fit`: `fitted` (as left out) or `bare`; `lighting`: `night` (as lef
 
 **A car in one part** (`vehicle`): when a street, a car park or a city needs cars and none of them is the subject, do not
 build each from parts (vehicles.md is for a car that is the subject: twenty parts and 3,000 triangles and more). `body`:
-`compact` (4.3 m), `saloon` (5.1), `estate` and `suv` (5.2), `pickup` (5.9), `van` (5.7), `lorry` (8.2) or `bus` (11.6);
+`compact` (4.3 m), `saloon` (5.1), `estate` and `suv` (5.2), `pickup` (5.9), `van` (5.7), `lorry` (8.2) or `bus` (11.6) —
+or `railcar` (16 m, 12 to 20): a train's car, on rails, in an object that says it is a train (vehicles.md, *A train*) —;
 `length` longer or shorter within what its body takes; `paint` — `white`, `silver`, `graphite`, `black`, `red`,
 `burgundy`, `blue`, `navy`, `green`, `sand`, `yellow`, `orange`: a tint, so cars alike but for it share a mesh —;
 `livery` `taxi`, `police`, `ambulance` or `ices` (an ice cream van's) in its paint's place, a sign or a bar of lights on
@@ -911,6 +943,30 @@ floor, a table 0.75, a coffee table 0.4, a side table 0.52, a mattress 0.52.
 | `bench` | `bench`: `slatted`, `padded`, `block` — no back; sat on, a place to each 0.66 m | 1–3 × 0.38–0.6, its seat 0.45 m up |
 | `trolley` | `trolley`: `bellman` (a carpeted deck, tubes at its ends, a rail along its top, two suitcases, 1.85 m), `flat` (a flatbed, a handle at one end) — a luggage trolley | its model's |
 | `stand` | `stand`: `leaflets` (four tiers on a panel, 1.5 m), `tower` (three on each of four sides) — a stand of leaflets | its model's |
+| `throne` | `throne`: `high` (a tall back to a point, 0.9 × 0.8, 1.9 m), `canopied` (on a dais under a canopy on two posts, 1.4 × 1, 2.9 m) — sat on | its model's |
+| `banquet` | `banquet`: `trestle` (a board on trestles), `high` (a high table under its cloth) — laid: a trencher and a goblet a place, candlesticks; its top 0.78 m up, its box 1.16 with what is laid on it | 2–6 × 0.9–1.3 |
+| `barrel` | `barrel`: `upright` (0.72 across, 0.95 m), `lying` (on its side in a cradle, 0.95 × 0.8 × 0.85), `stack` (three, 1.65 × 0.95 × 1.5) | its model's |
+| `chest` | `chest`: `plain`, `banded` (straps of iron, a lock plate), `open` (its lid stood back, gold heaped in it: 0.92 m) — 0.62 m | 0.8–1.4 × 0.5–0.7 |
+| `weapons` | `weapons`: `spears`, `halberds` (a rack of six, 1.6 × 0.4 × 2.2), `armour` (a suit of armour on its stand, 0.7 × 0.62 × 1.95), `anvil` (an anvil on its block, a smithy's: 0.9 × 0.5 × 0.85), `sword` (that anvil, a sword stood in it: 1.5 m) | its model's |
+| `trophy` | `trophy`: `swords` (two crossed behind a small shield, 1.3 × 1.1), `shield` (0.8 × 0.9) — hung, 10 cm deep | its model's |
+| `tapestry` | `tapestry`: `woven` (2.2 m tall, a border down each side, a fringe), `banner` (2.4 m, its foot cut to two tails) — hung from its pole, 6 cm deep | `width` 0.8–4 |
+| `sconce` | `sconce`: `torch` (on a bracket, 0.3 × 0.3 × 0.6), `candles` (two, 0.4 × 0.2 × 0.4) — hung; it burns | its model's |
+| `brazier` | `brazier`: `bowl` (a bowl of iron on three legs, 0.84 across, 0.86 m), `basket` (a fire basket on a stem, 0.6, 1.1 m), `stand` (a standing torch, 0.4, 1.9 m) — it burns | its model's |
+| `chandelier` | `chandelier`: `ring` (a ring of iron, candles round it), `tiers` (a smaller ring over it) — hung by its chain: its box's top is where it hangs from, 1.4 m over its ring; candlelight | `width` 1.2–2.6 across |
+| `hearth` | `hearth`: `hall` (a great hearth: jambs, a mantel, a hood, logs on it), `kitchen` (a spit across it and a cauldron) — its back to a wall, 2.6 m; it burns | 2–3.6 × 0.9–1.2 |
+| `altar` | `altar`: `altar` (a block of stone on a step, a cloth, a cross and two candles: 1.4–2.4 × 0.7–0.9, 1.7 m), `lectern` (0.6 × 0.6 × 1.37), `font` (0.8 across, 1 m) | `altar` its `width` × `depth`; the others their model's |
+| `cage` | `cage`: `cage` (an iron cage, 1.2 × 1.2 × 2), `stocks` (1.6 × 0.5 × 1.3), `pallet` (a pallet of straw on the floor, 0.9 × 1.9: lain on) — a dungeon's | its model's |
+| `fourposter` | `fourposter`: `canopy` (a tester, a valance and curtains), `posts` — a four-poster bed, 2.4 m; lain on, as a bed | 1.4–2 × 2.1–2.3 |
+| `flame` | `flame`: `fire`, `blaze`, `embers`, `glow` — what burns of a piece, which the piece's own recipe stands: never write one | its model's |
+| `cannon` | `cannon`: `field` (on its carriage, two wheels and a trail: 1.5 × 2.6 × 1.25), `wall` (on a truck of four small wheels, low enough for a crenel: 0.9 × 1.9 × 0.9), `shot` (a pile of five balls, 0.7 across) — its muzzle its front | its model's |
+| `stores` | `stores`: `crate` (0.8 a side), `crates` (two and a third on them, 1.7 × 0.9 × 1.5), `sacks` (three and one across them, 1.4 × 0.9 × 0.8), `bale` (hay, bound twice: 1.2 × 0.6 × 0.5) | its model's |
+| `ladder` | `ladder`: `long` (6.2 m, its foot 2.2 m out), `short` (3.4 m, 1.3 m out) — it leans back: put its back (its −y) to a wall's face | its model's |
+| `gallows` | `gallows`: `gallows` (a scaffold up five steps, a post, a beam, a rope: 2.6 × 2.2 × 4.2), `gibbet` (a post, an arm, a cage of iron on its chain: 1.4 × 0.6 × 4.4) | its model's |
+| `stall` | `stall`: `awning` (a counter on trestles under an awning on four posts, what it sells on it: 2.6 × 1.8 × 2.5; its awning takes a cloth colour), `cart` (a hand cart, sacks in it: 1.3 × 2.4 × 1.2) | its model's |
+| `flagpole` | `flagpole`: `pole` (a flag out from a mast of 8 m in a block of stone), `standard` (a banner hung from a bar across a staff, 3.6 m) — its cloth takes a colour | its model's |
+| `lantern` | `lantern`: `stone` (a lantern of stone on its shaft, 1.5 m), `post` (on a post of iron, 2.6 m), `candelabrum` (standing, five candles, 1.7 m: indoors) — lit by night | its model's |
+| `campfire` | `campfire`: `logs` (logs in a ring of stones), `spit` (two stakes, a bar and a cauldron over it: 1.6 × 1.1 × 1.2) — it burns | its model's |
+| `statue` | `statue`: `knight` (on his plinth, his sword before him: 0.8 × 0.8 × 2.6), `cross` (a cross of stone on three steps: 1.4 × 1.4 × 3.2) | its model's |
 
 **A picture**: its look is its painting — `"look": "tivoli"`, one of the bank's paintings in the frame that suits it (catalog.json
 → `kinds`: `mondrian`, `cafe`, `cottage`, `tivoli`, `twilight`, `snow`, `kashmir`, `yosemite`, `garden`, `bath`, `bottle`, `bamboo`,
@@ -919,6 +975,13 @@ canvas as its `scale`). Give it the painting's shape: its canvas is the picture 
 canvas none), so a `framed` picture of a painting of 1.1 × 0.84 m shown at 1.3 times is `"width": 1.54, "height": 1.18`. Hang it
 with its back on the wall's face, its middle about 1.7 m over the floor (higher on a game's storeys of 4 m: 1.9–2.1). What dresses
 a room collides with nothing: a rug walked over, a picture, a plant, a lamp, a coat rack walked through.
+
+**What burns** — a `sconce`, a `brazier`, a `chandelier`, a `hearth`, an altar's candles — comes with its flame: a small part of its
+own that its recipe stands where it burns (as a bridge stands its lamps), embers that glow, a fire over a torch, a brazier and a
+hearth, and a light by night reaching 4–10 m. **Write no `light` and no `particles` on the piece**, and no `flame` part. A build's
+lights are few (budget.md): eight within 30 m is fair — a furnished room (below) lights two of its flames in a great hall and one
+elsewhere, and the rest only glow. What hangs — a `trophy`, a `tapestry`, a `sconce` — has its back (−y) on the wall's face and its
+bottom where it hangs, as a picture; a `chandelier`'s `at` is 0.7 m under where its chain is hung.
 
 `width` and `depth` 0 (or left out) are the type's own; one past its range is held to it. Its looks are by type
 (catalog.json → `kinds`: a sofa's `linen`, `boucle`, `charcoal`, `leather`, `navy`, `olive`; a bed's `oak`, `walnut`, `white`,
@@ -980,6 +1043,19 @@ or a pair of armchairs, a runner, pictures, plants — a small hall the desk and
 luggage trolley, groups of seats on rugs about low tables (four at the most; a pair of armchairs where none fits), pictures, plants. What it stands keeps off every one of
 its `ways`, a side open to an alcove too. Tell it a stair's foot as a `way` and a `keep` 2.2 m deep, a core standing in it as
 `closed` with the landings before its doors as `ways` and `keep`.
+
+**A castle's rooms** (`type` `greathall`, `solar`, `chapel`, `cookhouse`, `armoury`, `dungeon`; `height` up to 10): laid out from
+what they are told as any room, in a castle's palettes — `heraldic` (dark oak, red and gold) or `azure` (dark oak, blue and steel).
+A great hall: at its head — the short side farthest from where it is come into — a throne under its canopy between two braziers;
+two long tables on trestles, benches along both sides of each, an aisle and a runner between them; a hearth at its foot, across
+from the throne; chandeliers over the aisle; tapestries, banners, trophies of arms and torches on its walls; chests in its corners.
+A solar: a four-poster, a chest at its foot, an armoire, a table and its chair, a brazier, a suit of armour, a tapestry, candles.
+A chapel: an altar against its head wall — under its window, where it has one —, a lectern, a font by the way in, pews either
+side of an aisle, banners. A cookhouse: a hearth with its spit and its cauldron, a long table, barrels, a chest. An armoury: racks
+of spears and halberds, suits of armour, chests banded with iron, trophies. A dungeon: a cage, stocks, pallets of straw to lie on,
+a barrel, a torch. What is sat or lain on (a throne, benches, a chair, a four-poster, a pallet) and each flame are parts of
+their own, the room's recipe's. A keep of the `castle` kind furnishes its own (its `"furnished"`): write a castle's room only
+where there is no such keep.
 
 Its look is its palette, given twice, as `palette` and as `look`: `oak` (oak and linen), `walnut` (walnut and bouclé), `white` (white
 and charcoal) — what is sat on in it dressed alike. Its variety is the furniture kind's five, given to the whole room: `"fabric"`
@@ -1490,15 +1566,45 @@ prims collide as their mesh, its hull when convex.
   through a gatehouse at the middle of its south side (its −y), stairs of stone up to its wall walk — (its `params`: `width`
   and `depth` 48–140 m, the rectangle of its walls' middle lines; `height` 5–9 m, its wall walk's; `towers` 0 round ·
   1 square · 2 round at its corners, square along its walls; `tops` 0 battlements · 1 cones · 2 cones at its corners;
-  `look` 0 grey stone · 1 old blocks · 2 sandstone · 3 mixed stone; `moat` 0 none · 1 a moat; `seed` 0–9999). Its gatehouse
+  `look` 0 grey stone · 1 old blocks · 2 sandstone · 3 mixed stone · 4 lime and ochre · 5 white, zinc roofs · 6 weathered
+  stone · 7 brick and sandstone; `moat` 0 none · 1 a moat; `style` 0 its own · 1 norman · 2 gothic · 3 alcazar · 4 moorish ·
+  5 fairytale · 6 ruined — a style sets its towers, their tops and its stone, whatever those three numbers say —;
+  `furnished` 1 its keep furnished · 0 bare; `seed` 0–9999). Its gatehouse
   stands between the two towers of its way in, a portcullis in it that rises as one comes near; with a moat — water from
   its walls 14 m out, held by a bank of stone, laid where the ground round it falls 2 m at the most (elsewhere it says so
   and has none) — a drawbridge spans it before the gate, raised on a click, and its floor stands over the water. A castle
-  wants dry ground that falls 5 m at the most under its walls, and 28 m of its own round its walls' lines with a moat, 16
-  without: 76 × 64 m is nine towers, eight walls, a gatehouse, a keep and two stairs, some 50 parts, 11,300 triangles at the finest.
-  In its courtyard's north stands its keep, its front to the gate, and every tower under battlements has its winding stair.
+  wants dry ground, and 28 m of its own round its walls' lines with a moat, 16 without; it stands on any ground, level or
+  not — a hillside, a ridge, a hilltop, a cliff's edge —, and never asks for the land to be changed: with no moat to hold it
+  level each tower and each stretch of wall stands on a floor of its own, a hand over the highest ground under it, its base
+  down past the lowest (24 m at the most under one piece: a chasm it refuses, and says so); its wall walk steps down from
+  one to the next by a flight at a wall's end; its stairs up to that walk, the way in from its gate and the way down from
+  its keep are a ramp where the land is near and else flights of steps with landings, and before its gate, where the land
+  falls away, a terrace and steps along the slope. Its gate looks where its seed is turned (`turn`): turn it downhill, or
+  along the slope. What it could not do there it says in its notes (a stair no stretch of wall takes).
+  76 × 64 m is nine towers, eight walls, a gatehouse, a keep, two stairs, a well, stables and a smithy, some 125 parts, 25,000 triangles at the finest.
+  In its courtyard's north stands its keep, its front to the gate — furnished, in one of a castle's two palettes by its `seed`:
+  its great hall, its solars, its chapel, its cookhouse, its armoury and its dungeon —, and every tower under battlements has
+  its winding stair.
   Its `edition` `1` is its walls and towers alone, a plain way in; its `2`, its gatehouse, portcullis, drawbridge and moat
-  besides; its `3`, its keep and its towers' stairs.
+  besides; its `3`, its keep and its towers' stairs; its `4`, its keep furnished; its `5`, its styles; its `6`, its
+  courtyard — a well, stables against its west wall and a smithy against its east; its `7`, on any ground — up to its
+  `6` it is level all round, and refuses ground that falls more than 5 m under its walls; its `8`, what stands in it,
+  pieces of the furniture kind: by its gate a cannon either side trained on the way in, its shot and a lantern of stone;
+  crates, sacks and a bale by its stables, barrels, a crate and a sword in an anvil by its smithy; a ladder against a
+  wall; by its `seed` a market (two stalls, a hand cart), a gallows and stocks, a yard of arms (racks of spears and
+  halberds, a suit of armour, bales) or a cross of stone and a knight; a flag and two standards on its keep's roof; a
+  tree or two of its style's species; five hens before its stables. Stand nothing of these beside a castle's seed: it
+  has them. Its `9`, its walls and its towers dressed (`dressed`): buttresses, courses of trim, loops.
+  Its styles: Norman — square towers under battlements, broad and low, old blocks —; Gothic — round towers, cones on its
+  corners, grey stone —; a Spanish alcázar — square towers, cones on its corners, pointed merlons, sandstone or brick —;
+  Moorish — square towers, stepped merlons, a horseshoe gate, lime and ochre —; a fairy tale's — slender round towers under
+  tall blue cones, white —; a ruin — weathered, breached, its towers open, a fallen block at each wall's foot. Castles many
+  together: give all but one or two `furnished` 0 — a furnished keep is 8 lights and 11 fires, and a build brings 32 and 48
+  at the most (six of 48 × 48 m on one parcel, two furnished: 459 parts, 96,100 triangles at the finest, 28 lights).
+  A seed makes no treasure (a treasure's voucher is signed by whoever sets it; what a seed makes is every peer's): hide a
+  castle's by hand, chests of the build beside its seed with the `treasure` behaviour (*Treasures to find*) — behind its
+  keep, in a corner tower's chamber, on a tower's platform up its stair, on its keep's roof, in its dungeon, on its moat's
+  bed —, the harder to come to the more they give (40 to 150 XP, 5 to 25 coins).
 - `at`: where its middle stands in the build's frame — `[x, y]` on the ground there, or `[x, y, z]`; `turn`: degrees
   counter-clockwise from above, as a part's `turn` about z (none: as the build's frame). `key`, optional, as a tree's.
 - `edition`: which of its generator's makings it is of — a `city`'s `2` has districts (a historic centre, an extension, a
@@ -1513,7 +1619,12 @@ prims collide as their mesh, its hull when convex.
   or two police cars by its hospital or its police station; an ice cream van by a park; a lorry on each site;
   its `10`, its traffic besides (its `vehicles`: `traffic`, which has the rest too): cars round its blocks, each in
   its lane — a police car and a taxi of ours among those of the vehicle kind —, waiting at its junctions, its buses
-  with them, its signals' lamps on a cycle: all of it by the shared clock;
+  with them, its signals' lamps on a cycle: all of it by the shared clock; its `11`, its heliport besides (its
+  `vehicles`: `air`, which has the rest too): a pad and a windsock on its landmark's roof, one of our helicopters kept
+  on it and round the city on its tour every few minutes; a pad on its hospital's roof; its `12`, its railway besides
+  (its `vehicles`: `rail`, which has the rest too): a station on its viaduct — a platform level with its train's floor, a
+  stair and a lift up from the street —, a train of two railcars between its viaduct's ends, calling at it; a lift at each
+  end of its footbridge;
   none, its first, as a city was first made. Write the latest unless a build must stay as it was.
 - **Its ground is the planet's own**, the land's edits aside: what it lays stands as its generator lays it there — a
   house's base down past the ground, its street levelled over it. Give it ground its generator takes (a neighbourhood:

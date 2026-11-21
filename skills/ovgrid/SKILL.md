@@ -10,7 +10,7 @@ Second Life. What is built there is a **recipe**, never a mesh: objects of parts
 or a *kind* (door, roof, stairs, rock…) with a few named parameters in metres and degrees, its faces
 dressed from a bank of 3,091 real-size materials, and what it does — its light, its particles
 (smoke, fire, steam…), its behaviour (a door that opens, sails that turn), its script; linked clones
-of objects; trees as a species and a seed; herds of animals as a species, a home and a seed; whole neighbourhoods and cities as a seed — a generator's name and a few numbers. Every peer meshes the same thing from the same recipe.
+of objects; trees as a species and a seed; herds of animals as a species, a home and a seed; whole neighbourhoods, cities and castles as a seed — a generator's name and a few numbers. Every peer meshes the same thing from the same recipe.
 You write that recipe as one JSON document, anchored at the coordinate the person gives you and
 fitted to a survey of the place; the person brings it into the world — pasted or dropped into the
 editor's *Builds as JSON*, or opened with `?import=` and its address — sees it as a ghost where
