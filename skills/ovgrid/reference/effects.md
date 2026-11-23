@@ -86,11 +86,22 @@ and each preset's own values: catalog.json → `particles`. A string names a kit
 
 - **Lamps** (`light`, format.md): warm (`[1, 0.72, 0.42]`), `on: "night"`, ranges of 5–8 m; one
   for each room that is lived in, a part of its house's object (its walls then stop the light, its
-  windows let it out); street lamps along the ways and round the square, every 12–20 m, one lamp
-  object cloned.
+  windows let it out); street lamps along the ways and round the square, near enough for their pools
+  to touch (below), one lamp object cloned.
+- **A lamp shines from where it glows**: a part's light comes from the middle of its glowing faces — a street lamp's
+  from its lantern, a floor lamp's from its shade, a screen's from its face —; a light of its own on a part that glows
+  nowhere, from the part's middle. A street lamp of the street kind — a `lamp`, an `arm` or a `double`, its lantern's face 2
+  given `"emissive": 0.9` and the part `"light": { "on": "night", "range": 0 }`, no `zone` and no `cycle` (format.md, *What
+  stands in a street*) — lights the ground by night on its own: warm, down from its lantern, 10 m from it at the most — the
+  twelve nearest the eye, the rest glowing —, and is none of the lights a build is held to. By its style its lantern is
+  5.4–5.9 m up on a 6 m `lamp`, 6.9–7.7 m at the end of an 8 m `arm` and 7.9–8.7 m over a 9 m `double`'s post (one light for
+  both its heads), so its pool on level ground is 8.1–8.4, 6.3–7.2 and 4.9–6.1 m round: pools touch where `lamp`s stand
+  16 m apart at the most, `arm`s 12.5 and `double`s 9.5. At their edges the light has faded to nothing: stand them nearer for
+  a way lit all along. Given a `range` of its own instead (up to 10), it is a light of the build's as any other — counted
+  among them, lit as its `on` says, with no cone but one it is given.
 - **Fires are lights**: an inn's hearth can be its only lamp; a campfire lights a square.
 - **What only glows**: `light: { "range": 0 }` — a lantern for looks, embers — lights nothing and
-  costs nothing.
+  costs nothing; but a street kind's `lamp`, `arm` or `double` `"on": "night"` lights the ground as well (above).
 - **On a cycle**: `"cycle": [every, from, to]` (seconds) in a part's `light` — it is on only from
   `from` to `to` of every `every` seconds of the clock every peer shares, its glow with it, and off the
   rest: a traffic signal's lamp, a beacon, a barrier's lamp that blinks (`[1.2, 0, 0.6]`). `to` before
@@ -113,7 +124,7 @@ example; catalog.json → `behaviours` every range).
 | `spin` | windmill sails, a water wheel, a weathervane, a carousel, a sign | an object whose own z is the axle: sails `"turn": [90, 0, yaw]` (axle level), `{ "type": "spin", "speed": 12 }` °/s |
 | `bounce` | a ball, a toy, a sign that jumps | `{ "type": "bounce", "height": 0.6 }`: up along its own z and back as a ball falls, over and over; whoever stands on it goes with it |
 | `move` | an elevator, a lift bridge, a ferry, a moving platform | an object, `{ "type": "move", "z": 3.2, "speed": 1.5, "wait": 4 }` — its own axes, there and back |
-| `lift` | a lift between floors that waits to be called: in a house, a tower, a vessel | its platform, rails and buttons, parts of one object, each `{ "type": "lift", "stops": [-3.8, -7], "group": "lift", "button": "none" }` — a floor's button `"button": "stop", "stop": 1` —, a `call` button at each stop; with doors: each leaf `"door": 0.85` (how far it slides open along its own x) and, a landing's, `"landing": 1, "button": "stop", "stop": 1` — it stays there, opens while the lift stands there and calls it on a click (a `building` has all of this by itself) |
+| `lift` | a lift between floors that waits to be called: in a house, a tower, a vessel | its platform, rails and buttons, parts of one object, each `{ "type": "lift", "stops": [-3.8, -7], "group": "lift", "button": "none" }` — a floor's button `"button": "stop", "stop": 1` —, a `call` button at each stop; its floors shown, parts of the `lift` kind (format.md): over each call button a `display` with `"button": "none"` and its `"landing"` — the stop it stands at, 0 where it is kept —, a `plate` with its `label`, a `display` that goes with it on its post, its buttons one `panel` (`"button": "panel"`: a click on it to the stop of the button it falls on); with doors: each leaf `"door": 0.85` (how far it slides open along its own x) and, a landing's, `"landing": 1, "button": "stop", "stop": 1` — it stays there, opens while the lift stands there and calls it on a click (a `building` has all of this by itself) |
 | `belt` | a conveyor, an escalator, a moving walkway | `{ "type": "belt", "speed": 0.6 }` carries along its own y; stairs rise along their y: a flight of the stairs kind given it carries one up it (or down it, below 0) a step at a time, a box pitched along its slope smoothly |
 | `passage` | in and out of a vehicle — or anything closed — by a click, standing | its hull's parts `{ "type": "passage", "way": "in", "x": 0.6, "y": 3, "z": 1.6 }` (its floor inside, in its object's frame), its door's `"way": "both"` with the same place: a click on its door from inside puts one out past it |
 | `route` | a tour boat, a train, a cart on its round | an object, `{ "type": "route", "points": [[0, 40, 0], [30, 60, 0], [60, 20, 0]], "speed": 3, "stop": 10 }` — through its points and on again (`"mode": "back"`: there and back — a train tail first, its front kept; anything else turned round at each end), turning to where it goes, stopping at each (`"at": "ends"`: only where it is kept) |

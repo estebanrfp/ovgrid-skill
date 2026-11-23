@@ -8,9 +8,12 @@ description: Build whole environments in OVGrid, a planet shared peer to peer in
 OVGrid is a planet in the browser, shared peer to peer, where people build as they did in
 Second Life. What is built there is a **recipe**, never a mesh: objects of parts, each a prim shape
 or a *kind* (door, roof, stairs, rock…) with a few named parameters in metres and degrees, its faces
-dressed from a bank of 3,091 real-size materials, and what it does — its light, its particles
+dressed from a bank of 3,427 real-size materials, and what it does — its light, its particles
 (smoke, fire, steam…), its behaviour (a door that opens, sails that turn), its script; linked clones
 of objects; trees as a species and a seed; herds of animals as a species, a home and a seed; whole neighbourhoods, cities and castles as a seed — a generator's name and a few numbers. Every peer meshes the same thing from the same recipe.
+Besides, in format.md: regions of four or nine lands, their roads joined, a train round them; amusement parks, a big coaster,
+a ghost train; a casino of six games; fishing (19 species); Mossbright Gardens, a gardening game (10 crops); tables laid in
+one part (`tableware`, seven settings); two seasonal themes, Christmas and Halloween.
 You write that recipe as one JSON document, anchored at the coordinate the person gives you and
 fitted to a survey of the place; the person brings it into the world — pasted or dropped into the
 editor's *Builds as JSON*, or opened with `?import=` and its address — sees it as a ghost where
@@ -69,7 +72,7 @@ place keeps several boxes. Gather what is plain and measure what is textured (bu
    `--survey site.json` counts what already stands round it. → [budget.md](reference/budget.md)
 6. **Interactivity.** Particles, lights at night, behaviours (doors, slides, spins, lifts,
    ferries, treasures found with E for points and coins), scripts for what no property can say — one may give a player
-   points, `award(who, points, reason)` —, games to come; vehicles people drive — cars,
+   points, `award(who, points, reason)` —, games with prizes; vehicles people drive — cars,
    motorbikes, boats, trains, helicopters and planes, a starship to space and back; screens — a video, a GIF or a sticker on a face by its address
    ([format.md](reference/format.md), Media), or a page of its own, HTML whose clicks its script hears
    or whose buttons count, sign and vote by themselves ([format.md](reference/format.md), Pages); patterns on a face — forty: grids,
@@ -138,7 +141,7 @@ sound, plain build; a page of detail gets that detail, within the budget.
 | [reference/vehicles.md](reference/vehicles.md) | 6 — vehicles: a car, a motorbike, a boat, a train — their look (rounded bodies, paint, chrome, rims, headlamps), wheels, seats, power, a pier out to deep water; each an example |
 | [reference/deliver.md](reference/deliver.md) | 7 — the JSON, the anchor, Builds as JSON, the ghost, export and change, sharing; a whole parcel as a land: Save land, Load in its place, Load here |
 | [reference/verify.md](reference/verify.md) | 8 — what to look for |
-| `catalog.json` | Prim presets (faces, size axes, triangles); every kind's, behaviour's and particle preset's parameters; the bank, one material a line (id, name, uses, size, colour, metal, look, tags); 45 species of trees and plants with their six variants; the animals, each herd's size and walk |
+| `catalog.json` | Prim presets (faces, size axes, triangles); every kind's, behaviour's and particle preset's parameters; the bank, one material a line (id, name, uses, size, colour, metal, look, tags); 67 species of trees and plants with their six variants; the animals, each herd's size and walk |
 | `scripts/survey.mjs` | The ground round a place, from a URL, coordinates or a survey: JSON, SVG, PNG; `--profile` along lines |
 | `scripts/check.mjs` | A build checked as the world checks it, against the budget; `--survey` with what stands round it |
 | `scripts/sculpt.mjs` | A build's `sculpt` descriptions made sculpted prims (`build.sculpted.json`); a glTF model resampled into them, or told why it does not fit |

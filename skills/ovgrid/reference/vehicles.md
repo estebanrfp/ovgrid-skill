@@ -328,6 +328,21 @@ The other vehicles' numbers, each held to its range, its default where it is lef
 | train | `speed` | 1–60 m/s | 20 |
 | train | `accel` | 0.1–3 m/s² | 0.8 |
 | train | `driven` | `helm` / `no` | `helm` |
+| bumper | `speed` | 1–8 m/s | 4 |
+| bumper | `accel` | 0.5–8 m/s² | 3 |
+| bumper | `turn` | 30–360 °/s | 150 |
+| bumper | `bounce` | 0–1 | 0.8 |
+| bumper | `round` | 30–900 s | 150 |
+| bumper | `pause` | 0–300 s | 30 |
+| bumper | `mass` | 50–600 kg | 160 |
+| bumperboat | `speed` | 0.5–5 m/s | 2.2 |
+| bumperboat | `accel` | 0.2–5 m/s² | 1.2 |
+| bumperboat | `turn` | 20–240 °/s | 90 |
+| bumperboat | `bounce` | 0–1 | 0.6 |
+| bumperboat | `bob` | 0–0.2 m | 0.05 |
+| bumperboat | `round` | 30–900 s | 150 |
+| bumperboat | `pause` | 0–300 s | 30 |
+| bumperboat | `mass` | 50–600 kg | 200 |
 
 ## A car's round
 
@@ -339,8 +354,8 @@ whatever stands near —, held where it is kept till its Auto is set on. It goes
 read as it goes, standing on it by its wheels — its nose up a rise, its side down across a slope: its points' z are not
 its heights, so the same car on other land runs the same round over it. **On what is built** — a deck, a bridge, a
 street on a plate over the land — say `"built": true`: it then keeps the heights its points say, on its axles along its
-line, as a train does; the land knows nothing of what stands over it. A bus's line calls at its stops: `"calls"`
-(effects.md). Aimed at its
+line, its nose up and down with it, as a train does; the land knows nothing of what stands over it. A bus's line calls
+at its stops: `"calls"` (effects.md). Aimed at its
 seat at the wheel, O is its Auto for whoever may drive it: its whole way is read first, and over water or land steeper than
 35 % it does not set off (its hint says so); else it runs its route once and is off again where it is kept, its wheels
 turning as it goes, whoever is in it carried; sat at its wheel, one takes it from where it has got to. Its driver may record
@@ -539,7 +554,8 @@ waterline afloat — its deck just out of the water —, so that the view inside
 and its air is kept dry; in by a door in its sail over the water into a hall big enough for several,
 and down by a lift: its platform beside the hall, down through each deck in a hole flush with its floor,
 parts of one group with a `lift` behaviour (format.md), a button a floor on its post and a `call` button
-at each stop — dry from the first moment under the surface, no stairs needed. Its hull and its dome thin shells — a loft of sections each its outline
+at each stop, its decks numbered down from its top as a ship's are under its main deck (its hall 0, the upper deck 1, the
+lower 2): the lift kind's display over each call button and on its post, the deck's plate by it, its buttons one panel, numbered, its hall's at its top — dry from the first moment under the surface, no stairs needed. Its hull and its dome thin shells — a loft of sections each its outline
 and, back the other way, that outline a few cm inside it, its two ends `corners` — seen and walked into
 from inside, at least three of a sculpt's steps thick (its box over 255: 12–14 cm across 10 m), and
 opaque decks and walls inside them; its tour a `route` whose points' z is its depth, `"water": "no"`
@@ -654,6 +670,29 @@ down onto it as far before where it is kept as it needs to slow from its take-of
 ] }
 ```
 
+## Bumper cars and bumper boats
+
+A fair's bumper ride (the `bumper` kind): a rink — `piece: "rink"`, its floor `width` by `length`, a
+cushioned barrier round it with a gap at its −y to walk in by, the grid its cars' poles spark on `height` over its foot, a canopy —
+and its cars, `piece: "car"` (its `height` the rink's), each an object of its own that says
+`"vehicle": { "type": "bumper" }` with its part's `seat` the kind's (`seatOf`); a basin — `piece: "basin"`, `radius` m of water
+inside its round wall, its water a cylinder of the bank's water its object holds, from 0.05 m to 0.55 m over its foot — and its
+boats, `piece: "boat"`, objects at its water's height with `"vehicle": { "type": "bumperboat" }`.
+
+- **Whoever comes to one drives it**, not only who may change it: E at its seat, W and S ahead and back, A and D turning it, on the
+  spot too. Nothing of it is signed: up from it, it goes back to where it is kept — stand them at the rink's edge, the basin's rim.
+- **They bump**: each collides as one round ring; Jolt bounces it off the barrier, the wall and the others, keeping `bounce` of its
+  speed; off its middle it spins. It is held level always, at its floor's height (a boat at its water's, bobbing `bob` m): it never
+  turns over.
+- **Rides on the world's clock**: `round` s on, `pause` s off from the epoch, the same on every page; between rides its power is off.
+- **Two drivers**: each drives their own car in their own physics; the others' are where their words put them, and push one's own by
+  their way as they meet.
+- **A ride pays**: give the rink and the basin `behaviour: { "type": "game", "game": "bumper", "role": "start" }`; a ride of 20 s or
+  more is a match whose score is its bumps, refereed by the build's keeper within the game's caps — points and coins for the
+  ride itself, more by its bumps (all of it at 15).
+- **Sparks and sounds**: a phantom speck at its pole's top with `particles: { preset: "sparks", running: true }` sparks while it is
+  driven; a bump is heard where it was (a thud and the grid's crackle, a boat's splash, its water touched).
+
 ## A starship
 
 A `starship` goes to space and back on its own: its **trip** is its object's route — up off its pad out of the sky (its top
@@ -748,7 +787,8 @@ route sets off: a route turns what follows it from how it stands at its start, s
 its whole line askew, and its rollers, lying along no axis of it, are no wheels. On a line there and back
 (`"mode": "back"`) a train keeps its front: it runs back the way it came, tail first — give it ends alike, or its
 engine at the end it sets off from. A `railcar` of the vehicle kind (format.md, *A car in one part*) is a train's car in
-one part: two on the same route, the second kept a car's length behind the first along its line, run coupled.
+one part: two on the same route, the second `"behind"` the first by a car's length and 0.6 m (below) — 16.6 m for two of
+16 m: by a car's length alone their ends touch —, run coupled.
 
 **A train one walks into** is made of the `coach` kind's cars (format.md), one object a coach: its body hollow — a floor
 0.78 m over its rails, a band of windows, two doorways a side 1.5 m wide, benches along its sides, poles, a ceiling that
@@ -759,11 +799,25 @@ middles between them. `doors` is the side its platforms are on (`left`, its −x
 leaves to each doorway there, which slide aside while the train stands at a stop of its route and shut before it leaves
 (the `slide` behaviour, `"trigger": "stops"`), and benches, sat on; the other side's doors are drawn shut. One walks in
 from the platform, along it and through its gangways into the next coach, and is carried as it goes. Give every coach of
-a train the same route, each kept a coach's length behind the one before along its line — their gangways' bellows meet —,
-and `"vehicle": { "type": "train", "driven": "no" }`: nobody drives it, its seats are its passengers'. Lay its track with
-the `track` kind — two rails on sleepers, 0.27 m high — and put each coach's `at` on the rails' tops; a platform level
-with its floor stands 1.05 m over what the track lies on, a hand's gap (15 cm) from the coaches' sides. A stop its doors
-open at lasts 6 s at the least; give its line curves wide for its length.
+a train the first coach's `turn` and route, its `at` where it stands behind the first at rest (along a straight first
+stretch, a coach's length back along it), and each after it `"behind"`: how far back along its line it runs from the
+first — a coach's length for the second, two for the third (m), so that their gangways' bellows meet. Each rides the
+line centred on it — its middle on the line, turned along it there: its bogies are drawn, not read as wheels — and so, on a
+curve, bends from the next at its gangway, never the train as one body. And `"vehicle":
+{ "type": "train", "driven": "no" }`: nobody drives it, its seats are its passengers'. Lay its track with the `track`
+kind — two rails on sleepers, 0.27 m high — and put each coach's `at` on the rails' tops; a platform level with its
+floor stands 1.05 m over what the track lies on, a hand's gap (15 cm) from the coaches' sides. A stop its doors open at
+lasts 6.9 s at the least — they begin to open half a second after it stops, take 1.2 s to open and as long to shut, are shut
+a second before it leaves and stay open 3 s at the least (a slide of 1 s of your own, 6.5 s): at a shorter stop they stay
+shut. Give its line curves wide for its length: two coaches' bodies stay clear of each other while one is
+turned no more than 22° from the next — a coach's length round a ring 2.6 times as wide in radius, 26 m for coaches of 10 m
+and 42 m for those of 16 —, so a line that turns tighter takes shorter coaches. A line that closes on itself is a route that
+goes `round`: its points through the ends and the middle of each quarter of a ring, each with a handle 0.265 times the
+ring's radius along its way there, and each place it calls at among its `calls`. Round a curve a coach's middle runs on
+its line and the outer corners of its ends swing out past it — 1.9 m from the line for coaches of 10 m round a ring of
+26 m, 2.2 m for those of 16 round 42, where on a straight its sides are 1.5 m from it —: keep what stands beside its track
+that far off, a platform on a straight five metres past a curve's end, and lay the track itself in straight lengths of 15°
+of the ring or less.
 
 ```json
 { "name": "coach", "at": [0, 0, 0.27], "turn": [0, 0, 90],

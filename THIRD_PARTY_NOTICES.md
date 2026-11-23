@@ -292,6 +292,10 @@ skeleton and no animation, and OVGrid gives them their motion.
 | goose | «Goose Low Poly» | Atlas (https://sketchfab.com/Atlasmodels) | https://sketchfab.com/3d-models/goose-low-poly-3318893e41fc4d2f9f497776da95c13a |
 | chicken | «Low Poly Chicken» | Tiberiu Uncu (https://sketchfab.com/pangolinbc) | https://sketchfab.com/3d-models/low-poly-chicken-29e61a713bd3413c8fc74c8453a1ada1 |
 
+The zombie (`assets/fauna/sources/zombie.glb`, a monster: docs/fauna.md «Monsters») is Esteban Fuster Pozzi's own;
+Mixamo animations used inside the game, not redistributed as files. Its six clips are those animations retargeted onto
+its skeleton (`tools/fauna/from-mixamo.py`) and kept only as the poses the world draws (`assets/fauna/zombie.poses`).
+
 The dinosaurs are Quaternius' «Dinosaur Animated Pack - Dec 2018» (https://www.patreon.com/quaternius, as its
 License.txt names its author), dedicated to the public domain under CC0 1.0 Universal
 (https://creativecommons.org/publicdomain/zero/1.0/): credited here though CC0 asks for none. Each came as a .blend
@@ -359,6 +363,14 @@ is licensed under the Creative Commons Attribution 4.0 International licence
   https://sketchfab.com/3d-models/carousels-b309e6b1b99d4b0983699c8aeec36817, licence CC-BY-4.0. Rebuilt with OVGrid's pieces,
   the model taken as the plan, at a seventh of its size: its three roundabouts' decks, posts, rails, canopy and bowl from its
   measurements, in its colourings; its materials the bank's.
+- The casino kind's roulette table and its felt (`src/build/kinds/casino-gen.js`, `src/build/casino.js`; `assets/builds/casino.json`):
+  «Simple Roulette Table» by Designed By Jonathan (Sketchfab: designedbyjonathan),
+  https://sketchfab.com/3d-models/simple-roulette-table-a128e643ea6149e686fe6b73ceb48ef9, licence CC-BY-4.0. Rebuilt with OVGrid's
+  pieces, the model taken as the plan: its wheel sunk at one end, its pedestal and plinth, its felt's layout; its materials the bank's.
+- The casino kind's wheel of fortune (`src/build/kinds/casino-gen.js`, `src/build/casino.js`): «Low Poly Spinning Wheel» by Burak
+  Özcan (Sketchfab: ozcanburak8), https://sketchfab.com/3d-models/low-poly-spinning-wheel-0798373d98b8424886d50bebda9a0dd0, licence
+  CC-BY-4.0. Rebuilt with OVGrid's pieces, the model taken as the plan: its stand, its pointer, its wheel's segments and pegs; its
+  materials the bank's.
 - `assets/builds/jet.json` (`tools/build-jet.js`, `tools/jet-outside.js`): «Cartoon Low Poly Private Jet» by antonmoek
   (Sketchfab: antonmoek), https://sketchfab.com/3d-models/cartoon-low-poly-private-jet-d34c32118cd14bd18e3ced888f6f3d70.
   Rebuilt with OVGrid's pieces, the model taken as the plan, coarser, at 5.75 times its size: its fuselage's rings, its
