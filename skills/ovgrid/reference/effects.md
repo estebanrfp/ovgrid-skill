@@ -86,7 +86,8 @@ and each preset's own values: catalog.json → `particles`. A string names a kit
 
 - **Lamps** (`light`, format.md): warm (`[1, 0.72, 0.42]`), `on: "night"`, ranges of 5–8 m; one
   for each room that is lived in, a part of its house's object (its walls then stop the light, its
-  windows let it out); street lamps along the ways and round the square, near enough for their pools
+  windows let it out); a lamp by its door out of doors, `"outdoors": true` — the nearest of them
+  lights the ground, the rest glow, never in a room's place; street lamps along the ways and round the square, near enough for their pools
   to touch (below), one lamp object cloned.
 - **A lamp shines from where it glows**: a part's light comes from the middle of its glowing faces — a street lamp's
   from its lantern, a floor lamp's from its shade, a screen's from its face —; a light of its own on a part that glows
@@ -98,7 +99,9 @@ and each preset's own values: catalog.json → `particles`. A string names a kit
   both its heads), so its pool on level ground is 8.1–8.4, 6.3–7.2 and 4.9–6.1 m round: pools touch where `lamp`s stand
   16 m apart at the most, `arm`s 12.5 and `double`s 9.5. At their edges the light has faded to nothing: stand them nearer for
   a way lit all along. Given a `range` of its own instead (up to 10), it is a light of the build's as any other — counted
-  among them, lit as its `on` says, with no cone but one it is given.
+  among them, lit as its `on` says, with no cone but one it is given. A lamp out of doors on what has rooms — a house's by
+  its door, `"outdoors": true` (format.md) — lights the ground by night too, held apart from those twelve: the nearest one of
+  them lights round it, the rest glow.
 - **Fires are lights**: an inn's hearth can be its only lamp; a campfire lights a square.
 - **What only glows**: `light: { "range": 0 }` — a lantern for looks, embers — lights nothing and
   costs nothing; but a street kind's `lamp`, `arm` or `double` `"on": "night"` lights the ground as well (above).
@@ -148,7 +151,7 @@ end level with its floor, and a speed people can step on and off at (1–2 m/s, 
 { "name": "ferry", "at": [0, -30, -0.2], "behaviour": { "type": "move", "y": 60, "speed": 1.5, "wait": 8 }, "prims": [ … ] }
 ```
 
-Through several stops, a **`route`**: its `points` in its own frame (up to 64, `[x, y, z]` m, from
+Through several stops, a **`route`**: its `points` in its own frame (up to 64 — a train's, up to 256: a line through a region —, `[x, y, z]` m, from
 where it is kept through each in turn), on a smooth curve, `"mode": "round"` and on again or
 `"back"` the way it came, `"stop"` seconds at each point — or, with `"at": "ends"`, only where it is
 kept (and, there and back, at its last point too): its port, its station — slowing into it and

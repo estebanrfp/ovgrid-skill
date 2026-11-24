@@ -802,10 +802,12 @@ from the platform, along it and through its gangways into the next coach, and is
 a train the first coach's `turn` and route, its `at` where it stands behind the first at rest (along a straight first
 stretch, a coach's length back along it), and each after it `"behind"`: how far back along its line it runs from the
 first — a coach's length for the second, two for the third (m), so that their gangways' bellows meet. Each rides the
-line centred on it — its middle on the line, turned along it there: its bogies are drawn, not read as wheels — and so, on a
+line on its own bogies — its first axle and its last both on the line, 6.4 m apart for a coach of ten metres (its length
+less 3.6 m), its middle a little inside a curve: its car's kind says what it rides on — and so, on a
 curve, bends from the next at its gangway, never the train as one body. And `"vehicle":
 { "type": "train", "driven": "no" }`: nobody drives it, its seats are its passengers'. Lay its track with the `track`
-kind — two rails on sleepers, 0.27 m high — and put each coach's `at` on the rails' tops; a platform level with its
+kind — two rails on sleepers, 0.27 m high; a corner one part that bends (`bend`, the degrees it turns), a viaduct's
+length one part on a deck of its own (`bed` `deck`) — and put each coach's `at` on the rails' tops; a platform level with its
 floor stands 1.05 m over what the track lies on, a hand's gap (15 cm) from the coaches' sides. A stop its doors open at
 lasts 6.9 s at the least — they begin to open half a second after it stops, take 1.2 s to open and as long to shut, are shut
 a second before it leaves and stay open 3 s at the least (a slide of 1 s of your own, 6.5 s): at a shorter stop they stay
