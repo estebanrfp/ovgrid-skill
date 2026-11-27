@@ -38,8 +38,9 @@ A vehicle is looked at up close: boxes and black cylinders read as a toy. What t
 - **A rounded body**: its panels `bevel` boxes — `"kind": "bevel", "base": "box", "edge": "round",
   "radius": 0.12` for a bonnet or a tank; 0.02–0.05 for doors, trim and seats, with
   `"segments": 2` (a small round wants no more steps).
-- **Paint**: its colour with `"surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 }` — the sky
-  and what is round it in it. A boat's gelcoat the same without `metal`.
+- **Paint**: its colour with `"surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 }` — what makes
+  it a vehicle's paint, drawn in its finish: satin, unless its `looks` choose another (below). A boat's
+  gelcoat and a train's livery the same.
 - **Chrome**: `metal/bare/metal-050a` with `"metal": 1, "gloss": 0.95` — bumpers, a grille, a
   windscreen's frame, a bike's fork, bar and exhaust.
 - **Glass** for a windscreen (`glass/clear/float`), the bank's **leather** for seats
@@ -67,8 +68,10 @@ Whoever may change a vehicle chooses its colours on its card's **Colours** tab �
 colour of one's own for a paint, and **Random**, one of the palettes whole, colours that go together —, each choice one
 step that everyone sees. Its **Finish** row is its paint's shine — Gloss, Satin or Matte, `"finish": "gloss"` in its
 `looks` —, worn by the faces that wear its paint, its roof and its accent alone, never its glass, its rims or its lamps;
-said nothing, gloss (gloss 0.9, metal 0.5, reflect 0.3), as a car's paint is made. Random gives a finish too, gloss the
-most often; a livery's colours are its own, and it has no finish to change. A build gives it the slots it lets change, `looks` on its object, each a colour (linear RGB) or
+said nothing, satin (gloss 0.25, metal 0.3, reflect 0.1); Gloss is its paint as it is made (gloss 0.9, metal 0.5, reflect
+0.3). Random leaves the finish as it is. Every vehicle's paint is drawn in its finish, a slot naming it or not: a livery's,
+whose colours are its own and which has no Finish row, satin; and so a vehicle with no `looks` at all, each face of it that
+shines as its paint is made — and is not made `matte`. A build gives it the slots it lets change, `looks` on its object, each a colour (linear RGB) or
 a material of the bank; its parts and faces that wear one name it, `"slot"` in their surface (what of a car's object and
 parts a slot needs, its shapes left out):
 

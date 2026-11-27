@@ -770,7 +770,7 @@ var decimals = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001))
 }));
 
 // src/build/kinds/mesh.js
-var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], unit2 = (v) => {
+var WELD = 1e6, HAIR = 0.002, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], unit2 = (v) => {
   const length2 = Math.hypot(v[0], v[1], v[2]);
   return length2 > FLAT ? [v[0] / length2, v[1] / length2, v[2] / length2] : [0, 0, 1];
 }, area2 = (points) => points.reduce((sum, [x, y], i) => {
@@ -867,7 +867,140 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
   }
   const joined = ring.map((i) => points[i]);
   return { points, triangles: triangulate(joined, { touching: true }).map((triangle) => triangle.map((k) => ring[k])) };
-}, createMesh = (slots) => {
+}, ONE_PLANE = 0.0005, cutsOf = (values) => values.toSorted((p, q) => p - q).filter((v, i, all) => i === 0 || v - all[i - 1] > 0.000001), within = (s, t, r) => s > r[0] && s < r[1] && t > r[2] && t < r[3], twice = (ring) => ring.reduce((sum, [x, y], i) => sum + x * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * y, 0), convex = (ring) => {
+  const turns = ring.map((p, i) => {
+    const [q, r] = [ring[(i + 1) % ring.length], ring[(i + 2) % ring.length]];
+    return (q[0] - p[0]) * (r[1] - q[1]) - (q[1] - p[1]) * (r[0] - q[0]);
+  });
+  return turns.every((t) => t >= -0.000000000001) || turns.every((t) => t <= 0.000000000001);
+}, keepSide = (ring, side) => {
+  const kept = [];
+  ring.forEach((p, i) => {
+    const q = ring[(i + 1) % ring.length];
+    const [sp, sq] = [side(p), side(q)];
+    if (sp >= 0)
+      kept.push(p);
+    if (sp >= 0 !== sq >= 0) {
+      const t = sp / (sp - sq);
+      kept.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+    }
+  });
+  return kept;
+}, less = (piece, clip) => {
+  const edges = twice(clip) < 0 ? clip.toReversed() : clip;
+  const out = [];
+  let within2 = piece;
+  for (let i = 0;i < edges.length && within2.length > 2; i++) {
+    const [p, q] = [edges[i], edges[(i + 1) % edges.length]];
+    const side = (point) => (q[0] - p[0]) * (point[1] - p[1]) - (q[1] - p[1]) * (point[0] - p[0]);
+    const beyond = keepSide(within2, (point) => -side(point));
+    if (beyond.length > 2 && Math.abs(twice(beyond)) > 0.00000002)
+      out.push(beyond);
+    within2 = keepSide(within2, side);
+  }
+  return within2.length > 2 && Math.abs(twice(within2)) > 0.00000002 ? out : piece;
+}, inRing = ([x, y], ring) => {
+  let sign = 0;
+  for (let i = 0;i < ring.length; i++) {
+    const [p, q] = [ring[i], ring[(i + 1) % ring.length]];
+    const side = (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
+    if (Math.abs(side) <= 0.000001 * Math.hypot(q[0] - p[0], q[1] - p[1]))
+      continue;
+    if (sign && Math.sign(side) !== sign)
+      return false;
+    sign = Math.sign(side);
+  }
+  return true;
+}, slotOf = ({ look }, s, t) => look.slotAt ? look.slotAt(s, t) : look.slot, shows = (covering, s, t, look) => !look || covering.look.uvs !== look.uvs || slotOf(covering, s, t) !== look.slot, outside = ([s0, s1, t0, t1], over, look = null) => {
+  const shown = over.filter((covering) => covering.look?.slotAt || shows(covering, 0, 0, look));
+  if (!shown.length)
+    return [[s0, s1, t0, t1]];
+  const edges = shown.flatMap(({ rect, holes }) => [rect, ...holes]);
+  const ss = cutsOf([s0, s1, ...edges.flatMap((r) => [r[0], r[1]]).filter((v) => v > s0 && v < s1)]);
+  const ts = cutsOf([t0, t1, ...edges.flatMap((r) => [r[2], r[3]]).filter((v) => v > t0 && v < t1)]);
+  const pieces = [];
+  let cut2 = false;
+  for (let j = 0;j < ts.length - 1; j++)
+    for (let i = 0;i < ss.length - 1; i++) {
+      const [s, t] = [(ss[i] + ss[i + 1]) / 2, (ts[j] + ts[j + 1]) / 2];
+      if (shown.some((covering) => within(s, t, covering.rect) && !covering.holes.some((hole) => within(s, t, hole)) && shows(covering, s, t, look))) {
+        cut2 = true;
+        continue;
+      }
+      const last = pieces.at(-1);
+      if (last && last[1] === ss[i] && last[2] === ts[j])
+        last[1] = ss[i + 1];
+      else
+        pieces.push([ss[i], ss[i + 1], ts[j], ts[j + 1]]);
+    }
+  return cut2 ? pieces : [[s0, s1, t0, t1]];
+}, layer2 = () => {
+  const planes = [new Map, new Map];
+  const nameOf = (axis, sign, step) => step * 8 + axis * 2 + (sign > 0 ? 1 : 0);
+  const over = (axis, sign, at, rect, glass) => {
+    const step = Math.round(at / ONE_PLANE);
+    let found = null;
+    for (const kept of glass ? planes : [planes[0]])
+      for (let near = step - 1;near <= step + 1; near++) {
+        for (const each of kept.get(nameOf(axis, sign, near)) ?? []) {
+          if (Math.abs(each.at - at) <= ONE_PLANE && each.rect[0] < rect[1] - 0.000001 && each.rect[1] > rect[0] + 0.000001 && each.rect[2] < rect[3] - 0.000001 && each.rect[3] > rect[2] + 0.000001)
+            (found ??= []).push(each);
+        }
+      }
+    return found ?? [];
+  };
+  const keep = (axis, sign, at, rect, holes, glass, look) => {
+    const into = planes[glass ? 1 : 0], name = nameOf(axis, sign, Math.round(at / ONE_PLANE));
+    (into.get(name) ?? into.set(name, []).get(name)).push({ at, rect, holes, look });
+  };
+  const keepRing = (axis, sign, at, ring, glass, look) => {
+    const rect = [Math.min(...ring.map((p) => p[0])), Math.max(...ring.map((p) => p[0])), Math.min(...ring.map((p) => p[1])), Math.max(...ring.map((p) => p[1]))];
+    const into = planes[glass ? 1 : 0], name = nameOf(axis, sign, Math.round(at / ONE_PLANE));
+    (into.get(name) ?? into.set(name, []).get(name)).push({ at, rect, holes: [], look, ring });
+  };
+  const rectFate = (axis, sign, at, rect, glass, look) => {
+    const lies = (there) => {
+      let part = false;
+      for (const covering of over(axis, sign, there, rect, glass)) {
+        if (!shows(covering, (rect[0] + rect[1]) / 2, (rect[2] + rect[3]) / 2, glass ? null : look))
+          continue;
+        if (covering.ring) {
+          const corners = [[rect[0], rect[2]], [rect[1], rect[2]], [rect[1], rect[3]], [rect[0], rect[3]]];
+          if (corners.every((point) => inRing(point, covering.ring)))
+            return true;
+          if (less(corners, covering.ring) !== corners)
+            part = true;
+          continue;
+        }
+        if (covering.rect[0] <= rect[0] + 0.000001 && covering.rect[1] >= rect[1] - 0.000001 && covering.rect[2] <= rect[2] + 0.000001 && covering.rect[3] >= rect[3] - 0.000001)
+          return true;
+        if (Math.min(covering.rect[1], rect[1]) - Math.max(covering.rect[0], rect[0]) > 0.0001 && Math.min(covering.rect[3], rect[3]) - Math.max(covering.rect[2], rect[2]) > 0.0001)
+          part = true;
+      }
+      return part;
+    };
+    const here = lies(at);
+    if (here === true)
+      return -1;
+    let steps = 0;
+    if (here)
+      for (steps = 1;steps < 4 && lies(at - sign * steps * HAIR); steps++)
+        ;
+    keep(axis, sign, at - sign * steps * HAIR, rect, [], glass, look);
+    return steps;
+  };
+  return {
+    over,
+    keep,
+    keepRing,
+    rectFate,
+    cut: (axis, sign, at, rect, glass, look) => {
+      const found = over(axis, sign, at, rect, glass).filter((covering) => !covering.ring);
+      keep(axis, sign, at, rect, [], glass, look);
+      return found.length ? outside(rect, found, glass ? null : look) : [rect];
+    }
+  };
+}, createMesh = (slots, { layered = false, glass = [] } = {}) => {
   const faces = Array.from({ length: slots }, () => ({ positions: [], normals: [], uvs: [], indices: [] }));
   const vertex = (slot, position, normal, uv) => {
     const face = faces[slot];
@@ -881,13 +1014,73 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     triangle(slot, a, b, c);
     triangle(slot, a, c, d);
   };
+  const laid = layered ? layer2() : null;
+  const fateOf = (slot, points, normal, uvOf) => {
+    const axis = Math.abs(Math.abs(normal[0]) - 1) < 0.000000001 ? 0 : Math.abs(Math.abs(normal[1]) - 1) < 0.000000001 ? 1 : Math.abs(Math.abs(normal[2]) - 1) < 0.000000001 ? 2 : -1;
+    if (axis < 0)
+      return { fate: "draw" };
+    const [a, b, at] = [(axis + 1) % 3, (axis + 2) % 3, points[0][axis]];
+    const rect = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const p of points) {
+      if (Math.abs(p[axis] - at) > 0.000000001)
+        return { fate: "draw" };
+      if (p[a] < rect[0])
+        rect[0] = p[a];
+      if (p[a] > rect[1])
+        rect[1] = p[a];
+      if (p[b] < rect[2])
+        rect[2] = p[b];
+      if (p[b] > rect[3])
+        rect[3] = p[b];
+    }
+    const [sign, look, glassy] = [Math.sign(normal[axis]), { slot, uvs: uvOf }, glass.includes(slot)];
+    const corner = (p, k, i, j) => Math.abs(p[k] - rect[i]) < 0.000000001 || Math.abs(p[k] - rect[j]) < 0.000000001;
+    if (points.length === 4 && points.every((p) => corner(p, a, 0, 1) && corner(p, b, 2, 3))) {
+      const steps2 = laid.rectFate(axis, sign, at, rect, glassy, look);
+      return steps2 < 0 ? { fate: "drop" } : { fate: steps2 ? "back" : "draw", steps: steps2 };
+    }
+    const ring = points.map((p) => [p[a], p[b]]);
+    const middle = [(rect[0] + rect[1]) / 2, (rect[2] + rect[3]) / 2];
+    const pieces = convex(ring) ? [ring] : triangulate(ring).map((t) => t.map((i) => ring[i]));
+    const lies = (there2) => {
+      let found = false;
+      for (const covering of laid.over(axis, sign, there2, rect, glassy)) {
+        if (!shows(covering, ...middle, glassy ? null : look))
+          continue;
+        const clip = covering.ring ?? [[covering.rect[0], covering.rect[2]], [covering.rect[1], covering.rect[2]], [covering.rect[1], covering.rect[3]], [covering.rect[0], covering.rect[3]]];
+        if (ring.every((point) => inRing(point, clip)))
+          return true;
+        if (pieces.some((piece) => less(piece, clip) !== piece))
+          found = "part";
+      }
+      return found;
+    };
+    const here = lies(at);
+    if (here === true)
+      return { fate: "drop" };
+    let steps = 0;
+    if (here)
+      for (steps = 1;steps < 4 && lies(at - sign * steps * HAIR); steps++)
+        ;
+    const there = at - sign * steps * HAIR;
+    if (convex(ring))
+      laid.keepRing(axis, sign, there, ring, glassy, look);
+    return { fate: steps ? "back" : "draw", steps };
+  };
   const polygon = (slot, points, outward, uvOf) => {
     let normal = unit2(points.reduce((sum, p, i) => {
       const q = points[(i + 1) % points.length];
       return [sum[0] + (p[1] - q[1]) * (p[2] + q[2]), sum[1] + (p[2] - q[2]) * (p[0] + q[0]), sum[2] + (p[0] - q[0]) * (p[1] + q[1])];
     }, [0, 0, 0]));
     if (dot3(normal, outward) < 0)
-      normal = normal.map((v2) => -v2);
+      normal = normal.map((v) => -v);
+    const { fate: fate2, steps } = laid ? fateOf(slot, points, normal, uvOf) : { fate: "draw" };
+    if (fate2 === "drop")
+      return;
+    const uvs = fate2 === "back" && !Array.isArray(uvOf) ? points.map((p) => uvOf(p, normal, slot)) : uvOf;
+    drawn(slot, fate2 === "back" ? points.map((p) => p.map((v, k) => v - normal[k] * HAIR * steps)) : points, normal, uvs);
+  };
+  const drawn = (slot, points, normal, uvOf) => {
     const u = unit2(Math.abs(normal[2]) < 0.9 ? cross3([0, 0, 1], normal) : cross3(normal, [1, 0, 0]));
     const v = cross3(normal, u);
     const flat = points.map((p) => [dot3(p, u), dot3(p, v)]);
@@ -906,7 +1099,7 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     let base = 0, used = 0;
     faces.forEach((face, slot) => {
       const count = face.positions.length / 3;
-      const { positions: from, normals: across, uvs: laid } = face;
+      const { positions: from, normals: across, uvs: laid2 } = face;
       for (let i = 0;i < count; i++) {
         const v = base + i, o = v * 3, f = i * 3;
         const x = (from[f] - cx) / sx, y = (from[f + 1] - cy) / sy, z = (from[f + 2] - cz) / sz;
@@ -930,8 +1123,8 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
         normals[o] = length2 > FLAT ? nx / length2 : 0;
         normals[o + 1] = length2 > FLAT ? ny / length2 : 0;
         normals[o + 2] = length2 > FLAT ? nz / length2 : 1;
-        uvs[v * 2] = laid[i * 2];
-        uvs[v * 2 + 1] = laid[i * 2 + 1];
+        uvs[v * 2] = laid2[i * 2];
+        uvs[v * 2 + 1] = laid2[i * 2 + 1];
         const rx = rounded[o] = Math.round(positions[o] * WELD), ry = rounded[o + 1] = Math.round(positions[o + 1] * WELD), rz = rounded[o + 2] = Math.round(positions[o + 2] * WELD);
         const hash2 = Math.imul(rx | 0, 73856093) ^ Math.imul(ry | 0, 19349663) ^ Math.imul(rz | 0, 83492791) | 0;
         const head = heads.get(hash2) ?? -1;
@@ -961,8 +1154,9 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     const bounds = total ? { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] } : { min: [0, 0, 0], max: [0, 0, 0] };
     return { positions, normals, uvs, indices: indices.slice(0, used), slots: slotsOut, welded, bounds };
   };
-  return { vertex, triangle, quad, polygon, pack };
-}, addBox = (mesh, min, max, slotOf, uvOf, place = null) => {
+  const fate = (slot, axis, sign, at, rect, uvs) => laid ? laid.rectFate(axis, sign, at, rect, glass.includes(slot), { slot, uvs }) : 0;
+  return { vertex, triangle, quad, polygon, pack, fate };
+}, addBox = (mesh, min, max, slotOf2, uvOf, place = null) => {
   const corner = (x, y, z) => [x ? max[0] : min[0], y ? max[1] : min[1], z ? max[2] : min[2]];
   for (let axis = 0;axis < 3; axis++) {
     for (const sign of [-1, 1]) {
@@ -976,7 +1170,7 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
       };
       const outward = [0, 0, 0];
       outward[axis] = sign;
-      const slot = slotOf(axis, sign);
+      const slot = slotOf2(axis, sign);
       const corners = [at(0, 0), at(1, 0), at(1, 1), at(0, 1)];
       if (!place)
         mesh.polygon(slot, corners, outward, uvOf);
@@ -1005,7 +1199,7 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     const points = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([s, h]) => point(t, s, h));
     mesh.polygon(slot, points, t ? along : along.map((v) => -v), (p) => [dot3(sub2(p, from), side), dot3(sub2(p, from), over)]);
   }
-}, addExtrusion = (mesh, profile2, axis, from, to, endSlot, slotOf, uvOf) => {
+}, addExtrusion = (mesh, profile2, axis, from, to, endSlot, slotOf2, uvOf) => {
   const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
   const point = ([u, v], w) => {
     const p = [0, 0, 0];
@@ -1022,12 +1216,12 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
   ring.forEach((q, i) => {
     const next = ring[(i + 1) % ring.length];
     const normal = unit2(point([next[1] - q[1], -(next[0] - q[0])], 0));
-    const slot = slotOf(normal, reversed ? ring.length - 2 - i < 0 ? ring.length - 1 : ring.length - 2 - i : i);
+    const slot = slotOf2(normal, reversed ? ring.length - 2 - i < 0 ? ring.length - 1 : ring.length - 2 - i : i);
     const corners = [point(q, from), point(next, from), point(next, to), point(q, to)];
     const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvOf(p, normal, slot)));
     mesh.quad(slot, p0, p1, p2, p3);
   });
-}, addPrism = (mesh, profile2, x0, x1, endSlot, slotOf, uvOf) => addExtrusion(mesh, profile2, 0, x0, x1, endSlot, slotOf, uvOf), remembered = (measure, keep = 16) => {
+}, addPrism = (mesh, profile2, x0, x1, endSlot, slotOf2, uvOf) => addExtrusion(mesh, profile2, 0, x0, x1, endSlot, slotOf2, uvOf), remembered = (measure, keep = 16) => {
   const kept = new Map;
   const asked = (value) => {
     const key = JSON.stringify(value);
@@ -1195,7 +1389,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     const bx = x / reach[0], by = y / reach[1], bz = z / reach[2];
     return bz / (Math.hypot(bx, by, bz) || 1) > least ? 1 : 0;
   };
-}, addGrid = (mesh, points, n, rounded, slotOf) => {
+}, addGrid = (mesh, points, n, rounded, slotOf2) => {
   const indexOf = (row, column) => row === 0 ? 0 : row === n ? 1 : 2 + (row - 1) * n + column % n;
   const pointOf = (row, column) => (row * n + column % n) * 3;
   const corners = new Int32Array(n * n * 6 * 2);
@@ -1225,7 +1419,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
   }
   for (let t = 0;t < count; t++) {
     const facet = [flat[t * 3], flat[t * 3 + 1], flat[t * 3 + 2]];
-    const slot = slotOf(facet);
+    const slot = slotOf2(facet);
     const [a, b, c] = [0, 1, 2].map((k) => {
       const row = corners[t * 6 + k * 2], column = corners[t * 6 + k * 2 + 1];
       const p = pointOf(row, column), s = indexOf(row, column) * 3;
@@ -1237,9 +1431,9 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     });
     mesh.triangle(slot, a, b, c);
   }
-}, addFacet = (mesh, slotOf, a, b, c) => {
+}, addFacet = (mesh, slotOf2, a, b, c) => {
   const facet = normalized(crossOf([b[0] - a[0], b[1] - a[1], b[2] - a[2]], [c[0] - a[0], c[1] - a[1], c[2] - a[2]]));
-  const slot = slotOf(facet);
+  const slot = slotOf2(facet);
   mesh.triangle(slot, ...[a, b, c].map((p) => mesh.vertex(slot, p, facet, boxUv(p, facet, BOX, 1, 1))));
 }, bodyBox = (params, seed) => keptAs(`body|${params.form}|${seed}|${params.roughness}|${params.elongation}|${params.base}`, () => {
   const body = BODIES[params.form];
@@ -1318,7 +1512,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
   for (const ring of rings)
     intoBox(ring.points, box);
   const at = (ring, j) => Array.from(ring.points.subarray(j % n * 3, j % n * 3 + 3));
-  const slotOf = coverOf(params.cover, box);
+  const slotOf2 = coverOf(params.cover, box);
   const mesh = createMesh(2);
   for (let r = 0;r + 1 < rings.length; r++) {
     const [low, high] = [rings[r], rings[r + 1]];
@@ -1333,7 +1527,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
       const [a, b, c, d] = [at(low, j), at(low, j + 1), at(high, j + 1), at(high, j)];
       for (const [p, q, s, i, k, l] of [[a, b, c, j, j + 1, j + 1], [a, c, d, j, j + 1, j]]) {
         const facet = normalized(crossOf([q[0] - p[0], q[1] - p[1], q[2] - p[2]], [s[0] - p[0], s[1] - p[1], s[2] - p[2]]));
-        const slot = slotOf(facet);
+        const slot = slotOf2(facet);
         const shade = (index) => normalized([0, 1, 2].map((m) => facet[m] * (1 - params.edges) + normals[index % n][m] * params.edges));
         mesh.triangle(slot, mesh.vertex(slot, p, shade(i), boxUv(p, facet, BOX, 1, 1)), mesh.vertex(slot, q, shade(k), boxUv(q, facet, BOX, 1, 1)), mesh.vertex(slot, s, shade(l), boxUv(s, facet, BOX, 1, 1)));
       }
@@ -1344,14 +1538,14 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     if (low.band === high.band)
       continue;
     for (let j = 0;j < n; j++) {
-      addFacet(mesh, slotOf, at(low, j), at(low, j + 1), at(high, j + 1));
-      addFacet(mesh, slotOf, at(low, j), at(high, j + 1), at(high, j));
+      addFacet(mesh, slotOf2, at(low, j), at(low, j + 1), at(high, j + 1));
+      addFacet(mesh, slotOf2, at(low, j), at(high, j + 1), at(high, j));
     }
   }
   const [top, bottom] = [rings.at(-1), rings[0]];
   for (let j = 0;j < n; j++) {
-    addFacet(mesh, slotOf, at(top, j), at(top, j + 1), peak);
-    addFacet(mesh, slotOf, at(bottom, j + 1), at(bottom, j), under);
+    addFacet(mesh, slotOf2, at(top, j), at(top, j + 1), peak);
+    addFacet(mesh, slotOf2, at(bottom, j + 1), at(bottom, j), under);
   }
   return mesh.pack([1, 1, 1]);
 }, stonesOf = ({ stones, roughness, elongation }, seed) => keptAs(`stones|${seed}|${stones}|${roughness}|${elongation}`, () => {
@@ -1399,10 +1593,10 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     grids.reduce((offset, grid) => (all.set(grid, offset), offset + grid.length), 0);
     return { floor, ...boundsOf(all) };
   });
-  const slotOf = coverOf(params.cover, box);
+  const slotOf2 = coverOf(params.cover, box);
   const mesh = createMesh(2);
   for (const grid of pileGrids(params, seed, n, box.floor))
-    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf);
+    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf2);
   return mesh.pack([1, 1, 1]);
 }, crystalsOf = ({ crystals, roughness, elongation }, seed) => keptAs(`crystals|${seed}|${crystals}|${roughness}|${elongation}`, () => {
   const random = randomOf(seed ^ 668265263);
@@ -1560,10 +1754,10 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
   return boundsOf(all);
 }), formationMesh = (params, seed, level) => {
   const n = PIECE_SIDES[level], box = formationBox(params, seed);
-  const slotOf = coverOf(params.cover, box);
+  const slotOf2 = coverOf(params.cover, box);
   const mesh = createMesh(2);
   for (const grid of formationGrids(params, seed, n))
-    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf);
+    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf2);
   return mesh.pack([1, 1, 1]);
 }, piecesHulls = (params, seed, size) => {
   const key = `rock|${params.form}|${seed}|${params.stones}|${params.roughness}|${params.elongation}`;
@@ -2540,9 +2734,9 @@ var RESIDUAL_SCALE = 0.12, AMPLITUDE_LEAST = 0.08, AMPLITUDE_MOST = 1.5, AMPLITU
   return x;
 }, smoothLine = ({ s, target, data = 1, bending, fixed = new Map, floor = null, ceiling = null }) => {
   const n = s.length;
-  const within = (v, k) => Math.max(Math.min(v, ceiling?.[k] ?? Infinity), floor?.[k] ?? -Infinity);
+  const within2 = (v, k) => Math.max(Math.min(v, ceiling?.[k] ?? Infinity), floor?.[k] ?? -Infinity);
   if (n < 3 || bending <= 0)
-    return Float64Array.from(target, (v, k) => fixed.get(k) ?? within(v, k));
+    return Float64Array.from(target, (v, k) => fixed.get(k) ?? within2(v, k));
   const h = Float64Array.from({ length: n - 1 }, (_, k) => Math.max(s[k + 1] - s[k], 0.000001));
   const weight = Float64Array.from({ length: n }, (_, k) => ((k ? h[k - 1] : 0) + (k < n - 1 ? h[k] : 0)) / 2);
   const diag = new Float64Array(n), next = new Float64Array(n), after = new Float64Array(n), right = new Float64Array(n);
@@ -2625,7 +2819,7 @@ var RESIDUAL_SCALE = 0.12, AMPLITUDE_LEAST = 0.08, AMPLITUDE_MOST = 1.5, AMPLITU
       break;
     from.delete(letGo);
   }
-  return line.map((v, k) => fixed.has(k) ? v : within(v, k));
+  return line.map((v, k) => fixed.has(k) ? v : within2(v, k));
 }, envelopes = ({ s, floor, ceiling, fixed, cap }) => {
   const n = s.length;
   const low = Float64Array.from(floor), high = Float64Array.from(ceiling);
@@ -4194,7 +4388,7 @@ var init_building = __esm(() => {
       { name: "shop2", label: "Second shop", optional: true, min: 0, max: SHOP_USES.length, default: 0, step: 1, options: ["own", ...SHOP_USES], labels: ["By its variation", ...SHOP_USES.map((use) => SHOP_LABELS[use])], when: (params) => params.ground === 3, description: "What its second shop is — its right one —, as its first." },
       { name: "stage", label: "Built", min: 0, max: 1, default: 0, step: 1, options: ["finished", "frame"], labels: ["Finished", "In construction"], description: "How far it is built: finished; or frame — its columns, its floors, its core and its stair alone, no wall round it, no glass, no door, no lift in its shaft: a building in construction." },
       { name: "signs", label: "Signs", min: 0, max: 1, default: 1, step: 1, options: ["none", "signs"], labels: ["None", "Over its ways in"], when: (params) => params.ground >= 2, description: "A sign over the way in of a ground storey that is a hotel's — «HOTEL», over its street door — or shops' — a word each, what the shop is: by its variation a café, a bakery, books, a pharmacy, a bar or a market, or the one its `shop` or `shop2` names —, their letters lit by night (the sign kind's). A part each. None on flats or on columns." },
-      { name: "crane", label: "Crane", min: 0, max: 1, default: 1, step: 1, options: ["none", "tower"], labels: ["None", "A tower crane"], when: (params) => params.stage === 1, description: "What stands by it while it is in construction: none; or a tower crane (the crane kind's) behind it, its mast eight metres over its frame — fifty-four at the most —, its jib over it. A part of its own, made, moved and taken away with it. Nothing once it is finished." },
+      { name: "crane", label: "Crane", min: 0, max: 2, default: 1, step: 1, options: ["none", "tower", "still"], labels: ["None", "A tower crane", "A tower crane, still"], when: (params) => params.stage === 1, description: "What stands by it while it is in construction: none; a tower crane (the crane kind's) behind it, its mast eight metres over its frame — fifty-four at the most —, its jib over it, at work; or the same standing still, nothing of it moving by itself (what moves by itself counts against a build's budget). A part of its own, made, moved and taken away with it. Nothing once it is finished." },
       { name: "wings", label: "Wings", min: 0, max: 3, default: 0, step: 1, options: ["none", "left", "right", "both"], labels: ["None: a bar", "Behind its left end: an L", "Behind its right end: an L", "Behind both ends: a U"], description: "What its plan has besides its bar: none; a wing behind its left end or its right one (seen from the street) — an L, a corner's block —; or one behind each — a U round a court. A wing is in line with the bar's end, as wide as the flat it goes on from at the most and no wider than the bar is deep, as many storeys as the bar, one more room of that flat on every storey, come into through the bar's back wall. Never behind its core: one asked there stands behind the other end." },
       { name: "reach", label: "Wing length", min: 6, max: 30, default: 12, step: 0.1, description: "How far each wing goes back behind the bar (m)." },
       { name: "wide", label: "Wing width", min: 6, max: 24, default: 10, step: 0.1, description: "How wide each wing is (m): as wide as the flat it goes on from at the most, and no wider than the bar is deep. Narrower than its flat, the flat keeps windows on the court beside it." },
@@ -6859,12 +7053,12 @@ var VERSION = 1, MOST_COLOURS = 8, MOST_BYTES = 32768, MOST_CELLS = 32768, MOST_
       const side2 = axis * 2 + (sign2 > 0 ? 1 : 0);
       const outward = [0, 0, 0];
       outward[axis] = sign2;
-      for (let layer2 = 0;layer2 < na; layer2++) {
-        const next = layer2 + sign2;
+      for (let layer3 = 0;layer3 < na; layer3++) {
+        const next = layer3 + sign2;
         const open = next < 0 || next >= na;
         for (let b = 0;b < nq; b++)
           for (let a = 0;a < np; a++) {
-            const c = layer2 * strides[axis] + a * strides[p] + b * strides[q];
+            const c = layer3 * strides[axis] + a * strides[p] + b * strides[q];
             const here = colour[c];
             shown3[b * np + a] = here >= 0 && (open || colour[c + sign2 * strides[axis]] < 0) ? own.get(c)?.[side2] ?? here : -1;
           }
@@ -6886,7 +7080,7 @@ var VERSION = 1, MOST_COLOURS = 8, MOST_BYTES = 32768, MOST_CELLS = 32768, MOST_
               }
             for (let y = b;y < b1; y++)
               shown3.fill(-1, y * np + a, y * np + a1);
-            const level = metres[axis][layer2 + (sign2 > 0 ? 1 : 0)];
+            const level = metres[axis][layer3 + (sign2 > 0 ? 1 : 0)];
             const corner = (s, t) => {
               const v = [0, 0, 0];
               v[axis] = level;
@@ -6969,7 +7163,7 @@ var VERSION2 = 1, MOST_COLOURS2 = 8, MOST_POINTS = 512, MOST_RINGS = 64, MOST_BY
 }, area22 = (points) => points.reduce((sum, [x, y], i) => {
   const [nx, ny] = points[(i + 1) % points.length];
   return sum + x * ny - nx * y;
-}, 0), within = ([x, y], points) => {
+}, 0), within2 = ([x, y], points) => {
   let odd = false;
   for (let i = 0, j = points.length - 1;i < points.length; j = i++) {
     const [ax, ay] = points[i], [bx, by] = points[j];
@@ -7027,7 +7221,7 @@ var VERSION2 = 1, MOST_COLOURS2 = 8, MOST_POINTS = 512, MOST_RINGS = 64, MOST_BY
     return kept2;
   }).filter((kept2) => kept2.length >= 3 && Math.abs(area22(kept2.map(({ p }) => p))) > LEAST);
   const points = cleaned.map((kept2) => kept2.map(({ p }) => p));
-  const depth = points.map((ring, i) => points.reduce((n, other, j) => n + (j !== i && within(ring[0], other) ? 1 : 0), 0));
+  const depth = points.map((ring, i) => points.reduce((n, other, j) => n + (j !== i && within2(ring[0], other) ? 1 : 0), 0));
   const turned2 = cleaned.map((kept2, i) => {
     const wanted = depth[i] % 2 === 0 ? 1 : -1;
     if (Math.sign(area22(points[i])) === wanted)
@@ -7041,7 +7235,7 @@ var VERSION2 = 1, MOST_COLOURS2 = 8, MOST_POINTS = 512, MOST_RINGS = 64, MOST_BY
   turned2.forEach((kept2, i) => {
     if (depth[i] % 2)
       return;
-    const holes = turned2.filter((_, j) => depth[j] === depth[i] + 1 && within(points[j][0], points[i])).map((ring2) => ring2.map(({ p }) => p)).sort((a, b) => Math.max(...b.map(([x]) => x)) - Math.max(...a.map(([x]) => x)));
+    const holes = turned2.filter((_, j) => depth[j] === depth[i] + 1 && within2(points[j][0], points[i])).map((ring2) => ring2.map(({ p }) => p)).sort((a, b) => Math.max(...b.map(([x]) => x)) - Math.max(...a.map(([x]) => x)));
     let ring = kept2.map(({ p }) => p);
     for (const hole of holes)
       ring = bridged(ring, hole) ?? ring;
@@ -7744,29 +7938,29 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
     return -1;
   const bytes = text.length / 4 * 3 - (text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0);
   return bytes % (dims * 2) ? -1 : bytes / (dims * 2);
-}, round10 = (v) => Math.round(v * 1e4) / 1e4, within2 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), triple = (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite), pair = (v) => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite), whole = (v, [least2, most2]) => Number.isInteger(v) && v >= least2 && v <= most2 ? v : 0, metres = (v) => Number.isFinite(v) && v > 0 ? round10(within2(v, LEAST2, REACH2)) : undefined, pointsOf = (text, dims, [least2, most2]) => {
+}, round10 = (v) => Math.round(v * 1e4) / 1e4, within3 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), triple = (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite), pair = (v) => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite), whole = (v, [least2, most2]) => Number.isInteger(v) && v >= least2 && v <= most2 ? v : 0, metres = (v) => Number.isFinite(v) && v > 0 ? round10(within3(v, LEAST2, REACH2)) : undefined, pointsOf = (text, dims, [least2, most2]) => {
   const count = countOf(text, dims);
   return count >= least2 && count <= most2 ? text : null;
 }, sidesOf2 = (value, shape) => {
   if (!Number.isInteger(value))
     return;
-  const sides = shape === "ball" ? Math.ceil(within2(value, 4, 64) / 4) * 4 : within2(value, 3, 64);
+  const sides = shape === "ball" ? Math.ceil(within3(value, 4, 64) / 4) * 4 : within3(value, 3, 64);
   return sides === SIDES3 ? undefined : sides;
 }, scaleOf = (value) => {
   if (Number.isFinite(value))
-    return value === 1 ? undefined : round10(within2(value, 0, 4));
+    return value === 1 ? undefined : round10(within3(value, 0, 4));
   if (Array.isArray(value) && value.length === 2 && value.every(Number.isFinite) && value.some((v) => v !== 1))
-    return value.map((v) => round10(within2(v, 0, 4)));
+    return value.map((v) => round10(within3(v, 0, 4)));
   return;
-}, degreesOf = (value, most2) => Number.isFinite(value) && value % 360 !== 0 ? round10(within2(value, -most2, most2)) : undefined, inOrder = (given, kept2) => Object.fromEntries(Object.keys(given).filter((key) => (key in kept2)).map((key) => [key, kept2[key]])), repeatOf = (value) => {
+}, degreesOf = (value, most2) => Number.isFinite(value) && value % 360 !== 0 ? round10(within3(value, -most2, most2)) : undefined, inOrder = (given, kept2) => Object.fromEntries(Object.keys(given).filter((key) => (key in kept2)).map((key) => [key, kept2[key]])), repeatOf = (value) => {
   const count = Number.isInteger(value?.count) && value.count >= POINTS.repeat[0] ? Math.min(value.count, POINTS.repeat[1]) : 0;
   if (!count)
     return;
-  const step = triple(value.step) ? value.step.map((v) => round10(within2(v, -REACH2, REACH2))) : undefined;
+  const step = triple(value.step) ? value.step.map((v) => round10(within3(v, -REACH2, REACH2))) : undefined;
   const around = degreesOf(value.around, 360);
   if (around === undefined)
     return step && inOrder(value, { count, step });
-  const at = pair(value.at) ? value.at.map((v) => round10(within2(v, -REACH2, REACH2)) || 0) : undefined;
+  const at = pair(value.at) ? value.at.map((v) => round10(within3(v, -REACH2, REACH2)) || 0) : undefined;
   return inOrder(value, { count, ...step?.some((v) => v !== 0) && { step }, around, ...at?.some((v) => v !== 0) && { at } });
 }, FACES23, CAP2 = 0.999, faceOf = (shape, [x, y, z]) => {
   if (shape === "extrude")
@@ -7786,9 +7980,9 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
   for (const entry of spots) {
     if (!Array.isArray(entry) || entry.length !== 4 || !entry.every(Number.isFinite))
       continue;
-    const spot = entry.slice(0, 3).map((v) => Math.round(within2(v, -0.5, 0.5) * 1e4) / 1e4 || 0);
+    const spot = entry.slice(0, 3).map((v) => Math.round(within3(v, -0.5, 0.5) * 1e4) / 1e4 || 0);
     kept2.delete(spot.join());
-    kept2.set(spot.join(), [...spot, within2(Math.round(entry[3]), 0, MOST_COLOURS3 - 1)]);
+    kept2.set(spot.join(), [...spot, within3(Math.round(entry[3]), 0, MOST_COLOURS3 - 1)]);
   }
   return kept2.size ? [...kept2.values()].slice(-MOST_SPOTS) : null;
 }, placedSpots = (body, slots, place = same2) => {
@@ -7800,7 +7994,7 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
     const turned2 = matrix ? [0, 1, 2].map((i) => matrix[i][0] * own[0] + matrix[i][1] * own[1] + matrix[i][2] * own[2]) : own;
     return { at: place(turned2.map((v, k) => v + body.at[k])), colour: Math.min(colour, slots - 1) };
   });
-}, keepBaseFaces = (value) => Array.isArray(value) && value.length === 6 && value.every(Number.isInteger) ? value.map((v) => within2(v, 0, MOST_COLOURS3 - 1)) : [], baseBody = ({ base, sides, faces, spots }, size) => ({
+}, keepBaseFaces = (value) => Array.isArray(value) && value.length === 6 && value.every(Number.isInteger) ? value.map((v) => within3(v, 0, MOST_COLOURS3 - 1)) : [], baseBody = ({ base, sides, faces, spots }, size) => ({
   add: SHAPES2[base] ?? "box",
   at: [0, 0, 0],
   size,
@@ -7828,7 +8022,7 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
   }
   if (shape === "revolve") {
     set("sides", sidesOf2(body.sides, shape));
-    set("angle", Number.isFinite(body.angle) && body.angle < 360 ? round10(within2(body.angle, 1, 360)) : undefined);
+    set("angle", Number.isFinite(body.angle) && body.angle < 360 ? round10(within3(body.angle, 1, 360)) : undefined);
   }
   if (shape === "extrude") {
     const holes = Array.isArray(body.holes) ? body.holes.filter((hole) => pointsOf(hole, 2, POINTS.profile)).slice(0, POINTS.holes) : [];
@@ -7850,7 +8044,7 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
     if (!(own.path = pointsOf(body.path, 3, POINTS.path)))
       return null;
     if (Array.isArray(body.across) && body.across.length === 2 && body.across.every(Number.isFinite))
-      own.across = body.across.map((v) => round10(within2(v, LEAST2, REACH2)));
+      own.across = body.across.map((v) => round10(within3(v, LEAST2, REACH2)));
     if (body.closed === true)
       own.closed = true;
   }
@@ -7867,15 +8061,15 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
   if (!own)
     return null;
   const turn2 = triple(body.turn) ? body.turn.map((v) => round10((v % 360 + 540) % 360 - 180)) : [0, 0, 0];
-  const colour = Number.isInteger(body.colour) ? within2(body.colour, 0, MOST_COLOURS3 - 1) : 0;
+  const colour = Number.isInteger(body.colour) ? within3(body.colour, 0, MOST_COLOURS3 - 1) : 0;
   const repeat = repeatOf(body.repeat);
   const count = FACES23[body[way]];
-  const faces = count && Array.isArray(body.faces) && body.faces.length === count && body.faces.every(Number.isInteger) ? body.faces.map((v) => within2(v, 0, MOST_COLOURS3 - 1)) : null;
+  const faces = count && Array.isArray(body.faces) && body.faces.length === count && body.faces.every(Number.isInteger) ? body.faces.map((v) => within3(v, 0, MOST_COLOURS3 - 1)) : null;
   const spots = spotsOf(body.spots);
   return inOrder(body, {
     [way]: body[way],
-    at: body.at.map((v) => round10(within2(v, -REACH2, REACH2))),
-    size: body.size.map((v) => round10(within2(v, LEAST2, REACH2))),
+    at: body.at.map((v) => round10(within3(v, -REACH2, REACH2))),
+    size: body.size.map((v) => round10(within3(v, LEAST2, REACH2))),
     ...own,
     ...turn2.some((v) => v !== 0) && { turn: turn2 },
     ...colour && { colour },
@@ -8248,9 +8442,9 @@ var SAMPLE = 1, MOST_CHORD = 60, GRADE2 = 8, SEAT2 = 1.2, FREEBOARD2 = 0.3, BURI
   if (sagMax)
     return line - Math.max(sagMax - rise, 0) * 4 * s * (length2 - s) / (length2 * length2);
   return line + Math.min(rise, s / GRADE2, (length2 - s) / GRADE2);
-}, groundAt2 = (params, length2, s) => params.ground.length >= 2 ? readAt(params.ground, length2, s) : length2 > 0 ? params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2 : params.points[0][2], crossing = (positions, values, level, outside, inside) => {
-  const [a, b] = [values[outside] - level, values[inside] - level];
-  return a === b ? positions[inside] : positions[outside] + (positions[inside] - positions[outside]) * -a / (b - a);
+}, groundAt2 = (params, length2, s) => params.ground.length >= 2 ? readAt(params.ground, length2, s) : length2 > 0 ? params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2 : params.points[0][2], crossing = (positions, values, level, outside2, inside) => {
+  const [a, b] = [values[outside2] - level, values[inside] - level];
+  return a === b ? positions[inside] : positions[outside2] + (positions[inside] - positions[outside2]) * -a / (b - a);
 }, planOf, riseFor = (params, ground, water) => {
   const style = STYLES[STYLE_NAMES[params.style]] ?? STYLES.timber;
   const { length: length2 } = chordOf(params.points);
@@ -9120,7 +9314,7 @@ var init_bridge_gen = __esm(() => {
     resize: (params) => params,
     reasons: (params) => planOf(params).reasons,
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(3);
+      const mesh = createMesh(3, { layered: true });
       const kit = kitOf(params, level);
       if (kit.plan.length >= 0.5)
         generatorOf(kit.plan)[0](mesh, kit);
@@ -9315,7 +9509,7 @@ var PART = 0.12, ONE = 2.1, ROOMS, round12 = (v) => Math.round(v * 1000) / 1000,
   const line = round12(Y0 + Math.min(Math.max(D / 2, taken + wide + 0.3 + PART / 2), D - Math.max(m.bedroom.deep[0], m.study[0]) - PART / 2));
   const [front, back] = [[line + PART / 2, Y1], [Y0, line - PART / 2]];
   const behind = Y0 + taken + wide <= back[1] - 0.3 + 0.000000001 ? [Y0 + taken, Y0 + taken + wide] : null;
-  const twice = front[1] - front[0] >= 2 * wide + 0.8;
+  const twice2 = front[1] - front[0] >= 2 * wide + 0.8;
   const before = (leaves) => [(front[0] + front[1]) / 2 - leaves * wide / 2, (front[0] + front[1]) / 2 + leaves * wide / 2];
   const asked2 = Math.min(bedrooms || 4, role === "both" ? 2 : 4);
   const order = role === "both" ? [[far, "front"], [far, "back"]] : [[near, "front"], [far, "front"], [far, "back"], [near, "back"]];
@@ -9338,7 +9532,7 @@ var PART = 0.12, ONE = 2.1, ROOMS, round12 = (v) => Math.round(v * 1000) / 1000,
     through(side2 * (H + PART / 2), [Y0, Y1], [
       ...off === "hall" ? [{ y: [Y0 + 0.4, Y0 + 0.4 + wide], into: side2, room: small }] : [],
       ...behind && !one ? [{ y: behind, into: side2, room: rear }] : [],
-      ((double) => ({ y: before(double ? 2 : 1), into: side2, room: ahead, double, pocket: before(2)[1] + wide + 0.05 <= Y1 && before(2)[0] - wide - 0.05 >= (behind && !one ? behind[1] : Y0) }))(twice && role !== "night" && ahead !== "bedroom")
+      ((double) => ({ y: before(double ? 2 : 1), into: side2, room: ahead, double, pocket: before(2)[1] + wide + 0.05 <= Y1 && before(2)[0] - wide - 0.05 >= (behind && !one ? behind[1] : Y0) }))(twice2 && role !== "night" && ahead !== "bedroom")
     ]);
   }
   room2(k === 0 ? "hall" : "landing", [-H, H], [Y0, Y1]);
@@ -9686,7 +9880,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
       const { along: along2, out: out2, yaw } = SIDES5[side2];
       const chance = randomOf2(params.variant * 7919 + params.style * 131 + 17 + (k * SIDE_NAMES.length + index + 1) * 1009);
       const pattern = side2 === "front" || side2 === "back" ? patterns[side2] : side2 === beside ? patterns.beside : patterns.side;
-      const outside = k === 0 || terraces.get(k)[side2] >= M.terrace;
+      const outside2 = k === 0 || terraces.get(k)[side2] >= M.terrace;
       const [a0, a1] = along2 === 0 ? [rect.x0, rect.x1] : [round13(rect.y0 + WALL), round13(rect.y1 - WALL)];
       const inner2 = along2 === 0 ? [round13(rect.x0 + WALL), round13(rect.x1 - WALL)] : [a0, a1];
       const usable = [inner2[0] + CORNER, inner2[1] - CORNER];
@@ -9738,7 +9932,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
           doorAt(null);
         return openings.length > before ? round13((openings.at(-1).a0 + openings.at(-1).a1) / 2) : null;
       };
-      const within3 = ([p, q], lay) => {
+      const within4 = ([p, q], lay) => {
         const fence2 = [[-Infinity, p], [q, Infinity]];
         blocked.push(...fence2);
         const laid2 = lay();
@@ -9789,7 +9983,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         const [stretch2] = freeOf([Math.max(usable[0], wing.y0 + WALL + CORNER), Math.min(usable[1], wing.y1 - WALL - CORNER)], [...blocked, ...closed]).filter(([p, q]) => q - p >= M.door + 0.2).sort((p, q) => q[1] - q[0] - (p[1] - p[0]));
         const before = doors.length;
         if (stretch2)
-          within3(stretch2, () => doorAt(null));
+          within4(stretch2, () => doorAt(null));
         if (doors.length > before)
           Object.assign(doors.at(-1), { style: "plain", to: "garage" });
         blocked.push([wing.y0, wing.y1 + 0.4]);
@@ -9799,7 +9993,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         const behind = ([p, q]) => roomAt(k, (p + q) / 2, rect.y1 - WALL - 0.3);
         const open = stretches.find((each) => OPEN.includes(behind(each))) ?? (k === 0 ? stretches[0] : undefined);
         if (k === bay.high)
-          bay.way = within3([bay.x0 + WALL + NIB, bay.x1 - WALL - NIB], wayOut);
+          bay.way = within4([bay.x0 + WALL + NIB, bay.x1 - WALL - NIB], wayOut);
         if (open) {
           openings.push({ a0: round13(open[0]), a1: round13(open[1]), z0: floor, z1: round13(floor + M.clear), void: true, bars: 0 });
           blocked.push([open[0] - 0.4, open[1] + 0.4]);
@@ -9808,7 +10002,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         }
         if (k === 1 && !style.veranda && !(bay.high === 1 && bay.way !== null))
           for (const which of [-1, 1]) {
-            const way = within3(besideBay(which), wayOut);
+            const way = within4(besideBay(which), wayOut);
             if (way !== null)
               bayWays.set(which, way);
           }
@@ -9818,12 +10012,12 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         const inside = SIDES5[side2].at(rect) - out2 * (WALL + 0.3);
         const reach = style.end ? [Math.max(usable[0], roofed.y0 + 0.3), usable[1]] : usable;
         const [stretch2] = freeOf(reach, blocked).filter(([p, q]) => OPEN.includes(roomAt(k, inside, (p + q) / 2))).sort((p, q) => q[1] - q[0] - (p[1] - p[0]));
-        const way = stretch2 ? within3(stretch2, wayOut) : null;
+        const way = stretch2 ? within4(stretch2, wayOut) : null;
         if (way !== null)
           verandaWays.set(side2, way);
       }
       if (terraceDoors.get(k) === side2) {
-        const way = hall2 && side2 === "front" ? within3([-hall2 / 2 + 0.3, hall2 / 2 - 0.3], wayOut) : wayOut();
+        const way = hall2 && side2 === "front" ? within4([-hall2 / 2 + 0.3, hall2 / 2 - 0.3], wayOut) : wayOut();
         if (way !== null)
           accesses.set(k, { side: side2, at: way });
       } else if (k > 0 && side2 === "front" && terraces.get(k).front < M.terrace && (k === 1 ? form.balcony.on : params.forms === 1 && form.balcony.chances[1] < style.forms.balcony)) {
@@ -9850,8 +10044,8 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
       };
       const lays = style.grand && side2 === "front" && M.patterns[pattern]?.bay ? [ranked()] : freeOf(usable, blocked).map((stretch2) => {
         const middle2 = (stretch2[0] + stretch2[1]) / 2;
-        const within4 = SIDES5[side2].at(rect) - out2 * (WALL + 0.3);
-        const behind = roomAt(k, along2 === 0 ? middle2 : within4, along2 === 0 ? within4 : middle2);
+        const within5 = SIDES5[side2].at(rect) - out2 * (WALL + 0.3);
+        const behind = roomAt(k, along2 === 0 ? middle2 : within5, along2 === 0 ? within5 : middle2);
         const private_ = behind === "bath" || behind === "toilet" || behind === "closet" || Boolean(arm && middle2 > arm.x0 && middle2 < arm.x1);
         return laid(M.patterns[private_ ? "slot" : pattern], stretch2, floor, g, style.grand ? () => 1 : chance, M.bays);
       });
@@ -9860,7 +10054,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
           if (divided && opening.a1 - opening.a0 < SLIT)
             continue;
           const bay2 = opening.z0 === floor && opening.z1 === round13(floor + M.clear);
-          if (params.sliding && opening.bars && slides < BUDGET.slides && (bay2 ? outside : params.sliding === 2)) {
+          if (params.sliding && opening.bars && slides < BUDGET.slides && (bay2 ? outside2 : params.sliding === 2)) {
             const pane = (opening.a1 - opening.a0) / (opening.bars + 1);
             opening.slide = { a0: round13(opening.a1 - pane), a1: opening.a1, by: slideOf(pane), walk: bay2, near: false };
             slides++;
@@ -11541,7 +11735,7 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
   ...porch.y1 - porch.y0 > 0.01 ? [{ min: [porch.x0, porch.y0, porch.bottom], max: [porch.x1, porch.y1, 0] }] : [],
   ...porch.steps.map((step) => ({ min: [porch.across?.[0] ?? porch.x0, step.y0, porch.bottom], max: [porch.across?.[1] ?? porch.x1, step.y1, step.top] }))
 ], fenceBox = ({ along: along2, a0, a1, at, z, r }) => along2 === 0 ? { min: [a0, at - r, 0], max: [a1, at + r, z + r] } : { min: [at - r, a0, 0], max: [at + r, a1, z + r] }, build = (plan, level) => {
-  const mesh = createMesh(7);
+  const mesh = createMesh(7, { layered: true, glass: [GLASS9] });
   const uvOf = (p, n) => boxUv(p, n, ORIGIN, 1, 1);
   const windowUv = marked(uvOf);
   const plate = (slot, axis, sign2, at, min, max, uvs = uvOf) => {
@@ -11555,14 +11749,17 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
     };
     const normal = [0, 0, 0];
     normal[axis] = sign2;
+    const steps = mesh.fate(slot, axis, sign2, at, [min[a], max[a], min[b], max[b]], uvs);
+    if (steps < 0)
+      return;
     const corners = sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)];
-    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvs(p, normal)));
+    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, steps ? p.map((v, k) => k === axis ? v - sign2 * steps * HAIR : v) : p, normal, uvs(p, normal)));
     mesh.quad(slot, p0, p1, p2, p3);
   };
-  const box = ({ min, max }, slotOf) => {
+  const box = ({ min, max }, slotOf2) => {
     for (let axis = 0;axis < 3; axis++)
       for (const sign2 of [-1, 1]) {
-        const slot = slotOf(axis, sign2);
+        const slot = slotOf2(axis, sign2);
         if (slot !== null)
           plate(slot, axis, sign2, sign2 > 0 ? max[axis] : min[axis], min, max);
       }
@@ -11743,29 +11940,6 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
     const { x0, x1, y0, y1, z0, rise, slot } = plan.portico.pediment;
     addExtrusion(mesh, [[z0, x0], [z0, x1], [z0 + rise, (x0 + x1) / 2]], 1, y0, y1, slot, (normal) => normal[2] > 0.1 ? ROOFING : TRIM2, uvOf);
   }
-  if (plan.timber) {
-    const sides = level >= 2 ? 8 : level === 1 ? 6 : 4;
-    for (const { x, y, r, z0, z1 } of plan.timber.posts) {
-      const ring = Array.from({ length: sides }, (_, i) => [x + r * Math.cos(2 * Math.PI * (i + 0.5) / sides), y + r * Math.sin(2 * Math.PI * (i + 0.5) / sides)]);
-      ring.forEach((p, i) => {
-        const q = ring[(i + 1) % sides];
-        mesh.polygon(TRIM2, [[...p, z0], [...q, z0], [...q, z1], [...p, z1]], [(p[0] + q[0]) / 2 - x, (p[1] + q[1]) / 2 - y, 0], uvOf);
-      });
-    }
-    if (level >= 2)
-      for (const { along: along2, a0, a1, at, z, r } of plan.timber.logs) {
-        const point = (a, i) => {
-          const [c, s] = [at + r * Math.cos(2 * Math.PI * (i + 0.5) / 6), z + r * Math.sin(2 * Math.PI * (i + 0.5) / 6)];
-          return along2 === 0 ? [a, c, s] : [c, a, s];
-        };
-        for (let i = 0;i < 6; i++) {
-          const [mc, ms] = [Math.cos(2 * Math.PI * (i + 1) / 6), Math.sin(2 * Math.PI * (i + 1) / 6)];
-          mesh.polygon(TRIM2, [point(a0, i), point(a1, i), point(a1, i + 1), point(a0, i + 1)], along2 === 0 ? [0, mc, ms] : [mc, 0, ms], uvOf);
-        }
-        for (const [a, sign2] of [[a0, -1], [a1, 1]])
-          mesh.polygon(TRIM2, Array.from({ length: 6 }, (_, i) => point(a, i)), along2 === 0 ? [sign2, 0, 0] : [0, sign2, 0], uvOf);
-      }
-  }
   if (plan.bay?.vault) {
     const { x0, x1, y1, vault } = plan.bay;
     const { points, back, under, front, thick, meets, glass, at, base, behind, wall: face2, cheek, walls: top, slot } = vault;
@@ -11828,6 +12002,29 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
   for (const extra of plan.extras)
     if (level >= extra.level)
       box(extra, (axis, sign2) => axis === 2 ? sign2 > 0 ? extra.top : extra.bottom : extra.side);
+  if (plan.timber) {
+    const sides = level >= 2 ? 8 : level === 1 ? 6 : 4;
+    for (const { x, y, r, z0, z1 } of plan.timber.posts) {
+      const ring = Array.from({ length: sides }, (_, i) => [x + r * Math.cos(2 * Math.PI * (i + 0.5) / sides), y + r * Math.sin(2 * Math.PI * (i + 0.5) / sides)]);
+      ring.forEach((p, i) => {
+        const q = ring[(i + 1) % sides];
+        mesh.polygon(TRIM2, [[...p, z0], [...q, z0], [...q, z1], [...p, z1]], [(p[0] + q[0]) / 2 - x, (p[1] + q[1]) / 2 - y, 0], uvOf);
+      });
+    }
+    if (level >= 2)
+      for (const { along: along2, a0, a1, at, z, r } of plan.timber.logs) {
+        const point = (a, i) => {
+          const [c, s] = [at + r * Math.cos(2 * Math.PI * (i + 0.5) / 6), z + r * Math.sin(2 * Math.PI * (i + 0.5) / 6)];
+          return along2 === 0 ? [a, c, s] : [c, a, s];
+        };
+        for (let i = 0;i < 6; i++) {
+          const [mc, ms] = [Math.cos(2 * Math.PI * (i + 1) / 6), Math.sin(2 * Math.PI * (i + 1) / 6)];
+          mesh.polygon(TRIM2, [point(a0, i), point(a1, i), point(a1, i + 1), point(a0, i + 1)], along2 === 0 ? [0, mc, ms] : [mc, 0, ms], uvOf);
+        }
+        for (const [a, sign2] of [[a0, -1], [a1, 1]])
+          mesh.polygon(TRIM2, Array.from({ length: 6 }, (_, i) => point(a, i)), along2 === 0 ? [sign2, 0, 0] : [0, sign2, 0], uvOf);
+      }
+  }
   return mesh;
 }, solids = (plan) => {
   const boxes = [];
@@ -12113,29 +12310,34 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
     { points: [a, b, r0], outward: [0, -slope, 1] },
     { points: [c, d, r1], outward: [0, slope, 1] }
   ];
-}, footAt = ({ a0, a1, z0, openings }, end) => Math.max(z0, ...openings.filter((o) => o.kind === "void" && (end ? o.a1 >= a1 - 0.000001 : o.a0 <= a0 + 0.000001)).map((o) => o.z1)), sheetsOn = (mesh, level) => {
+}, footAt = ({ a0, a1, z0, openings }, end) => Math.max(z0, ...openings.filter((o) => o.kind === "void" && (end ? o.a1 >= a1 - 0.000001 : o.a0 <= a0 + 0.000001)).map((o) => o.z1)), WITHIN, sheetsOn = (mesh, level) => {
   const near = level >= 3;
   const uvOf = (p, n) => boxUv(p, n, ORIGIN2, 1, 1);
   const windowUv = marked(uvOf);
-  const plate = (slot, axis, sign2, at, min, max, uvs = uvOf) => {
+  const laid2 = layer2();
+  const rectOf = (axis, min, max) => [min[(axis + 1) % 3], max[(axis + 1) % 3], min[(axis + 2) % 3], max[(axis + 2) % 3]];
+  const plate = (slot, axis, sign2, at, min, max, uvs = uvOf, over = null) => {
     const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
-    const corner = (s, t) => {
-      const p = [0, 0, 0];
-      p[axis] = at;
-      p[a] = s ? max[a] : min[a];
-      p[b] = t ? max[b] : min[b];
-      return p;
-    };
     const normal = [0, 0, 0];
     normal[axis] = sign2;
-    const corners = sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)];
-    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvs(p, normal)));
-    mesh.quad(slot, p0, p1, p2, p3);
+    const rect2 = rectOf(axis, min, max), look8 = { slot, uvs };
+    for (const [s0, s1, t0, t1] of over ? over.length ? outside(rect2, over, look8) : [rect2] : laid2.cut(axis, sign2, at, rect2, slot === GLASS10, look8)) {
+      const corner = (s, t) => {
+        const p = [0, 0, 0];
+        p[axis] = at;
+        p[a] = s ? s1 : s0;
+        p[b] = t ? t1 : t0;
+        return p;
+      };
+      const corners = sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)];
+      const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvs(p, normal)));
+      mesh.quad(slot, p0, p1, p2, p3);
+    }
   };
-  const box = ({ min, max }, slotOf) => {
+  const box = ({ min, max }, slotOf2) => {
     for (let axis = 0;axis < 3; axis++)
       for (const sign2 of [-1, 1]) {
-        const slot = slotOf(axis, sign2);
+        const slot = slotOf2(axis, sign2);
         if (slot !== null)
           plate(slot, axis, sign2, sign2 > 0 ? max[axis] : min[axis], min, max);
       }
@@ -12157,19 +12359,29 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
       plate(TRIM3, 2, 1, z1, point(a0, f0, 0), point(a1, f1, 0));
     if (near || !each.shell) {
       const holes = near ? openings : [];
+      const [faceAt, backAt] = near || !openings.length ? [at, behind] : [at - out * WITHIN, behind + out * WITHIN];
       if (!near && (level === 0 || !each.blocker))
         return;
       const as2 = stations2([a0, a1, ...each.inner, ...holes.flatMap((o) => [o.a0, o.a1]), ...skins.flatMap((skin) => [skin.a0, skin.a1])]).filter((a) => a >= a0 - 0.000001 && a <= a1 + 0.000001);
       const zs = stations2([z0, z1, ...each.roofZ ? [each.roofZ] : [], ...holes.flatMap((o) => [o.z0, o.z1]), ...skins.flatMap((skin) => [skin.z0, skin.z1])]).filter((z) => z >= z0 - 0.000001 && z <= z1 + 0.000001);
+      const [inner0, inner1] = [Math.max(a0, each.inner[0]), Math.min(a1, each.inner[1])];
+      const open = holes.map((o) => rectOf(across, point(o.a0, 0, o.z0), point(o.a1, 0, o.z1)));
+      const wears = (face2) => ({ uvs: uvOf, slotAt: along2 === 0 ? (s, t) => dressed(face2, t, s) : (s, t) => dressed(face2, s, t) });
+      const faces = [
+        { sign: out, at: faceAt, rect: rectOf(across, point(a0, 0, z0), point(a1, 0, z1)), holes: open, look: wears(0) },
+        ...each.back !== null && inner1 > inner0 ? [{ sign: -out, at: backAt, rect: rectOf(across, point(inner0, 0, z0), point(inner1, 0, z1)), holes: open, look: wears(1) }] : []
+      ].map((face2) => ({ ...face2, over: laid2.over(across, face2.sign, face2.at, face2.rect, false) }));
       for (let i = 0;i < as2.length - 1; i++)
         for (let j = 0;j < zs.length - 1; j++) {
           const [ma, mz] = [(as2[i] + as2[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2];
           if (holes.some((o) => ma > o.a0 && ma < o.a1 && mz > o.z0 && mz < o.z1))
             continue;
-          plate(dressed(0, ma, mz), across, out, at, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]));
+          plate(dressed(0, ma, mz), across, out, faceAt, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]), uvOf, faces[0].over);
           if (each.back !== null && ma > each.inner[0] && ma < each.inner[1])
-            plate(dressed(1, ma, mz), across, -out, behind, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]));
+            plate(dressed(1, ma, mz), across, -out, backAt, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]), uvOf, faces[1].over);
         }
+      for (const face2 of faces)
+        laid2.keep(across, face2.sign, face2.at, face2.rect, face2.holes, false, face2.look);
       for (const o of holes) {
         const reveal = o.kind === "window" || o.kind === "door" ? TRIM3 : each.slot;
         if (o.a0 > a0 + 0.000001)
@@ -12216,7 +12428,7 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
       for (const o of lights) {
         if (o.z0 - from > 0.000001)
           plate(slot, across, out, at, point(as[i], 0, from), point(as[i + 1], 0, o.z0));
-        plate(o.kind === "door" ? slot : o.glass ?? GLASS10, across, out, at, point(as[i], 0, o.z0), point(as[i + 1], 0, o.z1), o.kind === "door" ? uvOf : windowUv);
+        plate(o.kind === "door" ? slot : o.glass ?? GLASS10, across, out, o.kind === "door" ? at - out * WITHIN : at, point(as[i], 0, o.z0), point(as[i + 1], 0, o.z1), o.kind === "door" ? uvOf : windowUv);
         from = Math.max(from, o.z1);
       }
       if (z1 - from > 0.000001)
@@ -12228,11 +12440,12 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
     const { rect: rect2, top, bottom, holes } = slab2;
     if (!near && level === 0 && slab2.kind === "floor")
       return;
+    const hair = !near && holes.length ? WITHIN : 0;
     for (const [x0, x1, y0, y1] of near ? piecesOf3(slab2) : [[rect2.x0, rect2.x1, rect2.y0, rect2.y1]]) {
       if (slab2.face !== null)
-        plate(slab2.face, 2, 1, top, [x0, y0, 0], [x1, y1, 0]);
+        plate(slab2.face, 2, 1, top - hair, [x0, y0, 0], [x1, y1, 0]);
       if (slab2.under !== null)
-        plate(slab2.under, 2, -1, bottom, [x0, y0, 0], [x1, y1, 0]);
+        plate(slab2.under, 2, -1, bottom + hair, [x0, y0, 0], [x1, y1, 0]);
     }
     const [lo, hi] = [[rect2.x0, rect2.y0, bottom], [rect2.x1, rect2.y1, top]];
     if (slab2.edge !== null)
@@ -12285,6 +12498,7 @@ var init_sheets = __esm(() => {
   init_mesh();
   [WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2] = [0, 1, 2, 3, 4, 5, 6];
   ORIGIN2 = [0, 0, 0];
+  WITHIN = HAIR / 2;
 });
 
 // src/build/kinds/glyphs.js
@@ -12468,8 +12682,9 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
   const recessY = round15(rect2.y1 - WALL3 - M.recess[1]);
   const doorY = round15(recessY - WALL3);
   const top = round15(F * S);
-  const ceiling = below ? top : round15((F - 1) * S + clear);
+  const ceiling = below ? round15(top - SLAB4) : round15((F - 1) * S + clear);
   const base = above ? -SLAB4 : -Math.max(params.plinth, params.stoop);
+  const wallFoot = above ? -SLAB4 : 0;
   const way = M.rooms.inner[0] + 2 * FOOTING2 + 0.1;
   const split = params.flats === 1 && doorY - hallY >= 2 * way - 0.000000001;
   const midY = split ? round15(clamp11(0, hallY + way, doorY - way)) : 0;
@@ -12494,7 +12709,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
       const column2 = columns2[chosen];
       const wide2 = Math.min(BALCONY_WIDE, hi - lo - 2 * FOOTING2);
       const from = round15(clamp11((column2.a0 + column2.a1) / 2 - wide2 / 2, lo + FOOTING2, hi - FOOTING2 - wide2));
-      balconies.push({ front: name, sign: sign2, x0: from, x1: round15(from + wide2), y: sign2 > 0 ? rect2.y1 : rect2.y0, out: BALCONY_OUT, first: above ? 0 : 1, storeys: above ? F : F - 1, top: flat2 || below ? top : round15(top - SLAB4), canopy: flat2, rail: style.rail });
+      balconies.push({ front: name, sign: sign2, x0: from, x1: round15(from + wide2), y: sign2 > 0 ? rect2.y1 : rect2.y0, out: BALCONY_OUT, first: above ? 0 : 1, storeys: above ? F : F - 1, top: flat2 ? top : below ? round15(top - DECK3) : round15(top - SLAB4), canopy: flat2, rail: style.rail });
     }
     const street2 = sign2 > 0 && (hotel || shops);
     const entered = street2 && shops ? columns2.reduce((best, column2, i) => Math.abs((column2.a0 + column2.a1) / 2 - (each.x0 + each.x1) / 2) < Math.abs((columns2[best].a0 + columns2[best].a1) / 2 - (each.x0 + each.x1) / 2) ? i : best, 0) : -1;
@@ -12524,8 +12739,8 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
   const openUnder = (a0, a1) => open && a1 - a0 > 0.01 ? [{ a0: round15(a0), a1: round15(a1), z0: 0, z1: round15(S - SLAB4), kind: "void" }] : [];
   const doorHead = Math.min(M.rooms.inner[1], clear - 0.3);
   const walls = [];
-  const wallTop = flat2 ? round15(top + PARAPET2) : below ? top : round15(top - SLAB4);
-  const outer = { thick: WALL3, z0: 0, z1: wallTop, slot: FACE3.walls, back: FACE3.inside, shell: true, cap: flat2, roofZ: flat2 ? top : null, accent: chances.spandrels < style.spandrels, skins: [] };
+  const wallTop = flat2 ? round15(top + PARAPET2) : round15(top - SLAB4);
+  const outer = { thick: WALL3, z0: wallFoot, z1: wallTop, slot: FACE3.walls, back: FACE3.inside, shell: true, cap: flat2, roofZ: flat2 ? top : null, accent: chances.spandrels < style.spandrels, skins: [] };
   const shut = [side2 < 0 ? rect2.x0 : round15(core.x0 - WALL3), side2 > 0 ? rect2.x1 : round15(core.x1 + WALL3)];
   if (!frame) {
     walls.push({
@@ -12541,7 +12756,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
       openings: [
         ...open ? [...openUnder(rect2.x0, Math.max(rect2.x0, shaftX.x0 - WALL3)), ...openUnder(Math.min(rect2.x1, shaftX.x1 + WALL3), rect2.x1)] : above ? [] : [{ a0: bay.x0, a1: bay.x1, z0: 0, z1: clear, kind: "void" }],
         ...Array.from({ length: above ? F : F - 1 }, (_, i) => ({ a0: round15(bay.x0 + 0.7), a1: round15(bay.x1 - 0.7), z0: round15((i + (above ? 0 : 1)) * S + frontZ[0]), z1: round15((i + (above ? 0 : 1)) * S + frontZ[1]), kind: "window" })),
-        { a0: shaftX.x0, a1: shaftX.x1, z0: 0, z1: ceiling, kind: "window" },
+        { a0: shaftX.x0, a1: shaftX.x1, z0: wallFoot, z1: ceiling, kind: "window" },
         ...frontOf(1, style.front, "front")
       ]
     }, {
@@ -12559,7 +12774,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
         ...wings.flatMap((wing) => lit.map((k) => ({ a0: wing.door[0], a1: wing.door[1], z0: round15(k * S), z1: round15(k * S + doorHead), kind: "door" }))),
         ...openUnder(rect2.x0, shut[0]),
         ...openUnder(shut[1], rect2.x1),
-        { a0: round15(mid - 1.3), a1: round15(mid + 1.3), z0: above ? 0 : 1.2, z1: below ? top : round15(ceiling - 0.6), kind: "window" },
+        { a0: round15(mid - 1.3), a1: round15(mid + 1.3), z0: above ? wallFoot : 1.2, z1: below ? wallTop : round15(ceiling - 0.6), kind: "window" },
         ...Array.from({ length: F }, (_, k) => ({ a0: round15(shaftX.x0 + 0.6), a1: round15(shaftX.x1 - 0.6), z0: round15(k * S + frontZ[0]), z1: round15(k * S + frontZ[1]), kind: "window" })),
         ...frontOf(-1, style.back, "back")
       ]
@@ -12575,7 +12790,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
   }
   const entryHead = Math.min(M.entry.head, clear - 0.25);
   const entry = { from: round15(mid - M.entry.leaf), width: 2 * M.entry.leaf, head: entryHead, recess: { x0: bay.x0, x1: bay.x1, y: recessY, deep: M.recess[1] } };
-  const within3 = frame ? FACE3.trim : FACE3.inside;
+  const within4 = frame ? FACE3.trim : FACE3.inside;
   if (!above)
     walls.push({
       name: "entry",
@@ -12589,7 +12804,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
       z0: 0,
       z1: clear,
       slot: frame ? FACE3.trim : FACE3.walls,
-      back: within3,
+      back: within4,
       skins: [],
       blocker: true,
       openings: [{ a0: entry.from, a1: round15(entry.from + entry.width), z0: 0, z1: entryHead, kind: "door" }]
@@ -12607,10 +12822,10 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
       a0: inside.y0,
       a1: inside.y1,
       inner: [inside.y0, inside.y1],
-      z0: 0,
+      z0: wallFoot,
       z1: frame ? round15(top - SLAB4) : ceiling,
-      slot: within3,
-      back: within3,
+      slot: within4,
+      back: within4,
       partition: true,
       blocker: true,
       openings: [...hotel ? [{ a0: recessed ? hallY : inside.y0, a1: doorY, z0: 0, z1: clear, kind: "void" }] : [], ...doorways],
@@ -12619,12 +12834,12 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
       skins: frame ? [] : [...recessed && !above ? [{ face: 0, a0: recessY, a1: inside.y1, z0: 0, z1: clear, slot: FACE3.walls }] : [], ...open ? [{ face: 1, a0: inside.y0, a1: inside.y1, z0: 0, z1: round15(S - SLAB4), slot: FACE3.walls }] : []]
     });
     if (split && !frame)
-      walls.push({ name: `between ${each.name}`, along: 0, at: round15(midY + PART3 / 2), out: 1, thick: PART3, a0: each.x0, a1: each.x1, inner: [each.x0, each.x1], z0: lived.includes(0) ? 0 : S, z1: ceiling, slot: FACE3.inside, back: FACE3.inside, partition: true, blocker: true, openings: [], skins: [] });
+      walls.push({ name: `between ${each.name}`, along: 0, at: round15(midY + PART3 / 2), out: 1, thick: PART3, a0: each.x0, a1: each.x1, inner: [each.x0, each.x1], z0: lived.includes(0) ? wallFoot : S, z1: ceiling, slot: FACE3.inside, back: FACE3.inside, partition: true, blocker: true, openings: [], skins: [] });
   }
   const liftMid = round15((shaftX.x0 + shaftX.x1) / 2);
   const shaftTop = frame ? round15(top - SLAB4) : ceiling;
   const [edge, facing] = lifted < 0 ? [shaftX.x1, -1] : [shaftX.x0, 1];
-  const bareEnd = frame ? [0, shaftTop] : null;
+  const bareEnd = frame ? [wallFoot, shaftTop] : null;
   walls.push({
     name: "shaft door",
     along: 0,
@@ -12634,10 +12849,10 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
     a0: shaftX.x0,
     a1: shaftX.x1,
     inner: [shaftX.x0, shaftX.x1],
-    z0: 0,
+    z0: wallFoot,
     z1: shaftTop,
-    slot: within3,
-    back: within3,
+    slot: within4,
+    back: within4,
     blocker: true,
     skins: [],
     ends: side2 === 0 ? null : lifted < 0 ? [bareEnd, null] : [null, bareEnd],
@@ -12652,14 +12867,14 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
     a0: doorY,
     a1: inside.y1,
     inner: [doorY, inside.y1],
-    z0: 0,
+    z0: wallFoot,
     z1: shaftTop,
-    slot: within3,
-    back: within3,
+    slot: within4,
+    back: within4,
     blocker: true,
     openings: [],
-    ends: [[0, shaftTop], bareEnd],
-    endSlot: within3,
+    ends: [[wallFoot, shaftTop], bareEnd],
+    endSlot: within4,
     skins: frame || above ? [] : [{ face: 1, a0: recessY, a1: inside.y1, z0: 0, z1: clear, slot: FACE3.walls }]
   }, {
     name: "well",
@@ -12670,28 +12885,28 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
     a0: inside.y0,
     a1: hallY,
     inner: [inside.y0, hallY],
-    z0: 0,
+    z0: wallFoot,
     z1: shaftTop,
-    slot: within3,
-    back: within3,
+    slot: within4,
+    back: within4,
     blocker: true,
     openings: [],
     skins: [],
-    ends: [bareEnd, [0, shaftTop]],
-    endSlot: within3
+    ends: [bareEnd, [wallFoot, shaftTop]],
+    endSlot: within4
   });
   const hole = { x0: bay.x0, x1: bay.x1, y0: inside.y0, y1: hallY };
   const pit = { x0: shaftX.x0, x1: shaftX.x1, y0: recessY, y1: inside.y1 };
   const bare = frame || open;
   const eave = below ? 0 : EAVES[roofName] ?? 0;
   const grown2 = (by) => ({ x0: round15(rect2.x0 - by), x1: round15(rect2.x1 + by), y0: round15(rect2.y0 - by), y1: round15(rect2.y1 + by) });
-  const slabs = [above ? { kind: "floor", rect: frame ? rect2 : inside, top: 0, bottom: -SLAB4, holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within3, edge: frame ? FACE3.trim : null } : { kind: "base", rect: rect2, top: 0, bottom: base, holes: [], face: bare ? FACE3.trim : FACE3.floors, under: null, edge: FACE3.trim }];
+  const slabs = [above ? { kind: "floor", rect: frame ? rect2 : inside, top: 0, bottom: -SLAB4, holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within4, edge: frame ? FACE3.trim : null } : { kind: "base", rect: rect2, top: 0, bottom: base, holes: [], face: bare ? FACE3.trim : FACE3.floors, under: null, edge: FACE3.trim }];
   for (let k = 1;k < F; k++)
-    slabs.push({ kind: "floor", rect: frame ? rect2 : inside, top: round15(k * S), bottom: round15(k * S - SLAB4), holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within3, edge: frame ? FACE3.trim : null });
+    slabs.push({ kind: "floor", rect: frame ? rect2 : inside, top: round15(k * S), bottom: round15(k * S - SLAB4), holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within4, edge: frame ? FACE3.trim : null });
   if (!below)
     slabs.push(frame ? { kind: "roof", rect: rect2, top, bottom: round15(top - SLAB4), holes: [], face: FACE3.trim, under: FACE3.trim, edge: FACE3.trim } : flat2 ? { kind: "roof", rect: inside, top, bottom: round15(top - SLAB4), holes: [], face: FACE3.roof, under: FACE3.inside, edge: null } : { kind: "roof", rect: grown2(eave), top, bottom: round15(top - SLAB4), holes: [], face: roofName === "hip" ? null : FACE3.roof, under: FACE3.inside, edge: FACE3.trim });
   for (const { rect: w, room: room2 } of wings) {
-    const floorOf = (z) => ({ kind: "floor", rect: frame ? w : { x0: room2.x0, x1: room2.x1, y0: room2.y0, y1: inside.y0 }, top: z, bottom: round15(z - SLAB4), holes: [], face: frame ? FACE3.trim : FACE3.floors, under: within3, edge: frame ? FACE3.trim : null });
+    const floorOf = (z) => ({ kind: "floor", rect: frame ? w : { x0: room2.x0, x1: room2.x1, y0: room2.y0, y1: inside.y0 }, top: z, bottom: round15(z - SLAB4), holes: [], face: frame ? FACE3.trim : FACE3.floors, under: within4, edge: frame ? FACE3.trim : null });
     slabs.push(above ? floorOf(0) : { kind: "base", rect: w, top: 0, bottom: base, holes: [], face: bare ? FACE3.trim : FACE3.floors, under: null, edge: FACE3.trim });
     for (let k = 1;k < F; k++)
       slabs.push(floorOf(round15(k * S)));
@@ -12725,7 +12940,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
       return along2.flatMap((y) => [round15(w.x0 + COLUMN / 2), round15(w.x1 - COLUMN / 2)].map((x) => ({ x, y, r: COLUMN / 2, z0: 0, z1 })));
     }));
   })() : [];
-  const stair = { x0: bay.x0, x1: bay.x1, lane: M.lane, gap: GAP2, y0: inside.y0, landing: M.landing, foot: hallY, flight, up, on, rise: S / risers, risers, storey: S, storeys: below ? F : F - 1, face: frame ? FACE3.trim : FACE3.floors, under: within3 };
+  const stair = { x0: bay.x0, x1: bay.x1, lane: M.lane, gap: GAP2, y0: inside.y0, landing: M.landing, foot: hallY, flight, up, on, rise: S / risers, risers, storey: S, storeys: below ? F : F - 1, face: frame ? FACE3.trim : FACE3.floors, under: within4 };
   const rails = frame || below ? [] : [{ from: [bay.x0, hallY], to: [round15(bay.x0 + M.lane + GAP2), hallY], z: round15((F - 1) * S) }];
   const steps = Math.max(1, Math.ceil(params.stoop / STEP4 - 0.000000001));
   const out = M.porch[1];
@@ -12756,7 +12971,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
     }
   const car = { at: [liftMid, round15((recessY + inside.y1) / 2), 0], size: [round15(LIFT4.across - LIFT4.clear), round15(M.recess[1] - LIFT4.clear), LIFT4.tall], door: LIFT4.door, head: doorHead };
   const leaf = LIFT4.door / 2;
-  const slide = round15(leaf - 0.05);
+  const slide = round15(leaf - 0.05 - HAIR);
   const T = total;
   const [rows, rise, gap, button, foot] = T > 16 ? [11, 0.11, 0.14, 0.1, 0.8] : [LIFT4.rows, LIFT4.rise, LIFT4.rise, LIFT4.button, LIFT4.foot];
   const lift2 = frame || above ? null : {
@@ -12845,7 +13060,7 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
     const [cx, cy] = [round15((each.x0 + each.x1) / 2), round15((inside.y0 + inside.y1) / 2)];
     const [own, along2] = [(x) => round15(clamp11(x, each.x0, each.x1) - cx), (y) => round15(clamp11(y, inside.y0, inside.y1) - cy)];
     const glass = (name, at, held, mine = () => true) => walls.find((wall) => wall.name === name).openings.filter((o) => o.kind === "window" && o.z0 < clear && o.z1 - o.z0 < S && o.z1 <= clear + 0.000000001 && mine(o)).map((o) => ({ side: at, from: held(o.a0), to: held(o.a1), as: "window", sill: round15(o.z0) }));
-    const within4 = (o) => o.a1 > each.x0 + 0.000000001 && o.a0 < each.x1 - 0.000000001;
+    const within5 = (o) => o.a1 > each.x0 + 0.000000001 && o.a0 < each.x1 - 0.000000001;
     return {
       side: each.name,
       use: shopUse(params, n),
@@ -12859,8 +13074,8 @@ var M, RISE2 = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE,
         way: M.rooms.inner[0],
         openings: [
           { side: 2, from: own(door2.a0), to: own(door2.a1), as: "door", entry: true },
-          ...glass("front", 2, own, within4),
-          ...glass("back", 0, own, within4),
+          ...glass("front", 2, own, within5),
+          ...glass("back", 0, own, within5),
           ...each.name === "left" ? glass("left", 3, along2) : glass("right", 1, along2),
           ...wings.filter((wing) => wing.side === each.name).map((wing) => ({ side: 0, from: own(wing.door[0]), to: own(wing.door[1]), as: "door" }))
         ]
@@ -12925,6 +13140,7 @@ var init_building_plan = __esm(() => {
   init_building();
   init_lift();
   init_game_scale();
+  init_mesh();
   M = GAME;
   LOUNGE = Object.freeze({ most: 9, least: 6, leaves: 10, off: 0.5 });
   LIFT4 = Object.freeze({ across: 3, clear: 0.2, tall: 3, door: 1.8, leaf: 0.05, post: 0.08, button: 0.16, rise: 0.2, rows: 8, foot: 1 });
@@ -13313,7 +13529,8 @@ var WAIST = 0.25, LANDING = 0.2, PANEL = 0.08, BIAS2, upToMillimetre6 = (v) => M
   const dressed = (lamp) => ({ faces: Object.fromEntries(CRANE_LOOK.map((texture, face2) => [face2, { texture, ...lamp && face2 === 4 && LAMP }])) });
   const [plain, lit] = [dressed(false), dressed(true)];
   const land2 = Math.min(50, Math.round((plan.storeys * plan.storey + params.stoop) * 100) / 100);
-  return craneParts(own, land2).map((part) => ({ ...part, yaw, at: place(part.at), color: [0.8, 0.62, 0.2], surface: part.light ? lit : plain }));
+  const still = params.crane === 2;
+  return craneParts(own, land2).map((part) => ({ ...still ? (({ behaviour, ...rest }) => rest)(part) : part, yaw, at: place(part.at), color: [0.8, 0.62, 0.2], surface: part.light ? lit : plain }));
 }, SHOP_COLOURS, signsOf = (params, plan) => {
   if (!params.signs || plan.frame || (params.section ?? 0) !== 0)
     return [];
@@ -13629,13 +13846,13 @@ var ringOf2 = ([x, y], radius, sides, from = Math.PI / sides) => Array.from({ le
 }, area24 = (ring) => ring.reduce((sum, [u, v], i) => {
   const [p, q] = ring[(i + 1) % ring.length];
   return sum + u * q - p * v;
-}, 0), penOf = (mesh, at = [0, 0, 0], yaw = 0, slotOf = (slot) => slot) => {
+}, 0), penOf = (mesh, at = [0, 0, 0], yaw = 0, slotOf2 = (slot) => slot) => {
   const [c, s] = [Math.cos(yaw), Math.sin(yaw)];
   const put = ([x, y, z]) => [at[0] + c * x - s * y, at[1] + s * x + c * y, at[2] + z];
   const turn3 = ([x, y, z]) => [c * x - s * y, s * x + c * y, z];
-  const face2 = (slot, points, outward, origin = [0, 0, 0], across = 1, up = 1) => mesh.polygon(slotOf(slot), points.map(put), turn3(outward), points.map((p) => boxUv(p, outward, origin, across, up)));
+  const face2 = (slot, points, outward, origin = [0, 0, 0], across = 1, up = 1) => mesh.polygon(slotOf2(slot), points.map(put), turn3(outward), points.map((p) => boxUv(p, outward, origin, across, up)));
   const box = (slot, [x0, y0, z0], [x1, y1, z1], faces = ["top", "front", "back", "left", "right"]) => {
-    const slotOf2 = (name) => typeof slot === "number" ? slot : slot[name] ?? slot.side;
+    const slotOf3 = (name) => typeof slot === "number" ? slot : slot[name] ?? slot.side;
     const sides = {
       top: [[[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], [0, 0, 1]],
       bottom: [[[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]], [0, 0, -1]],
@@ -13645,7 +13862,7 @@ var ringOf2 = ([x, y], radius, sides, from = Math.PI / sides) => Array.from({ le
       right: [[[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]], [1, 0, 0]]
     };
     for (const name of faces)
-      face2(slotOf2(name), ...sides[name]);
+      face2(slotOf3(name), ...sides[name]);
   };
   const soft = (slot, [x0, y0, z0], [x1, y1, z1], r, faces = ["top", "front", "back", "left", "right"]) => {
     r = Math.min(r, (x1 - x0) / 3, (y1 - y0) / 3, (z1 - z0) / 2);
@@ -13726,8 +13943,8 @@ var ringOf2 = ([x, y], radius, sides, from = Math.PI / sides) => Array.from({ le
     if (top && r > 0.000001)
       face2(slot, ring(r, z), [0, 0, 1]);
   };
-  const within3 = ([x, y, z = 0], angle = 0) => penOf(mesh, put([x, y, z]), yaw + angle, slotOf);
-  return { face: face2, box, soft, leg, disc, profile: profile2, lathe, within: within3 };
+  const within4 = ([x, y, z = 0], angle = 0) => penOf(mesh, put([x, y, z]), yaw + angle, slotOf2);
+  return { face: face2, box, soft, leg, disc, profile: profile2, lathe, within: within4 };
 };
 var init_furniture_shapes = __esm(() => {
   init_mesh();
@@ -15979,10 +16196,10 @@ var PIECES7, BURNS3, OWN2, RANGES, ART3 = 6, clamp15 = (v, least2, most2) => Mat
   const all = rowOf2(dims).flatMap((dx) => seat.places.map(([x, y, z]) => [x + dx, y, z]));
   const [first, ...places] = all.map(([x, y, z]) => [x, y, z - dims.h / 2].map((v) => toMillimetre(v) || 0));
   return { at: first, turn: seat.turn ?? 0, pose: seat.pose, ...places.length && { places } };
-}, drawPiece = (mesh, params, level, at = [0, 0, 0], yaw = 0, slotOf = undefined) => {
+}, drawPiece = (mesh, params, level, at = [0, 0, 0], yaw = 0, slotOf2 = undefined) => {
   const dims = dimsOf(params);
   if (level > 0)
-    draw(penOf(mesh, at, yaw, slotOf), dims, level);
+    draw(penOf(mesh, at, yaw, slotOf2), dims, level);
   return dims;
 }, solidsOf2 = (params) => {
   const dims = dimsOf(params);
@@ -16027,7 +16244,7 @@ var init_furniture_gen = __esm(() => {
       return { ...params, width: toMillimetre(size[0] - (boxOf9(dims)[0] - dims.w)), depth: size[1] };
     },
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(FACES4.length);
+      const mesh = createMesh(FACES4.length, { layered: true });
       drawPiece(mesh, params, level);
       return mesh.pack(size, [0, 0, size[2] / 2]);
     },
@@ -17960,7 +18177,7 @@ var init_room_gen = __esm(() => {
     resize: (params, size) => ({ ...params, width: size[0], depth: size[1], height: size[2] }),
     bias: (params) => [Math.min(0.5, 0.6 / params.width), Math.min(0.5, 0.6 / params.depth), Math.min(0.5, 0.4 / params.height)],
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(ROOM_FACES.length);
+      const mesh = createMesh(ROOM_FACES.length, { layered: true });
       for (const piece of layouts(params).pieces)
         if (!ownPart(piece))
           drawPiece(mesh, piece.params, level, piece.at, piece.yaw, slotsOf(piece.params));
@@ -18046,10 +18263,10 @@ var COPING = 0.45, RIM3 = 0.12, FLOOR6 = 0.25, STEP5 = 0.19, TREAD4 = 0.32, WIDE
     normal[axis] = sign2;
     mesh.polygon(slot, sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)], normal, uvOf);
   };
-  const box5 = ({ min, max }, slotOf) => {
+  const box5 = ({ min, max }, slotOf2) => {
     for (let axis = 0;axis < 3; axis++)
       for (const sign2 of [-1, 1]) {
-        const slot = slotOf(axis, sign2);
+        const slot = slotOf2(axis, sign2);
         if (slot !== null)
           plate(slot, axis, sign2, sign2 > 0 ? max[axis] : min[axis], min, max);
       }
@@ -18287,7 +18504,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
       voids.push(hole);
       slabs.push({ kind: "floor", rect: inside, top: S, bottom: round21(S - SLAB5), holes: [hole], face: FACE4.floors, under: ceiling, edge: null });
       const way = variant % 2 ? -1 : 1;
-      stair = { y: round21(hole.y0 + M2.lane / 2), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
+      stair = { y: round21(hole.y0 + M2.lane / 2 + HAIR), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
       const [rx0, rx1] = [hole.x0, hole.x1];
       panes.push({ name: "rail", min: [rx0, hole.y0 - 0.01, S], max: [rx1, hole.y0 + 0.01, round21(S + RAIL7)], axis: 1, solid: true });
       for (const x of [rx0, rx1]) {
@@ -18468,6 +18685,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
 var init_hall_plan = __esm(() => {
   init_hall();
   init_game_scale();
+  init_mesh();
   M2 = GAME;
   STAIR = Object.freeze({ tread: 0.3, landing: 2 });
   ESCALATOR = Object.freeze({ going: 2, width: 1.5, gap: 0.3, speed: 0.6 });
@@ -18505,7 +18723,7 @@ var round22 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
   const count = Math.max(1, Math.ceil((length2 + gap) / (most2 + gap) - 0.000000001));
   const each = (length2 - gap * (count - 1)) / count;
   return Array.from({ length: count }, (_, i) => ({ at: round22(from + each / 2 + i * (each + gap)), length: round22(each) }));
-}, less = ([from, to], cuts) => cuts.toSorted((a, b) => a[0] - b[0]).reduce((left, [c0, c1]) => left.flatMap(([a, b]) => c1 <= a || c0 >= b ? [[a, b]] : [...c0 > a ? [[a, round22(c0)]] : [], ...c1 < b ? [[round22(c1), b]] : []]), [[from, to]]), escalator = ({ x, foot, way, speed }, { run, rise }, level = 0) => {
+}, less2 = ([from, to], cuts) => cuts.toSorted((a, b) => a[0] - b[0]).reduce((left, [c0, c1]) => left.flatMap(([a, b]) => c1 <= a || c0 >= b ? [[a, b]] : [...c0 > a ? [[a, round22(c0)]] : [], ...c1 < b ? [[round22(c1), b]] : []]), [[from, to]]), escalator = ({ x, foot, way, speed }, { run, rise }, level = 0) => {
   const kind = TYPES3.travelator;
   const [long, pitch] = [Math.hypot(run, rise), Math.atan2(rise, run)];
   const depth = round22(Math.floor(long / 0.05 + 0.000001) * 0.05);
@@ -18580,7 +18798,7 @@ var round22 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
         if (lane && x > lane.x0 - 2.2 && x < lane.x1 + 2.2)
           return;
         const onLine = plan2.columns.some((column2) => Math.abs(column2.x - x) < 0.01);
-        const stretches = onLine ? less([back, front2], columnYs.map((y) => [y - 0.55, y + 0.55])) : [[back, front2]];
+        const stretches = onLine ? less2([back, front2], columnYs.map((y) => [y - 0.55, y + 0.55])) : [[back, front2]];
         for (const [from, to] of stretches)
           for (const { at, length: length2 } of runs(from, to))
             parts.push(fixture2("gondola", [x, at, z], 90, { width: length2, variant: variant + n * 31 + k * 7, goods: (k ? WARES : GROCERIES)[(n + variant) % (k ? WARES : GROCERIES).length] }));
@@ -19031,7 +19249,7 @@ var init_fixture_gen = __esm(() => {
       return { ...params, width: clamp20(size[0], type.width[0], type.width[1]), depth: clamp20(size[1], type.depth[0], type.depth[1]) };
     },
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(FACES8.length);
+      const mesh = createMesh(FACES8.length, { layered: true, glass: [FACES8.indexOf("glass")] });
       if (level < 1)
         return mesh.pack(size, [0, 0, size[2] / 2]);
       const origin = [-size[0] / 2, -size[1] / 2, 0];
@@ -20466,7 +20684,7 @@ var init_crane_gen = __esm(() => {
     resize: (params, size) => ({ ...params, jib: Math.min(Math.max(size[1] / (1 + 1 / 2.4), 16), 40), height: Math.min(Math.max(size[2] / 1.35 - 2, 16), 54) }),
     bias: Object.freeze([0.5, 0.06, 0.06]),
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(FACES12.length);
+      const mesh = createMesh(FACES12.length, { layered: true, glass: [FACES12.indexOf("glass")] });
       const { boxes, strips } = planOf9(params);
       const centre = centreOf9(params);
       const uvOf = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1);
@@ -20506,10 +20724,10 @@ var init_crane_gen = __esm(() => {
 });
 
 // src/build/kinds/castle-parts.js
-var uvOf = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1), same3 = (p) => p, addBox2 = (mesh, place, min, max, slotOf) => {
+var uvOf = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1), same3 = (p) => p, addBox2 = (mesh, place, min, max, slotOf2) => {
   for (let axis = 0;axis < 3; axis++)
     for (const sign2 of [-1, 1]) {
-      const slot = slotOf(axis, sign2);
+      const slot = slotOf2(axis, sign2);
       if (slot === null)
         continue;
       const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
@@ -20663,14 +20881,14 @@ var WALLS3, WALK, TRIM4, ROOF3, FLOORS3, INSIDE3, STAINED2, T, PART4, SLAB6, UND
   const [near2, far] = [[inside.y1 - 1 - DOORS.inner[0], inside.y1 - 1], [inside.y0 + 1, inside.y0 + 1 + DOORS.inner[0]]];
   const across = round29((PART4 / 2 + inside.x1) / 2);
   walls.push({ ...inner, name: "undercroft across", along: 1, at: PART4 / 2, out: 1, a0: inside.y0, a1: inside.y1, inner: [inside.y0, inside.y1], z0: ground, z1: UNDERCROFT, openings: [way(...near2, ground)] }, { ...inner, name: "undercroft along", along: 0, at: PART4 / 2, out: 1, a0: PART4 / 2, a1: inside.x1, inner: [PART4 / 2, inside.x1], z0: ground, z1: UNDERCROFT, openings: [door2(across, DOORS.inner, ground)] }, { ...inner, name: "chambers across", along: 1, at: PART4 / 2, out: 1, a0: inside.y0, a1: inside.y1, inner: [inside.y0, inside.y1], z0: chambers, z1: round29(chambers + CHAMBER), openings: [way(...near2, chambers), way(...far, chambers)] }, { ...inner, name: "chambers along", along: 0, at: PART4 / 2, out: 1, a0: PART4 / 2, a1: inside.x1, inner: [PART4 / 2, inside.x1], z0: chambers, z1: round29(chambers + CHAMBER), openings: [] });
-  const HAIR = 0.02;
-  const footprint = { x0: rect5.x0 + HAIR, x1: rect5.x1 - HAIR, y0: rect5.y0 + HAIR, y1: rect5.y1 - HAIR };
+  const HAIR2 = 0.02;
+  const footprint = { x0: rect5.x0 + HAIR2, x1: rect5.x1 - HAIR2, y0: rect5.y0 + HAIR2, y1: rect5.y1 - HAIR2 };
   const slabs = [
     { rect: footprint, top: ground, bottom: round29(Math.max(ground - 0.3, -plinth)), holes: [], face: FLOORS3, under: null, edge: null, kind: "floor" },
     { rect: footprint, top: hall2, bottom: round29(hall2 - SLAB6), holes: [], face: FLOORS3, under: INSIDE3, edge: null, kind: "floor" },
     { rect: footprint, top: chambers, bottom: round29(chambers - SLAB6), holes: [], face: FLOORS3, under: INSIDE3, edge: null, kind: "floor" },
     { rect: footprint, top: roof2, bottom: round29(roof2 - SLAB6), holes: [], face: WALK, under: INSIDE3, edge: null, kind: "roof" },
-    { rect: { x0: tx0, x1: rect5.x0 + HAIR, y0: ty0, y1: ty1 }, top: ground, bottom: round29(Math.max(ground - 0.3, -plinth)), holes: [], face: FLOORS3, under: null, edge: null, kind: "floor" },
+    { rect: { x0: tx0, x1: rect5.x0 + HAIR2, y0: ty0, y1: ty1 }, top: ground, bottom: round29(Math.max(ground - 0.3, -plinth)), holes: [], face: FLOORS3, under: null, edge: null, kind: "floor" },
     { rect: { x0: round29(tx0 - TURRET.wall - TURRET.eave), x1: round29(rect5.x0 + TURRET.wall + TURRET.eave), y0: round29(ty0 - TURRET.wall - TURRET.eave), y1: round29(ty1 + TURRET.wall + TURRET.eave) }, top: turret.top, bottom: round29(turret.top - 0.3), holes: [], face: null, under: INSIDE3, edge: TRIM4, kind: "roof" }
   ];
   const boxes = [];
@@ -22354,7 +22572,7 @@ var WALL5 = 0.3, SLAB8 = 0.2, ROOF6 = 0.3, AISLE2 = 1.2, TREAD7 = 1.4, PIT = 2.2
     return one(block3.x0 + 0.05, block3.x1 - 0.05);
   return block3.xs.flatMap((x) => one(x - SEAT_WIDE, x + SEAT_WIDE));
 })), build5 = (a, level) => {
-  const mesh = createMesh(6);
+  const mesh = createMesh(6, { layered: true, glass: [GLASSES] });
   const uvOf5 = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1);
   for (const { min, max, slot, from } of boxesOf(a))
     if (from <= level && (from >= 0 || level < 2))
@@ -23330,19 +23548,19 @@ var M3, WAY2, HEAD7, BATH, BATH_DEEP, NARROWEST, WIDEST3, SHALLOWEST, DEEPEST2, 
     for (const { side: side2, along: along4, line, from, to, edge } of sides2) {
       const shift = along4 === 0 ? cx : cy;
       const cut2 = (a0, a1) => [round38(Math.max(a0, from) - shift), round38(Math.min(a1, to) - shift)];
-      const within3 = (a0, a1) => Math.min(a1, to) - Math.max(a0, from) > 0.3;
+      const within4 = (a0, a1) => Math.min(a1, to) - Math.max(a0, from) > 0.3;
       if (Math.abs(line - edge) < 0.002) {
-        for (const [, a, b, sill] of windows.filter((row2) => row2[0] === side2 && within3(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
+        for (const [, a, b, sill] of windows.filter((row2) => row2[0] === side2 && within4(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
           openings.push({ side: side2, from: cut2(Math.min(a, b), Math.max(a, b))[0], to: cut2(Math.min(a, b), Math.max(a, b))[1], as: "window", sill });
-        for (const [, a, b] of outs.filter((row2) => row2[0] === side2 && within3(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
+        for (const [, a, b] of outs.filter((row2) => row2[0] === side2 && within4(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
           openings.push({ side: side2, from: cut2(Math.min(a, b), Math.max(a, b))[0], to: cut2(Math.min(a, b), Math.max(a, b))[1], as: "door" });
-        if (side2 === 3 && within3(doorY - WAY2 / 2, doorY + WAY2 / 2))
+        if (side2 === 3 && within4(doorY - WAY2 / 2, doorY + WAY2 / 2))
           openings.push({ side: side2, from: round38(doorY - WAY2 / 2 - shift), to: round38(doorY + WAY2 / 2 - shift), as: "door", entry: true });
         continue;
       }
       const on = lines.filter((each) => each.along === along4 && Math.abs(each.at - line) <= PART3 / 2 + 0.02 && each.a1 > from + 0.000001 && each.a0 < to - 0.000001);
       for (const each of on)
-        for (const door2 of each.ways.filter((door3) => within3(door3.a0, door3.a1)))
+        for (const door2 of each.ways.filter((door3) => within4(door3.a0, door3.a1)))
           openings.push({ side: side2, from: cut2(door2.a0, door2.a1)[0], to: cut2(door2.a0, door2.a1)[1], as: "door" });
       for (const [a0, a1] of leftOf2(from, to, on.map((each) => [each.a0, each.a1])))
         openings.push({ side: side2, from: round38(a0 - shift), to: round38(a1 - shift), as: "open" });
@@ -23627,7 +23845,7 @@ var init_bumper_gen = __esm(() => {
     resize: (params) => params,
     mesh: (params, seed, level, size) => {
       const held = heldOf(params);
-      const mesh = createMesh(FACES15.length);
+      const mesh = createMesh(FACES15.length, { layered: true });
       const { solids: solids5, sheets } = planOf16([held, level]);
       const uvOf5 = (point, normal) => boxUv(point, normal, [0, 0, 0], 1, 1);
       for (const { polys, centre, slot, inside } of shown8(solids5, level))
@@ -24322,7 +24540,7 @@ var round42 = (v) => Math.round(v * 1000) / 1000, sub6 = (a, b) => a.map((v, k) 
     },
     resize: (params) => params,
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(faces.length);
+      const mesh = createMesh(faces.length, { layered: true });
       const { solids: solids5, sheets } = planOf17([params, level]);
       const uvOf5 = (point, normal) => boxUv(point, normal, [0, 0, 0], 1, 1);
       for (const { polys, centre, slot, inside } of shown9(solids5, level))
@@ -25073,9 +25291,9 @@ var DECLARED, LATER, RETRY = 5000, TRIES = 6, loaded, loading2, failed, held = n
 }, materialsOf = (name, params, look8 = null) => {
   const looks = looksOfKind(name, params);
   return (looks.find((each) => each.name === look8) ?? looks[0])?.materials ?? null;
-}, seedOf = (seed) => Number.isInteger(seed) ? Math.abs(seed) % 2147483648 : 0, within3 = (size) => size.map((v) => Math.min(Math.max(v, MIN_SIZE), MAX_SIZE)), clean = (size) => size.map((v) => Math.round(v * 1e6) / 1e6), resolve = (value, params) => typeof value === "function" ? value(params) : value, fitSize = ({ kind, params, size }) => {
+}, seedOf = (seed) => Number.isInteger(seed) ? Math.abs(seed) % 2147483648 : 0, within4 = (size) => size.map((v) => Math.min(Math.max(v, MIN_SIZE), MAX_SIZE)), clean = (size) => size.map((v) => Math.round(v * 1e6) / 1e6), resolve = (value, params) => typeof value === "function" ? value(params) : value, fitSize = ({ kind, params, size }) => {
   const type = kindOf(kind);
-  return type?.fit ? clean(within3(type.fit(constrainKind(kind, params).params, size))) : [...size];
+  return type?.fit ? clean(within4(type.fit(constrainKind(kind, params).params, size))) : [...size];
 }, resizeParams = ({ kind, params, size }) => {
   const type = kindOf(kind);
   const values = constrainKind(kind, params).params;
@@ -27119,7 +27337,7 @@ var init_behaviours = __esm(async () => {
         { name: "speed", label: "Speed", min: 0.1, max: 6, default: 0.8, step: 0.1, unit: "m/s", description: "How fast it goes between its stops (m/s), speeding up and slowing down at either as an elevator does." },
         { name: "button", label: "A click on it", min: 0, max: 3, default: 1, step: 1, options: ["none", "next", "stop", "panel"], labels: ["Does nothing", "Next stop", "To a stop", "To the button clicked"], description: "What a click on it does: nothing — its floor, its rails —; sends it on to its next stop, back the other way from either end — one button that takes it down and up —; to one stop — a button a floor —; or, a car's panel of the lift kind, to the stop of the button it falls on." },
         { name: "stop", label: "Its stop", min: 0, max: 31, default: 0, step: 1, when: ({ button }) => button === 2, description: "Where a click on it sends it: 0 where it is kept, 1 its first stop, 2 its second…" },
-        { name: "door", label: "Its door", min: -4, max: 4, default: 0, step: 0.05, unit: "m", description: "A door of the lift: how far it slides along its own x from shut to open (m; below 0, the other way; 0, it is no door). Open while the lift stands at a stop, shut before it sets off and until it is there, a second each way — the lift waits for it. Kept as it stands while the lift is where it is kept: its car's own and the landing's there open, the other landings' shut." },
+        { name: "door", label: "Its door", min: -4, max: 4, default: 0, step: 0.001, unit: "m", description: "A door of the lift: how far it slides along its own x from shut to open (m, to the millimetre — a leaf that slides into a wall stops a hair within its far face; below 0, the other way; 0, it is no door). Open while the lift stands at a stop, shut before it sets off and until it is there, a second each way — the lift waits for it. Kept as it stands while the lift is where it is kept: its car's own and the landing's there open, the other landings' shut." },
         { name: "landing", label: "Stays at", min: -1, max: 31, default: -1, step: 1, description: "Whether it goes with the lift: −1, it does — its floor, its car, its buttons, its car's door —; 0 and up, it stays where it is, at that stop of the lift (0 where the lift is kept, 1 its first stop…) — a landing's door, open only while the lift stands there, a button on a landing." }
       ],
       stops: { name: "stops", most: 31, reach: 1000, step: 0.01, unit: "m", description: "Where it stops besides where it is kept: how far up its frame from there (m; below 0, down), a floor each, in order." },
@@ -27289,8 +27507,8 @@ var MASS, CAR_GRIP = 2, GRIP, DRIVE, BRAKE, SUSPENSION, TRAVEL, STEERING, VEHICL
     return param.options.includes(value) ? value : param.default;
   if (!Number.isFinite(value))
     return param.default;
-  const within4 = Math.min(Math.max(value, param.min), param.max);
-  return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals2(param.step)));
+  const within5 = Math.min(Math.max(value, param.min), param.max);
+  return Number(Math.min(param.min + Math.round((within5 - param.min) / param.step) * param.step, param.max).toFixed(decimals2(param.step)));
 }, vehicleOf = (value) => {
   const kind = vehicleType(value?.type);
   return kind && { type: value.type, ...Object.fromEntries(kind.params.flatMap((param) => param.optional && value[param.name] === undefined ? [] : [[param.name, held2(param, value[param.name])]])) };
@@ -27530,8 +27748,8 @@ var BOUNCY, decimals3 = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.00
   const given = typeof value === "string" && param.options ? param.options.indexOf(value) : value;
   if (!Number.isFinite(given) || param.options && given < 0)
     return param.default;
-  const within4 = Math.min(Math.max(given, param.min), param.max);
-  return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals3(param.step)));
+  const within5 = Math.min(Math.max(given, param.min), param.max);
+  return Number(Math.min(param.min + Math.round((within5 - param.min) / param.step) * param.step, param.max).toFixed(decimals3(param.step)));
 }, bouncyOf = (value) => {
   const given = value === true ? {} : value && typeof value === "object" && !Array.isArray(value) ? value : null;
   return given && Object.fromEntries(BOUNCY.params.map((param) => [param.name, held3(param, given[param.name])]));

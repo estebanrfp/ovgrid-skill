@@ -16,7 +16,7 @@ refuses the build. Counted with every clone (a clone's parts draw again).
 | parts | 1,500 | 4,000 | each an instance; the reference village is 65, rethought (535 as prims) |
 | triangles | 150,000 | 600,000 | at the finest level, near the camera; round shapes are the dear ones |
 | materials | 40 | 96 | each ~150 kB for every visitor to fetch, ~700 kB up close; past 16 within 10 m, the nearest blur |
-| lights | 12 | 32 | the renderer lights with the 32 strongest in view |
+| lights | 12 | 32 | the renderer lights with the 32 strongest in view — of lamps out of doors (`"outdoors": true`) the nearest alone, so a build's count once together |
 | crowd | 8 | 16 | lights within 30 m of one another: past 8 each pixel takes the dearer, clustered path |
 | systems | 12 | 48 | particle systems: each a draw of its own; 128 in view at most, the nearest |
 | particles | 1,000 | 3,000 | in the air at once; the world draws 1,500 a frame for everything in view, thinning each alike past it |

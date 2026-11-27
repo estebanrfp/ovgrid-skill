@@ -254,7 +254,7 @@ var decimals = (step) => Math.max(0, Math.ceil(-Math.log10(step) - 0.000000001))
 }));
 
 // src/build/kinds/mesh.js
-var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross2 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], unit = (v) => {
+var WELD = 1e6, HAIR = 0.002, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross2 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], unit = (v) => {
   const length2 = Math.hypot(v[0], v[1], v[2]);
   return length2 > FLAT ? [v[0] / length2, v[1] / length2, v[2] / length2] : [0, 0, 1];
 }, area2 = (points) => points.reduce((sum, [x, y], i) => {
@@ -351,7 +351,140 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
   }
   const joined = ring.map((i) => points[i]);
   return { points, triangles: triangulate(joined, { touching: true }).map((triangle) => triangle.map((k) => ring[k])) };
-}, createMesh = (slots) => {
+}, ONE_PLANE = 0.0005, cutsOf = (values) => values.toSorted((p, q) => p - q).filter((v, i, all) => i === 0 || v - all[i - 1] > 0.000001), within = (s, t, r) => s > r[0] && s < r[1] && t > r[2] && t < r[3], twice = (ring) => ring.reduce((sum, [x, y], i) => sum + x * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * y, 0), convex = (ring) => {
+  const turns = ring.map((p, i) => {
+    const [q, r] = [ring[(i + 1) % ring.length], ring[(i + 2) % ring.length]];
+    return (q[0] - p[0]) * (r[1] - q[1]) - (q[1] - p[1]) * (r[0] - q[0]);
+  });
+  return turns.every((t) => t >= -0.000000000001) || turns.every((t) => t <= 0.000000000001);
+}, keepSide = (ring, side) => {
+  const kept = [];
+  ring.forEach((p, i) => {
+    const q = ring[(i + 1) % ring.length];
+    const [sp, sq] = [side(p), side(q)];
+    if (sp >= 0)
+      kept.push(p);
+    if (sp >= 0 !== sq >= 0) {
+      const t = sp / (sp - sq);
+      kept.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+    }
+  });
+  return kept;
+}, less = (piece, clip) => {
+  const edges = twice(clip) < 0 ? clip.toReversed() : clip;
+  const out = [];
+  let within2 = piece;
+  for (let i = 0;i < edges.length && within2.length > 2; i++) {
+    const [p, q] = [edges[i], edges[(i + 1) % edges.length]];
+    const side = (point) => (q[0] - p[0]) * (point[1] - p[1]) - (q[1] - p[1]) * (point[0] - p[0]);
+    const beyond = keepSide(within2, (point) => -side(point));
+    if (beyond.length > 2 && Math.abs(twice(beyond)) > 0.00000002)
+      out.push(beyond);
+    within2 = keepSide(within2, side);
+  }
+  return within2.length > 2 && Math.abs(twice(within2)) > 0.00000002 ? out : piece;
+}, inRing = ([x, y], ring) => {
+  let sign = 0;
+  for (let i = 0;i < ring.length; i++) {
+    const [p, q] = [ring[i], ring[(i + 1) % ring.length]];
+    const side = (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
+    if (Math.abs(side) <= 0.000001 * Math.hypot(q[0] - p[0], q[1] - p[1]))
+      continue;
+    if (sign && Math.sign(side) !== sign)
+      return false;
+    sign = Math.sign(side);
+  }
+  return true;
+}, slotOf = ({ look }, s, t) => look.slotAt ? look.slotAt(s, t) : look.slot, shows = (covering, s, t, look) => !look || covering.look.uvs !== look.uvs || slotOf(covering, s, t) !== look.slot, outside = ([s0, s1, t0, t1], over, look = null) => {
+  const shown = over.filter((covering) => covering.look?.slotAt || shows(covering, 0, 0, look));
+  if (!shown.length)
+    return [[s0, s1, t0, t1]];
+  const edges = shown.flatMap(({ rect, holes }) => [rect, ...holes]);
+  const ss = cutsOf([s0, s1, ...edges.flatMap((r) => [r[0], r[1]]).filter((v) => v > s0 && v < s1)]);
+  const ts = cutsOf([t0, t1, ...edges.flatMap((r) => [r[2], r[3]]).filter((v) => v > t0 && v < t1)]);
+  const pieces = [];
+  let cut2 = false;
+  for (let j = 0;j < ts.length - 1; j++)
+    for (let i = 0;i < ss.length - 1; i++) {
+      const [s, t] = [(ss[i] + ss[i + 1]) / 2, (ts[j] + ts[j + 1]) / 2];
+      if (shown.some((covering) => within(s, t, covering.rect) && !covering.holes.some((hole) => within(s, t, hole)) && shows(covering, s, t, look))) {
+        cut2 = true;
+        continue;
+      }
+      const last = pieces.at(-1);
+      if (last && last[1] === ss[i] && last[2] === ts[j])
+        last[1] = ss[i + 1];
+      else
+        pieces.push([ss[i], ss[i + 1], ts[j], ts[j + 1]]);
+    }
+  return cut2 ? pieces : [[s0, s1, t0, t1]];
+}, layer = () => {
+  const planes = [new Map, new Map];
+  const nameOf = (axis, sign, step) => step * 8 + axis * 2 + (sign > 0 ? 1 : 0);
+  const over = (axis, sign, at, rect, glass) => {
+    const step = Math.round(at / ONE_PLANE);
+    let found = null;
+    for (const kept of glass ? planes : [planes[0]])
+      for (let near = step - 1;near <= step + 1; near++) {
+        for (const each of kept.get(nameOf(axis, sign, near)) ?? []) {
+          if (Math.abs(each.at - at) <= ONE_PLANE && each.rect[0] < rect[1] - 0.000001 && each.rect[1] > rect[0] + 0.000001 && each.rect[2] < rect[3] - 0.000001 && each.rect[3] > rect[2] + 0.000001)
+            (found ??= []).push(each);
+        }
+      }
+    return found ?? [];
+  };
+  const keep = (axis, sign, at, rect, holes, glass, look) => {
+    const into = planes[glass ? 1 : 0], name = nameOf(axis, sign, Math.round(at / ONE_PLANE));
+    (into.get(name) ?? into.set(name, []).get(name)).push({ at, rect, holes, look });
+  };
+  const keepRing = (axis, sign, at, ring, glass, look) => {
+    const rect = [Math.min(...ring.map((p) => p[0])), Math.max(...ring.map((p) => p[0])), Math.min(...ring.map((p) => p[1])), Math.max(...ring.map((p) => p[1]))];
+    const into = planes[glass ? 1 : 0], name = nameOf(axis, sign, Math.round(at / ONE_PLANE));
+    (into.get(name) ?? into.set(name, []).get(name)).push({ at, rect, holes: [], look, ring });
+  };
+  const rectFate = (axis, sign, at, rect, glass, look) => {
+    const lies = (there) => {
+      let part = false;
+      for (const covering of over(axis, sign, there, rect, glass)) {
+        if (!shows(covering, (rect[0] + rect[1]) / 2, (rect[2] + rect[3]) / 2, glass ? null : look))
+          continue;
+        if (covering.ring) {
+          const corners = [[rect[0], rect[2]], [rect[1], rect[2]], [rect[1], rect[3]], [rect[0], rect[3]]];
+          if (corners.every((point) => inRing(point, covering.ring)))
+            return true;
+          if (less(corners, covering.ring) !== corners)
+            part = true;
+          continue;
+        }
+        if (covering.rect[0] <= rect[0] + 0.000001 && covering.rect[1] >= rect[1] - 0.000001 && covering.rect[2] <= rect[2] + 0.000001 && covering.rect[3] >= rect[3] - 0.000001)
+          return true;
+        if (Math.min(covering.rect[1], rect[1]) - Math.max(covering.rect[0], rect[0]) > 0.0001 && Math.min(covering.rect[3], rect[3]) - Math.max(covering.rect[2], rect[2]) > 0.0001)
+          part = true;
+      }
+      return part;
+    };
+    const here = lies(at);
+    if (here === true)
+      return -1;
+    let steps = 0;
+    if (here)
+      for (steps = 1;steps < 4 && lies(at - sign * steps * HAIR); steps++)
+        ;
+    keep(axis, sign, at - sign * steps * HAIR, rect, [], glass, look);
+    return steps;
+  };
+  return {
+    over,
+    keep,
+    keepRing,
+    rectFate,
+    cut: (axis, sign, at, rect, glass, look) => {
+      const found = over(axis, sign, at, rect, glass).filter((covering) => !covering.ring);
+      keep(axis, sign, at, rect, [], glass, look);
+      return found.length ? outside(rect, found, glass ? null : look) : [rect];
+    }
+  };
+}, createMesh = (slots, { layered = false, glass = [] } = {}) => {
   const faces = Array.from({ length: slots }, () => ({ positions: [], normals: [], uvs: [], indices: [] }));
   const vertex = (slot, position, normal, uv) => {
     const face = faces[slot];
@@ -365,13 +498,73 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     triangle(slot, a, b, c);
     triangle(slot, a, c, d);
   };
+  const laid = layered ? layer() : null;
+  const fateOf = (slot, points, normal, uvOf) => {
+    const axis = Math.abs(Math.abs(normal[0]) - 1) < 0.000000001 ? 0 : Math.abs(Math.abs(normal[1]) - 1) < 0.000000001 ? 1 : Math.abs(Math.abs(normal[2]) - 1) < 0.000000001 ? 2 : -1;
+    if (axis < 0)
+      return { fate: "draw" };
+    const [a, b, at] = [(axis + 1) % 3, (axis + 2) % 3, points[0][axis]];
+    const rect = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const p of points) {
+      if (Math.abs(p[axis] - at) > 0.000000001)
+        return { fate: "draw" };
+      if (p[a] < rect[0])
+        rect[0] = p[a];
+      if (p[a] > rect[1])
+        rect[1] = p[a];
+      if (p[b] < rect[2])
+        rect[2] = p[b];
+      if (p[b] > rect[3])
+        rect[3] = p[b];
+    }
+    const [sign, look, glassy] = [Math.sign(normal[axis]), { slot, uvs: uvOf }, glass.includes(slot)];
+    const corner = (p, k, i, j) => Math.abs(p[k] - rect[i]) < 0.000000001 || Math.abs(p[k] - rect[j]) < 0.000000001;
+    if (points.length === 4 && points.every((p) => corner(p, a, 0, 1) && corner(p, b, 2, 3))) {
+      const steps2 = laid.rectFate(axis, sign, at, rect, glassy, look);
+      return steps2 < 0 ? { fate: "drop" } : { fate: steps2 ? "back" : "draw", steps: steps2 };
+    }
+    const ring = points.map((p) => [p[a], p[b]]);
+    const middle = [(rect[0] + rect[1]) / 2, (rect[2] + rect[3]) / 2];
+    const pieces = convex(ring) ? [ring] : triangulate(ring).map((t) => t.map((i) => ring[i]));
+    const lies = (there2) => {
+      let found = false;
+      for (const covering of laid.over(axis, sign, there2, rect, glassy)) {
+        if (!shows(covering, ...middle, glassy ? null : look))
+          continue;
+        const clip = covering.ring ?? [[covering.rect[0], covering.rect[2]], [covering.rect[1], covering.rect[2]], [covering.rect[1], covering.rect[3]], [covering.rect[0], covering.rect[3]]];
+        if (ring.every((point) => inRing(point, clip)))
+          return true;
+        if (pieces.some((piece) => less(piece, clip) !== piece))
+          found = "part";
+      }
+      return found;
+    };
+    const here = lies(at);
+    if (here === true)
+      return { fate: "drop" };
+    let steps = 0;
+    if (here)
+      for (steps = 1;steps < 4 && lies(at - sign * steps * HAIR); steps++)
+        ;
+    const there = at - sign * steps * HAIR;
+    if (convex(ring))
+      laid.keepRing(axis, sign, there, ring, glassy, look);
+    return { fate: steps ? "back" : "draw", steps };
+  };
   const polygon = (slot, points, outward, uvOf) => {
     let normal = unit(points.reduce((sum, p, i) => {
       const q = points[(i + 1) % points.length];
       return [sum[0] + (p[1] - q[1]) * (p[2] + q[2]), sum[1] + (p[2] - q[2]) * (p[0] + q[0]), sum[2] + (p[0] - q[0]) * (p[1] + q[1])];
     }, [0, 0, 0]));
     if (dot2(normal, outward) < 0)
-      normal = normal.map((v2) => -v2);
+      normal = normal.map((v) => -v);
+    const { fate: fate2, steps } = laid ? fateOf(slot, points, normal, uvOf) : { fate: "draw" };
+    if (fate2 === "drop")
+      return;
+    const uvs = fate2 === "back" && !Array.isArray(uvOf) ? points.map((p) => uvOf(p, normal, slot)) : uvOf;
+    drawn(slot, fate2 === "back" ? points.map((p) => p.map((v, k) => v - normal[k] * HAIR * steps)) : points, normal, uvs);
+  };
+  const drawn = (slot, points, normal, uvOf) => {
     const u = unit(Math.abs(normal[2]) < 0.9 ? cross2([0, 0, 1], normal) : cross2(normal, [1, 0, 0]));
     const v = cross2(normal, u);
     const flat = points.map((p) => [dot2(p, u), dot2(p, v)]);
@@ -390,7 +583,7 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     let base = 0, used = 0;
     faces.forEach((face, slot) => {
       const count = face.positions.length / 3;
-      const { positions: from, normals: across, uvs: laid } = face;
+      const { positions: from, normals: across, uvs: laid2 } = face;
       for (let i = 0;i < count; i++) {
         const v = base + i, o = v * 3, f = i * 3;
         const x = (from[f] - cx) / sx, y = (from[f + 1] - cy) / sy, z = (from[f + 2] - cz) / sz;
@@ -414,8 +607,8 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
         normals[o] = length2 > FLAT ? nx / length2 : 0;
         normals[o + 1] = length2 > FLAT ? ny / length2 : 0;
         normals[o + 2] = length2 > FLAT ? nz / length2 : 1;
-        uvs[v * 2] = laid[i * 2];
-        uvs[v * 2 + 1] = laid[i * 2 + 1];
+        uvs[v * 2] = laid2[i * 2];
+        uvs[v * 2 + 1] = laid2[i * 2 + 1];
         const rx = rounded[o] = Math.round(positions[o] * WELD), ry = rounded[o + 1] = Math.round(positions[o + 1] * WELD), rz = rounded[o + 2] = Math.round(positions[o + 2] * WELD);
         const hash = Math.imul(rx | 0, 73856093) ^ Math.imul(ry | 0, 19349663) ^ Math.imul(rz | 0, 83492791) | 0;
         const head = heads.get(hash) ?? -1;
@@ -445,7 +638,8 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     const bounds = total ? { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] } : { min: [0, 0, 0], max: [0, 0, 0] };
     return { positions, normals, uvs, indices: indices.slice(0, used), slots: slotsOut, welded, bounds };
   };
-  return { vertex, triangle, quad, polygon, pack };
+  const fate = (slot, axis, sign, at, rect, uvs) => laid ? laid.rectFate(axis, sign, at, rect, glass.includes(slot), { slot, uvs }) : 0;
+  return { vertex, triangle, quad, polygon, pack, fate };
 }, pieceOf = (asset, keep) => {
   const { positions, normals, uvs, indices, slots } = asset;
   const count = positions.length / 3;
@@ -489,7 +683,7 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
   });
   const bounds = total ? { min, max } : { min: [0, 0, 0], max: [0, 0, 0] };
   return { positions: out.positions, normals: out.normals, uvs: out.uvs, indices: list, slots: slotsOut, welded: out.welded, bounds };
-}, addBox = (mesh, min, max, slotOf, uvOf, place = null) => {
+}, addBox = (mesh, min, max, slotOf2, uvOf, place = null) => {
   const corner = (x, y, z) => [x ? max[0] : min[0], y ? max[1] : min[1], z ? max[2] : min[2]];
   for (let axis = 0;axis < 3; axis++) {
     for (const sign of [-1, 1]) {
@@ -503,7 +697,7 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
       };
       const outward = [0, 0, 0];
       outward[axis] = sign;
-      const slot = slotOf(axis, sign);
+      const slot = slotOf2(axis, sign);
       const corners = [at(0, 0), at(1, 0), at(1, 1), at(0, 1)];
       if (!place)
         mesh.polygon(slot, corners, outward, uvOf);
@@ -532,7 +726,7 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
     const points = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([s, h]) => point(t, s, h));
     mesh.polygon(slot, points, t ? along : along.map((v) => -v), (p) => [dot2(sub2(p, from), side), dot2(sub2(p, from), over)]);
   }
-}, addExtrusion = (mesh, profile, axis, from, to, endSlot, slotOf, uvOf) => {
+}, addExtrusion = (mesh, profile, axis, from, to, endSlot, slotOf2, uvOf) => {
   const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
   const point = ([u, v], w) => {
     const p = [0, 0, 0];
@@ -549,12 +743,12 @@ var WELD = 1e6, FLAT = 0.000000000001, sub2 = (a, b) => [a[0] - b[0], a[1] - b[1
   ring.forEach((q, i) => {
     const next = ring[(i + 1) % ring.length];
     const normal = unit(point([next[1] - q[1], -(next[0] - q[0])], 0));
-    const slot = slotOf(normal, reversed ? ring.length - 2 - i < 0 ? ring.length - 1 : ring.length - 2 - i : i);
+    const slot = slotOf2(normal, reversed ? ring.length - 2 - i < 0 ? ring.length - 1 : ring.length - 2 - i : i);
     const corners = [point(q, from), point(next, from), point(next, to), point(q, to)];
     const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvOf(p, normal, slot)));
     mesh.quad(slot, p0, p1, p2, p3);
   });
-}, addPrism = (mesh, profile, x0, x1, endSlot, slotOf, uvOf) => addExtrusion(mesh, profile, 0, x0, x1, endSlot, slotOf, uvOf), remembered = (measure, keep = 16) => {
+}, addPrism = (mesh, profile, x0, x1, endSlot, slotOf2, uvOf) => addExtrusion(mesh, profile, 0, x0, x1, endSlot, slotOf2, uvOf), remembered = (measure, keep = 16) => {
   const kept = new Map;
   const asked = (value) => {
     const key = JSON.stringify(value);
@@ -722,7 +916,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     const bx = x / reach[0], by = y / reach[1], bz = z / reach[2];
     return bz / (Math.hypot(bx, by, bz) || 1) > least ? 1 : 0;
   };
-}, addGrid = (mesh, points, n, rounded, slotOf) => {
+}, addGrid = (mesh, points, n, rounded, slotOf2) => {
   const indexOf = (row, column) => row === 0 ? 0 : row === n ? 1 : 2 + (row - 1) * n + column % n;
   const pointOf = (row, column) => (row * n + column % n) * 3;
   const corners = new Int32Array(n * n * 6 * 2);
@@ -752,7 +946,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
   }
   for (let t = 0;t < count; t++) {
     const facet = [flat[t * 3], flat[t * 3 + 1], flat[t * 3 + 2]];
-    const slot = slotOf(facet);
+    const slot = slotOf2(facet);
     const [a, b, c] = [0, 1, 2].map((k) => {
       const row = corners[t * 6 + k * 2], column = corners[t * 6 + k * 2 + 1];
       const p = pointOf(row, column), s = indexOf(row, column) * 3;
@@ -764,9 +958,9 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     });
     mesh.triangle(slot, a, b, c);
   }
-}, addFacet = (mesh, slotOf, a, b, c) => {
+}, addFacet = (mesh, slotOf2, a, b, c) => {
   const facet = normalized(crossOf([b[0] - a[0], b[1] - a[1], b[2] - a[2]], [c[0] - a[0], c[1] - a[1], c[2] - a[2]]));
-  const slot = slotOf(facet);
+  const slot = slotOf2(facet);
   mesh.triangle(slot, ...[a, b, c].map((p) => mesh.vertex(slot, p, facet, boxUv(p, facet, BOX, 1, 1))));
 }, bodyBox = (params, seed) => keptAs(`body|${params.form}|${seed}|${params.roughness}|${params.elongation}|${params.base}`, () => {
   const body = BODIES[params.form];
@@ -845,7 +1039,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
   for (const ring of rings)
     intoBox(ring.points, box);
   const at = (ring, j) => Array.from(ring.points.subarray(j % n * 3, j % n * 3 + 3));
-  const slotOf = coverOf(params.cover, box);
+  const slotOf2 = coverOf(params.cover, box);
   const mesh = createMesh(2);
   for (let r = 0;r + 1 < rings.length; r++) {
     const [low, high] = [rings[r], rings[r + 1]];
@@ -860,7 +1054,7 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
       const [a, b, c, d] = [at(low, j), at(low, j + 1), at(high, j + 1), at(high, j)];
       for (const [p, q, s, i, k, l] of [[a, b, c, j, j + 1, j + 1], [a, c, d, j, j + 1, j]]) {
         const facet = normalized(crossOf([q[0] - p[0], q[1] - p[1], q[2] - p[2]], [s[0] - p[0], s[1] - p[1], s[2] - p[2]]));
-        const slot = slotOf(facet);
+        const slot = slotOf2(facet);
         const shade = (index) => normalized([0, 1, 2].map((m) => facet[m] * (1 - params.edges) + normals[index % n][m] * params.edges));
         mesh.triangle(slot, mesh.vertex(slot, p, shade(i), boxUv(p, facet, BOX, 1, 1)), mesh.vertex(slot, q, shade(k), boxUv(q, facet, BOX, 1, 1)), mesh.vertex(slot, s, shade(l), boxUv(s, facet, BOX, 1, 1)));
       }
@@ -871,14 +1065,14 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     if (low.band === high.band)
       continue;
     for (let j = 0;j < n; j++) {
-      addFacet(mesh, slotOf, at(low, j), at(low, j + 1), at(high, j + 1));
-      addFacet(mesh, slotOf, at(low, j), at(high, j + 1), at(high, j));
+      addFacet(mesh, slotOf2, at(low, j), at(low, j + 1), at(high, j + 1));
+      addFacet(mesh, slotOf2, at(low, j), at(high, j + 1), at(high, j));
     }
   }
   const [top, bottom] = [rings.at(-1), rings[0]];
   for (let j = 0;j < n; j++) {
-    addFacet(mesh, slotOf, at(top, j), at(top, j + 1), peak);
-    addFacet(mesh, slotOf, at(bottom, j + 1), at(bottom, j), under);
+    addFacet(mesh, slotOf2, at(top, j), at(top, j + 1), peak);
+    addFacet(mesh, slotOf2, at(bottom, j + 1), at(bottom, j), under);
   }
   return mesh.pack([1, 1, 1]);
 }, stonesOf = ({ stones, roughness, elongation }, seed) => keptAs(`stones|${seed}|${stones}|${roughness}|${elongation}`, () => {
@@ -926,10 +1120,10 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
     grids.reduce((offset, grid) => (all.set(grid, offset), offset + grid.length), 0);
     return { floor, ...boundsOf(all) };
   });
-  const slotOf = coverOf(params.cover, box);
+  const slotOf2 = coverOf(params.cover, box);
   const mesh = createMesh(2);
   for (const grid of pileGrids(params, seed, n, box.floor))
-    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf);
+    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf2);
   return mesh.pack([1, 1, 1]);
 }, crystalsOf = ({ crystals, roughness, elongation }, seed) => keptAs(`crystals|${seed}|${crystals}|${roughness}|${elongation}`, () => {
   const random = randomOf(seed ^ 668265263);
@@ -1087,10 +1281,10 @@ var BOX, FORMS, BOULDER, CRAG, LAYERED, PILE, CRYSTALS, PASSAGE, OUTCROP, SIDES,
   return boundsOf(all);
 }), formationMesh = (params, seed, level) => {
   const n = PIECE_SIDES[level], box = formationBox(params, seed);
-  const slotOf = coverOf(params.cover, box);
+  const slotOf2 = coverOf(params.cover, box);
   const mesh = createMesh(2);
   for (const grid of formationGrids(params, seed, n))
-    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf);
+    addGrid(mesh, intoBox(grid, box), n, params.edges, slotOf2);
   return mesh.pack([1, 1, 1]);
 }, piecesHulls = (params, seed, size) => {
   const key = `rock|${params.form}|${seed}|${params.stones}|${params.roughness}|${params.elongation}`;
@@ -2067,9 +2261,9 @@ var RESIDUAL_SCALE = 0.12, AMPLITUDE_LEAST = 0.08, AMPLITUDE_MOST = 1.5, AMPLITU
   return x;
 }, smoothLine = ({ s, target, data = 1, bending, fixed = new Map, floor = null, ceiling = null }) => {
   const n = s.length;
-  const within = (v, k) => Math.max(Math.min(v, ceiling?.[k] ?? Infinity), floor?.[k] ?? -Infinity);
+  const within2 = (v, k) => Math.max(Math.min(v, ceiling?.[k] ?? Infinity), floor?.[k] ?? -Infinity);
   if (n < 3 || bending <= 0)
-    return Float64Array.from(target, (v, k) => fixed.get(k) ?? within(v, k));
+    return Float64Array.from(target, (v, k) => fixed.get(k) ?? within2(v, k));
   const h = Float64Array.from({ length: n - 1 }, (_, k) => Math.max(s[k + 1] - s[k], 0.000001));
   const weight = Float64Array.from({ length: n }, (_, k) => ((k ? h[k - 1] : 0) + (k < n - 1 ? h[k] : 0)) / 2);
   const diag = new Float64Array(n), next = new Float64Array(n), after = new Float64Array(n), right = new Float64Array(n);
@@ -2152,7 +2346,7 @@ var RESIDUAL_SCALE = 0.12, AMPLITUDE_LEAST = 0.08, AMPLITUDE_MOST = 1.5, AMPLITU
       break;
     from.delete(letGo);
   }
-  return line.map((v, k) => fixed.has(k) ? v : within(v, k));
+  return line.map((v, k) => fixed.has(k) ? v : within2(v, k));
 }, envelopes = ({ s, floor, ceiling, fixed, cap }) => {
   const n = s.length;
   const low = Float64Array.from(floor), high = Float64Array.from(ceiling);
@@ -3721,7 +3915,7 @@ var init_building = __esm(() => {
       { name: "shop2", label: "Second shop", optional: true, min: 0, max: SHOP_USES.length, default: 0, step: 1, options: ["own", ...SHOP_USES], labels: ["By its variation", ...SHOP_USES.map((use) => SHOP_LABELS[use])], when: (params) => params.ground === 3, description: "What its second shop is — its right one —, as its first." },
       { name: "stage", label: "Built", min: 0, max: 1, default: 0, step: 1, options: ["finished", "frame"], labels: ["Finished", "In construction"], description: "How far it is built: finished; or frame — its columns, its floors, its core and its stair alone, no wall round it, no glass, no door, no lift in its shaft: a building in construction." },
       { name: "signs", label: "Signs", min: 0, max: 1, default: 1, step: 1, options: ["none", "signs"], labels: ["None", "Over its ways in"], when: (params) => params.ground >= 2, description: "A sign over the way in of a ground storey that is a hotel's — «HOTEL», over its street door — or shops' — a word each, what the shop is: by its variation a café, a bakery, books, a pharmacy, a bar or a market, or the one its `shop` or `shop2` names —, their letters lit by night (the sign kind's). A part each. None on flats or on columns." },
-      { name: "crane", label: "Crane", min: 0, max: 1, default: 1, step: 1, options: ["none", "tower"], labels: ["None", "A tower crane"], when: (params) => params.stage === 1, description: "What stands by it while it is in construction: none; or a tower crane (the crane kind's) behind it, its mast eight metres over its frame — fifty-four at the most —, its jib over it. A part of its own, made, moved and taken away with it. Nothing once it is finished." },
+      { name: "crane", label: "Crane", min: 0, max: 2, default: 1, step: 1, options: ["none", "tower", "still"], labels: ["None", "A tower crane", "A tower crane, still"], when: (params) => params.stage === 1, description: "What stands by it while it is in construction: none; a tower crane (the crane kind's) behind it, its mast eight metres over its frame — fifty-four at the most —, its jib over it, at work; or the same standing still, nothing of it moving by itself (what moves by itself counts against a build's budget). A part of its own, made, moved and taken away with it. Nothing once it is finished." },
       { name: "wings", label: "Wings", min: 0, max: 3, default: 0, step: 1, options: ["none", "left", "right", "both"], labels: ["None: a bar", "Behind its left end: an L", "Behind its right end: an L", "Behind both ends: a U"], description: "What its plan has besides its bar: none; a wing behind its left end or its right one (seen from the street) — an L, a corner's block —; or one behind each — a U round a court. A wing is in line with the bar's end, as wide as the flat it goes on from at the most and no wider than the bar is deep, as many storeys as the bar, one more room of that flat on every storey, come into through the bar's back wall. Never behind its core: one asked there stands behind the other end." },
       { name: "reach", label: "Wing length", min: 6, max: 30, default: 12, step: 0.1, description: "How far each wing goes back behind the bar (m)." },
       { name: "wide", label: "Wing width", min: 6, max: 24, default: 10, step: 0.1, description: "How wide each wing is (m): as wide as the flat it goes on from at the most, and no wider than the bar is deep. Narrower than its flat, the flat keeps windows on the court beside it." },
@@ -6484,12 +6678,12 @@ var VERSION = 1, MOST_COLOURS = 8, MOST_BYTES = 32768, MOST_CELLS = 32768, MOST_
       const side2 = axis * 2 + (sign2 > 0 ? 1 : 0);
       const outward = [0, 0, 0];
       outward[axis] = sign2;
-      for (let layer = 0;layer < na; layer++) {
-        const next = layer + sign2;
+      for (let layer2 = 0;layer2 < na; layer2++) {
+        const next = layer2 + sign2;
         const open = next < 0 || next >= na;
         for (let b = 0;b < nq; b++)
           for (let a = 0;a < np; a++) {
-            const c = layer * strides[axis] + a * strides[p] + b * strides[q];
+            const c = layer2 * strides[axis] + a * strides[p] + b * strides[q];
             const here = colour[c];
             shown3[b * np + a] = here >= 0 && (open || colour[c + sign2 * strides[axis]] < 0) ? own.get(c)?.[side2] ?? here : -1;
           }
@@ -6511,7 +6705,7 @@ var VERSION = 1, MOST_COLOURS = 8, MOST_BYTES = 32768, MOST_CELLS = 32768, MOST_
               }
             for (let y = b;y < b1; y++)
               shown3.fill(-1, y * np + a, y * np + a1);
-            const level = metres[axis][layer + (sign2 > 0 ? 1 : 0)];
+            const level = metres[axis][layer2 + (sign2 > 0 ? 1 : 0)];
             const corner = (s, t) => {
               const v = [0, 0, 0];
               v[axis] = level;
@@ -6594,7 +6788,7 @@ var VERSION2 = 1, MOST_COLOURS2 = 8, MOST_POINTS = 512, MOST_RINGS = 64, MOST_BY
 }, area22 = (points) => points.reduce((sum, [x, y], i) => {
   const [nx, ny] = points[(i + 1) % points.length];
   return sum + x * ny - nx * y;
-}, 0), within = ([x, y], points) => {
+}, 0), within2 = ([x, y], points) => {
   let odd = false;
   for (let i = 0, j = points.length - 1;i < points.length; j = i++) {
     const [ax, ay] = points[i], [bx, by] = points[j];
@@ -6652,7 +6846,7 @@ var VERSION2 = 1, MOST_COLOURS2 = 8, MOST_POINTS = 512, MOST_RINGS = 64, MOST_BY
     return kept2;
   }).filter((kept2) => kept2.length >= 3 && Math.abs(area22(kept2.map(({ p }) => p))) > LEAST);
   const points = cleaned.map((kept2) => kept2.map(({ p }) => p));
-  const depth = points.map((ring, i) => points.reduce((n, other, j) => n + (j !== i && within(ring[0], other) ? 1 : 0), 0));
+  const depth = points.map((ring, i) => points.reduce((n, other, j) => n + (j !== i && within2(ring[0], other) ? 1 : 0), 0));
   const turned2 = cleaned.map((kept2, i) => {
     const wanted = depth[i] % 2 === 0 ? 1 : -1;
     if (Math.sign(area22(points[i])) === wanted)
@@ -6666,7 +6860,7 @@ var VERSION2 = 1, MOST_COLOURS2 = 8, MOST_POINTS = 512, MOST_RINGS = 64, MOST_BY
   turned2.forEach((kept2, i) => {
     if (depth[i] % 2)
       return;
-    const holes = turned2.filter((_, j) => depth[j] === depth[i] + 1 && within(points[j][0], points[i])).map((ring2) => ring2.map(({ p }) => p)).sort((a, b) => Math.max(...b.map(([x]) => x)) - Math.max(...a.map(([x]) => x)));
+    const holes = turned2.filter((_, j) => depth[j] === depth[i] + 1 && within2(points[j][0], points[i])).map((ring2) => ring2.map(({ p }) => p)).sort((a, b) => Math.max(...b.map(([x]) => x)) - Math.max(...a.map(([x]) => x)));
     let ring = kept2.map(({ p }) => p);
     for (const hole of holes)
       ring = bridged(ring, hole) ?? ring;
@@ -7369,29 +7563,29 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
     return -1;
   const bytes = text.length / 4 * 3 - (text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0);
   return bytes % (dims * 2) ? -1 : bytes / (dims * 2);
-}, round9 = (v) => Math.round(v * 1e4) / 1e4, within2 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), triple = (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite), pair = (v) => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite), whole = (v, [least2, most2]) => Number.isInteger(v) && v >= least2 && v <= most2 ? v : 0, metres = (v) => Number.isFinite(v) && v > 0 ? round9(within2(v, LEAST2, REACH)) : undefined, pointsOf = (text, dims, [least2, most2]) => {
+}, round9 = (v) => Math.round(v * 1e4) / 1e4, within3 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), triple = (v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite), pair = (v) => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite), whole = (v, [least2, most2]) => Number.isInteger(v) && v >= least2 && v <= most2 ? v : 0, metres = (v) => Number.isFinite(v) && v > 0 ? round9(within3(v, LEAST2, REACH)) : undefined, pointsOf = (text, dims, [least2, most2]) => {
   const count = countOf(text, dims);
   return count >= least2 && count <= most2 ? text : null;
 }, sidesOf2 = (value, shape) => {
   if (!Number.isInteger(value))
     return;
-  const sides = shape === "ball" ? Math.ceil(within2(value, 4, 64) / 4) * 4 : within2(value, 3, 64);
+  const sides = shape === "ball" ? Math.ceil(within3(value, 4, 64) / 4) * 4 : within3(value, 3, 64);
   return sides === SIDES3 ? undefined : sides;
 }, scaleOf = (value) => {
   if (Number.isFinite(value))
-    return value === 1 ? undefined : round9(within2(value, 0, 4));
+    return value === 1 ? undefined : round9(within3(value, 0, 4));
   if (Array.isArray(value) && value.length === 2 && value.every(Number.isFinite) && value.some((v) => v !== 1))
-    return value.map((v) => round9(within2(v, 0, 4)));
+    return value.map((v) => round9(within3(v, 0, 4)));
   return;
-}, degreesOf = (value, most2) => Number.isFinite(value) && value % 360 !== 0 ? round9(within2(value, -most2, most2)) : undefined, inOrder = (given, kept2) => Object.fromEntries(Object.keys(given).filter((key) => (key in kept2)).map((key) => [key, kept2[key]])), repeatOf = (value) => {
+}, degreesOf = (value, most2) => Number.isFinite(value) && value % 360 !== 0 ? round9(within3(value, -most2, most2)) : undefined, inOrder = (given, kept2) => Object.fromEntries(Object.keys(given).filter((key) => (key in kept2)).map((key) => [key, kept2[key]])), repeatOf = (value) => {
   const count = Number.isInteger(value?.count) && value.count >= POINTS.repeat[0] ? Math.min(value.count, POINTS.repeat[1]) : 0;
   if (!count)
     return;
-  const step = triple(value.step) ? value.step.map((v) => round9(within2(v, -REACH, REACH))) : undefined;
+  const step = triple(value.step) ? value.step.map((v) => round9(within3(v, -REACH, REACH))) : undefined;
   const around = degreesOf(value.around, 360);
   if (around === undefined)
     return step && inOrder(value, { count, step });
-  const at = pair(value.at) ? value.at.map((v) => round9(within2(v, -REACH, REACH)) || 0) : undefined;
+  const at = pair(value.at) ? value.at.map((v) => round9(within3(v, -REACH, REACH)) || 0) : undefined;
   return inOrder(value, { count, ...step?.some((v) => v !== 0) && { step }, around, ...at?.some((v) => v !== 0) && { at } });
 }, FACES23, CAP2 = 0.999, faceOf = (shape, [x, y, z]) => {
   if (shape === "extrude")
@@ -7411,9 +7605,9 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
   for (const entry of spots) {
     if (!Array.isArray(entry) || entry.length !== 4 || !entry.every(Number.isFinite))
       continue;
-    const spot = entry.slice(0, 3).map((v) => Math.round(within2(v, -0.5, 0.5) * 1e4) / 1e4 || 0);
+    const spot = entry.slice(0, 3).map((v) => Math.round(within3(v, -0.5, 0.5) * 1e4) / 1e4 || 0);
     kept2.delete(spot.join());
-    kept2.set(spot.join(), [...spot, within2(Math.round(entry[3]), 0, MOST_COLOURS3 - 1)]);
+    kept2.set(spot.join(), [...spot, within3(Math.round(entry[3]), 0, MOST_COLOURS3 - 1)]);
   }
   return kept2.size ? [...kept2.values()].slice(-MOST_SPOTS) : null;
 }, placedSpots = (body, slots, place = same2) => {
@@ -7425,7 +7619,7 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
     const turned2 = matrix ? [0, 1, 2].map((i) => matrix[i][0] * own[0] + matrix[i][1] * own[1] + matrix[i][2] * own[2]) : own;
     return { at: place(turned2.map((v, k) => v + body.at[k])), colour: Math.min(colour, slots - 1) };
   });
-}, keepBaseFaces = (value) => Array.isArray(value) && value.length === 6 && value.every(Number.isInteger) ? value.map((v) => within2(v, 0, MOST_COLOURS3 - 1)) : [], baseBody = ({ base, sides, faces, spots }, size) => ({
+}, keepBaseFaces = (value) => Array.isArray(value) && value.length === 6 && value.every(Number.isInteger) ? value.map((v) => within3(v, 0, MOST_COLOURS3 - 1)) : [], baseBody = ({ base, sides, faces, spots }, size) => ({
   add: SHAPES2[base] ?? "box",
   at: [0, 0, 0],
   size,
@@ -7453,7 +7647,7 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
   }
   if (shape === "revolve") {
     set("sides", sidesOf2(body.sides, shape));
-    set("angle", Number.isFinite(body.angle) && body.angle < 360 ? round9(within2(body.angle, 1, 360)) : undefined);
+    set("angle", Number.isFinite(body.angle) && body.angle < 360 ? round9(within3(body.angle, 1, 360)) : undefined);
   }
   if (shape === "extrude") {
     const holes = Array.isArray(body.holes) ? body.holes.filter((hole) => pointsOf(hole, 2, POINTS.profile)).slice(0, POINTS.holes) : [];
@@ -7475,7 +7669,7 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
     if (!(own.path = pointsOf(body.path, 3, POINTS.path)))
       return null;
     if (Array.isArray(body.across) && body.across.length === 2 && body.across.every(Number.isFinite))
-      own.across = body.across.map((v) => round9(within2(v, LEAST2, REACH)));
+      own.across = body.across.map((v) => round9(within3(v, LEAST2, REACH)));
     if (body.closed === true)
       own.closed = true;
   }
@@ -7492,15 +7686,15 @@ var MANIFOLD, SHAPES2, FORMS2, WAYS2, MOST_COLOURS3 = 8, MOST_BODIES = 32, MOST_
   if (!own)
     return null;
   const turn2 = triple(body.turn) ? body.turn.map((v) => round9((v % 360 + 540) % 360 - 180)) : [0, 0, 0];
-  const colour = Number.isInteger(body.colour) ? within2(body.colour, 0, MOST_COLOURS3 - 1) : 0;
+  const colour = Number.isInteger(body.colour) ? within3(body.colour, 0, MOST_COLOURS3 - 1) : 0;
   const repeat = repeatOf(body.repeat);
   const count = FACES23[body[way]];
-  const faces = count && Array.isArray(body.faces) && body.faces.length === count && body.faces.every(Number.isInteger) ? body.faces.map((v) => within2(v, 0, MOST_COLOURS3 - 1)) : null;
+  const faces = count && Array.isArray(body.faces) && body.faces.length === count && body.faces.every(Number.isInteger) ? body.faces.map((v) => within3(v, 0, MOST_COLOURS3 - 1)) : null;
   const spots = spotsOf(body.spots);
   return inOrder(body, {
     [way]: body[way],
-    at: body.at.map((v) => round9(within2(v, -REACH, REACH))),
-    size: body.size.map((v) => round9(within2(v, LEAST2, REACH))),
+    at: body.at.map((v) => round9(within3(v, -REACH, REACH))),
+    size: body.size.map((v) => round9(within3(v, LEAST2, REACH))),
     ...own,
     ...turn2.some((v) => v !== 0) && { turn: turn2 },
     ...colour && { colour },
@@ -7873,9 +8067,9 @@ var SAMPLE = 1, MOST_CHORD = 60, GRADE2 = 8, SEAT2 = 1.2, FREEBOARD2 = 0.3, BURI
   if (sagMax)
     return line - Math.max(sagMax - rise, 0) * 4 * s * (length2 - s) / (length2 * length2);
   return line + Math.min(rise, s / GRADE2, (length2 - s) / GRADE2);
-}, groundAt2 = (params, length2, s) => params.ground.length >= 2 ? readAt(params.ground, length2, s) : length2 > 0 ? params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2 : params.points[0][2], crossing = (positions, values, level, outside, inside) => {
-  const [a, b] = [values[outside] - level, values[inside] - level];
-  return a === b ? positions[inside] : positions[outside] + (positions[inside] - positions[outside]) * -a / (b - a);
+}, groundAt2 = (params, length2, s) => params.ground.length >= 2 ? readAt(params.ground, length2, s) : length2 > 0 ? params.points[0][2] + (params.points[1][2] - params.points[0][2]) * s / length2 : params.points[0][2], crossing = (positions, values, level, outside2, inside) => {
+  const [a, b] = [values[outside2] - level, values[inside] - level];
+  return a === b ? positions[inside] : positions[outside2] + (positions[inside] - positions[outside2]) * -a / (b - a);
 }, planOf, riseFor = (params, ground, water) => {
   const style = STYLES[STYLE_NAMES[params.style]] ?? STYLES.timber;
   const { length: length2 } = chordOf(params.points);
@@ -8745,7 +8939,7 @@ var init_bridge_gen = __esm(() => {
     resize: (params) => params,
     reasons: (params) => planOf(params).reasons,
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(3);
+      const mesh = createMesh(3, { layered: true });
       const kit = kitOf(params, level);
       if (kit.plan.length >= 0.5)
         generatorOf(kit.plan)[0](mesh, kit);
@@ -8940,7 +9134,7 @@ var PART = 0.12, ONE = 2.1, ROOMS, round11 = (v) => Math.round(v * 1000) / 1000,
   const line = round11(Y0 + Math.min(Math.max(D / 2, taken + wide + 0.3 + PART / 2), D - Math.max(m.bedroom.deep[0], m.study[0]) - PART / 2));
   const [front, back] = [[line + PART / 2, Y1], [Y0, line - PART / 2]];
   const behind = Y0 + taken + wide <= back[1] - 0.3 + 0.000000001 ? [Y0 + taken, Y0 + taken + wide] : null;
-  const twice = front[1] - front[0] >= 2 * wide + 0.8;
+  const twice2 = front[1] - front[0] >= 2 * wide + 0.8;
   const before = (leaves) => [(front[0] + front[1]) / 2 - leaves * wide / 2, (front[0] + front[1]) / 2 + leaves * wide / 2];
   const asked2 = Math.min(bedrooms || 4, role === "both" ? 2 : 4);
   const order = role === "both" ? [[far, "front"], [far, "back"]] : [[near, "front"], [far, "front"], [far, "back"], [near, "back"]];
@@ -8963,7 +9157,7 @@ var PART = 0.12, ONE = 2.1, ROOMS, round11 = (v) => Math.round(v * 1000) / 1000,
     through(side2 * (H + PART / 2), [Y0, Y1], [
       ...off === "hall" ? [{ y: [Y0 + 0.4, Y0 + 0.4 + wide], into: side2, room: small }] : [],
       ...behind && !one ? [{ y: behind, into: side2, room: rear }] : [],
-      ((double) => ({ y: before(double ? 2 : 1), into: side2, room: ahead, double, pocket: before(2)[1] + wide + 0.05 <= Y1 && before(2)[0] - wide - 0.05 >= (behind && !one ? behind[1] : Y0) }))(twice && role !== "night" && ahead !== "bedroom")
+      ((double) => ({ y: before(double ? 2 : 1), into: side2, room: ahead, double, pocket: before(2)[1] + wide + 0.05 <= Y1 && before(2)[0] - wide - 0.05 >= (behind && !one ? behind[1] : Y0) }))(twice2 && role !== "night" && ahead !== "bedroom")
     ]);
   }
   room2(k === 0 ? "hall" : "landing", [-H, H], [Y0, Y1]);
@@ -9311,7 +9505,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
       const { along: along2, out: out2, yaw } = SIDES5[side2];
       const chance = randomOf2(params.variant * 7919 + params.style * 131 + 17 + (k * SIDE_NAMES.length + index + 1) * 1009);
       const pattern = side2 === "front" || side2 === "back" ? patterns[side2] : side2 === beside ? patterns.beside : patterns.side;
-      const outside = k === 0 || terraces.get(k)[side2] >= M.terrace;
+      const outside2 = k === 0 || terraces.get(k)[side2] >= M.terrace;
       const [a0, a1] = along2 === 0 ? [rect.x0, rect.x1] : [round12(rect.y0 + WALL), round12(rect.y1 - WALL)];
       const inner2 = along2 === 0 ? [round12(rect.x0 + WALL), round12(rect.x1 - WALL)] : [a0, a1];
       const usable = [inner2[0] + CORNER, inner2[1] - CORNER];
@@ -9363,7 +9557,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
           doorAt(null);
         return openings.length > before ? round12((openings.at(-1).a0 + openings.at(-1).a1) / 2) : null;
       };
-      const within3 = ([p, q], lay) => {
+      const within4 = ([p, q], lay) => {
         const fence2 = [[-Infinity, p], [q, Infinity]];
         blocked.push(...fence2);
         const laid2 = lay();
@@ -9414,7 +9608,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         const [stretch2] = freeOf([Math.max(usable[0], wing.y0 + WALL + CORNER), Math.min(usable[1], wing.y1 - WALL - CORNER)], [...blocked, ...closed]).filter(([p, q]) => q - p >= M.door + 0.2).sort((p, q) => q[1] - q[0] - (p[1] - p[0]));
         const before = doors.length;
         if (stretch2)
-          within3(stretch2, () => doorAt(null));
+          within4(stretch2, () => doorAt(null));
         if (doors.length > before)
           Object.assign(doors.at(-1), { style: "plain", to: "garage" });
         blocked.push([wing.y0, wing.y1 + 0.4]);
@@ -9424,7 +9618,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         const behind = ([p, q]) => roomAt(k, (p + q) / 2, rect.y1 - WALL - 0.3);
         const open = stretches.find((each) => OPEN.includes(behind(each))) ?? (k === 0 ? stretches[0] : undefined);
         if (k === bay.high)
-          bay.way = within3([bay.x0 + WALL + NIB, bay.x1 - WALL - NIB], wayOut);
+          bay.way = within4([bay.x0 + WALL + NIB, bay.x1 - WALL - NIB], wayOut);
         if (open) {
           openings.push({ a0: round12(open[0]), a1: round12(open[1]), z0: floor, z1: round12(floor + M.clear), void: true, bars: 0 });
           blocked.push([open[0] - 0.4, open[1] + 0.4]);
@@ -9433,7 +9627,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         }
         if (k === 1 && !style.veranda && !(bay.high === 1 && bay.way !== null))
           for (const which of [-1, 1]) {
-            const way = within3(besideBay(which), wayOut);
+            const way = within4(besideBay(which), wayOut);
             if (way !== null)
               bayWays.set(which, way);
           }
@@ -9443,12 +9637,12 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
         const inside = SIDES5[side2].at(rect) - out2 * (WALL + 0.3);
         const reach = style.end ? [Math.max(usable[0], roofed.y0 + 0.3), usable[1]] : usable;
         const [stretch2] = freeOf(reach, blocked).filter(([p, q]) => OPEN.includes(roomAt(k, inside, (p + q) / 2))).sort((p, q) => q[1] - q[0] - (p[1] - p[0]));
-        const way = stretch2 ? within3(stretch2, wayOut) : null;
+        const way = stretch2 ? within4(stretch2, wayOut) : null;
         if (way !== null)
           verandaWays.set(side2, way);
       }
       if (terraceDoors.get(k) === side2) {
-        const way = hall2 && side2 === "front" ? within3([-hall2 / 2 + 0.3, hall2 / 2 - 0.3], wayOut) : wayOut();
+        const way = hall2 && side2 === "front" ? within4([-hall2 / 2 + 0.3, hall2 / 2 - 0.3], wayOut) : wayOut();
         if (way !== null)
           accesses.set(k, { side: side2, at: way });
       } else if (k > 0 && side2 === "front" && terraces.get(k).front < M.terrace && (k === 1 ? form.balcony.on : params.forms === 1 && form.balcony.chances[1] < style.forms.balcony)) {
@@ -9475,8 +9669,8 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
       };
       const lays = style.grand && side2 === "front" && M.patterns[pattern]?.bay ? [ranked()] : freeOf(usable, blocked).map((stretch2) => {
         const middle2 = (stretch2[0] + stretch2[1]) / 2;
-        const within4 = SIDES5[side2].at(rect) - out2 * (WALL + 0.3);
-        const behind = roomAt(k, along2 === 0 ? middle2 : within4, along2 === 0 ? within4 : middle2);
+        const within5 = SIDES5[side2].at(rect) - out2 * (WALL + 0.3);
+        const behind = roomAt(k, along2 === 0 ? middle2 : within5, along2 === 0 ? within5 : middle2);
         const private_ = behind === "bath" || behind === "toilet" || behind === "closet" || Boolean(arm && middle2 > arm.x0 && middle2 < arm.x1);
         return laid(M.patterns[private_ ? "slot" : pattern], stretch2, floor, g, style.grand ? () => 1 : chance, M.bays);
       });
@@ -9485,7 +9679,7 @@ var SLAB3 = 0.25, WALL = 0.25, LAP = 0.05, LIGHT = 1.6, RAIL5 = 1.05, ROOF2 = 0.
           if (divided && opening.a1 - opening.a0 < SLIT)
             continue;
           const bay2 = opening.z0 === floor && opening.z1 === round12(floor + M.clear);
-          if (params.sliding && opening.bars && slides < BUDGET.slides && (bay2 ? outside : params.sliding === 2)) {
+          if (params.sliding && opening.bars && slides < BUDGET.slides && (bay2 ? outside2 : params.sliding === 2)) {
             const pane = (opening.a1 - opening.a0) / (opening.bars + 1);
             opening.slide = { a0: round12(opening.a1 - pane), a1: opening.a1, by: slideOf(pane), walk: bay2, near: false };
             slides++;
@@ -11166,7 +11360,7 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
   ...porch.y1 - porch.y0 > 0.01 ? [{ min: [porch.x0, porch.y0, porch.bottom], max: [porch.x1, porch.y1, 0] }] : [],
   ...porch.steps.map((step) => ({ min: [porch.across?.[0] ?? porch.x0, step.y0, porch.bottom], max: [porch.across?.[1] ?? porch.x1, step.y1, step.top] }))
 ], fenceBox = ({ along: along2, a0, a1, at, z, r }) => along2 === 0 ? { min: [a0, at - r, 0], max: [a1, at + r, z + r] } : { min: [at - r, a0, 0], max: [at + r, a1, z + r] }, build = (plan, level) => {
-  const mesh = createMesh(7);
+  const mesh = createMesh(7, { layered: true, glass: [GLASS9] });
   const uvOf = (p, n) => boxUv(p, n, ORIGIN, 1, 1);
   const windowUv = marked(uvOf);
   const plate = (slot, axis, sign2, at, min, max, uvs = uvOf) => {
@@ -11180,14 +11374,17 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
     };
     const normal = [0, 0, 0];
     normal[axis] = sign2;
+    const steps = mesh.fate(slot, axis, sign2, at, [min[a], max[a], min[b], max[b]], uvs);
+    if (steps < 0)
+      return;
     const corners = sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)];
-    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvs(p, normal)));
+    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, steps ? p.map((v, k) => k === axis ? v - sign2 * steps * HAIR : v) : p, normal, uvs(p, normal)));
     mesh.quad(slot, p0, p1, p2, p3);
   };
-  const box = ({ min, max }, slotOf) => {
+  const box = ({ min, max }, slotOf2) => {
     for (let axis = 0;axis < 3; axis++)
       for (const sign2 of [-1, 1]) {
-        const slot = slotOf(axis, sign2);
+        const slot = slotOf2(axis, sign2);
         if (slot !== null)
           plate(slot, axis, sign2, sign2 > 0 ? max[axis] : min[axis], min, max);
       }
@@ -11368,29 +11565,6 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
     const { x0, x1, y0, y1, z0, rise, slot } = plan.portico.pediment;
     addExtrusion(mesh, [[z0, x0], [z0, x1], [z0 + rise, (x0 + x1) / 2]], 1, y0, y1, slot, (normal) => normal[2] > 0.1 ? ROOFING : TRIM2, uvOf);
   }
-  if (plan.timber) {
-    const sides = level >= 2 ? 8 : level === 1 ? 6 : 4;
-    for (const { x, y, r, z0, z1 } of plan.timber.posts) {
-      const ring = Array.from({ length: sides }, (_, i) => [x + r * Math.cos(2 * Math.PI * (i + 0.5) / sides), y + r * Math.sin(2 * Math.PI * (i + 0.5) / sides)]);
-      ring.forEach((p, i) => {
-        const q = ring[(i + 1) % sides];
-        mesh.polygon(TRIM2, [[...p, z0], [...q, z0], [...q, z1], [...p, z1]], [(p[0] + q[0]) / 2 - x, (p[1] + q[1]) / 2 - y, 0], uvOf);
-      });
-    }
-    if (level >= 2)
-      for (const { along: along2, a0, a1, at, z, r } of plan.timber.logs) {
-        const point = (a, i) => {
-          const [c, s] = [at + r * Math.cos(2 * Math.PI * (i + 0.5) / 6), z + r * Math.sin(2 * Math.PI * (i + 0.5) / 6)];
-          return along2 === 0 ? [a, c, s] : [c, a, s];
-        };
-        for (let i = 0;i < 6; i++) {
-          const [mc, ms] = [Math.cos(2 * Math.PI * (i + 1) / 6), Math.sin(2 * Math.PI * (i + 1) / 6)];
-          mesh.polygon(TRIM2, [point(a0, i), point(a1, i), point(a1, i + 1), point(a0, i + 1)], along2 === 0 ? [0, mc, ms] : [mc, 0, ms], uvOf);
-        }
-        for (const [a, sign2] of [[a0, -1], [a1, 1]])
-          mesh.polygon(TRIM2, Array.from({ length: 6 }, (_, i) => point(a, i)), along2 === 0 ? [sign2, 0, 0] : [0, sign2, 0], uvOf);
-      }
-  }
   if (plan.bay?.vault) {
     const { x0, x1, y1, vault } = plan.bay;
     const { points, back, under, front, thick, meets, glass, at, base, behind, wall: face2, cheek, walls: top, slot } = vault;
@@ -11453,6 +11627,29 @@ var WALLS, TRIM2, GLASS9, ROOFING, FLOORS, INSIDE, ORIGIN, PANE3 = 0.02, BAR, SA
   for (const extra of plan.extras)
     if (level >= extra.level)
       box(extra, (axis, sign2) => axis === 2 ? sign2 > 0 ? extra.top : extra.bottom : extra.side);
+  if (plan.timber) {
+    const sides = level >= 2 ? 8 : level === 1 ? 6 : 4;
+    for (const { x, y, r, z0, z1 } of plan.timber.posts) {
+      const ring = Array.from({ length: sides }, (_, i) => [x + r * Math.cos(2 * Math.PI * (i + 0.5) / sides), y + r * Math.sin(2 * Math.PI * (i + 0.5) / sides)]);
+      ring.forEach((p, i) => {
+        const q = ring[(i + 1) % sides];
+        mesh.polygon(TRIM2, [[...p, z0], [...q, z0], [...q, z1], [...p, z1]], [(p[0] + q[0]) / 2 - x, (p[1] + q[1]) / 2 - y, 0], uvOf);
+      });
+    }
+    if (level >= 2)
+      for (const { along: along2, a0, a1, at, z, r } of plan.timber.logs) {
+        const point = (a, i) => {
+          const [c, s] = [at + r * Math.cos(2 * Math.PI * (i + 0.5) / 6), z + r * Math.sin(2 * Math.PI * (i + 0.5) / 6)];
+          return along2 === 0 ? [a, c, s] : [c, a, s];
+        };
+        for (let i = 0;i < 6; i++) {
+          const [mc, ms] = [Math.cos(2 * Math.PI * (i + 1) / 6), Math.sin(2 * Math.PI * (i + 1) / 6)];
+          mesh.polygon(TRIM2, [point(a0, i), point(a1, i), point(a1, i + 1), point(a0, i + 1)], along2 === 0 ? [0, mc, ms] : [mc, 0, ms], uvOf);
+        }
+        for (const [a, sign2] of [[a0, -1], [a1, 1]])
+          mesh.polygon(TRIM2, Array.from({ length: 6 }, (_, i) => point(a, i)), along2 === 0 ? [sign2, 0, 0] : [0, sign2, 0], uvOf);
+      }
+  }
   return mesh;
 }, solids = (plan) => {
   const boxes = [];
@@ -11738,29 +11935,34 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
     { points: [a, b, r0], outward: [0, -slope, 1] },
     { points: [c, d, r1], outward: [0, slope, 1] }
   ];
-}, footAt = ({ a0, a1, z0, openings }, end) => Math.max(z0, ...openings.filter((o) => o.kind === "void" && (end ? o.a1 >= a1 - 0.000001 : o.a0 <= a0 + 0.000001)).map((o) => o.z1)), sheetsOn = (mesh, level) => {
+}, footAt = ({ a0, a1, z0, openings }, end) => Math.max(z0, ...openings.filter((o) => o.kind === "void" && (end ? o.a1 >= a1 - 0.000001 : o.a0 <= a0 + 0.000001)).map((o) => o.z1)), WITHIN, sheetsOn = (mesh, level) => {
   const near = level >= 3;
   const uvOf = (p, n) => boxUv(p, n, ORIGIN2, 1, 1);
   const windowUv = marked(uvOf);
-  const plate = (slot, axis, sign2, at, min, max, uvs = uvOf) => {
+  const laid2 = layer();
+  const rectOf = (axis, min, max) => [min[(axis + 1) % 3], max[(axis + 1) % 3], min[(axis + 2) % 3], max[(axis + 2) % 3]];
+  const plate = (slot, axis, sign2, at, min, max, uvs = uvOf, over = null) => {
     const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
-    const corner = (s, t) => {
-      const p = [0, 0, 0];
-      p[axis] = at;
-      p[a] = s ? max[a] : min[a];
-      p[b] = t ? max[b] : min[b];
-      return p;
-    };
     const normal = [0, 0, 0];
     normal[axis] = sign2;
-    const corners = sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)];
-    const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvs(p, normal)));
-    mesh.quad(slot, p0, p1, p2, p3);
+    const rect2 = rectOf(axis, min, max), look8 = { slot, uvs };
+    for (const [s0, s1, t0, t1] of over ? over.length ? outside(rect2, over, look8) : [rect2] : laid2.cut(axis, sign2, at, rect2, slot === GLASS10, look8)) {
+      const corner = (s, t) => {
+        const p = [0, 0, 0];
+        p[axis] = at;
+        p[a] = s ? s1 : s0;
+        p[b] = t ? t1 : t0;
+        return p;
+      };
+      const corners = sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)];
+      const [p0, p1, p2, p3] = corners.map((p) => mesh.vertex(slot, p, normal, uvs(p, normal)));
+      mesh.quad(slot, p0, p1, p2, p3);
+    }
   };
-  const box = ({ min, max }, slotOf) => {
+  const box = ({ min, max }, slotOf2) => {
     for (let axis = 0;axis < 3; axis++)
       for (const sign2 of [-1, 1]) {
-        const slot = slotOf(axis, sign2);
+        const slot = slotOf2(axis, sign2);
         if (slot !== null)
           plate(slot, axis, sign2, sign2 > 0 ? max[axis] : min[axis], min, max);
       }
@@ -11782,19 +11984,29 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
       plate(TRIM3, 2, 1, z1, point(a0, f0, 0), point(a1, f1, 0));
     if (near || !each.shell) {
       const holes = near ? openings : [];
+      const [faceAt, backAt] = near || !openings.length ? [at, behind] : [at - out * WITHIN, behind + out * WITHIN];
       if (!near && (level === 0 || !each.blocker))
         return;
       const as2 = stations2([a0, a1, ...each.inner, ...holes.flatMap((o) => [o.a0, o.a1]), ...skins.flatMap((skin) => [skin.a0, skin.a1])]).filter((a) => a >= a0 - 0.000001 && a <= a1 + 0.000001);
       const zs = stations2([z0, z1, ...each.roofZ ? [each.roofZ] : [], ...holes.flatMap((o) => [o.z0, o.z1]), ...skins.flatMap((skin) => [skin.z0, skin.z1])]).filter((z) => z >= z0 - 0.000001 && z <= z1 + 0.000001);
+      const [inner0, inner1] = [Math.max(a0, each.inner[0]), Math.min(a1, each.inner[1])];
+      const open = holes.map((o) => rectOf(across, point(o.a0, 0, o.z0), point(o.a1, 0, o.z1)));
+      const wears = (face2) => ({ uvs: uvOf, slotAt: along2 === 0 ? (s, t) => dressed(face2, t, s) : (s, t) => dressed(face2, s, t) });
+      const faces = [
+        { sign: out, at: faceAt, rect: rectOf(across, point(a0, 0, z0), point(a1, 0, z1)), holes: open, look: wears(0) },
+        ...each.back !== null && inner1 > inner0 ? [{ sign: -out, at: backAt, rect: rectOf(across, point(inner0, 0, z0), point(inner1, 0, z1)), holes: open, look: wears(1) }] : []
+      ].map((face2) => ({ ...face2, over: laid2.over(across, face2.sign, face2.at, face2.rect, false) }));
       for (let i = 0;i < as2.length - 1; i++)
         for (let j = 0;j < zs.length - 1; j++) {
           const [ma, mz] = [(as2[i] + as2[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2];
           if (holes.some((o) => ma > o.a0 && ma < o.a1 && mz > o.z0 && mz < o.z1))
             continue;
-          plate(dressed(0, ma, mz), across, out, at, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]));
+          plate(dressed(0, ma, mz), across, out, faceAt, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]), uvOf, faces[0].over);
           if (each.back !== null && ma > each.inner[0] && ma < each.inner[1])
-            plate(dressed(1, ma, mz), across, -out, behind, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]));
+            plate(dressed(1, ma, mz), across, -out, backAt, point(as2[i], 0, zs[j]), point(as2[i + 1], 0, zs[j + 1]), uvOf, faces[1].over);
         }
+      for (const face2 of faces)
+        laid2.keep(across, face2.sign, face2.at, face2.rect, face2.holes, false, face2.look);
       for (const o of holes) {
         const reveal = o.kind === "window" || o.kind === "door" ? TRIM3 : each.slot;
         if (o.a0 > a0 + 0.000001)
@@ -11841,7 +12053,7 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
       for (const o of lights) {
         if (o.z0 - from > 0.000001)
           plate(slot, across, out, at, point(as[i], 0, from), point(as[i + 1], 0, o.z0));
-        plate(o.kind === "door" ? slot : o.glass ?? GLASS10, across, out, at, point(as[i], 0, o.z0), point(as[i + 1], 0, o.z1), o.kind === "door" ? uvOf : windowUv);
+        plate(o.kind === "door" ? slot : o.glass ?? GLASS10, across, out, o.kind === "door" ? at - out * WITHIN : at, point(as[i], 0, o.z0), point(as[i + 1], 0, o.z1), o.kind === "door" ? uvOf : windowUv);
         from = Math.max(from, o.z1);
       }
       if (z1 - from > 0.000001)
@@ -11853,11 +12065,12 @@ var WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2, ORIGIN2, PANE4 = 
     const { rect: rect2, top, bottom, holes } = slab2;
     if (!near && level === 0 && slab2.kind === "floor")
       return;
+    const hair = !near && holes.length ? WITHIN : 0;
     for (const [x0, x1, y0, y1] of near ? piecesOf3(slab2) : [[rect2.x0, rect2.x1, rect2.y0, rect2.y1]]) {
       if (slab2.face !== null)
-        plate(slab2.face, 2, 1, top, [x0, y0, 0], [x1, y1, 0]);
+        plate(slab2.face, 2, 1, top - hair, [x0, y0, 0], [x1, y1, 0]);
       if (slab2.under !== null)
-        plate(slab2.under, 2, -1, bottom, [x0, y0, 0], [x1, y1, 0]);
+        plate(slab2.under, 2, -1, bottom + hair, [x0, y0, 0], [x1, y1, 0]);
     }
     const [lo, hi] = [[rect2.x0, rect2.y0, bottom], [rect2.x1, rect2.y1, top]];
     if (slab2.edge !== null)
@@ -11910,6 +12123,7 @@ var init_sheets = __esm(() => {
   init_mesh();
   [WALLS2, APART, TRIM3, GLASS10, ROOFING2, FLOORS2, INSIDE2] = [0, 1, 2, 3, 4, 5, 6];
   ORIGIN2 = [0, 0, 0];
+  WITHIN = HAIR / 2;
 });
 
 // src/build/kinds/glyphs.js
@@ -12093,8 +12307,9 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
   const recessY = round14(rect2.y1 - WALL3 - M.recess[1]);
   const doorY = round14(recessY - WALL3);
   const top = round14(F * S);
-  const ceiling = below ? top : round14((F - 1) * S + clear);
+  const ceiling = below ? round14(top - SLAB4) : round14((F - 1) * S + clear);
   const base = above ? -SLAB4 : -Math.max(params.plinth, params.stoop);
+  const wallFoot = above ? -SLAB4 : 0;
   const way = M.rooms.inner[0] + 2 * FOOTING2 + 0.1;
   const split = params.flats === 1 && doorY - hallY >= 2 * way - 0.000000001;
   const midY = split ? round14(clamp11(0, hallY + way, doorY - way)) : 0;
@@ -12119,7 +12334,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
       const column2 = columns2[chosen];
       const wide2 = Math.min(BALCONY_WIDE, hi - lo - 2 * FOOTING2);
       const from = round14(clamp11((column2.a0 + column2.a1) / 2 - wide2 / 2, lo + FOOTING2, hi - FOOTING2 - wide2));
-      balconies.push({ front: name, sign: sign2, x0: from, x1: round14(from + wide2), y: sign2 > 0 ? rect2.y1 : rect2.y0, out: BALCONY_OUT, first: above ? 0 : 1, storeys: above ? F : F - 1, top: flat2 || below ? top : round14(top - SLAB4), canopy: flat2, rail: style.rail });
+      balconies.push({ front: name, sign: sign2, x0: from, x1: round14(from + wide2), y: sign2 > 0 ? rect2.y1 : rect2.y0, out: BALCONY_OUT, first: above ? 0 : 1, storeys: above ? F : F - 1, top: flat2 ? top : below ? round14(top - DECK3) : round14(top - SLAB4), canopy: flat2, rail: style.rail });
     }
     const street2 = sign2 > 0 && (hotel || shops);
     const entered = street2 && shops ? columns2.reduce((best, column2, i) => Math.abs((column2.a0 + column2.a1) / 2 - (each.x0 + each.x1) / 2) < Math.abs((columns2[best].a0 + columns2[best].a1) / 2 - (each.x0 + each.x1) / 2) ? i : best, 0) : -1;
@@ -12149,8 +12364,8 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
   const openUnder = (a0, a1) => open && a1 - a0 > 0.01 ? [{ a0: round14(a0), a1: round14(a1), z0: 0, z1: round14(S - SLAB4), kind: "void" }] : [];
   const doorHead = Math.min(M.rooms.inner[1], clear - 0.3);
   const walls = [];
-  const wallTop = flat2 ? round14(top + PARAPET2) : below ? top : round14(top - SLAB4);
-  const outer = { thick: WALL3, z0: 0, z1: wallTop, slot: FACE3.walls, back: FACE3.inside, shell: true, cap: flat2, roofZ: flat2 ? top : null, accent: chances.spandrels < style.spandrels, skins: [] };
+  const wallTop = flat2 ? round14(top + PARAPET2) : round14(top - SLAB4);
+  const outer = { thick: WALL3, z0: wallFoot, z1: wallTop, slot: FACE3.walls, back: FACE3.inside, shell: true, cap: flat2, roofZ: flat2 ? top : null, accent: chances.spandrels < style.spandrels, skins: [] };
   const shut = [side2 < 0 ? rect2.x0 : round14(core.x0 - WALL3), side2 > 0 ? rect2.x1 : round14(core.x1 + WALL3)];
   if (!frame) {
     walls.push({
@@ -12166,7 +12381,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
       openings: [
         ...open ? [...openUnder(rect2.x0, Math.max(rect2.x0, shaftX.x0 - WALL3)), ...openUnder(Math.min(rect2.x1, shaftX.x1 + WALL3), rect2.x1)] : above ? [] : [{ a0: bay.x0, a1: bay.x1, z0: 0, z1: clear, kind: "void" }],
         ...Array.from({ length: above ? F : F - 1 }, (_, i) => ({ a0: round14(bay.x0 + 0.7), a1: round14(bay.x1 - 0.7), z0: round14((i + (above ? 0 : 1)) * S + frontZ[0]), z1: round14((i + (above ? 0 : 1)) * S + frontZ[1]), kind: "window" })),
-        { a0: shaftX.x0, a1: shaftX.x1, z0: 0, z1: ceiling, kind: "window" },
+        { a0: shaftX.x0, a1: shaftX.x1, z0: wallFoot, z1: ceiling, kind: "window" },
         ...frontOf(1, style.front, "front")
       ]
     }, {
@@ -12184,7 +12399,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
         ...wings.flatMap((wing) => lit.map((k) => ({ a0: wing.door[0], a1: wing.door[1], z0: round14(k * S), z1: round14(k * S + doorHead), kind: "door" }))),
         ...openUnder(rect2.x0, shut[0]),
         ...openUnder(shut[1], rect2.x1),
-        { a0: round14(mid - 1.3), a1: round14(mid + 1.3), z0: above ? 0 : 1.2, z1: below ? top : round14(ceiling - 0.6), kind: "window" },
+        { a0: round14(mid - 1.3), a1: round14(mid + 1.3), z0: above ? wallFoot : 1.2, z1: below ? wallTop : round14(ceiling - 0.6), kind: "window" },
         ...Array.from({ length: F }, (_, k) => ({ a0: round14(shaftX.x0 + 0.6), a1: round14(shaftX.x1 - 0.6), z0: round14(k * S + frontZ[0]), z1: round14(k * S + frontZ[1]), kind: "window" })),
         ...frontOf(-1, style.back, "back")
       ]
@@ -12200,7 +12415,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
   }
   const entryHead = Math.min(M.entry.head, clear - 0.25);
   const entry = { from: round14(mid - M.entry.leaf), width: 2 * M.entry.leaf, head: entryHead, recess: { x0: bay.x0, x1: bay.x1, y: recessY, deep: M.recess[1] } };
-  const within3 = frame ? FACE3.trim : FACE3.inside;
+  const within4 = frame ? FACE3.trim : FACE3.inside;
   if (!above)
     walls.push({
       name: "entry",
@@ -12214,7 +12429,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
       z0: 0,
       z1: clear,
       slot: frame ? FACE3.trim : FACE3.walls,
-      back: within3,
+      back: within4,
       skins: [],
       blocker: true,
       openings: [{ a0: entry.from, a1: round14(entry.from + entry.width), z0: 0, z1: entryHead, kind: "door" }]
@@ -12232,10 +12447,10 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
       a0: inside.y0,
       a1: inside.y1,
       inner: [inside.y0, inside.y1],
-      z0: 0,
+      z0: wallFoot,
       z1: frame ? round14(top - SLAB4) : ceiling,
-      slot: within3,
-      back: within3,
+      slot: within4,
+      back: within4,
       partition: true,
       blocker: true,
       openings: [...hotel ? [{ a0: recessed ? hallY : inside.y0, a1: doorY, z0: 0, z1: clear, kind: "void" }] : [], ...doorways],
@@ -12244,12 +12459,12 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
       skins: frame ? [] : [...recessed && !above ? [{ face: 0, a0: recessY, a1: inside.y1, z0: 0, z1: clear, slot: FACE3.walls }] : [], ...open ? [{ face: 1, a0: inside.y0, a1: inside.y1, z0: 0, z1: round14(S - SLAB4), slot: FACE3.walls }] : []]
     });
     if (split && !frame)
-      walls.push({ name: `between ${each.name}`, along: 0, at: round14(midY + PART3 / 2), out: 1, thick: PART3, a0: each.x0, a1: each.x1, inner: [each.x0, each.x1], z0: lived.includes(0) ? 0 : S, z1: ceiling, slot: FACE3.inside, back: FACE3.inside, partition: true, blocker: true, openings: [], skins: [] });
+      walls.push({ name: `between ${each.name}`, along: 0, at: round14(midY + PART3 / 2), out: 1, thick: PART3, a0: each.x0, a1: each.x1, inner: [each.x0, each.x1], z0: lived.includes(0) ? wallFoot : S, z1: ceiling, slot: FACE3.inside, back: FACE3.inside, partition: true, blocker: true, openings: [], skins: [] });
   }
   const liftMid = round14((shaftX.x0 + shaftX.x1) / 2);
   const shaftTop = frame ? round14(top - SLAB4) : ceiling;
   const [edge, facing] = lifted < 0 ? [shaftX.x1, -1] : [shaftX.x0, 1];
-  const bareEnd = frame ? [0, shaftTop] : null;
+  const bareEnd = frame ? [wallFoot, shaftTop] : null;
   walls.push({
     name: "shaft door",
     along: 0,
@@ -12259,10 +12474,10 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
     a0: shaftX.x0,
     a1: shaftX.x1,
     inner: [shaftX.x0, shaftX.x1],
-    z0: 0,
+    z0: wallFoot,
     z1: shaftTop,
-    slot: within3,
-    back: within3,
+    slot: within4,
+    back: within4,
     blocker: true,
     skins: [],
     ends: side2 === 0 ? null : lifted < 0 ? [bareEnd, null] : [null, bareEnd],
@@ -12277,14 +12492,14 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
     a0: doorY,
     a1: inside.y1,
     inner: [doorY, inside.y1],
-    z0: 0,
+    z0: wallFoot,
     z1: shaftTop,
-    slot: within3,
-    back: within3,
+    slot: within4,
+    back: within4,
     blocker: true,
     openings: [],
-    ends: [[0, shaftTop], bareEnd],
-    endSlot: within3,
+    ends: [[wallFoot, shaftTop], bareEnd],
+    endSlot: within4,
     skins: frame || above ? [] : [{ face: 1, a0: recessY, a1: inside.y1, z0: 0, z1: clear, slot: FACE3.walls }]
   }, {
     name: "well",
@@ -12295,28 +12510,28 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
     a0: inside.y0,
     a1: hallY,
     inner: [inside.y0, hallY],
-    z0: 0,
+    z0: wallFoot,
     z1: shaftTop,
-    slot: within3,
-    back: within3,
+    slot: within4,
+    back: within4,
     blocker: true,
     openings: [],
     skins: [],
-    ends: [bareEnd, [0, shaftTop]],
-    endSlot: within3
+    ends: [bareEnd, [wallFoot, shaftTop]],
+    endSlot: within4
   });
   const hole = { x0: bay.x0, x1: bay.x1, y0: inside.y0, y1: hallY };
   const pit = { x0: shaftX.x0, x1: shaftX.x1, y0: recessY, y1: inside.y1 };
   const bare = frame || open;
   const eave = below ? 0 : EAVES[roofName] ?? 0;
   const grown2 = (by) => ({ x0: round14(rect2.x0 - by), x1: round14(rect2.x1 + by), y0: round14(rect2.y0 - by), y1: round14(rect2.y1 + by) });
-  const slabs = [above ? { kind: "floor", rect: frame ? rect2 : inside, top: 0, bottom: -SLAB4, holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within3, edge: frame ? FACE3.trim : null } : { kind: "base", rect: rect2, top: 0, bottom: base, holes: [], face: bare ? FACE3.trim : FACE3.floors, under: null, edge: FACE3.trim }];
+  const slabs = [above ? { kind: "floor", rect: frame ? rect2 : inside, top: 0, bottom: -SLAB4, holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within4, edge: frame ? FACE3.trim : null } : { kind: "base", rect: rect2, top: 0, bottom: base, holes: [], face: bare ? FACE3.trim : FACE3.floors, under: null, edge: FACE3.trim }];
   for (let k = 1;k < F; k++)
-    slabs.push({ kind: "floor", rect: frame ? rect2 : inside, top: round14(k * S), bottom: round14(k * S - SLAB4), holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within3, edge: frame ? FACE3.trim : null });
+    slabs.push({ kind: "floor", rect: frame ? rect2 : inside, top: round14(k * S), bottom: round14(k * S - SLAB4), holes: [hole, pit], face: frame ? FACE3.trim : FACE3.floors, under: within4, edge: frame ? FACE3.trim : null });
   if (!below)
     slabs.push(frame ? { kind: "roof", rect: rect2, top, bottom: round14(top - SLAB4), holes: [], face: FACE3.trim, under: FACE3.trim, edge: FACE3.trim } : flat2 ? { kind: "roof", rect: inside, top, bottom: round14(top - SLAB4), holes: [], face: FACE3.roof, under: FACE3.inside, edge: null } : { kind: "roof", rect: grown2(eave), top, bottom: round14(top - SLAB4), holes: [], face: roofName === "hip" ? null : FACE3.roof, under: FACE3.inside, edge: FACE3.trim });
   for (const { rect: w, room: room2 } of wings) {
-    const floorOf = (z) => ({ kind: "floor", rect: frame ? w : { x0: room2.x0, x1: room2.x1, y0: room2.y0, y1: inside.y0 }, top: z, bottom: round14(z - SLAB4), holes: [], face: frame ? FACE3.trim : FACE3.floors, under: within3, edge: frame ? FACE3.trim : null });
+    const floorOf = (z) => ({ kind: "floor", rect: frame ? w : { x0: room2.x0, x1: room2.x1, y0: room2.y0, y1: inside.y0 }, top: z, bottom: round14(z - SLAB4), holes: [], face: frame ? FACE3.trim : FACE3.floors, under: within4, edge: frame ? FACE3.trim : null });
     slabs.push(above ? floorOf(0) : { kind: "base", rect: w, top: 0, bottom: base, holes: [], face: bare ? FACE3.trim : FACE3.floors, under: null, edge: FACE3.trim });
     for (let k = 1;k < F; k++)
       slabs.push(floorOf(round14(k * S)));
@@ -12350,7 +12565,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
       return along2.flatMap((y) => [round14(w.x0 + COLUMN / 2), round14(w.x1 - COLUMN / 2)].map((x) => ({ x, y, r: COLUMN / 2, z0: 0, z1 })));
     }));
   })() : [];
-  const stair = { x0: bay.x0, x1: bay.x1, lane: M.lane, gap: GAP2, y0: inside.y0, landing: M.landing, foot: hallY, flight, up, on, rise: S / risers, risers, storey: S, storeys: below ? F : F - 1, face: frame ? FACE3.trim : FACE3.floors, under: within3 };
+  const stair = { x0: bay.x0, x1: bay.x1, lane: M.lane, gap: GAP2, y0: inside.y0, landing: M.landing, foot: hallY, flight, up, on, rise: S / risers, risers, storey: S, storeys: below ? F : F - 1, face: frame ? FACE3.trim : FACE3.floors, under: within4 };
   const rails = frame || below ? [] : [{ from: [bay.x0, hallY], to: [round14(bay.x0 + M.lane + GAP2), hallY], z: round14((F - 1) * S) }];
   const steps = Math.max(1, Math.ceil(params.stoop / STEP4 - 0.000000001));
   const out = M.porch[1];
@@ -12381,7 +12596,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
     }
   const car = { at: [liftMid, round14((recessY + inside.y1) / 2), 0], size: [round14(LIFT4.across - LIFT4.clear), round14(M.recess[1] - LIFT4.clear), LIFT4.tall], door: LIFT4.door, head: doorHead };
   const leaf = LIFT4.door / 2;
-  const slide = round14(leaf - 0.05);
+  const slide = round14(leaf - 0.05 - HAIR);
   const T = total;
   const [rows, rise, gap, button, foot] = T > 16 ? [11, 0.11, 0.14, 0.1, 0.8] : [LIFT4.rows, LIFT4.rise, LIFT4.rise, LIFT4.button, LIFT4.foot];
   const lift2 = frame || above ? null : {
@@ -12470,7 +12685,7 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
     const [cx, cy] = [round14((each.x0 + each.x1) / 2), round14((inside.y0 + inside.y1) / 2)];
     const [own, along2] = [(x) => round14(clamp11(x, each.x0, each.x1) - cx), (y) => round14(clamp11(y, inside.y0, inside.y1) - cy)];
     const glass = (name, at, held, mine = () => true) => walls.find((wall) => wall.name === name).openings.filter((o) => o.kind === "window" && o.z0 < clear && o.z1 - o.z0 < S && o.z1 <= clear + 0.000000001 && mine(o)).map((o) => ({ side: at, from: held(o.a0), to: held(o.a1), as: "window", sill: round14(o.z0) }));
-    const within4 = (o) => o.a1 > each.x0 + 0.000000001 && o.a0 < each.x1 - 0.000000001;
+    const within5 = (o) => o.a1 > each.x0 + 0.000000001 && o.a0 < each.x1 - 0.000000001;
     return {
       side: each.name,
       use: shopUse(params, n),
@@ -12484,8 +12699,8 @@ var M, RISE = 0.19, GOING = 0.28, GAP2 = 0.1, CORNER2 = 0.6, FLAT3 = 6, LOUNGE, 
         way: M.rooms.inner[0],
         openings: [
           { side: 2, from: own(door2.a0), to: own(door2.a1), as: "door", entry: true },
-          ...glass("front", 2, own, within4),
-          ...glass("back", 0, own, within4),
+          ...glass("front", 2, own, within5),
+          ...glass("back", 0, own, within5),
           ...each.name === "left" ? glass("left", 3, along2) : glass("right", 1, along2),
           ...wings.filter((wing) => wing.side === each.name).map((wing) => ({ side: 0, from: own(wing.door[0]), to: own(wing.door[1]), as: "door" }))
         ]
@@ -12550,6 +12765,7 @@ var init_building_plan = __esm(() => {
   init_building();
   init_lift();
   init_game_scale();
+  init_mesh();
   M = GAME;
   LOUNGE = Object.freeze({ most: 9, least: 6, leaves: 10, off: 0.5 });
   LIFT4 = Object.freeze({ across: 3, clear: 0.2, tall: 3, door: 1.8, leaf: 0.05, post: 0.08, button: 0.16, rise: 0.2, rows: 8, foot: 1 });
@@ -12938,7 +13154,8 @@ var WAIST = 0.25, LANDING = 0.2, PANEL = 0.08, BIAS, upToMillimetre6 = (v) => Ma
   const dressed = (lamp) => ({ faces: Object.fromEntries(CRANE_LOOK.map((texture, face2) => [face2, { texture, ...lamp && face2 === 4 && LAMP }])) });
   const [plain, lit] = [dressed(false), dressed(true)];
   const land = Math.min(50, Math.round((plan.storeys * plan.storey + params.stoop) * 100) / 100);
-  return craneParts(own, land).map((part) => ({ ...part, yaw, at: place(part.at), color: [0.8, 0.62, 0.2], surface: part.light ? lit : plain }));
+  const still = params.crane === 2;
+  return craneParts(own, land).map((part) => ({ ...still ? (({ behaviour, ...rest }) => rest)(part) : part, yaw, at: place(part.at), color: [0.8, 0.62, 0.2], surface: part.light ? lit : plain }));
 }, SHOP_COLOURS, signsOf = (params, plan) => {
   if (!params.signs || plan.frame || (params.section ?? 0) !== 0)
     return [];
@@ -13254,13 +13471,13 @@ var ringOf2 = ([x, y], radius, sides, from = Math.PI / sides) => Array.from({ le
 }, area24 = (ring) => ring.reduce((sum, [u, v], i) => {
   const [p, q] = ring[(i + 1) % ring.length];
   return sum + u * q - p * v;
-}, 0), penOf = (mesh, at = [0, 0, 0], yaw = 0, slotOf = (slot) => slot) => {
+}, 0), penOf = (mesh, at = [0, 0, 0], yaw = 0, slotOf2 = (slot) => slot) => {
   const [c, s] = [Math.cos(yaw), Math.sin(yaw)];
   const put = ([x, y, z]) => [at[0] + c * x - s * y, at[1] + s * x + c * y, at[2] + z];
   const turn3 = ([x, y, z]) => [c * x - s * y, s * x + c * y, z];
-  const face2 = (slot, points, outward, origin = [0, 0, 0], across = 1, up = 1) => mesh.polygon(slotOf(slot), points.map(put), turn3(outward), points.map((p) => boxUv(p, outward, origin, across, up)));
+  const face2 = (slot, points, outward, origin = [0, 0, 0], across = 1, up = 1) => mesh.polygon(slotOf2(slot), points.map(put), turn3(outward), points.map((p) => boxUv(p, outward, origin, across, up)));
   const box = (slot, [x0, y0, z0], [x1, y1, z1], faces = ["top", "front", "back", "left", "right"]) => {
-    const slotOf2 = (name) => typeof slot === "number" ? slot : slot[name] ?? slot.side;
+    const slotOf3 = (name) => typeof slot === "number" ? slot : slot[name] ?? slot.side;
     const sides = {
       top: [[[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], [0, 0, 1]],
       bottom: [[[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]], [0, 0, -1]],
@@ -13270,7 +13487,7 @@ var ringOf2 = ([x, y], radius, sides, from = Math.PI / sides) => Array.from({ le
       right: [[[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]], [1, 0, 0]]
     };
     for (const name of faces)
-      face2(slotOf2(name), ...sides[name]);
+      face2(slotOf3(name), ...sides[name]);
   };
   const soft = (slot, [x0, y0, z0], [x1, y1, z1], r, faces = ["top", "front", "back", "left", "right"]) => {
     r = Math.min(r, (x1 - x0) / 3, (y1 - y0) / 3, (z1 - z0) / 2);
@@ -13351,8 +13568,8 @@ var ringOf2 = ([x, y], radius, sides, from = Math.PI / sides) => Array.from({ le
     if (top && r > 0.000001)
       face2(slot, ring(r, z), [0, 0, 1]);
   };
-  const within3 = ([x, y, z = 0], angle = 0) => penOf(mesh, put([x, y, z]), yaw + angle, slotOf);
-  return { face: face2, box, soft, leg, disc, profile, lathe, within: within3 };
+  const within4 = ([x, y, z = 0], angle = 0) => penOf(mesh, put([x, y, z]), yaw + angle, slotOf2);
+  return { face: face2, box, soft, leg, disc, profile, lathe, within: within4 };
 };
 var init_furniture_shapes = __esm(() => {
   init_mesh();
@@ -15604,10 +15821,10 @@ var PIECES7, BURNS3, OWN2, RANGES, ART3 = 6, clamp15 = (v, least2, most2) => Mat
   const all = rowOf2(dims).flatMap((dx) => seat.places.map(([x, y, z]) => [x + dx, y, z]));
   const [first, ...places] = all.map(([x, y, z]) => [x, y, z - dims.h / 2].map((v) => toMillimetre(v) || 0));
   return { at: first, turn: seat.turn ?? 0, pose: seat.pose, ...places.length && { places } };
-}, drawPiece = (mesh, params, level, at = [0, 0, 0], yaw = 0, slotOf = undefined) => {
+}, drawPiece = (mesh, params, level, at = [0, 0, 0], yaw = 0, slotOf2 = undefined) => {
   const dims = dimsOf(params);
   if (level > 0)
-    draw(penOf(mesh, at, yaw, slotOf), dims, level);
+    draw(penOf(mesh, at, yaw, slotOf2), dims, level);
   return dims;
 }, solidsOf2 = (params) => {
   const dims = dimsOf(params);
@@ -15652,7 +15869,7 @@ var init_furniture_gen = __esm(() => {
       return { ...params, width: toMillimetre(size[0] - (boxOf9(dims)[0] - dims.w)), depth: size[1] };
     },
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(FACES4.length);
+      const mesh = createMesh(FACES4.length, { layered: true });
       drawPiece(mesh, params, level);
       return mesh.pack(size, [0, 0, size[2] / 2]);
     },
@@ -17585,7 +17802,7 @@ var init_room_gen = __esm(() => {
     resize: (params, size) => ({ ...params, width: size[0], depth: size[1], height: size[2] }),
     bias: (params) => [Math.min(0.5, 0.6 / params.width), Math.min(0.5, 0.6 / params.depth), Math.min(0.5, 0.4 / params.height)],
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(ROOM_FACES.length);
+      const mesh = createMesh(ROOM_FACES.length, { layered: true });
       for (const piece of layouts(params).pieces)
         if (!ownPart(piece))
           drawPiece(mesh, piece.params, level, piece.at, piece.yaw, slotsOf(piece.params));
@@ -17671,10 +17888,10 @@ var COPING = 0.45, RIM3 = 0.12, FLOOR6 = 0.25, STEP5 = 0.19, TREAD4 = 0.32, WIDE
     normal[axis] = sign2;
     mesh.polygon(slot, sign2 > 0 ? [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)] : [corner(0, 0), corner(0, 1), corner(1, 1), corner(1, 0)], normal, uvOf);
   };
-  const box5 = ({ min, max }, slotOf) => {
+  const box5 = ({ min, max }, slotOf2) => {
     for (let axis = 0;axis < 3; axis++)
       for (const sign2 of [-1, 1]) {
-        const slot = slotOf(axis, sign2);
+        const slot = slotOf2(axis, sign2);
         if (slot !== null)
           plate(slot, axis, sign2, sign2 > 0 ? max[axis] : min[axis], min, max);
       }
@@ -17912,7 +18129,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
       voids.push(hole);
       slabs.push({ kind: "floor", rect: inside, top: S, bottom: round20(S - SLAB5), holes: [hole], face: FACE4.floors, under: ceiling, edge: null });
       const way = variant % 2 ? -1 : 1;
-      stair = { y: round20(hole.y0 + M2.lane / 2), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
+      stair = { y: round20(hole.y0 + M2.lane / 2 + HAIR), top: way > 0 ? hole.x1 : hole.x0, way, run: stairRun, width: M2.lane, height: S, steps: stairSteps, tread: STAIR.tread, landing: STAIR.landing };
       const [rx0, rx1] = [hole.x0, hole.x1];
       panes.push({ name: "rail", min: [rx0, hole.y0 - 0.01, S], max: [rx1, hole.y0 + 0.01, round20(S + RAIL7)], axis: 1, solid: true });
       for (const x of [rx0, rx1]) {
@@ -18093,6 +18310,7 @@ var M2, WALL4 = 0.3, SLAB5 = 0.3, PARAPET3 = 0.9, COLUMN2 = 0.5, SPAN5 = 12, BAY
 var init_hall_plan = __esm(() => {
   init_hall();
   init_game_scale();
+  init_mesh();
   M2 = GAME;
   STAIR = Object.freeze({ tread: 0.3, landing: 2 });
   ESCALATOR = Object.freeze({ going: 2, width: 1.5, gap: 0.3, speed: 0.6 });
@@ -18130,7 +18348,7 @@ var round21 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
   const count = Math.max(1, Math.ceil((length2 + gap) / (most2 + gap) - 0.000000001));
   const each = (length2 - gap * (count - 1)) / count;
   return Array.from({ length: count }, (_, i) => ({ at: round21(from + each / 2 + i * (each + gap)), length: round21(each) }));
-}, less = ([from, to], cuts) => cuts.toSorted((a, b) => a[0] - b[0]).reduce((left, [c0, c1]) => left.flatMap(([a, b]) => c1 <= a || c0 >= b ? [[a, b]] : [...c0 > a ? [[a, round21(c0)]] : [], ...c1 < b ? [[round21(c1), b]] : []]), [[from, to]]), escalator = ({ x, foot, way, speed }, { run, rise }, level = 0) => {
+}, less2 = ([from, to], cuts) => cuts.toSorted((a, b) => a[0] - b[0]).reduce((left, [c0, c1]) => left.flatMap(([a, b]) => c1 <= a || c0 >= b ? [[a, b]] : [...c0 > a ? [[a, round21(c0)]] : [], ...c1 < b ? [[round21(c1), b]] : []]), [[from, to]]), escalator = ({ x, foot, way, speed }, { run, rise }, level = 0) => {
   const kind = TYPES3.travelator;
   const [long, pitch] = [Math.hypot(run, rise), Math.atan2(rise, run)];
   const depth = round21(Math.floor(long / 0.05 + 0.000001) * 0.05);
@@ -18205,7 +18423,7 @@ var round21 = (v) => Math.round(v * 1000) / 1000, AISLE = 3.8, CROSS = 2.6, MOST
         if (lane && x > lane.x0 - 2.2 && x < lane.x1 + 2.2)
           return;
         const onLine = plan2.columns.some((column2) => Math.abs(column2.x - x) < 0.01);
-        const stretches = onLine ? less([back, front2], columnYs.map((y) => [y - 0.55, y + 0.55])) : [[back, front2]];
+        const stretches = onLine ? less2([back, front2], columnYs.map((y) => [y - 0.55, y + 0.55])) : [[back, front2]];
         for (const [from, to] of stretches)
           for (const { at, length: length2 } of runs(from, to))
             parts.push(fixture2("gondola", [x, at, z], 90, { width: length2, variant: variant + n * 31 + k * 7, goods: (k ? WARES : GROCERIES)[(n + variant) % (k ? WARES : GROCERIES).length] }));
@@ -18656,7 +18874,7 @@ var init_fixture_gen = __esm(() => {
       return { ...params, width: clamp20(size[0], type.width[0], type.width[1]), depth: clamp20(size[1], type.depth[0], type.depth[1]) };
     },
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(FACES8.length);
+      const mesh = createMesh(FACES8.length, { layered: true, glass: [FACES8.indexOf("glass")] });
       if (level < 1)
         return mesh.pack(size, [0, 0, size[2] / 2]);
       const origin = [-size[0] / 2, -size[1] / 2, 0];
@@ -20091,7 +20309,7 @@ var init_crane_gen = __esm(() => {
     resize: (params, size) => ({ ...params, jib: Math.min(Math.max(size[1] / (1 + 1 / 2.4), 16), 40), height: Math.min(Math.max(size[2] / 1.35 - 2, 16), 54) }),
     bias: Object.freeze([0.5, 0.06, 0.06]),
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(FACES12.length);
+      const mesh = createMesh(FACES12.length, { layered: true, glass: [FACES12.indexOf("glass")] });
       const { boxes, strips } = planOf9(params);
       const centre = centreOf9(params);
       const uvOf = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1);
@@ -20131,10 +20349,10 @@ var init_crane_gen = __esm(() => {
 });
 
 // src/build/kinds/castle-parts.js
-var uvOf = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1), same3 = (p) => p, addBox2 = (mesh, place, min, max, slotOf) => {
+var uvOf = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1), same3 = (p) => p, addBox2 = (mesh, place, min, max, slotOf2) => {
   for (let axis = 0;axis < 3; axis++)
     for (const sign2 of [-1, 1]) {
-      const slot = slotOf(axis, sign2);
+      const slot = slotOf2(axis, sign2);
       if (slot === null)
         continue;
       const [a, b] = [(axis + 1) % 3, (axis + 2) % 3];
@@ -20288,14 +20506,14 @@ var WALLS3, WALK, TRIM4, ROOF3, FLOORS3, INSIDE3, STAINED2, T, PART4, SLAB6, UND
   const [near2, far] = [[inside.y1 - 1 - DOORS.inner[0], inside.y1 - 1], [inside.y0 + 1, inside.y0 + 1 + DOORS.inner[0]]];
   const across = round28((PART4 / 2 + inside.x1) / 2);
   walls.push({ ...inner, name: "undercroft across", along: 1, at: PART4 / 2, out: 1, a0: inside.y0, a1: inside.y1, inner: [inside.y0, inside.y1], z0: ground, z1: UNDERCROFT, openings: [way(...near2, ground)] }, { ...inner, name: "undercroft along", along: 0, at: PART4 / 2, out: 1, a0: PART4 / 2, a1: inside.x1, inner: [PART4 / 2, inside.x1], z0: ground, z1: UNDERCROFT, openings: [door2(across, DOORS.inner, ground)] }, { ...inner, name: "chambers across", along: 1, at: PART4 / 2, out: 1, a0: inside.y0, a1: inside.y1, inner: [inside.y0, inside.y1], z0: chambers, z1: round28(chambers + CHAMBER), openings: [way(...near2, chambers), way(...far, chambers)] }, { ...inner, name: "chambers along", along: 0, at: PART4 / 2, out: 1, a0: PART4 / 2, a1: inside.x1, inner: [PART4 / 2, inside.x1], z0: chambers, z1: round28(chambers + CHAMBER), openings: [] });
-  const HAIR = 0.02;
-  const footprint = { x0: rect5.x0 + HAIR, x1: rect5.x1 - HAIR, y0: rect5.y0 + HAIR, y1: rect5.y1 - HAIR };
+  const HAIR2 = 0.02;
+  const footprint = { x0: rect5.x0 + HAIR2, x1: rect5.x1 - HAIR2, y0: rect5.y0 + HAIR2, y1: rect5.y1 - HAIR2 };
   const slabs = [
     { rect: footprint, top: ground, bottom: round28(Math.max(ground - 0.3, -plinth)), holes: [], face: FLOORS3, under: null, edge: null, kind: "floor" },
     { rect: footprint, top: hall2, bottom: round28(hall2 - SLAB6), holes: [], face: FLOORS3, under: INSIDE3, edge: null, kind: "floor" },
     { rect: footprint, top: chambers, bottom: round28(chambers - SLAB6), holes: [], face: FLOORS3, under: INSIDE3, edge: null, kind: "floor" },
     { rect: footprint, top: roof2, bottom: round28(roof2 - SLAB6), holes: [], face: WALK, under: INSIDE3, edge: null, kind: "roof" },
-    { rect: { x0: tx0, x1: rect5.x0 + HAIR, y0: ty0, y1: ty1 }, top: ground, bottom: round28(Math.max(ground - 0.3, -plinth)), holes: [], face: FLOORS3, under: null, edge: null, kind: "floor" },
+    { rect: { x0: tx0, x1: rect5.x0 + HAIR2, y0: ty0, y1: ty1 }, top: ground, bottom: round28(Math.max(ground - 0.3, -plinth)), holes: [], face: FLOORS3, under: null, edge: null, kind: "floor" },
     { rect: { x0: round28(tx0 - TURRET.wall - TURRET.eave), x1: round28(rect5.x0 + TURRET.wall + TURRET.eave), y0: round28(ty0 - TURRET.wall - TURRET.eave), y1: round28(ty1 + TURRET.wall + TURRET.eave) }, top: turret.top, bottom: round28(turret.top - 0.3), holes: [], face: null, under: INSIDE3, edge: TRIM4, kind: "roof" }
   ];
   const boxes = [];
@@ -21979,7 +22197,7 @@ var WALL5 = 0.3, SLAB8 = 0.2, ROOF6 = 0.3, AISLE2 = 1.2, TREAD7 = 1.4, PIT = 2.2
     return one(block3.x0 + 0.05, block3.x1 - 0.05);
   return block3.xs.flatMap((x) => one(x - SEAT_WIDE, x + SEAT_WIDE));
 })), build5 = (a, level) => {
-  const mesh = createMesh(6);
+  const mesh = createMesh(6, { layered: true, glass: [GLASSES] });
   const uvOf5 = (p, n) => boxUv(p, n, [0, 0, 0], 1, 1);
   for (const { min, max, slot, from } of boxesOf(a))
     if (from <= level && (from >= 0 || level < 2))
@@ -22955,19 +23173,19 @@ var M3, WAY2, HEAD7, BATH, BATH_DEEP, NARROWEST, WIDEST3, SHALLOWEST, DEEPEST2, 
     for (const { side: side2, along: along4, line, from, to, edge } of sides2) {
       const shift = along4 === 0 ? cx : cy;
       const cut2 = (a0, a1) => [round37(Math.max(a0, from) - shift), round37(Math.min(a1, to) - shift)];
-      const within3 = (a0, a1) => Math.min(a1, to) - Math.max(a0, from) > 0.3;
+      const within4 = (a0, a1) => Math.min(a1, to) - Math.max(a0, from) > 0.3;
       if (Math.abs(line - edge) < 0.002) {
-        for (const [, a, b, sill] of windows.filter((row2) => row2[0] === side2 && within3(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
+        for (const [, a, b, sill] of windows.filter((row2) => row2[0] === side2 && within4(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
           openings.push({ side: side2, from: cut2(Math.min(a, b), Math.max(a, b))[0], to: cut2(Math.min(a, b), Math.max(a, b))[1], as: "window", sill });
-        for (const [, a, b] of outs.filter((row2) => row2[0] === side2 && within3(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
+        for (const [, a, b] of outs.filter((row2) => row2[0] === side2 && within4(Math.min(row2[1], row2[2]), Math.max(row2[1], row2[2]))))
           openings.push({ side: side2, from: cut2(Math.min(a, b), Math.max(a, b))[0], to: cut2(Math.min(a, b), Math.max(a, b))[1], as: "door" });
-        if (side2 === 3 && within3(doorY - WAY2 / 2, doorY + WAY2 / 2))
+        if (side2 === 3 && within4(doorY - WAY2 / 2, doorY + WAY2 / 2))
           openings.push({ side: side2, from: round37(doorY - WAY2 / 2 - shift), to: round37(doorY + WAY2 / 2 - shift), as: "door", entry: true });
         continue;
       }
       const on = lines.filter((each) => each.along === along4 && Math.abs(each.at - line) <= PART3 / 2 + 0.02 && each.a1 > from + 0.000001 && each.a0 < to - 0.000001);
       for (const each of on)
-        for (const door2 of each.ways.filter((door3) => within3(door3.a0, door3.a1)))
+        for (const door2 of each.ways.filter((door3) => within4(door3.a0, door3.a1)))
           openings.push({ side: side2, from: cut2(door2.a0, door2.a1)[0], to: cut2(door2.a0, door2.a1)[1], as: "door" });
       for (const [a0, a1] of leftOf2(from, to, on.map((each) => [each.a0, each.a1])))
         openings.push({ side: side2, from: round37(a0 - shift), to: round37(a1 - shift), as: "open" });
@@ -23252,7 +23470,7 @@ var init_bumper_gen = __esm(() => {
     resize: (params) => params,
     mesh: (params, seed, level, size) => {
       const held = heldOf(params);
-      const mesh = createMesh(FACES15.length);
+      const mesh = createMesh(FACES15.length, { layered: true });
       const { solids: solids5, sheets } = planOf16([held, level]);
       const uvOf5 = (point, normal) => boxUv(point, normal, [0, 0, 0], 1, 1);
       for (const { polys, centre, slot, inside } of shown8(solids5, level))
@@ -23947,7 +24165,7 @@ var round41 = (v) => Math.round(v * 1000) / 1000, sub6 = (a, b) => a.map((v, k) 
     },
     resize: (params) => params,
     mesh: (params, seed, level, size) => {
-      const mesh = createMesh(faces.length);
+      const mesh = createMesh(faces.length, { layered: true });
       const { solids: solids5, sheets } = planOf17([params, level]);
       const uvOf5 = (point, normal) => boxUv(point, normal, [0, 0, 0], 1, 1);
       for (const { polys, centre, slot, inside } of shown9(solids5, level))
@@ -24706,9 +24924,9 @@ var DECLARED, LATER, RETRY = 5000, TRIES = 6, loaded, loading2, failed, held = n
 }, materialsOf = (name, params, look8 = null) => {
   const looks = looksOfKind(name, params);
   return (looks.find((each) => each.name === look8) ?? looks[0])?.materials ?? null;
-}, seedOf = (seed) => Number.isInteger(seed) ? Math.abs(seed) % 2147483648 : 0, within3 = (size) => size.map((v) => Math.min(Math.max(v, MIN_SIZE), MAX_SIZE)), clean = (size) => size.map((v) => Math.round(v * 1e6) / 1e6), resolve = (value, params) => typeof value === "function" ? value(params) : value, fitSize = ({ kind, params, size }) => {
+}, seedOf = (seed) => Number.isInteger(seed) ? Math.abs(seed) % 2147483648 : 0, within4 = (size) => size.map((v) => Math.min(Math.max(v, MIN_SIZE), MAX_SIZE)), clean = (size) => size.map((v) => Math.round(v * 1e6) / 1e6), resolve = (value, params) => typeof value === "function" ? value(params) : value, fitSize = ({ kind, params, size }) => {
   const type = kindOf(kind);
-  return type?.fit ? clean(within3(type.fit(constrainKind(kind, params).params, size))) : [...size];
+  return type?.fit ? clean(within4(type.fit(constrainKind(kind, params).params, size))) : [...size];
 }, resizeParams = ({ kind, params, size }) => {
   const type = kindOf(kind);
   const values = constrainKind(kind, params).params;
@@ -24750,7 +24968,7 @@ var DECLARED, LATER, RETRY = 5000, TRIES = 6, loaded, loading2, failed, held = n
     return null;
   const values = constrainKind(kind, params).params;
   const grain = type.seeded ? seedOf(seed) : 0;
-  const box6 = type.sized ? within3(size ?? type.size).map((v) => Number(v.toFixed(3))) : null;
+  const box6 = type.sized ? within4(size ?? type.size).map((v) => Number(v.toFixed(3))) : null;
   const shaping = type.params.filter((param) => !param.pose && !param.paint && !(param.optional && values[param.name] === undefined));
   const said = (param) => param.points || param.heights ? JSON.stringify(values[param.name]) : param.bytes ? hashOf(values[param.name]) : param.list ? hashOf(JSON.stringify(values[param.name])) : values[param.name];
   const recipe = [kind, shaping.map((param) => param.optional ? `${param.name}=${said(param)}` : said(param)).join(","), ...type.seeded ? [grain] : [], ...box6 ? [box6.join(",")] : []].join(":");
@@ -24864,7 +25082,7 @@ var init_kinds = __esm(async () => {
 });
 
 // src/terrain-height.js
-var ROOT_SIZE = 12696000, NOISE_SCALE = 800, SEA_LEVEL = 0.5555556, ELEV_SCALE = 21600, layer = (type, octaves, ridgeExponent, warpStrength, hmin, hmax) => ({
+var ROOT_SIZE = 12696000, NOISE_SCALE = 800, SEA_LEVEL = 0.5555556, ELEV_SCALE = 21600, layer2 = (type, octaves, ridgeExponent, warpStrength, hmin, hmax) => ({
   type,
   octaves,
   gain: 0.5,
@@ -24941,10 +25159,10 @@ var ROOT_SIZE = 12696000, NOISE_SCALE = 800, SEA_LEVEL = 0.5555556, ELEV_SCALE =
   return through * through * (3 - 2 * through);
 };
 var init_terrain_height = __esm(() => {
-  BASE_LAYER = layer(RIDGED, 23, 1.665, 3.6, 0, 1);
-  TERRAIN_LAYER_0 = layer(RIDGED, 10, 1.005, 1.6, 0, 1);
-  TERRAIN_LAYER_1 = layer(FBM, 18, 1.665, 2.6, -2, 2);
-  TERRAIN_LAYER_2 = layer(RIDGED, 18, 1.1, 0.9, -2, 2);
+  BASE_LAYER = layer2(RIDGED, 23, 1.665, 3.6, 0, 1);
+  TERRAIN_LAYER_0 = layer2(RIDGED, 10, 1.005, 1.6, 0, 1);
+  TERRAIN_LAYER_1 = layer2(FBM, 18, 1.665, 2.6, -2, 2);
+  TERRAIN_LAYER_2 = layer2(RIDGED, 18, 1.1, 0.9, -2, 2);
   BIAS4 = [[2.3, 4.5, 6.7], [8.9, 9.8, 8.7], [7.6, 6.5, 5.4]];
   GRID_OFFSET = [5, 4, 9];
   SNOW_BAND = [0.74, 0.85];
@@ -25164,8 +25382,8 @@ var TIME, STAY2, TRIGGER, AT_STOPS = 3, SLIDE_TRIGGER, REACH6, along3 = (axis, f
   const given = typeof value === "string" && param.options ? param.options.indexOf(value) : typeof value === "boolean" ? Number(value) : value;
   if (!Number.isFinite(given) || param.options && given < 0)
     return param.default;
-  const within4 = Math.min(Math.max(given, param.min), param.max);
-  return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals2(param.step)));
+  const within5 = Math.min(Math.max(given, param.min), param.max);
+  return Number(Math.min(param.min + Math.round((within5 - param.min) / param.step) * param.step, param.max).toFixed(decimals2(param.step)));
 }, lightZoneOf = (value) => {
   if (typeof value !== "string")
     return null;
@@ -25557,7 +25775,7 @@ var init_behaviours = __esm(async () => {
         { name: "speed", label: "Speed", min: 0.1, max: 6, default: 0.8, step: 0.1, unit: "m/s", description: "How fast it goes between its stops (m/s), speeding up and slowing down at either as an elevator does." },
         { name: "button", label: "A click on it", min: 0, max: 3, default: 1, step: 1, options: ["none", "next", "stop", "panel"], labels: ["Does nothing", "Next stop", "To a stop", "To the button clicked"], description: "What a click on it does: nothing — its floor, its rails —; sends it on to its next stop, back the other way from either end — one button that takes it down and up —; to one stop — a button a floor —; or, a car's panel of the lift kind, to the stop of the button it falls on." },
         { name: "stop", label: "Its stop", min: 0, max: 31, default: 0, step: 1, when: ({ button }) => button === 2, description: "Where a click on it sends it: 0 where it is kept, 1 its first stop, 2 its second…" },
-        { name: "door", label: "Its door", min: -4, max: 4, default: 0, step: 0.05, unit: "m", description: "A door of the lift: how far it slides along its own x from shut to open (m; below 0, the other way; 0, it is no door). Open while the lift stands at a stop, shut before it sets off and until it is there, a second each way — the lift waits for it. Kept as it stands while the lift is where it is kept: its car's own and the landing's there open, the other landings' shut." },
+        { name: "door", label: "Its door", min: -4, max: 4, default: 0, step: 0.001, unit: "m", description: "A door of the lift: how far it slides along its own x from shut to open (m, to the millimetre — a leaf that slides into a wall stops a hair within its far face; below 0, the other way; 0, it is no door). Open while the lift stands at a stop, shut before it sets off and until it is there, a second each way — the lift waits for it. Kept as it stands while the lift is where it is kept: its car's own and the landing's there open, the other landings' shut." },
         { name: "landing", label: "Stays at", min: -1, max: 31, default: -1, step: 1, description: "Whether it goes with the lift: −1, it does — its floor, its car, its buttons, its car's door —; 0 and up, it stays where it is, at that stop of the lift (0 where the lift is kept, 1 its first stop…) — a landing's door, open only while the lift stands there, a button on a landing." }
       ],
       stops: { name: "stops", most: 31, reach: 1000, step: 0.01, unit: "m", description: "Where it stops besides where it is kept: how far up its frame from there (m; below 0, down), a floor each, in order." },
@@ -25748,8 +25966,8 @@ var CUBE, CYLINDER, SPHERE, LEVEL = 1, ROUND7 = 0.02, FLAT4 = 0.01, ALIKE = 0.00
 }, fromMesh = (key, mesh, size) => {
   if (!mesh?.indices.length)
     return [];
-  const convex = convexity.get(key) ?? remember(convexity, key, isConvex(mesh));
-  return [convex ? { type: "hull", key, points: pointsOf2(mesh), scale: [...size] } : { type: "mesh", key, positions: mesh.positions, indices: mesh.indices, scale: [...size] }];
+  const convex2 = convexity.get(key) ?? remember(convexity, key, isConvex(mesh));
+  return [convex2 ? { type: "hull", key, points: pointsOf2(mesh), scale: [...size] } : { type: "mesh", key, positions: mesh.positions, indices: mesh.indices, scale: [...size] }];
 }, piecesOf4 = (part, meshOf) => {
   if (part.phantom)
     return [];
@@ -25802,8 +26020,8 @@ var MASS, CAR_GRIP = 2, GRIP, DRIVE, BRAKE, SUSPENSION, TRAVEL, STEERING, VEHICL
     return param.options.includes(value) ? value : param.default;
   if (!Number.isFinite(value))
     return param.default;
-  const within4 = Math.min(Math.max(value, param.min), param.max);
-  return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals3(param.step)));
+  const within5 = Math.min(Math.max(value, param.min), param.max);
+  return Number(Math.min(param.min + Math.round((within5 - param.min) / param.step) * param.step, param.max).toFixed(decimals3(param.step)));
 }, vehicleOf = (value) => {
   const kind = vehicleType(value?.type);
   return kind && { type: value.type, ...Object.fromEntries(kind.params.flatMap((param) => param.optional && value[param.name] === undefined ? [] : [[param.name, held3(param, value[param.name])]])) };
@@ -26081,7 +26299,7 @@ var OVER5 = 0.15, UNDER7 = 0.3, DROP3 = 1.5, SPAN8 = 2.5, groundFit2 = (params, 
       heights[j * side2 + i] = at.height;
       wet[j * side2 + i] = at.wet ? 1 : 0;
     }
-  const within4 = (v) => {
+  const within5 = (v) => {
     const u = Math.min(Math.max(v / step + half, 0), side2 - 1);
     const i = Math.min(Math.floor(u), side2 - 2);
     return [i, u - i];
@@ -26090,12 +26308,12 @@ var OVER5 = 0.15, UNDER7 = 0.3, DROP3 = 1.5, SPAN8 = 2.5, groundFit2 = (params, 
     reach: half * step,
     step,
     heightAt: (e, n) => {
-      const [[i, s], [j, t]] = [within4(e), within4(n)];
+      const [[i, s], [j, t]] = [within5(e), within5(n)];
       const at = j * side2 + i;
       return (heights[at] * (1 - s) + heights[at + 1] * s) * (1 - t) + (heights[at + side2] * (1 - s) + heights[at + side2 + 1] * s) * t;
     },
     wetAt: (e, n) => {
-      const [[i, s], [j, t]] = [within4(e), within4(n)];
+      const [[i, s], [j, t]] = [within5(e), within5(n)];
       return wet[(j + Math.round(t)) * side2 + i + Math.round(s)] === 1;
     }
   };
@@ -26106,7 +26324,7 @@ var init_house_site = __esm(() => {
 });
 
 // src/build/edit/road-plan.js
-var MOST_ROAD = 58, DEPTH2 = 0.3, CLEAR2 = 2, KERB = 0.15, RING_MOST = 26, RING_POINTS = 31, ISLAND_RISE = 0.15, ISLAND_BAND = 0.1, ISLAND_HOLE = 0.1, ROUND_SPARE = 3, ROAD_LIFT, round44 = (v, places = 3) => Math.round(v * 10 ** places) / 10 ** places, cutsOf = (along4, total, limit, width, corners) => {
+var MOST_ROAD = 58, DEPTH2 = 0.3, CLEAR2 = 2, KERB = 0.15, RING_MOST = 26, RING_POINTS = 31, ISLAND_RISE = 0.15, ISLAND_BAND = 0.1, ISLAND_HOLE = 0.1, ROUND_SPARE = 3, ROAD_LIFT, round44 = (v, places = 3) => Math.round(v * 10 ** places) / 10 ** places, cutsOf2 = (along4, total, limit, width, corners) => {
   const fewest = Math.max(1, Math.ceil(total / limit - 0.000000001));
   for (let n = fewest;n <= fewest + 4; n++) {
     const edges = [0, ...Array.from({ length: n - 1 }, (_, k) => {
@@ -26154,7 +26372,7 @@ var MOST_ROAD = 58, DEPTH2 = 0.3, CLEAR2 = 2, KERB = 0.15, RING_MOST = 26, RING_
     const [a, b, c] = [kept3[i], kept3[i + 1], kept3[i + 2]];
     return Math.abs(Math.atan2((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]), (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1]))) > SHARP;
   });
-  const edges = cutsOf(along4, total, Math.max(MOST_ROAD - width, 16), width, corners);
+  const edges = cutsOf2(along4, total, Math.max(MOST_ROAD - width, 16), width, corners);
   edges.slice(1).forEach((end, k) => {
     const start = edges[k];
     emit([at(start), ...kept3.filter((_, j) => along4[j] > start + 0.000001 && along4[j] < end - 0.000001), at(end)]);
@@ -26353,6 +26571,13 @@ var REGION_SIZES, SIDE_BITS, EVERY_SIDE = 15, regionOf = (given) => {
     return {};
   const loop = Number(given?.loop ?? 0);
   return { lands, place, ...Number.isInteger(joins2) && joins2 >= 0 && joins2 < EVERY_SIDE && { joins: joins2 }, ...Number.isInteger(loop) && loop > 0 && loop < 1e9 && { loop } };
+}, platformParamsOf = (given) => {
+  const level = given?.level === null || given?.level === undefined ? NaN : Number(given.level);
+  const walled = Number(given?.walled ?? EVERY_SIDE);
+  return {
+    ...Number.isFinite(level) && level >= -1000 && level <= 9000 && { level: Math.round(level * 100) / 100 },
+    ...Number.isInteger(walled) && walled >= 0 && walled < EVERY_SIDE && { walled }
+  };
 }, ofRegion = (params) => REGION_SIZES.includes(params.lands), joinsOver = (joins2, side2) => ((joins2 ?? EVERY_SIDE) & SIDE_BITS[side2]) !== 0;
 var init_region_params = __esm(() => {
   REGION_SIZES = Object.freeze([1, 4, 9]);
@@ -26443,6 +26668,3255 @@ var init_region = __esm(() => {
   SPANS = Object.freeze({ road: Object.freeze([0.55, 0.75]) });
 });
 
+// src/build/land-border.js
+var exports_land_border = {};
+__export(exports_land_border, {
+  tramOf: () => tramOf,
+  squareOf: () => squareOf2,
+  railOf: () => railOf,
+  railAt: () => railAt,
+  linkOf: () => linkOf,
+  landOn: () => landOn,
+  landOf: () => landOf,
+  halfOf: () => halfOf2,
+  furnitureOf: () => furnitureOf,
+  deepOf: () => deepOf,
+  curveEnd: () => curveEnd,
+  cornerHeight: () => cornerHeight,
+  cornerAngles: () => cornerAngles,
+  borderOf: () => borderOf,
+  STATION: () => STATION2,
+  ROUND: () => ROUND8,
+  RAILS: () => RAILS3,
+  PORT: () => PORT,
+  LANDS: () => LANDS,
+  BORDER: () => BORDER2,
+  AVENUE: () => AVENUE,
+  ACROSS: () => ACROSS4
+});
+var BORDER2, STATION2, PORT = 0.2, RAILS3, AVENUE, LANDS, railOf = (kind) => LANDS[kind] ?? null, mm = (value) => Math.round(value * 1000) / 1000 + 0, clamp29 = (value, low, high) => Math.min(high, Math.max(low, value)), groundAt3 = (direction) => Math.max(bareElevation(direction), SEA), besideAt = (direction, east, north, radius) => {
+  const { north: n, east: e } = compassAt(direction);
+  return normalize(add(direction, add(scale(e, east / radius), scale(n, north / radius))));
+}, ACROSS4, cornerHeight = (corner2) => {
+  const radius = RADIUS + bareElevation(corner2);
+  let high = -Infinity;
+  for (const i of ACROSS4)
+    for (const j of ACROSS4)
+      high = Math.max(high, groundAt3(besideAt(corner2, i * BORDER2.band, j * BORDER2.band, radius)));
+  return mm(high + BORDER2.over);
+}, tautOver = (points) => {
+  const hull3 = [];
+  for (const point of points) {
+    while (hull3.length >= 2) {
+      const [[ax, ay], [bx, by2]] = [hull3.at(-2), hull3.at(-1)];
+      if ((bx - ax) * (point[1] - ay) - (by2 - ay) * (point[0] - ax) >= -0.000000000001)
+        hull3.pop();
+      else
+        break;
+    }
+    hull3.push(point);
+  }
+  return hull3;
+}, borderOf = (parcel, side2, level = null) => {
+  const other = neighbourOf(parcel, side2);
+  const first = parcelKey(parcel) < parcelKey(other);
+  const pair3 = first ? `${parcelKey(parcel)}|${parcelKey(other)}` : `${parcelKey(other)}|${parcelKey(parcel)}`;
+  const key = level === null ? pair3 : `${pair3}@${level}`;
+  const had = BORDERS.get(key);
+  if (had)
+    return { ...had, other, first };
+  const made4 = borderMade(parcel, side2, other, first, level);
+  if (BORDERS.size >= 256)
+    BORDERS.delete(BORDERS.keys().next().value);
+  BORDERS.set(key, made4);
+  return made4;
+}, BORDERS, borderMade = (parcel, side2, other, first, level = null) => {
+  const [low, high] = first ? [parcel, other] : [other, parcel];
+  const [from, to] = edgeOf2(low, first ? side2 : sideTowards(other, parcel));
+  const keys2 = [parcelKey(low), parcelKey(high)];
+  const radius = RADIUS + (bareElevation(from) + bareElevation(to)) / 2;
+  const long = mm(Math.acos(clamp29(dot(from, to), -1, 1)) * radius);
+  const at = (t) => normalize(add(scale(from, 1 - t), scale(to, t)));
+  const out = normalize(sub(cornersOf4(high).reduce((sum, corner2) => add(sum, corner2)), cornersOf4(low).reduce((sum, corner2) => add(sum, corner2))));
+  const across = (t) => {
+    const here = at(t);
+    const along5 = normalize(sub(sub(to, from), scale(here, dot(sub(to, from), here))));
+    const square = cross(here, along5);
+    return dot(square, out) >= 0 ? square : scale(square, -1);
+  };
+  const count = Math.max(2, Math.ceil(long / BORDER2.step));
+  const floor = level !== null ? [[0, level], [1, level]] : Array.from({ length: count + 1 }, (_, k) => {
+    const t = k / count;
+    if (k === 0)
+      return [0, cornerHeight(from)];
+    if (k === count)
+      return [1, cornerHeight(to)];
+    const [here, way] = [at(t), across(t)];
+    let top = -Infinity;
+    for (const off of ACROSS4)
+      top = Math.max(top, groundAt3(normalize(add(here, scale(way, off * BORDER2.band / radius)))));
+    return [t, top + BORDER2.over];
+  });
+  const knots = tautOver(floor).map(([t, height]) => [t, mm(height)]);
+  const heightAt = (t) => {
+    const w = clamp29(t, 0, 1);
+    const k = Math.max(1, knots.findIndex((knot) => knot[0] >= w - 0.000000000001));
+    const [[t0, h0], [t1, h1]] = [knots[k - 1], knots[k]];
+    return t1 - t0 > 0.000000000001 ? h0 + (h1 - h0) * (w - t0) / (t1 - t0) : h1;
+  };
+  const lengths2 = knots.slice(1).map(([t, height], k) => ({ from: mm(knots[k][0] * long), to: mm(t * long), rise: mm(height - knots[k][1]) }));
+  const gradeOf = (each) => Math.abs(each.rise) / Math.max(each.to - each.from, 0.000000001);
+  const steepest = lengths2.reduce((most2, each) => Math.max(most2, gradeOf(each)), 0);
+  const kind = steepest > BORDER2.grade + 0.000000001 ? "steps" : "street";
+  const flights = kind === "steps" ? lengths2.map((each) => ({ ...each, steps: gradeOf(each) > BORDER2.grade + 0.000000001 ? Math.ceil(Math.abs(each.rise) / BORDER2.riser) : 0 })) : [];
+  const share = (word, [least2, most2]) => least2 + (most2 - least2) * shareOf3("port", keys2[0], keys2[1], word);
+  const place = share("station", STATION2);
+  const half = RAILS3.platform.long / 2 / long;
+  const along4 = [place - half, place, place + half, ...knots.map((knot) => knot[0]).filter((t) => t > place - half && t < place + half)].map(heightAt);
+  const flat2 = Math.max(...along4) - Math.min(...along4) <= RAILS3.level;
+  return {
+    other,
+    keys: keys2,
+    first,
+    from,
+    to,
+    long,
+    at,
+    across,
+    knots,
+    heightAt,
+    steepest,
+    kind,
+    flights,
+    port: kind === "street" ? PORT : null,
+    station: kind === "street" && flat2 ? { at: place, level: mm(heightAt(place)) } : null,
+    tram: kind === "street" && flat2 && shareOf3("port", keys2[0], keys2[1], "tram") < RAILS3.tram
+  };
+}, cornerAngles = (parcel) => {
+  const corners = cornersOf4(parcel);
+  return corners.map((here, k) => {
+    const [before, after] = [corners[(k + 3) % 4], corners[(k + 1) % 4]];
+    const level = (way) => normalize(sub(way, scale(here, dot(way, here))));
+    return Math.acos(clamp29(dot(level(sub(before, here)), level(sub(after, here))), -1, 1));
+  });
+}, curveEnd = (angle, own, other) => (other + own * Math.cos(angle)) / Math.sin(angle) + RAILS3.radius * Math.tan((Math.PI - angle) / 2), ROUND8, tramOf = (parcel, [aloft, below] = [RAILS3.high.track, RAILS3.low.track], level = null) => {
+  const corners = cornersOf4(parcel);
+  const borders = Object.fromEntries(SIDES10.map((side2) => [side2, borderOf(parcel, side2, level)]));
+  const runs2 = (side2) => borders[side2].kind === "street" && borders[side2].steepest <= RAILS3.grade + 0.000000001;
+  const cornerAfter = { south: 1, east: 2, north: 3, west: 0 };
+  const angles = cornerAngles(parcel);
+  const [angleAt, curveAt] = [(k) => angles[k], curveEnd];
+  const from = (side2, corner2) => {
+    const border = borders[side2];
+    const flipped = dot(corner2, border.from) < dot(corner2, border.to);
+    const far = (d) => flipped ? 1 - d / border.long : d / border.long;
+    return {
+      long: border.long,
+      height: (d) => border.heightAt(far(d)),
+      port: border.port === null ? null : (flipped ? 1 - border.port : border.port) * border.long,
+      station: border.station ? (flipped ? 1 - border.station.at : border.station.at) * border.long : null
+    };
+  };
+  const rampOn = (street2, near2) => {
+    const fall = RAILS3.over - (BORDER2.kerb + RAILS3.flush);
+    let long = fall / RAILS3.grade;
+    for (let pass = 0;pass < 4; pass++)
+      long = Math.max(40, (fall + street2.height(near2 + long) - street2.height(near2)) / RAILS3.grade);
+    return { from: mm(near2), to: mm(near2 + long + 0.01), low: near2 + long * (RAILS3.clear + RAILS3.deck - (BORDER2.kerb + RAILS3.flush)) / fall };
+  };
+  for (const [k, { side: side2 }] of ROUND8.entries()) {
+    const border = borders[side2];
+    const [before, after] = [ROUND8[(k + 3) % 4].side, ROUND8[(k + 1) % 4].side];
+    if (!border.tram || !runs2(before) || !runs2(after))
+      continue;
+    const [first, last] = [cornerAfter[before], cornerAfter[side2]];
+    const [down, up] = [from(before, corners[first]), from(after, corners[last])];
+    const fits = (street2, angle, far, keep2) => {
+      const ramp = rampOn(street2, curveAt(angle, aloft, below) + RAILS3.ease);
+      if (ramp.to > street2.long - curveAt(far, aloft, aloft) - RAILS3.ease)
+        return null;
+      if (street2.station !== null && ramp.to > street2.station - keep2 - RAILS3.ease)
+        return null;
+      if (street2.station !== null && street2.station < ramp.to)
+        return null;
+      if (street2.port !== null && street2.port + BORDER2.road / 2 > ramp.from - 0.000000001 && street2.port - BORDER2.road / 2 < ramp.low)
+        return null;
+      return [ramp.from, ramp.to];
+    };
+    const [low, high] = [fits(down, angleAt(first), angleAt((first + 3) % 4), RAILS3.lead), fits(up, angleAt(last), angleAt((last + 1) % 4), RAILS3.tail)];
+    if (low && high)
+      return { side: side2, before, after, down: low, up: high };
+  }
+  return null;
+}, railAt = (kind, parcel, side2, level = null) => {
+  const rail4 = railOf(kind);
+  return rail4 === "high" && tramOf(parcel, undefined, level)?.side === side2 ? "low" : rail4;
+}, furnitureOf = (border) => {
+  const { long, port, station } = border;
+  const zone = station && [station.at * long - RAILS3.platform.long / 2 - RAILS3.steps, station.at * long + RAILS3.platform.long / 2 + RAILS3.steps + RAILS3.cross + 2];
+  const kept3 = (d) => d < BORDER2.keep || d > long - BORDER2.keep || port !== null && Math.abs(d - port * long) < BORDER2.road / 2 + BORDER2.keep || zone !== null && d > zone[0] - BORDER2.keep && d < zone[1] + BORDER2.keep;
+  const [lamps, trees] = [[], []];
+  for (let d = BORDER2.first;d < long; d += BORDER2.lamps) {
+    if (!kept3(d))
+      lamps.push(mm(d));
+    if (d + BORDER2.lamps / 2 < long && !kept3(d + BORDER2.lamps / 2))
+      trees.push(mm(d + BORDER2.lamps / 2));
+  }
+  return { lamps, trees };
+}, deepOf = (rail4) => mm(Math.max(RAILS3.deep, RAILS3[rail4].track + RAILS3.body / 2 + RAILS3.gap + RAILS3.platform.wide + BORDER2.walk)), stationOf = (border, own, other, avenue = false) => {
+  const at = mm(border.station.at * border.long);
+  const { level } = border.station;
+  const [half, low] = [RAILS3.platform.long / 2, own === "low"];
+  const track2 = avenue ? AVENUE.track : RAILS3[own].track;
+  const clear = RAILS3.body / 2 + RAILS3.gap;
+  const bed2 = mm(level + (low ? BORDER2.kerb + RAILS3.flush : RAILS3.over));
+  const top = mm(bed2 + RAILS3.platform.over);
+  const platform = avenue ? { from: mm(track2 - clear - RAILS3.platform.wide), to: mm(track2 - clear), top } : { from: mm(track2 + clear), to: mm(track2 + clear + RAILS3.platform.wide), top };
+  const island = avenue ? other === own ? platform : null : other === own && !low ? { from: 0, to: mm(track2 - clear), top } : null;
+  const closed = false;
+  return {
+    at,
+    from: mm(at - half),
+    to: mm(at + half),
+    level,
+    rail: own,
+    track: track2,
+    bed: bed2,
+    platform,
+    island,
+    access: low ? "steps" : "stair",
+    run: low ? RAILS3.steps : RAILS3.stair,
+    cross: closed ? null : mm(at + half + RAILS3.steps + RAILS3.cross),
+    zone: [mm(at - half - RAILS3.steps), mm(at + half + RAILS3.steps + RAILS3.cross + 2)],
+    deep: avenue ? AVENUE.median : deepOf(own),
+    closed
+  };
+}, halfOf2 = (parcel, side2, mine = null, theirs = null, { avenue = false } = {}) => {
+  const border = borderOf(parcel, side2);
+  const [own, other] = [railAt(mine, parcel, side2), railAt(theirs, border.other, sideTowards(border.other, parcel))];
+  const street2 = border.kind === "street";
+  const kerb = avenue ? AVENUE.kerb : BORDER2.road / 2;
+  const lanes = avenue ? [{ name: "median", from: 0, to: AVENUE.median, over: BORDER2.kerb }, { name: "lane", from: AVENUE.median, to: kerb, over: 0 }] : [{ name: "lane", from: 0, to: kerb, over: 0 }];
+  const bands = street2 ? [...lanes, { name: "walk", from: kerb, to: kerb + BORDER2.walk, over: BORDER2.kerb }] : [{ name: "way", from: 0, to: kerb + BORDER2.walk, over: 0 }];
+  const at = border.port === null ? null : mm(border.port * border.long);
+  return {
+    kind: border.kind,
+    long: border.long,
+    bands,
+    ...furnitureOf(border),
+    port: at === null ? null : { at, from: mm(at - BORDER2.road / 2), to: mm(at + BORDER2.road / 2) },
+    station: border.station && own ? stationOf(border, own, other, avenue) : null,
+    flights: border.flights
+  };
+}, linkOf = (a, b) => {
+  if (!a.station || !b.station)
+    return null;
+  if (a.station.island && b.station.island)
+    return { by: "island", far: 0, climbs: [] };
+  const way = ({ rail: rail4, platform, run, deep }) => ({ far: run + (platform.to + deep) / 2, climb: rail4 === "low" ? "steps" : "stair" });
+  const [from, to] = [way(a.station), way(b.station)];
+  return { by: "crossing", far: mm(from.far + to.far), climbs: [from.climb, to.climb] };
+}, landOn = (parcel, toLocal, level = null) => {
+  const directions = cornersOf4(parcel);
+  const corners = directions.map((corner2) => toLocal(corner2, level ?? cornerHeight(corner2)).map(mm));
+  const [sw, se, ne, nw] = corners;
+  const far = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
+  const size = [mm((far(sw, se) + far(nw, ne)) / 2), mm((far(sw, nw) + far(se, ne)) / 2)];
+  const place = (x, y) => {
+    const [s, t] = [x / size[0], y / size[1]];
+    return [0, 1].map((k) => (1 - s) * (1 - t) * sw[k] + s * (1 - t) * se[k] + s * t * ne[k] + (1 - s) * t * nw[k]);
+  };
+  const waysAt = (x, y) => {
+    const [s, t] = [x / size[0], y / size[1]];
+    return [
+      [0, 1].map((k) => ((1 - t) * (se[k] - sw[k]) + t * (ne[k] - nw[k])) / size[0]),
+      [0, 1].map((k) => ((1 - s) * (nw[k] - sw[k]) + s * (ne[k] - se[k])) / size[1])
+    ];
+  };
+  const where = (X2, Y) => {
+    let [x, y] = [size[0] / 2, size[1] / 2];
+    for (let pass = 0;pass < 4; pass++) {
+      const [px, py] = place(x, y);
+      const [[ax, ay], [bx, by2]] = waysAt(x, y);
+      const det = ax * by2 - ay * bx;
+      const [dx, dy] = [X2 - px, Y - py];
+      x += (dx * by2 - dy * bx) / det;
+      y += (ax * dy - ay * dx) / det;
+    }
+    return [x, y];
+  };
+  const wayAt = (x, y) => {
+    const [a, b] = waysAt(x, y).map((way) => {
+      const long = Math.hypot(...way);
+      return [way[0] / long, way[1] / long];
+    });
+    const [yaw, turned4] = [Math.atan2(a[1], a[0]), Math.atan2(b[1], b[0])];
+    const degrees = (angle) => angle * 180 / Math.PI;
+    return { along: a, up: b, yaw: degrees(yaw), skew: ((degrees(turned4 - yaw) - 90) % 360 + 540) % 360 - 180 };
+  };
+  const middle = [0, 1].map((k) => (sw[k] + se[k] + ne[k] + nw[k]) / 4);
+  const sides2 = Object.fromEntries(SIDES10.map((side2) => {
+    const border = borderOf(parcel, side2, level);
+    const [a] = edgeOf2(parcel, side2);
+    const flipped = dot(a, border.from) < dot(a, border.to);
+    const long = side2 === "south" || side2 === "north" ? size[0] : size[1];
+    const share = (c) => flipped ? 1 - c / long : c / long;
+    const own = (t) => flipped ? (1 - t) * long : t * long;
+    const heightAt = (c) => mm(toLocal(border.at(share(c)), border.heightAt(share(c)))[2]);
+    const [e0, e1] = [toLocal(border.from, border.heightAt(0)), toLocal(border.to, border.heightAt(1))];
+    const chord = Math.hypot(e1[0] - e0[0], e1[1] - e0[1]);
+    const way = [(e1[0] - e0[0]) / chord, (e1[1] - e0[1]) / chord];
+    const turned4 = [-way[1], way[0]];
+    const inward = turned4[0] * (middle[0] - e0[0]) + turned4[1] * (middle[1] - e0[1]) >= 0 ? turned4 : [way[1], -way[0]];
+    const at = (d, t) => {
+      const s = d / border.long;
+      return [e0[0] + (e1[0] - e0[0]) * s + inward[0] * t, e0[1] + (e1[1] - e0[1]) * s + inward[1] * t, toLocal(border.at(s), border.heightAt(s))[2]];
+    };
+    return [side2, {
+      border,
+      long,
+      flipped,
+      share,
+      own,
+      heightAt,
+      at,
+      wayAt: { along: way, into: inward },
+      port: border.port === null ? null : mm(own(border.port)),
+      station: border.station ? mm(own(border.station.at)) : null
+    }];
+  }));
+  const lean = 1 / Math.cos(wayAt(size[0] / 2, size[1] / 2).skew * Math.PI / 180);
+  const platform = level === null ? null : mm(toLocal(normalize(directions.reduce((sum, each) => add(sum, each))), level)[2]);
+  return { parcel, key: parcelKey(parcel), size, lean, corners, place, where, wayAt, sides: sides2, toLocal, tram: tramOf(parcel, undefined, level), square: squareOf2(corners), height: level, platform };
+}, squareOf2 = (corners) => {
+  const [sw, se, ne, nw] = corners;
+  const [ax, ay] = [se[0] - sw[0] + ne[0] - nw[0], se[1] - sw[1] + ne[1] - nw[1]];
+  const long = Math.hypot(ax, ay);
+  const way = [ax / long, ay / long];
+  const up = [-way[1], way[0]];
+  const centre = [0, 1].map((k) => (sw[k] + se[k] + ne[k] + nw[k]) / 4);
+  const at = (x, y) => [centre[0] + way[0] * x + up[0] * y, centre[1] + way[1] * x + up[1] * y];
+  const back = (X2, Y) => {
+    const [dx, dy] = [X2 - centre[0], Y - centre[1]];
+    return [dx * way[0] + dy * way[1], dx * up[0] + dy * up[1]];
+  };
+  const own = corners.map((corner2) => back(corner2[0], corner2[1]));
+  const [s0, s1, n1, n0] = own;
+  const lineThrough = (p, q) => (y) => p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1]);
+  const apart3 = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
+  return {
+    way,
+    up,
+    yaw: Math.atan2(way[1], way[0]) * 180 / Math.PI,
+    centre,
+    at,
+    back,
+    size: [mm((apart3(s0, s1) + apart3(n0, n1)) / 2), mm((n0[1] + n1[1] - s0[1] - s1[1]) / 2)],
+    slope: ((n0[0] - s0[0]) / (n0[1] - s0[1]) + (n1[0] - s1[0]) / (n1[1] - s1[1])) / 2,
+    corners: own.map(([x, y]) => [mm(x), mm(y)]),
+    west: lineThrough(s0, n0),
+    east: lineThrough(s1, n1)
+  };
+}, landOf = (frame) => landOn(parcelOf(frame.origin), (direction, elevation) => {
+  const offset = sub(scale(direction, RADIUS + elevation), frame.origin);
+  return [dot(offset, frame.right), dot(offset, frame.ahead), dot(offset, frame.up)];
+});
+var init_land_border = __esm(() => {
+  init_region();
+  init_parcel();
+  init_parcel_rooms();
+  init_terrain_height();
+  init_survey();
+  BORDER2 = Object.freeze({ road: 7.5, kerb: 0.15, walk: 3.5, lamp: 0.6, tree: 1.2, band: 9, step: 3, across: 3, over: 0.3, grade: 0.12, riser: 0.17, lamps: 24, first: 12, keep: 9 });
+  STATION2 = Object.freeze([0.31, 0.345]);
+  RAILS3 = Object.freeze({
+    band: 4.4,
+    body: 3.4,
+    gap: 0.1,
+    over: 8,
+    flush: -0.25,
+    platform: Object.freeze({ long: 34, wide: 3.25, over: 1.05 }),
+    high: Object.freeze({ track: 5.95 }),
+    low: Object.freeze({ track: 8.9 }),
+    level: 0.35,
+    steps: 1.8,
+    stair: 13.3,
+    cross: 3,
+    deep: 14.6,
+    radius: 26,
+    grade: 0.08,
+    lead: 21,
+    tail: 22,
+    ease: 3,
+    clear: 5.2,
+    deck: 0.8,
+    tram: 1 / 2
+  });
+  AVENUE = Object.freeze((() => {
+    const to = (v) => Math.round(v * 1000) / 1000;
+    const track2 = to(RAILS3.platform.wide + RAILS3.gap + RAILS3.body / 2);
+    const median = to(track2 + RAILS3.band / 2);
+    return { track: track2, median, kerb: to(median + BORDER2.road) };
+  })());
+  LANDS = Object.freeze({ city: "high", neighbourhood: "low", airport: "low", park: "low", garden: "low" });
+  ACROSS4 = Object.freeze(Array.from({ length: 2 * Math.ceil(BORDER2.band / BORDER2.across) + 1 }, (_, i) => -1 + i / Math.ceil(BORDER2.band / BORDER2.across)));
+  BORDERS = new Map;
+  ROUND8 = Object.freeze([Object.freeze({ side: "south", sign: 1 }), Object.freeze({ side: "east", sign: 1 }), Object.freeze({ side: "north", sign: -1 }), Object.freeze({ side: "west", sign: -1 })]);
+});
+
+// src/build/land-grid.js
+var exports_land_grid = {};
+__export(exports_land_grid, {
+  levelsOf: () => levelsOf,
+  leanOf: () => leanOf,
+  gridOn: () => gridOn,
+  clashesOf: () => clashesOf,
+  GRID: () => GRID
+});
+var GRID, mm2 = (value) => Math.round(value * 1000) / 1000 + 0, leanOf = (land2) => Math.hypot(1, land2.square.west(1) - land2.square.west(0)), lineAt = (line, y) => ({ from: line.from + (line.slope ?? 0) * y, to: line.to + (line.slope ?? 0) * y, mid: line.mid + (line.slope ?? 0) * y }), gridOn = (land2, { xs, ys }) => {
+  const [nx, ny] = [xs.length - 1, ys.length - 1];
+  const sq = land2.square;
+  const H2 = sq.size[1];
+  for (const [line, edge, name] of [[xs[0], sq.west(0), "west"], [xs[nx], sq.east(0), "east"], [ys[0], -H2 / 2, "south"], [ys[ny], H2 / 2, "north"]]) {
+    if (Math.abs(line.mid - edge) > 0.01)
+      throw new Error(`land-grid: its ${name} line lies ${(line.mid - edge).toFixed(3)} m off the land's edge — a land's outer streets are its borders`);
+  }
+  const nodes = [];
+  for (let j = 0;j <= ny; j++)
+    for (let i = 0;i <= nx; i++) {
+      const [west, south] = [i === 0 || i === nx, j === 0 || j === ny];
+      nodes.push({ key: `${i}:${j}`, i, j, x: mm2(lineAt(xs[i], ys[j].mid).mid), y: ys[j].mid, edge: west || south, corner: west && south });
+    }
+  const segments = [];
+  for (let j = 0;j <= ny; j++)
+    for (let i = 0;i < nx; i++) {
+      const [from, to] = [lineAt(xs[i], ys[j].mid).to, lineAt(xs[i + 1], ys[j].mid).from];
+      segments.push({ key: `x:${i}:${j}`, way: "x", i, j, line: ys[j], at: ys[j].mid, from: mm2(from), to: mm2(to), long: mm2(to - from), side: j === 0 ? "south" : j === ny ? "north" : null });
+    }
+  for (let i = 0;i <= nx; i++)
+    for (let j = 0;j < ny; j++) {
+      segments.push({ key: `y:${i}:${j}`, way: "y", i, j, line: xs[i], at: xs[i].mid, from: ys[j].to, to: ys[j + 1].from, long: mm2(ys[j + 1].from - ys[j].to), side: i === 0 ? "west" : i === nx ? "east" : null });
+    }
+  const cells = [];
+  for (let j = 0;j < ny; j++)
+    for (let i = 0;i < nx; i++) {
+      const [y0, y1] = [ys[j].to, ys[j + 1].from];
+      const x0 = i === 0 ? Math.max(lineAt(xs[0], y0).to, lineAt(xs[0], y1).to) : xs[i].to;
+      const x1 = i === nx - 1 ? Math.min(lineAt(xs[nx], y0).from, lineAt(xs[nx], y1).from) : xs[i + 1].from;
+      cells.push({ key: `${i}:${j}`, i, j, x0: mm2(x0), x1: mm2(x1), y0, y1 });
+    }
+  const place = (x, y) => sq.at(x, y);
+  const back = (X2, Y) => sq.back(X2, Y);
+  const ownAlong = (name, [X2, Y]) => {
+    const own = land2.sides[name];
+    const [p, q] = [own.at(0, 0), own.at(own.border.long, 0)];
+    const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+    return own.own(((X2 - p[0]) * dx + (Y - p[1]) * dy) / (dx * dx + dy * dy));
+  };
+  const sideOf = (name) => {
+    const across = name === "south" || name === "north";
+    const line = { south: ys[0], north: ys[ny], west: xs[0], east: xs[nx] }[name];
+    const crossing2 = (across ? xs : ys).slice(1, -1);
+    const { port } = land2.sides[name];
+    const mouths = crossing2.map((each) => {
+      const ends = across ? [each.from, each.to].map((x) => place(x, line.mid)) : [each.from, each.to].map((y) => place(lineAt(line, y).mid, y));
+      const [a, b] = ends.map((end) => ownAlong(name, end)).sort((p, q) => p - q);
+      return { from: mm2(a), to: mm2(b), port: port !== null && a <= port + 0.000001 && b >= port - 0.000001 };
+    });
+    return { name, line, way: across ? "x" : "y", start: 0, mouths: mouths.sort((p, q) => p.from - q.from) };
+  };
+  return { land: land2, xs, ys, nx, ny, nodes, segments, cells, stubs: [], place, back, sideOf };
+}, levelsOf = (grid, { bridges = [], line = null } = {}) => {
+  const { land: land2 } = grid;
+  const roadOf = (segment) => segment.side && land2.sides[segment.side].border.kind === "steps" ? "steps" : segment.line.kind === "walk" ? "walk" : "street";
+  const segments = new Map(grid.segments.map((segment) => [segment.key, { road: roadOf(segment), rail: null }]));
+  const nodes = new Map(grid.nodes.map((node) => [node.key, { road: "junction", rail: null }]));
+  for (const { k, over } of bridges) {
+    nodes.get(`${k}:${over}`).road = "deck";
+    for (const j of [over - 1, over])
+      if (segments.has(`y:${k}:${j}`))
+        segments.get(`y:${k}:${j}`).road = "ramp";
+  }
+  for (const run of line?.runs ?? []) {
+    for (const each of run.segments)
+      segments.get(each.key).rail = each.level;
+    for (const key of run.through)
+      nodes.get(key).rail = "through";
+    nodes.get(run.turn).rail = "turn";
+  }
+  return { segments, nodes };
+}, clashesOf = (levels, line = null) => {
+  const found = [];
+  for (const [key, { road: road2, rail: rail4 }] of levels.segments)
+    if (road2 === "ramp" && rail4)
+      found.push(`${key}: the circuit runs along a stretch a road climbs to its bridge on`);
+  for (const [key, { road: road2, rail: rail4 }] of levels.nodes)
+    if (road2 === "deck" && rail4)
+      found.push(`${key}: the circuit passes the junction a road's bridge is over`);
+  for (const mouth of line?.mouths ?? []) {
+    if (mouth.how === "closed" && mouth.port)
+      found.push(`${mouth.side}: its port's mouth is closed under the circuit's ramp`);
+    if (mouth.how === "under" && mouth.clear < GRID.clear - 0.000001)
+      found.push(`${mouth.side}: a street passes under the circuit with ${mouth.clear.toFixed(2)} m, ${GRID.clear} m at the least`);
+  }
+  return found;
+};
+var init_land_grid = __esm(() => {
+  GRID = Object.freeze({ sliver: 18, clear: 5.2 });
+});
+
+// src/build/land-line.js
+var exports_land_line = {};
+__export(exports_land_line, {
+  spansOf: () => spansOf,
+  lineOn: () => lineOn,
+  detourOf: () => detourOf,
+  checkLine: () => checkLine,
+  SHAPES: () => SHAPES4,
+  LINE: () => LINE2
+});
+var LINE2, mm3 = (value) => Math.round(value * 1000) / 1000 + 0, bentOnly = (knots, long) => {
+  const kept3 = [...knots];
+  const offOf = (k) => {
+    const [a, b, c] = [kept3[(k + kept3.length - 1) % kept3.length], kept3[k], kept3[(k + 1) % kept3.length]];
+    const span = ((c[0] - a[0]) % long + long) % long || long;
+    const t = ((b[0] - a[0]) % long + long) % long / span;
+    return Math.abs(b[1] - (a[1] + (c[1] - a[1]) * t));
+  };
+  while (kept3.length > 3) {
+    let [least2, at] = [Infinity, -1];
+    for (let k = 0;k < kept3.length; k++) {
+      const off = offOf(k);
+      if (off < least2)
+        [least2, at] = [off, k];
+    }
+    if (least2 > 0.005)
+      break;
+    kept3.splice(at, 1);
+  }
+  return kept3;
+}, spansOf = (stretch) => {
+  const spans = Math.max(1, Math.ceil(stretch.long / LINE2.knot - 0.000000001));
+  return stretch.kind === "turn" ? Math.max(2, spans + spans % 2) : spans;
+}, mulberry = (seed) => {
+  let state = seed | 0;
+  return () => {
+    state = state + 1831565813 | 0;
+    let t = Math.imul(state ^ state >>> 15, 1 | state);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}, detourOf = (seed) => {
+  const pick3 = mulberry(Math.imul((seed | 0) + 17, 2246822519) ^ 668265263);
+  const [draw2, order] = [pick3(), pick3()];
+  return { wanted: draw2 < LINE2.detour, order };
+}, cross22 = (a, b) => a[0] * b[1] - a[1] * b[0], dot22 = (a, b) => a[0] * b[0] + a[1] * b[1], unit10 = (v) => {
+  const long = Math.hypot(v[0], v[1]);
+  return [v[0] / long, v[1] / long];
+}, SIDES_ROUND, CORNERS, SHAPES4, lineOn = (grid, { kind, seed = 1, inside, cuts = true, force = null, route = null, ground = null, exact = false }) => {
+  const rail4 = railOf(kind);
+  if (!rail4)
+    return { rail: null, reasons: [`a land of this kind has no train (${kind})`] };
+  const { land: land2, xs, ys, nx, ny } = grid;
+  const random = mulberry(Math.imul(seed | 0, 2654435761) ^ 1540483477);
+  const reasons = [];
+  const comes = rail4 === "high" ? tramOf(land2.parcel, exact ? [AVENUE.track, AVENUE.track] : undefined, land2.height ?? null) : null;
+  const sides2 = Object.fromEntries(SIDES_ROUND.map((each) => {
+    const [own, said2] = [land2.sides[each.name], grid.sideOf(each.name)];
+    const runs3 = railAt(kind, land2.parcel, each.name, land2.height ?? null);
+    const along4 = (g) => own.share(g - said2.start) * own.border.long;
+    const going = (own.flipped ? -1 : 1) * each.sign;
+    const steep = own.border.kind !== "street" || own.border.steepest > RAILS3.grade + 0.000000001;
+    return [each.name, { ...each, own, said: said2, along: along4, going, steep, rail: runs3, track: exact ? AVENUE.track : RAILS3[runs3].track }];
+  }));
+  const lineOfBorder = (side2) => {
+    const { own, going, track: track2 } = sides2[side2];
+    const [p, q] = [own.at(0, track2), own.at(own.border.long, track2)];
+    return { p: [p[0], p[1]], u: unit10([(q[0] - p[0]) * going, (q[1] - p[1]) * going]) };
+  };
+  const lineOfStreet = (way, index, sign2) => {
+    const line = (way === "y" ? xs : ys)[index];
+    const left = way === "y" ? -sign2 : sign2;
+    const at2 = left > 0 ? line.to + LINE2.inner : line.from - LINE2.inner;
+    const [a, b] = way === "y" ? [grid.place(at2, ys[0].mid), grid.place(at2, ys[ny].mid)] : [grid.place(xs[0].mid, at2), grid.place(xs[nx].mid, at2)];
+    return { p: a, u: unit10([(b[0] - a[0]) * sign2, (b[1] - a[1]) * sign2]) };
+  };
+  const borderRun = (each) => ({ name: each.name, kind: "border", side: each.name, way: each.way, index: each.way === "x" ? each.name === "south" ? 0 : ny : each.name === "west" ? 0 : nx, sign: each.sign, rail: sides2[each.name].rail, track: sides2[each.name].track, ...lineOfBorder(each.name) });
+  const innerRun = (name, way, index, sign2) => ({ name, kind: "inner", side: null, way, index, sign: sign2, rail: "high", track: LINE2.inner, ...lineOfStreet(way, index, sign2) });
+  const insideOf2 = (each) => innerRun(`inside ${each.name}`, each.way, each.way === "x" ? each.name === "south" ? 1 : ny - 1 : each.name === "west" ? 1 : nx - 1, each.sign);
+  const cutOf = (corner2, [k, m]) => ({
+    se: [innerRun(`cut se up ${k}`, "y", nx - k, 1), innerRun(`cut se along ${m}`, "x", m, 1)],
+    ne: [innerRun(`cut ne back ${k}`, "x", ny - k, -1), innerRun(`cut ne up ${m}`, "y", nx - m, 1)],
+    nw: [innerRun(`cut nw down ${k}`, "y", k, -1), innerRun(`cut nw back ${m}`, "x", ny - m, -1)],
+    sw: [innerRun(`cut sw along ${k}`, "x", k, 1), innerRun(`cut sw down ${m}`, "y", m, -1)]
+  })[corner2];
+  const traced = (runs3) => {
+    const count = runs3.length;
+    const corners = runs3.map((run, k) => {
+      const next = runs3[(k + 1) % count];
+      const det = cross22(run.u, next.u);
+      if (Math.abs(det) < 0.000001)
+        return null;
+      const t = cross22([next.p[0] - run.p[0], next.p[1] - run.p[1]], next.u) / det;
+      const sweep2 = Math.atan2(det, dot22(run.u, next.u));
+      return { vertex: [run.p[0] + run.u[0] * t, run.p[1] + run.u[1] * t], sweep: sweep2, tangent: RAILS3.radius * Math.tan(Math.abs(sweep2) / 2) };
+    });
+    if (corners.some((corner2) => corner2 === null))
+      return { failed: "two of its streets run the same way where it would turn" };
+    const stretches2 = [];
+    let start = 0;
+    for (const [k, run] of runs3.entries()) {
+      const [before, after] = [corners[(k + count - 1) % count], corners[k]];
+      const from = [before.vertex[0] + run.u[0] * before.tangent, before.vertex[1] + run.u[1] * before.tangent];
+      const to = [after.vertex[0] - run.u[0] * after.tangent, after.vertex[1] - run.u[1] * after.tangent];
+      const long = dot22([to[0] - from[0], to[1] - from[1]], run.u);
+      if (long < LINE2.straight)
+        return { failed: `${run.name}: ${long.toFixed(1)} m of straight between two curves of ${RAILS3.radius} m, ${LINE2.straight} m at the least` };
+      stretches2.push({ kind: "straight", run: k, start, long, from, way: run.u });
+      start += long;
+      const left = after.sweep > 0;
+      const normal = left ? [-run.u[1], run.u[0]] : [run.u[1], -run.u[0]];
+      const centre = [to[0] + normal[0] * RAILS3.radius, to[1] + normal[1] * RAILS3.radius];
+      const curve = RAILS3.radius * Math.abs(after.sweep);
+      stretches2.push({ kind: "turn", start, long: curve, centre, radius: RAILS3.radius, begin: Math.atan2(to[1] - centre[1], to[0] - centre[0]), sweep: after.sweep, left });
+      start += curve;
+    }
+    return { stretches: stretches2, length: start, corners };
+  };
+  const borderAt = (run, stretch2, s) => {
+    const side2 = sides2[run.side];
+    const origin = side2.own.at(0, run.track);
+    return (dot22([stretch2.from[0] - origin[0], stretch2.from[1] - origin[1]], run.u) + s) * side2.going;
+  };
+  const alongRun = (run, stretch2, place) => (place - borderAt(run, stretch2, 0)) * sides2[run.side].going;
+  const streetAt = (run, stretch2, s) => run.kind === "border" ? sides2[run.side].own.at(Math.min(Math.max(borderAt(run, stretch2, s), 0), sides2[run.side].own.border.long), 0)[2] : inside;
+  const steepestOf = (runs3, line) => {
+    let most2 = 0;
+    for (const [k, run] of runs3.entries()) {
+      const [stretch2, next] = [line.stretches[2 * k], line.stretches[(2 * k + 2) % line.stretches.length]];
+      const curve = line.stretches[2 * k + 1];
+      most2 = Math.max(most2, Math.abs(streetAt(runs3[next.run], next, 0) - streetAt(run, stretch2, stretch2.long)) / curve.long);
+      if (run.kind === "border")
+        most2 = Math.max(most2, sides2[run.side].own.border.steepest);
+    }
+    return most2;
+  };
+  const stationOn = (run, stretch2) => {
+    const { border } = sides2[run.side].own;
+    if (!border.station)
+      return null;
+    const s = alongRun(run, stretch2, border.station.at * border.long);
+    return { side: run.side, s, fits: s - RAILS3.tail >= 0 && s + RAILS3.lead <= stretch2.long };
+  };
+  const standing2 = (runs3, line) => runs3.reduce((sum, run, k) => sum + (run.kind === "border" && stationOn(run, line.stretches[2 * k])?.fits ? 1 : 0), 0);
+  for (const each of SIDES_ROUND) {
+    const { steep, own } = sides2[each.name];
+    if (steep)
+      reasons.push(`its ${each.name} border ${own.border.kind === "steps" ? "is a way of steps" : `climbs ${(own.border.steepest * 100).toFixed(1)} in 100`}: its line keeps to the first street inside it, and has no station there`);
+  }
+  let runs2 = SIDES_ROUND.map((each) => sides2[each.name].steep ? insideOf2(each) : borderRun(each));
+  let made4 = traced(runs2);
+  if (made4.failed)
+    return { rail: null, reasons: [...reasons, `its line does not close: ${made4.failed}`] };
+  const climbs = steepestOf(runs2, made4);
+  if (climbs > RAILS3.grade + 0.000000001)
+    return { rail: null, reasons: [...reasons, `its line is not laid: between a border's street and the street inside the next it would climb ${(climbs * 100).toFixed(1)} in 100, ${RAILS3.grade * 100} at the most`] };
+  const chosen = [];
+  for (const [k, corner2] of CORNERS.entries()) {
+    const [before, after] = [SIDES_ROUND[k], SIDES_ROUND[(k + 1) % 4]];
+    const [draw2, order] = [random(), random()];
+    const asked2 = force?.[corner2] ?? null;
+    if (force ? !asked2 : !cuts || draw2 >= LINE2.cut)
+      continue;
+    if (sides2[before.name].steep || sides2[after.name].steep)
+      continue;
+    if (comes && (comes.side === before.name || comes.side === after.name)) {
+      if (force)
+        reasons.push(`its ${corner2} corner is not cut: its line comes down to the street beside it`);
+      continue;
+    }
+    const start = Math.floor(order * SHAPES4.length);
+    const shapes = asked2 ? [asked2] : SHAPES4.map((_, n) => SHAPES4[(start + n) % SHAPES4.length]);
+    for (const shape of shapes) {
+      const [inK, inM] = shape;
+      if (nx - Math.max(inK, inM) < 1 || ny - Math.max(inK, inM) < 1)
+        continue;
+      const at2 = runs2.findIndex((run) => run.kind === "border" && run.side === before.name);
+      const tried = [...runs2.slice(0, at2 + 1), ...cutOf(corner2, shape), ...runs2.slice(at2 + 1)];
+      const name = `${corner2}${inK}${inM}`;
+      const line = traced(tried);
+      if (line.failed) {
+        reasons.push(`its ${corner2} corner is not cut ${inK}×${inM}: ${line.failed}`);
+        continue;
+      }
+      if (standing2(tried, line) < standing2(runs2, made4)) {
+        reasons.push(`its ${corner2} corner is not cut ${inK}×${inM}: a station by it would not stand on its straight`);
+        continue;
+      }
+      const steep = steepestOf(tried, line);
+      if (steep > RAILS3.grade + 0.000000001) {
+        reasons.push(`its ${corner2} corner is not cut ${inK}×${inM}: it would climb ${(steep * 100).toFixed(1)} in 100 between its border and its inside`);
+        continue;
+      }
+      runs2 = tried;
+      made4 = line;
+      chosen.push(name);
+      break;
+    }
+  }
+  if (exact && (force ? force.detour : cuts)) {
+    const { wanted, order } = detourOf(seed);
+    const asked2 = force?.detour ?? route ?? null;
+    if (asked2 || wanted) {
+      const kept3 = comes ? [comes.side, comes.before, comes.after] : [];
+      const found = [];
+      for (const [k, run] of runs2.entries()) {
+        if (run.kind !== "border" || kept3.includes(run.side) || sides2[run.side].steep)
+          continue;
+        const across = run.way === "x" ? "y" : "x";
+        const inward = { south: 1, north: -1, west: 1, east: -1 }[run.side];
+        const [many, own] = [across === "y" ? nx : ny, run.way === "y" ? nx : ny];
+        const streets = Array.from({ length: many - 1 }, (_, n) => n + 1);
+        if (run.sign < 0)
+          streets.reverse();
+        const deep = [1, 2, 3].map((n) => inward > 0 ? n : own - n).filter((i) => i > 0 && i < own);
+        for (let a = 0;a < streets.length; a++)
+          for (let b = a + 1;b < streets.length; b++)
+            for (const r of deep) {
+              const name = `${run.side[0]}${streets[a]}${streets[b]}${r}`;
+              if (asked2 && asked2 !== name)
+                continue;
+              const tried = [
+                ...runs2.slice(0, k + 1),
+                innerRun(`detour ${run.side} in ${streets[a]}`, across, streets[a], inward),
+                innerRun(`detour ${run.side} along ${r}`, run.way, r, run.sign),
+                innerRun(`detour ${run.side} out ${streets[b]}`, across, streets[b], -inward),
+                { ...run },
+                ...runs2.slice(k + 1)
+              ];
+              const line = traced(tried);
+              if (line.failed) {
+                if (asked2)
+                  reasons.push(`its detour ${name} is not laid: ${line.failed}`);
+                continue;
+              }
+              if (standing2(tried, line) < standing2(runs2, made4)) {
+                if (asked2)
+                  reasons.push(`its detour ${name} is not laid: a station by it would not stand on its straight`);
+                continue;
+              }
+              if (steepestOf(tried, line) > RAILS3.grade + 0.000000001) {
+                if (asked2)
+                  reasons.push(`its detour ${name} is not laid: it would climb more than ${RAILS3.grade * 100} in 100`);
+                continue;
+              }
+              found.push({ name, tried, line });
+            }
+      }
+      const one = found[Math.min(found.length - 1, Math.floor(order * found.length))];
+      if (one) {
+        runs2 = one.tried;
+        made4 = one.line;
+        chosen.push(one.name);
+      } else if (!asked2)
+        reasons.push("its line has no detour into its city: none fits along a border free for one");
+    }
+  }
+  const { stretches, length: length2 } = made4;
+  if (exact)
+    for (const [k, each] of stretches.entries()) {
+      if (each.kind !== "turn")
+        continue;
+      const [before, after] = [stretches[(k + stretches.length - 1) % stretches.length], stretches[(k + 1) % stretches.length]];
+      const widest = 4 * Math.atan(3 * Math.min(before.long, after.long) / (16 * each.radius));
+      const least2 = Math.ceil(Math.abs(each.sweep) / widest - 0.000000001);
+      each.spans = Math.max(spansOf(each), least2 + least2 % 2);
+    }
+  const wrapped = (d) => (d % length2 + length2) % length2;
+  const at = (d) => {
+    const w = wrapped(d);
+    const each = stretches.findLast((stretch2) => stretch2.start <= w + 0.000000001) ?? stretches[0];
+    const run = w - each.start;
+    if (each.kind === "straight")
+      return { x: each.from[0] + each.way[0] * run, y: each.from[1] + each.way[1] * run, way: each.way };
+    const turned4 = each.begin + Math.sign(each.sweep) * run / each.radius;
+    const out = [Math.cos(turned4), Math.sin(turned4)];
+    return { x: each.centre[0] + each.radius * out[0], y: each.centre[1] + each.radius * out[1], way: each.left ? [-out[1], out[0]] : [out[1], -out[0]] };
+  };
+  const straightOf = (side2) => stretches[2 * runs2.findIndex((run) => run.kind === "border" && run.side === side2)];
+  const runOf = (side2) => runs2.find((run) => run.kind === "border" && run.side === side2);
+  const streetUnder = (d) => {
+    const w = wrapped(d);
+    const k = Math.max(0, stretches.findLastIndex((stretch2) => stretch2.start <= w + 0.000000001));
+    const each = stretches[k];
+    if (each.kind === "straight")
+      return streetAt(runs2[each.run], each, w - each.start);
+    const [last, next] = [stretches[k - 1], stretches[(k + 1) % stretches.length]];
+    const [z0, z1] = [streetAt(runs2[last.run], last, last.long), streetAt(runs2[next.run], next, 0)];
+    return z0 + (z1 - z0) * (w - each.start) / each.long;
+  };
+  const [high, flat2] = [RAILS3.over, BORDER2.kerb + RAILS3.flush];
+  const bends = [];
+  for (const each of stretches) {
+    if (each.kind !== "straight")
+      continue;
+    const run = runs2[each.run];
+    const marks = [0, each.long];
+    if (run.kind === "border")
+      for (const [t] of sides2[run.side].own.border.knots) {
+        const s = alongRun(run, each, t * sides2[run.side].own.border.long);
+        if (s > 0.5 && s < each.long - 0.5)
+          marks.push(s);
+      }
+    for (const s of marks.sort((p, q) => p - q))
+      bends.push(each.start + s);
+  }
+  if (ground && !exact)
+    for (const each of stretches)
+      for (let k = 1, spans = spansOf(each);k < spans; k++)
+        bends.push(each.start + each.long * k / spans);
+  const fromCorner = (side2, far, leaving) => {
+    const [run, stretch2, { own, going }] = [runOf(side2), straightOf(side2), sides2[side2]];
+    const end = going > 0 === leaving ? own.border.long : 0;
+    return stretch2.start + alongRun(run, stretch2, end === 0 ? far : own.border.long - far);
+  };
+  const stretch = comes && runOf(comes.before) && runOf(comes.after) && runOf(comes.side) ? (() => {
+    const down = [fromCorner(comes.before, comes.down[1], true), fromCorner(comes.before, comes.down[0], true)];
+    let up = [fromCorner(comes.after, comes.up[0], false), fromCorner(comes.after, comes.up[1], false)];
+    if (up[0] < down[1])
+      up = up.map((d) => d + length2);
+    return { side: comes.side, down, ground: [down[1], up[0]], up };
+  })() : null;
+  const inRange = (range, d) => [d, d + length2, d - length2].find((x) => x >= range[0] - 0.000000001 && x <= range[1] + 0.000000001);
+  const railUnder = (d) => {
+    const w = wrapped(d);
+    const k = Math.max(0, stretches.findLastIndex((each2) => each2.start <= w + 0.000000001));
+    const each = stretches[k];
+    return each.kind === "straight" ? runs2[each.run].rail : "high";
+  };
+  const levelAt = (d) => {
+    const w = wrapped(d);
+    if (rail4 === "low")
+      return "ground";
+    if (!stretch)
+      return "viaduct";
+    if (inRange(stretch.ground, w) !== undefined)
+      return "ground";
+    return inRange(stretch.down, w) !== undefined || inRange(stretch.up, w) !== undefined ? "ramp" : "viaduct";
+  };
+  const floorUnder = (d) => {
+    if (!ground)
+      return streetUnder(d);
+    const here = at(d);
+    return ground(here.x, here.y);
+  };
+  const top = (d) => {
+    if (rail4 === "low")
+      return floorUnder(d) + flat2;
+    if (!stretch)
+      return streetUnder(d) + high;
+    if (inRange(stretch.ground, wrapped(d)) !== undefined)
+      return floorUnder(d) + flat2;
+    const [a, b] = [inRange(stretch.down, wrapped(d)), inRange(stretch.up, wrapped(d))];
+    if (a !== undefined) {
+      const [z0, z1] = [streetUnder(stretch.down[0]) + high, floorUnder(stretch.down[1]) + flat2];
+      return z0 + (z1 - z0) * (a - stretch.down[0]) / (stretch.down[1] - stretch.down[0]);
+    }
+    if (b !== undefined) {
+      const [z0, z1] = [floorUnder(stretch.up[0]) + flat2, streetUnder(stretch.up[1]) + high];
+      return z0 + (z1 - z0) * (b - stretch.up[0]) / (stretch.up[1] - stretch.up[0]);
+    }
+    return streetUnder(d) + high;
+  };
+  const stations3 = [];
+  for (const [k, run] of runs2.entries()) {
+    if (run.kind !== "border")
+      continue;
+    const found = stationOn(run, stretches[2 * k]);
+    if (found && runs2.filter((each) => each.kind === "border" && each.side === run.side).length > 1 && (found.s < 0 || found.s > stretches[2 * k].long))
+      continue;
+    if (!found) {
+      if (!sides2[run.side].steep)
+        reasons.push(`its ${run.side} border has no interchange: its street climbs more than ${RAILS3.level} m along a platform there`);
+      continue;
+    }
+    if (!found.fits) {
+      reasons.push(`its ${run.side} border's interchange is left out: a train would not stand whole on the straight there`);
+      continue;
+    }
+    stations3.push({ side: run.side, rail: run.rail, d: stretches[2 * k].start + found.s, along: mm3(sides2[run.side].own.border.station.at * sides2[run.side].own.border.long) });
+  }
+  stations3.sort((p, q) => p.d - q.d);
+  const mouths = runs2.flatMap((run, k) => {
+    if (run.kind !== "border")
+      return [];
+    const [each, side2] = [stretches[2 * k], sides2[run.side]];
+    return side2.said.mouths.filter((mouth) => !exact || mouth.port).flatMap((mouth) => {
+      const [a, b] = [alongRun(run, each, side2.along(mouth.from)), alongRun(run, each, side2.along(mouth.to))].sort((p, q) => p - q);
+      if (a < 0 || b > each.long)
+        return [];
+      const [from, to] = [each.start + a, each.start + b];
+      if (levelAt((from + to) / 2) === "ground")
+        return [{ side: run.side, port: mouth.port, from: mm3(from), to: mm3(to), how: "level", clear: 0 }];
+      const clear = mm3(Math.min(...[from, (from + to) / 2, to].map((d) => top(d) - streetUnder(d))) - RAILS3.deck);
+      return [{ side: run.side, port: mouth.port, from: mm3(from), to: mm3(to), how: clear >= GRID.clear - 0.000001 ? "under" : "closed", clear }];
+    });
+  });
+  const lows = mouths.filter((each) => each.how === "level").map((mouth) => [mouth.from - 0.5, mouth.to + 0.5]).sort((p, q) => p[0] - q[0]).reduce((runs3, [from, to]) => {
+    const last = runs3.at(-1);
+    if (last && from - 2 * LINE2.dip <= last[1] + 2 * LINE2.dip)
+      last[1] = Math.max(last[1], to);
+    else
+      runs3.push([from, to]);
+    return runs3;
+  }, []);
+  const dipOf = (d, way) => {
+    const grade = Math.abs(top(d + way * LINE2.dip) - top(d)) / LINE2.dip;
+    return Math.max(LINE2.dip, LINE2.low / Math.max(RAILS3.grade - grade - 0.005, 0.01));
+  };
+  const knots = (() => {
+    const dips = lows.map(([a, b]) => [a - dipOf(a, -1), b + dipOf(b, 1)]);
+    const list = bends.filter((d) => levelAt(d) !== "ramp" && !dips.some((dip) => inRange(dip, wrapped(d)) !== undefined)).map((d) => [d, top(d)]);
+    if (stretch)
+      for (const d of [...stretch.down, ...stretch.up])
+        list.push([d, top(d)]);
+    for (const [a, b] of lows) {
+      const [into, out] = [dipOf(a, -1), dipOf(b, 1)];
+      list.push([a - into, top(a - into)], [a, top(a) - LINE2.low], [b, top(b) - LINE2.low], [b + out, top(b + out)]);
+    }
+    if (exact && ground && stretch)
+      for (const each of stretches)
+        for (let k = 1, spans = each.spans ?? spansOf(each);k < spans; k++) {
+          const d = each.start + each.long * k / spans;
+          if (inRange(stretch.ground, d) !== undefined && !dips.some((dip) => inRange(dip, wrapped(d)) !== undefined))
+            list.push([d, top(d)]);
+        }
+    const sorted = list.map(([d, z]) => [mm3(wrapped(d)), mm3(z)]).sort((p, q) => p[0] - q[0]).filter((knot, k, all3) => k === 0 || knot[0] - all3[k - 1][0] > 0.001);
+    return exact ? bentOnly(sorted, length2) : sorted;
+  })();
+  const heightAt = (d) => {
+    const w = wrapped(d);
+    const k = knots.findIndex((knot) => knot[0] >= w - 0.000000001);
+    const [a, b] = k <= 0 ? [knots.at(-1), knots[0]] : [knots[k - 1], knots[k]];
+    const span = wrapped(b[0] - a[0]) || length2;
+    return a[1] + (b[1] - a[1]) * wrapped(w - a[0]) / span;
+  };
+  const steepest = knots.reduce((most2, knot, k) => {
+    const before = knots[(k + knots.length - 1) % knots.length];
+    return Math.max(most2, Math.abs(knot[1] - before[1]) / Math.max(wrapped(knot[0] - before[0]) || length2, 0.000000001));
+  }, 0);
+  const said = runs2.map((run, k) => {
+    const each = stretches[2 * k];
+    const lines2 = run.way === "x" ? xs : ys;
+    const along4 = (point) => {
+      const [x, y] = grid.back(point[0], point[1]);
+      return run.way === "x" ? x : y;
+    };
+    const nearest = (point) => lines2.reduce((best, line, i) => Math.abs(line.mid - along4(point)) < Math.abs(lines2[best].mid - along4(point)) ? i : best, 0);
+    const [i0, i1] = [nearest(made4.corners[(k + runs2.length - 1) % runs2.length].vertex), nearest(made4.corners[k].vertex)];
+    const keyOf = (i) => run.way === "x" ? `${i}:${run.index}` : `${run.index}:${i}`;
+    const step = i1 >= i0 ? 1 : -1;
+    const passes = Array.from({ length: Math.abs(i1 - i0) + 1 }, (_, n) => i0 + n * step);
+    const first = along4(each.from);
+    const segments = passes.slice(0, -1).map((i, n) => {
+      const s = Math.min(Math.max(((lines2[i].mid + lines2[passes[n + 1]].mid) / 2 - first) * run.sign, 0), each.long);
+      const low = Math.min(i, passes[n + 1]);
+      return { key: run.way === "x" ? `x:${low}:${run.index}` : `y:${run.index}:${low}`, level: levelAt(each.start + s) };
+    });
+    return { name: run.name, kind: run.kind, side: run.side, way: run.way, index: run.index, sign: run.sign, rail: run.rail, track: run.track, segments, through: passes.slice(1, -1).map(keyOf), turn: keyOf(i1) };
+  });
+  const chamfers = stretches.filter((each) => each.kind === "turn" && each.left).map((each) => {
+    const [gx, gy] = grid.back(each.centre[0], each.centre[1]);
+    const apart3 = (one) => Math.hypot(Math.max(one.x0 - gx, 0, gx - one.x1), Math.max(one.y0 - gy, 0, gy - one.y1));
+    const row = grid.cells.filter((one) => gy > one.y0 && gy < one.y1);
+    const cell = row.find((one) => gx > one.x0 && gx < one.x1) ?? (row.length && gx <= row[0].x0 ? row[0] : row.length && gx >= row.at(-1).x1 ? row.at(-1) : null) ?? grid.cells.reduce((best, one) => apart3(one) < apart3(best) ? one : best, grid.cells[0]);
+    return { cell: cell?.key ?? null, centre: each.centre.map(mm3), radius: mm3(RAILS3.radius - RAILS3.band / 2 - LINE2.chamfer) };
+  });
+  const speed = rail4 === "low" ? LINE2.speed.low : stretch ? LINE2.speed.tram : LINE2.speed.high;
+  const round45 = length2 / speed + stations3.length * LINE2.stop;
+  const wrap2 = (range) => range.map((d) => mm3(wrapped(d)));
+  return {
+    kind,
+    rail: rail4,
+    seed,
+    reasons,
+    runs: said,
+    stretches: stretches.map((each) => each.kind === "straight" ? { kind: "straight", run: each.run, start: mm3(each.start), long: mm3(each.long), from: each.from.map(mm3), way: each.way } : { kind: "turn", start: mm3(each.start), long: mm3(each.long), centre: each.centre.map(mm3), radius: each.radius, begin: each.begin, sweep: each.sweep, left: each.left, ...each.spans && { spans: each.spans } }),
+    length: mm3(length2),
+    at,
+    heights: { knots, at: heightAt, grade: (d) => (heightAt(d + 1) - heightAt(d - 1)) / 2, steepest },
+    levelAt,
+    stations: stations3.map((each) => {
+      const here = at(each.d);
+      return { side: each.side, rail: each.rail, d: mm3(each.d), along: each.along, at: [mm3(here.x), mm3(here.y), mm3(heightAt(each.d))] };
+    }),
+    tram: stretch && { side: stretch.side, down: wrap2(stretch.down), ground: wrap2(stretch.ground), up: wrap2(stretch.up) },
+    mouths,
+    chamfers,
+    cuts: chosen,
+    speed,
+    round: mm3(round45),
+    trains: !exact && round45 > LINE2.twice ? 2 : 1,
+    signature: `${chosen.join("+") || "whole"}|${stretch ? `tram ${stretch.side}` : rail4 === "low" ? "ground" : "viaduct"}`
+  };
+}, checkLine = (line) => {
+  if (!line.rail)
+    return [];
+  const found = [];
+  const { stretches, length: length2 } = line;
+  const apart3 = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+  for (const [k, each] of stretches.entries()) {
+    const next = stretches[(k + 1) % stretches.length];
+    const [end, begin] = [line.at(each.start + each.long - 0.000001), line.at(next.start + 0.000001)];
+    if (apart3(end, begin) > 0.002)
+      found.push(`it does not join ${(each.start + each.long).toFixed(1)} m along it: ${apart3(end, begin).toFixed(3)} m apart`);
+    if (Math.abs(cross22(end.way, begin.way)) > 0.001 || dot22(end.way, begin.way) < 0.999)
+      found.push(`it kinks ${(each.start + each.long).toFixed(1)} m along it`);
+    if (each.kind === "turn" && Math.abs(each.radius - RAILS3.radius) > 0.000000001)
+      found.push(`a curve of ${each.radius} m`);
+    if (each.kind === "straight" && each.long < LINE2.straight - 0.000001)
+      found.push(`a straight of ${each.long} m`);
+  }
+  if (Math.abs(stretches.reduce((sum, each) => sum + each.long, 0) - length2) > 0.02)
+    found.push("its stretches do not add up to its length");
+  if (Math.abs(stretches.filter((each) => each.kind === "turn").reduce((sum, each) => sum + each.sweep, 0) - 2 * Math.PI) > 0.000001)
+    found.push("it does not go once round against the clock");
+  if (line.heights.steepest > RAILS3.grade + 0.0001)
+    found.push(`it climbs ${(line.heights.steepest * 100).toFixed(2)} in 100`);
+  const straightAt = (d) => stretches.find((each) => each.kind === "straight" && d >= each.start - 0.000001 && d <= each.start + each.long + 0.000001);
+  if (line.tram)
+    for (const [name, [from, to]] of [["down", line.tram.down], ["up", line.tram.up]]) {
+      const on = straightAt(from);
+      if (!on || to < from || to > on.start + on.long + 0.000001)
+        found.push(`its ramp ${name} does not lie on one straight`);
+    }
+  for (const station of line.stations) {
+    const on = straightAt(station.d);
+    if (!on || station.d - RAILS3.tail < on.start - 0.000001 || station.d + RAILS3.lead > on.start + on.long + 0.000001)
+      found.push(`its ${station.side} station does not stand on its straight`);
+    if (line.levelAt(station.d) !== (station.rail === "high" ? "viaduct" : "ground"))
+      found.push(`its ${station.side} station is not at the height its rails run at there`);
+    const along4 = [-17, -8, 0, 8, 17].map((off) => line.heights.at(station.d + off));
+    if (Math.max(...along4) - Math.min(...along4) > RAILS3.level + 0.01)
+      found.push(`its ${station.side} station is not level: ${(Math.max(...along4) - Math.min(...along4)).toFixed(2)} m along its platform`);
+  }
+  for (const mouth of line.mouths) {
+    if (mouth.how === "closed" && mouth.port)
+      found.push(`its ${mouth.side} port's mouth is closed`);
+    if (mouth.how === "under" && mouth.clear < GRID.clear - 0.000001)
+      found.push(`a street passes under it with ${mouth.clear} m`);
+  }
+  return found;
+};
+var init_land_line = __esm(() => {
+  init_land_border();
+  init_land_grid();
+  LINE2 = Object.freeze({
+    inner: 2.2,
+    dip: 3.5,
+    low: 0.14,
+    chamfer: 2,
+    cut: 0.4,
+    speed: Object.freeze({ high: 12, tram: 10, low: 8 }),
+    stop: 20,
+    twice: 180,
+    straight: 2,
+    knot: 8,
+    detour: 0.6
+  });
+  SIDES_ROUND = Object.freeze([
+    Object.freeze({ name: "south", way: "x", sign: 1 }),
+    Object.freeze({ name: "east", way: "y", sign: 1 }),
+    Object.freeze({ name: "north", way: "x", sign: -1 }),
+    Object.freeze({ name: "west", way: "y", sign: -1 })
+  ]);
+  CORNERS = Object.freeze(["se", "ne", "nw", "sw"]);
+  SHAPES4 = Object.freeze([Object.freeze([1, 1]), Object.freeze([1, 2]), Object.freeze([2, 1]), Object.freeze([2, 2])]);
+});
+
+// src/build/land-streets.js
+var exports_land_streets = {};
+__export(exports_land_streets, {
+  unpackPoints: () => unpackPoints2,
+  streetsOf: () => streetsOf,
+  packPoints: () => packPoints,
+  offsetOf: () => offsetOf,
+  groundOn: () => groundOn,
+  foldedOf: () => foldedOf,
+  cornerOffsetOf: () => cornerOffsetOf,
+  cornerFace: () => cornerFace,
+  MOST: () => MOST2
+});
+var mm4 = (value) => Math.round(value * 1000) / 1000 + 0, clamp30 = (value, low, high) => Math.min(high, Math.max(low, value)), lerp3 = (a, b, t) => a + (b - a) * t, deg = (radians) => radians * 180 / Math.PI, MOST2 = 64, LEVEL2 = 0.0005, ISLAND = 24, higher = (q) => {
+  const [[ax, ay, az], [bx, by2, bz], [cx, cy, cz], [dx, dy, dz]] = q;
+  const [ux, uy, vx, vy, wx, wy] = [cx - ax, cy - ay, dx - bx, dy - by2, bx - ax, by2 - ay];
+  const det = ux * -vy - uy * -vx;
+  if (Math.abs(det) < 0.000000000001)
+    return az + cz >= bz + dz;
+  const s = (wx * -vy - wy * -vx) / det;
+  const t = (ux * wy - uy * wx) / det;
+  return az + (cz - az) * s >= bz + (dz - bz) * t;
+}, inTriangle2 = ([a, b, c], x, y) => {
+  const det = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+  if (Math.abs(det) < 0.000000000001)
+    return null;
+  const l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / det;
+  const l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / det;
+  const l3 = 1 - l1 - l2;
+  return l1 >= -0.000001 && l2 >= -0.000001 && l3 >= -0.000001 ? l1 * a[2] + l2 * b[2] + l3 * c[2] : null;
+}, planeOfTriangle = ([a, b, c], x, y) => {
+  const det = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+  const l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / det;
+  const l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / det;
+  return l1 * a[2] + l2 * b[2] + (1 - l1 - l2) * c[2];
+}, gradeOf = ([a, b, c]) => {
+  const [u, v] = [[b[0] - a[0], b[1] - a[1], b[2] - a[2]], [c[0] - a[0], c[1] - a[1], c[2] - a[2]]];
+  const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  return Math.abs(n[2]) > 0.000000000001 ? Math.hypot(n[0], n[1]) / Math.abs(n[2]) : Infinity;
+}, groundOn = (land2, grid, ground, blended, sectionOf, options = {}) => {
+  const laid3 = laidOn(land2, grid, ground, blended, sectionOf, options);
+  return laid3.steepest > BORDER2.grade ? { ...laid3, refused: `its border's row would climb ${Math.round(laid3.steepest * 100)} %: ${Math.round(BORDER2.grade * 100)} % at most` } : laid3;
+}, laidOn = (land2, grid, ground, blended, sectionOf, { over = BORDER2.over, kerb = BORDER2.kerb, painted = false, level: given = null, walled = null } = {}) => {
+  const { xs, ys, nx, ny } = grid;
+  const sq = land2.square;
+  const lean = (i) => xs[i].slope ?? 0;
+  const column3 = (i, y) => [xs[i].from + lean(i) * y, xs[i].to + lean(i) * y, xs[i].mid + lean(i) * y];
+  const groundAt4 = (x, y) => ground(...sq.at(x, y)).ground;
+  const borderAt = {
+    south: (x) => blended.bare(...sq.at(x, ys[0].mid)),
+    north: (x) => blended.bare(...sq.at(x, ys[ny].mid)),
+    west: (y) => blended.bare(...sq.at(column3(0, y)[2], y)),
+    east: (y) => blended.bare(...sq.at(column3(nx, y)[2], y))
+  };
+  const inner = nx >= 3 && ny >= 3;
+  const [ix0, ix1, iy0, iy1] = inner ? [xs[1].to, xs[nx - 1].from, ys[1].to, ys[ny - 1].from] : [column3(0, 0)[1], column3(nx, 0)[0], ys[0].to, ys[ny].from];
+  const steps = (a, b, every) => {
+    const n = Math.max(1, Math.ceil((b - a) / every));
+    return Array.from({ length: n + 1 }, (_, k) => a + (b - a) * k / n);
+  };
+  let high = -Infinity;
+  if (given === null)
+    for (const x of steps(ix0, ix1, 2))
+      for (const y of steps(iy0, iy1, 2))
+        high = Math.max(high, groundAt4(x, y));
+  const level = given ?? mm4(high + over);
+  const folds = [];
+  const planes = Array.from({ length: nx }, (_, i) => Array.from({ length: ny }, (__, j) => {
+    const [y0, y1] = [ys[j].to, ys[j + 1].from];
+    const onBorder = [j === 0 || i === 0, j === 0 || i === nx - 1, j === ny - 1 || i === nx - 1, j === ny - 1 || i === 0];
+    const bordered = (x, y, k) => j === 0 && k < 2 ? borderAt.south(x) : j === ny - 1 && k >= 2 ? borderAt.north(x) : i === 0 && (k === 0 || k === 3) ? borderAt.west(y) : borderAt.east(y);
+    const corners = [[column3(i, y0)[1], y0], [column3(i + 1, y0)[0], y0], [column3(i + 1, y1)[0], y1], [column3(i, y1)[1], y1]].map(([x, y], k) => [x, y, onBorder[k] ? bordered(x, y, k) : level]);
+    const samples = [];
+    if (given === null)
+      for (const y of steps(y0, y1, 4)) {
+        const [xa, xb] = [column3(i, y)[1], column3(i + 1, y)[0]];
+        for (const x of steps(xa, xb, 4))
+          samples.push([x, y, groundAt4(x, y) + over]);
+      }
+    const fixed = corners.filter((_2, k) => onBorder[k]);
+    if (!fixed.length) {
+      const raise2 = Math.max(0, ...samples.map(([, , z]) => z - level));
+      return () => level + raise2;
+    }
+    if (fixed.length === 2) {
+      const [P, Q] = fixed;
+      const long = Math.hypot(Q[0] - P[0], Q[1] - P[1]);
+      const u = [(Q[0] - P[0]) / long, (Q[1] - P[1]) / long];
+      const rest = corners.filter((_2, k) => !onBorder[k]);
+      const sign2 = Math.sign((rest[0][0] - P[0]) * -u[1] + (rest[0][1] - P[1]) * u[0]) || 1;
+      const w = [-u[1] * sign2, u[0] * sign2];
+      const lineAt2 = (x, y) => P[2] + (Q[2] - P[2]) * ((x - P[0]) * u[0] + (y - P[1]) * u[1]) / long;
+      const away = (x, y) => (x - P[0]) * w[0] + (y - P[1]) * w[1];
+      let rise = rest.reduce((sum, [x, y, z]) => sum + away(x, y) * (z - lineAt2(x, y)), 0) / rest.reduce((sum, [x, y]) => sum + away(x, y) ** 2, 0);
+      for (const [x, y, z] of samples)
+        if (away(x, y) > 0.5)
+          rise = Math.max(rise, (z - lineAt2(x, y)) / away(x, y));
+      return (x, y) => lineAt2(x, y) + rise * away(x, y);
+    }
+    if (fixed.length === 3) {
+      const inner2 = onBorder.indexOf(false);
+      const [k0, kA, kB] = [(inner2 + 2) % 4, (inner2 + 3) % 4, (inner2 + 1) % 4];
+      const tri = (a, b, c) => {
+        const [u, v] = [[b[0] - a[0], b[1] - a[1], b[2] - a[2]], [c[0] - a[0], c[1] - a[1], c[2] - a[2]]];
+        const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+        return (x, y) => a[2] - (n[0] * (x - a[0]) + n[1] * (y - a[1])) / n[2];
+      };
+      const [K, A2, B2] = [corners[k0], corners[kA], corners[kB]];
+      const sideOf = (x, y) => Math.sign((corners[inner2][0] - K[0]) * (y - K[1]) - (corners[inner2][1] - K[1]) * (x - K[0]));
+      const sideA = sideOf(A2[0], A2[1]);
+      const cross23 = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+      const weight = (a, b, c, place) => cross23(a, b, place) / cross23(a, b, c);
+      let top = level;
+      for (const [x, y, z] of samples) {
+        const [a, b] = sideOf(x, y) === sideA ? [K, A2] : [K, B2];
+        const w = weight(a, b, corners[inner2], [x, y]);
+        if (w > 0.05)
+          top = Math.max(top, (z - tri(a, b, [corners[inner2][0], corners[inner2][1], 0])(x, y)) / w);
+      }
+      const I = [corners[inner2][0], corners[inner2][1], top];
+      const [onA, onB] = [tri(K, A2, I), tri(K, B2, I)];
+      const folded = (x, y) => sideOf(x, y) === sideA ? onA(x, y) : onB(x, y);
+      folds.push({ i, j, from: K.slice(0, 2), to: I.slice(0, 2) });
+      return folded;
+    }
+    const [cx, cy, m] = [0, 1, 2].map((k) => corners.reduce((sum, corner2) => sum + corner2[k], 0) / 4);
+    let [xx, xy, yy, xz, yz] = [0, 0, 0, 0, 0];
+    for (const [x, y, z] of corners) {
+      const [du, dv, dw] = [x - cx, y - cy, z - m];
+      xx += du * du;
+      xy += du * dv;
+      yy += dv * dv;
+      xz += du * dw;
+      yz += dv * dw;
+    }
+    const det = xx * yy - xy * xy;
+    const [gx, gy] = Math.abs(det) < 0.000000001 ? [0, 0] : [(xz * yy - yz * xy) / det, (yz * xx - xz * xy) / det];
+    const raise = Math.max(0, ...samples.map(([x, y, z]) => z - (m + gx * (x - cx) + gy * (y - cy))));
+    return (x, y) => m + raise + gx * (x - cx) + gy * (y - cy);
+  }));
+  const plane = (i, j) => planes[clamp30(i, 0, nx - 1)][clamp30(j, 0, ny - 1)];
+  const knotsOf = (side2) => land2.sides[side2].border.knots.map(([t]) => sq.back(...land2.sides[side2].at(land2.sides[side2].own(t), 0))[side2 === "south" || side2 === "north" ? 0 : 1]);
+  const knots = { south: knotsOf("south"), north: knotsOf("north"), west: knotsOf("west"), east: knotsOf("east") };
+  const bodies = [];
+  const regions = new Map;
+  const add2 = (part, region, corners, face3, over2 = 0) => {
+    const body = { part, region, corners: corners.map(([x, y, z]) => [x, y, z + over2]), face: face3, over: over2 };
+    bodies.push(body);
+    if (!regions.has(region))
+      regions.set(region, []);
+    regions.get(region).push(body);
+  };
+  const lengthsOf2 = (a, b, part, near2, way) => {
+    const n = Math.max(1, Math.ceil(Math.abs(b - a) / (MOST2 - 0.5) - 0.000000001));
+    return Array.from({ length: n }, (_, k) => [k === 0 ? a : a + (b - a) * k / n, k === n - 1 ? b : a + (b - a) * (k + 1) / n, (near2 === 0 ? k === 0 : k === n - 1) ? part : `${part}~${way}${near2}-${k}`]);
+  };
+  const between2 = (a, b, cuts2) => {
+    const marks = [a, ...cuts2.filter((c) => c > Math.min(a, b) + 0.05 && c < Math.max(a, b) - 0.05).sort((p, q) => a < b ? p - q : q - p), b];
+    return marks.slice(1).map((q, k) => [marks[k], q]);
+  };
+  const ROAD = BORDER2.road;
+  const whole4 = (long) => long / ROAD >= 4 ? long / Math.round(long / ROAD) : ROAD;
+  const lanesFace = (rotation, low, mid5, long, at2 = 0) => ({ look: "lanes", rotation, scale: [ROAD, mm4(whole4(long))], low, at: at2, mid: mid5 });
+  const lineLanesFace = (rotation, low, anchor) => ({ look: "lanes", rotation, scale: [ROAD, ROAD], low, at: 0, mid: anchor });
+  const MOUTH = Object.freeze({ lanes: ROAD, zebra: 4.2 });
+  for (let i = 1;i < nx; i++)
+    for (let j = 1;j < ny; j++) {
+      const [ya, yb] = [ys[j].from, ys[j].to];
+      const [[sa, sb], [na, nb]] = [column3(i, ya), column3(i, yb)];
+      add2(`${i}:${j}`, `x${i}:${j}`, [[sa, ya, plane(i - 1, j - 1)(sa, ya)], [sb, ya, plane(i, j - 1)(sb, ya)], [nb, yb, plane(i, j)(nb, yb)], [na, yb, plane(i - 1, j)(na, yb)]], { look: "plain" });
+    }
+  const split3 = AVENUE.median / AVENUE.kerb;
+  const lerp32 = (a, b, t) => [lerp3(a[0], b[0], t), lerp3(a[1], b[1], t), lerp3(a[2], b[2], t)];
+  const hyp = (i) => Math.hypot(1, lean(i));
+  const borderFace = (side2) => {
+    const own = land2.sides[side2];
+    const long = own.border.long;
+    const [mx, my] = sq.back(...own.at(own.long / 2, 0));
+    const middle = AVENUE.median + ROAD / 2;
+    const lane = { south: [90, [0, ys[0].mid + middle]], north: [90, [0, ys[ny].mid - middle]], west: [-deg(Math.atan(lean(0))), [column3(0, my)[2] + middle * hyp(0), my]], east: [-deg(Math.atan(lean(nx))), [column3(nx, my)[2] - middle * hyp(nx), my]] }[side2];
+    return { look: "lanes", rotation: mm4(lane[0]), scale: [ROAD, mm4(long / Math.max(1, Math.round(long / ROAD)))], low: lane[1], at: 0.5, mid: [mx, my] };
+  };
+  const borderFaces = { south: borderFace("south"), north: borderFace("north"), west: borderFace("west"), east: borderFace("east") };
+  const medians = { south: [], north: [], west: [], east: [] };
+  const orderOf = {
+    south: (l0, l1, k0, k1) => [l0, l1, k1, k0],
+    north: (l0, l1, k0, k1) => [k0, k1, l1, l0],
+    west: (l0, l1, k0, k1) => [l0, k0, k1, l1],
+    east: (l0, l1, k0, k1) => [k0, l0, l1, k1]
+  };
+  const acrossBorder = (side2, part, region, [p, q], [l0, l1], [k0, k1], face3) => {
+    const [m0, m1] = [lerp32(l0, k0, split3), lerp32(l1, k1, split3)];
+    add2(part, region, orderOf[side2](m0, m1, k0, k1), face3);
+    medians[side2].push({ p, q, l: [l0, l1], m: [m0, m1], part, region });
+  };
+  for (const [side2, j, line, kerbY, row] of [["south", 0, ys[0].mid, ys[0].to, 0], ["north", ny, ys[ny].mid, ys[ny].from, ny - 1]]) {
+    const H2 = borderAt[side2];
+    const face3 = borderFaces[side2];
+    for (let i = 1;i < nx; i++) {
+      const [x0, x1] = column3(i, kerbY).slice(0, 2);
+      for (const [p, q] of between2(x0, x1, knots[side2])) {
+        const [k0, k1] = [plane(i - 1, row)(x0, kerbY), plane(i, row)(x1, kerbY)];
+        const kerbOf = (x) => lerp3(k0, k1, (x - x0) / (x1 - x0));
+        acrossBorder(side2, `${i}:${j}`, `x${i}:${j}`, [p, q], [[p, line, H2(p)], [q, line, H2(q)]], [[p, kerbY, kerbOf(p)], [q, kerbY, kerbOf(q)]], face3);
+      }
+    }
+    for (const [i, c] of [[0, 0], [nx, nx - 1]]) {
+      const other = i === 0 ? "west" : "east";
+      const [lineX, kerbX] = [column3(i, line)[2], column3(i, line)[i === 0 ? 1 : 0]];
+      const [kLine, kKerb] = [column3(i, kerbY)[2], column3(i, kerbY)[i === 0 ? 1 : 0]];
+      const [A2, B2, C2, D2] = [[lineX, line, H2(lineX)], [kerbX, line, H2(kerbX)], [kKerb, kerbY, plane(c, row)(kKerb, kerbY)], [kLine, kerbY, borderAt[other](kerbY)]];
+      const P = (u, v) => [0, 1, 2].map((k) => A2[k] + u * (B2[k] - A2[k]) + v * (D2[k] - A2[k]) + u * v * (A2[k] - B2[k] + C2[k] - D2[k]));
+      const turns = side2 === "south" === (i === 0);
+      const quad = (u0, u1, v0, v1) => turns ? [P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1)] : [P(u1, v0), P(u0, v0), P(u0, v1), P(u1, v1)];
+      add2(`${i}:${j}`, `x${i}:${j}`, quad(split3, 1, split3, 1), cornerFace(P(1, 1), P(split3, split3), P(1, split3), P(split3, 1)));
+      const [a, b] = A2[0] < B2[0] ? [[A2, P(0, split3)], [B2, P(1, split3)]] : [[B2, P(1, split3)], [A2, P(0, split3)]];
+      medians[side2].push({ p: a[0][0], q: b[0][0], l: [a[0], b[0]], m: [a[1], b[1]], part: `${i}:${j}`, region: `x${i}:${j}` });
+      const [e, f] = [[P(0, split3), P(split3, split3)], [D2, P(split3, 1)]].sort((g, h) => g[0][1] - h[0][1]);
+      medians[other].push({ p: e[0][1], q: f[0][1], l: [e[0], f[0]], m: [e[1], f[1]], part: `${i}:${j}`, region: `x${i}:${j}` });
+    }
+    for (let i = 0;i < nx; i++) {
+      const west = (y) => column3(i, y)[1];
+      const east = (y) => column3(i + 1, y)[0];
+      const across = (y) => (y - line) / (kerbY - line);
+      const kerbAt = (x) => plane(i, row)(x, kerbY);
+      const ends = [[west(line), west(kerbY)], [east(line), east(kerbY)]];
+      const xm = (west((line + kerbY) / 2) + east((line + kerbY) / 2)) / 2;
+      const at2 = (x, y, end) => end === undefined ? lerp3(H2(x), kerbAt(x), across(y)) : lerp3(H2(ends[end][0]), kerbAt(ends[end][1]), across(y));
+      for (const [half, [a, b]] of [[0, [ends[0][0], xm]], [1, [xm, ends[1][0]]]]) {
+        for (const [s0, s1, part] of lengthsOf2(a, b, `${i + half}:${j}`, half, "x"))
+          for (const [p, q] of between2(s0, s1, knots[side2])) {
+            const [pEnd, qEnd] = [half === 0 && p === a ? 0 : undefined, half === 1 && q === b ? 1 : undefined];
+            const [pk, qk] = [pEnd === 0 ? ends[0][1] : p, qEnd === 1 ? ends[1][1] : q];
+            acrossBorder(side2, part, `r${j}:${i}`, [p, q], [[p, line, at2(p, line, pEnd)], [q, line, at2(q, line, qEnd)]], [[pk, kerbY, at2(pk, kerbY, pEnd)], [qk, kerbY, at2(qk, kerbY, qEnd)]], face3);
+          }
+      }
+    }
+  }
+  for (const [side2, i, block3] of [["west", 0, 0], ["east", nx, nx - 1]]) {
+    const H2 = borderAt[side2];
+    const face3 = borderFaces[side2];
+    const lineAt2 = (y) => column3(i, y)[2];
+    const kerbAt = (y) => column3(i, y)[i === 0 ? 1 : 0];
+    for (let j = 1;j < ny; j++) {
+      const [y0, y1] = [ys[j].from, ys[j].to];
+      for (const [p, q] of between2(y0, y1, knots[side2])) {
+        const [k0, k1] = [plane(block3, j - 1)(kerbAt(y0), y0), plane(block3, j)(kerbAt(y1), y1)];
+        const kerbOf = (y) => lerp3(k0, k1, (y - y0) / (y1 - y0));
+        acrossBorder(side2, `${i}:${j}`, `x${i}:${j}`, [p, q], [[lineAt2(p), p, H2(p)], [lineAt2(q), q, H2(q)]], [[kerbAt(p), p, kerbOf(p)], [kerbAt(q), q, kerbOf(q)]], face3);
+      }
+    }
+    for (let j = 0;j < ny; j++) {
+      const [ya, yb] = [ys[j].to, ys[j + 1].from];
+      const ym = (ya + yb) / 2;
+      const zKerb = (y) => plane(block3, j)(kerbAt(y), y);
+      for (const [half, [a, b]] of [[0, [ya, ym]], [1, [ym, yb]]]) {
+        for (const [s0, s1, part] of lengthsOf2(a, b, `${i}:${j + half}`, half, "y"))
+          for (const [p, q] of between2(s0, s1, knots[side2])) {
+            acrossBorder(side2, part, `c${i}:${j}`, [p, q], [[lineAt2(p), p, H2(p)], [lineAt2(q), q, H2(q)]], [[kerbAt(p), p, zKerb(p)], [kerbAt(q), q, zKerb(q)]], face3);
+          }
+      }
+    }
+  }
+  const cuts = {};
+  for (const side2 of ["south", "north", "west", "east"]) {
+    const along4 = side2 === "south" || side2 === "north";
+    const own = land2.sides[side2];
+    const cut2 = own.border.port === null || walled?.(side2) ? null : (() => {
+      const [px, py] = sq.back(...own.at(own.border.port * own.border.long, 0));
+      const lines2 = along4 ? xs : ys;
+      const k = lines2.findIndex((each, n) => n > 0 && n < lines2.length - 1 && (along4 ? px : py) > each.from - 0.000001 && (along4 ? px : py) < each.to + 0.000001);
+      const strip2 = k < 0 ? null : (sectionOf(along4 ? "y" : "x", k, along4 ? side2 === "south" ? 0 : ny - 1 : side2 === "west" ? 0 : nx - 1) ?? []).find((each) => each.look === "lanes");
+      const [c0, c1] = strip2 ? [lines2[k].from + strip2.c0, lines2[k].from + strip2.c1] : [(along4 ? px : py) - ROAD / 2 * (along4 ? 1 : 1 / hyp(side2 === "west" ? 0 : nx)), (along4 ? px : py) + ROAD / 2 * (along4 ? 1 : 1 / hyp(side2 === "west" ? 0 : nx))];
+      return { c0, c1, face: lineLanesFace(along4 ? 0 : 90, along4 ? [c0, 0] : [0, c0], [0, 0]) };
+    })();
+    cuts[side2] = cut2 && [mm4(cut2.c0), mm4(cut2.c1)];
+    const pieces = [];
+    for (const piece of medians[side2].sort((a, b) => a.p - b.p)) {
+      const cuts2 = cut2 ? [cut2.c0, cut2.c1].filter((c) => c > piece.p + 0.005 && c < piece.q - 0.005) : [];
+      const marks = [piece.p, ...cuts2, piece.q];
+      for (let n = 1;n < marks.length; n++) {
+        const [s, t] = [(marks[n - 1] - piece.p) / (piece.q - piece.p), (marks[n] - piece.p) / (piece.q - piece.p)];
+        const [l0, l1, m0, m1] = [lerp32(...piece.l, s), lerp32(...piece.l, t), lerp32(...piece.m, s), lerp32(...piece.m, t)];
+        const middle = (marks[n - 1] + marks[n]) / 2;
+        if (cut2 && middle > cut2.c0 && middle < cut2.c1)
+          add2(piece.part, piece.region, orderOf[side2](l0, l1, m0, m1), cut2.face);
+        else
+          pieces.push({ p: marks[n - 1], q: marks[n], quad: orderOf[side2](l0, l1, m0, m1), region: piece.region });
+      }
+    }
+    let [island, from, last, count] = [0, Infinity, -Infinity, 0];
+    for (const piece of pieces) {
+      if (piece.p > last + 0.005 || piece.q - from > MOST2 - 0.01 || count >= ISLAND)
+        [island, from, count] = [island + 1, piece.p, 0];
+      last = piece.q;
+      count++;
+      add2(`median ${side2} ${island}`, piece.region, piece.quad, { look: "paving", island: true }, kerb);
+    }
+  }
+  const strips = (way, k, n, { node0, node1, region, low, ends, mid: mid5, ruled, edge, along: along4, long, rotation, name }) => {
+    for (const strip2 of sectionOf(way, k, n) ?? []) {
+      const [c0, c1] = [low + strip2.c0, low + strip2.c1];
+      const place = (s, c) => way === "x" ? [s, c] : [c, s];
+      const along5 = (spec, c) => typeof spec === "number" ? spec : spec.end === 0 ? ends[0](c) + (spec.by ?? 0) : ends[1](c) - (spec.by ?? 0);
+      const height = (spec, c) => typeof spec === "number" || spec.by ? ruled(along5(spec, c), c) : edge(spec.end, c);
+      const quad = (A2, B2) => {
+        const four = [[A2, c0], [B2, c0], [B2, c1], [A2, c1]].map(([spec, c]) => [...place(along5(spec, c), c), height(spec, c)]);
+        return way === "x" ? four : [four[1], four[0], four[3], four[2]];
+      };
+      const [start, end] = [{ end: 0 }, { end: 1 }];
+      const lay = (node, A2, B2, face4, over2 = 0) => add2(node, region, quad(A2, B2), face4, over2);
+      const layHalf = (node, A2, B2, face4, e) => {
+        const middle = (c0 + c1) / 2;
+        const pieces = lengthsOf2(along5(A2, middle), along5(B2, middle), node, e, way);
+        if (pieces.length === 1)
+          return lay(node, A2, B2, face4);
+        for (const [k2, [p, q, part]] of pieces.entries())
+          lay(part, k2 === 0 ? A2 : p, k2 === pieces.length - 1 ? B2 : q, face4);
+      };
+      const mouthFace = (kind, e, a, b) => {
+        const out = way === "x" ? [e === 0 ? 1 : -1, 0] : [0, e === 0 ? 1 : -1];
+        const right = [-out[1], out[0]];
+        const left = (way === "x" ? right[1] : right[0]) > 0 ? a : b;
+        const corner2 = place(along5({ end: e }, left), left);
+        return { look: "mouth", kind, rotation: mm4(deg(Math.atan2(right[1], right[0]))), scale: [ROAD, ROAD], low: corner2, at: 0, mid: [corner2[0] + out[0] * (ROAD / 2), corner2[1] + out[1] * (ROAD / 2)] };
+      };
+      if (strip2.island) {
+        const [ta, tb] = strip2.cut ?? [0, 0];
+        if (ta)
+          lay(node0, start, { end: 0, by: ta }, strip2.mouths?.[0] ? mouthFace(strip2.mouths[0], 0, c0, c1) : { look: "plain" });
+        if (tb)
+          lay(node1, { end: 1, by: tb }, end, strip2.mouths?.[1] ? mouthFace(strip2.mouths[1], 1, c0, c1) : { look: "plain" });
+        lay(`${name} ${strip2.look} ${strip2.c0}`, ta ? { end: 0, by: ta } : start, tb ? { end: 1, by: tb } : end, { look: strip2.look, island: true }, kerb);
+        continue;
+      }
+      const marked2 = Boolean(strip2.mouths?.some(Boolean));
+      const face3 = strip2.look === "lanes" ? marked2 || painted ? lineLanesFace(rotation, place(0, c0), place(0, 0)) : lanesFace(rotation, place(0, c0), place(mid5, 0), long) : { look: strip2.look };
+      for (const [e, node, [from, to]] of [[0, node0, [start, mid5]], [1, node1, [mid5, end]]]) {
+        const kind = strip2.mouths?.[e];
+        const reach = strip2.look === "lanes" ? MOUTH.lanes : MOUTH.zebra;
+        const half = Math.abs(mid5 - along5({ end: e }, (c0 + c1) / 2));
+        if (!kind || half < reach + 0.5) {
+          layHalf(node, from, to, face3, e);
+          continue;
+        }
+        const inner2 = { end: e, by: reach };
+        if (e === 0)
+          lay(node, start, inner2, mouthFace(kind, e, c0, c1));
+        else
+          lay(node, inner2, end, mouthFace(kind, e, c0, c1));
+        if (e === 0)
+          layHalf(node, inner2, mid5, face3, 0);
+        else
+          layHalf(node, mid5, inner2, face3, 1);
+      }
+    }
+  };
+  for (let j = 1;j < ny; j++)
+    for (let i = 0;i < nx; i++) {
+      const line = ys[j];
+      const [yS, yN] = [line.from, line.to];
+      const west = (y) => column3(i, y)[1];
+      const east = (y) => column3(i + 1, y)[0];
+      const [zS, zN] = [(x) => plane(i, j - 1)(x, yS), (x) => plane(i, j)(x, yN)];
+      const t = (y) => (y - yS) / (yN - yS);
+      const ruled = (x, y) => lerp3(zS(x), zN(x), t(y));
+      const edge = (end, y) => end === 0 ? lerp3(zS(west(yS)), zN(west(yN)), t(y)) : lerp3(zS(east(yS)), zN(east(yN)), t(y));
+      const xm = (west(line.mid) + east(line.mid)) / 2;
+      strips("x", j, i, {
+        node0: `${i}:${j}`,
+        node1: `${i + 1}:${j}`,
+        region: `r${j}:${i}`,
+        low: yS,
+        ends: [west, east],
+        mid: xm,
+        ruled,
+        edge,
+        long: east(line.mid) - west(line.mid),
+        rotation: 90,
+        name: `row ${j}-${i}`
+      });
+    }
+  for (let i = 1;i < nx; i++)
+    for (let j = 0;j < ny; j++) {
+      const line = xs[i];
+      const [xW, xE] = [line.from, line.to];
+      const [ya, yb] = [ys[j].to, ys[j + 1].from];
+      const [zW, zE] = [(y) => plane(i - 1, j)(xW, y), (y) => plane(i, j)(xE, y)];
+      const ruled = (y, x) => lerp3(zW(y), zE(y), (x - xW) / (xE - xW));
+      const ym = (ya + yb) / 2;
+      strips("y", i, j, {
+        node0: `${i}:${j}`,
+        node1: `${i}:${j + 1}`,
+        region: `c${i}:${j}`,
+        low: xW,
+        ends: [() => ya, () => yb],
+        mid: ym,
+        ruled,
+        edge: (end, x) => ruled(end === 0 ? ya : yb, x),
+        long: yb - ya,
+        rotation: 0,
+        name: `column ${i}-${j}`
+      });
+    }
+  const inQuad = ([x, y], q, slack = 0.000001) => q.every(([ax, ay], k) => {
+    const [bx, by2] = q[(k + 1) % 4];
+    return (bx - ax) * (y - ay) - (by2 - ay) * (x - ax) >= -slack * Math.hypot(bx - ax, by2 - ay);
+  });
+  const topOf2 = (body, x, y) => {
+    const q = body.corners;
+    const tris = higher(q) ? [[q[0], q[1], q[2]], [q[0], q[2], q[3]]] : [[q[0], q[1], q[3]], [q[1], q[2], q[3]]];
+    for (const tri of tris) {
+      const z = inTriangle2(tri, x, y);
+      if (z !== null)
+        return z - body.over;
+    }
+    return planeOfTriangle(tris[0], x, y) - body.over;
+  };
+  const at = (X2, Y) => {
+    const [x, y] = sq.back(X2, Y);
+    return heightOf2(x, y) ?? blended.bare(X2, Y);
+  };
+  const rowSpan = (j) => j === 0 ? [ys[0].mid, ys[0].to] : j === ny ? [ys[ny].from, ys[ny].mid] : [ys[j].from, ys[j].to];
+  const colSpan = (i, y) => i === 0 ? [column3(0, y)[2], column3(0, y)[1]] : i === nx ? [column3(nx, y)[0], column3(nx, y)[2]] : column3(i, y).slice(0, 2);
+  const findOn = (v, spans) => {
+    for (let k = 0;k < spans.length; k++) {
+      if (v >= spans[k][0] - 0.000000001 && v <= spans[k][1] + 0.000000001)
+        return { k, on: true };
+      if (k + 1 < spans.length && v > spans[k][1] && v < spans[k + 1][0])
+        return { k, on: false };
+    }
+    return null;
+  };
+  const heightOf2 = (x, y) => {
+    const along4 = findOn(y, Array.from({ length: ny + 1 }, (_, j2) => rowSpan(j2)));
+    if (!along4)
+      return null;
+    const across = findOn(x, Array.from({ length: nx + 1 }, (_, i2) => colSpan(i2, y)));
+    if (!across)
+      return null;
+    const [i, j] = [across.k, along4.k];
+    if (!across.on && !along4.on)
+      return plane(i, j)(x, y);
+    const region = across.on && along4.on ? `x${i}:${j}` : along4.on ? `r${j}:${i}` : `c${i}:${j}`;
+    const list = regions.get(region) ?? [];
+    const body = list.find((each) => inQuad([x, y], each.corners)) ?? nearestOf2(list, x, y);
+    return body ? topOf2(body, x, y) : null;
+  };
+  const acrossLines = xs.flatMap((line, i) => [[line.from, lean(i)], [line.to, lean(i)], ...i === 0 || i === nx ? [[line.mid, lean(i)]] : []]);
+  const alongLines = ys.flatMap((line, j) => [line.from, line.to, ...j === 0 || j === ny ? [line.mid] : []]);
+  const creases = (P, Q) => {
+    const [[x0, y0], [x1, y1]] = [sq.back(...P), sq.back(...Q)];
+    const [dx, dy] = [x1 - x0, y1 - y0];
+    const shares = [];
+    for (const [c, s] of acrossLines) {
+      const d = dx - s * dy;
+      if (Math.abs(d) > 0.000000001)
+        shares.push((c - x0 + s * y0) / d);
+    }
+    if (Math.abs(dy) > 0.000000001)
+      for (const c of alongLines)
+        shares.push((c - y0) / dy);
+    return [...new Set(shares.filter((t) => t > 0.0001 && t < 1 - 0.0001).map((t) => Math.round(t * 1e6) / 1e6))].sort((a, b) => a - b);
+  };
+  const steepest = Math.max(...bodies.flatMap(({ corners: q }) => [[q[0], q[1], q[2]], [q[0], q[2], q[3]]].map(gradeOf)), ...planes.flat().map((plane2) => Math.hypot(plane2(1, 0) - plane2(0, 0), plane2(0, 1) - plane2(0, 0))));
+  const foldIn = (polygon2) => {
+    const own = polygon2.map(([X2, Y]) => sq.back(X2, Y));
+    for (const { from, to } of folds) {
+      const [dx, dy] = [to[0] - from[0], to[1] - from[1]];
+      const long = Math.hypot(dx, dy);
+      const sides2 = own.map(([x, y]) => (dx * (y - from[1]) - dy * (x - from[0])) / long);
+      if (!(Math.max(...sides2) > 0.002 * long && Math.min(...sides2) < -0.002 * long))
+        continue;
+      const along4 = own.map(([x, y]) => ((x - from[0]) * dx + (y - from[1]) * dy) / long ** 2);
+      if (Math.max(...along4) < 0 || Math.min(...along4) > 1)
+        continue;
+      return { from: sq.at(...from), to: sq.at(...to) };
+    }
+    return null;
+  };
+  return { at, creases, lift: 0, low: blended.low, level, bodies, planes, folds, foldIn, square: sq, steepest: mm4(steepest), cuts, pivot: true, refused: null };
+}, foldedOf = ({ polygon: polygon2, top, thick, fold, square }) => {
+  const [dx, dy] = [fold.to[0] - fold.from[0], fold.to[1] - fold.from[1]];
+  const side2 = ([X2, Y]) => dx * (Y - fold.from[1]) - dy * (X2 - fold.from[0]);
+  const halves = [1, -1].map((sign2) => {
+    const kept3 = [];
+    for (let k = 0;k < polygon2.length; k++) {
+      const [p, q] = [polygon2[k], polygon2[(k + 1) % polygon2.length]];
+      const [sp, sq] = [side2(p) * sign2, side2(q) * sign2];
+      if (sp >= 0)
+        kept3.push(p);
+      if (sp >= 0 !== sq >= 0) {
+        const t = sp / (sp - sq);
+        kept3.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+      }
+    }
+    return kept3;
+  }).filter((half) => half.length >= 3);
+  const tops = halves.map((half) => half.map(([X2, Y]) => [X2, Y, top(X2, Y)]));
+  const all3 = tops.flat();
+  const [X0, X1, Y0, Y1] = [Math.min(...all3.map((p) => p[0])), Math.max(...all3.map((p) => p[0])), Math.min(...all3.map((p) => p[1])), Math.max(...all3.map((p) => p[1]))];
+  const [Z1, Z0] = [Math.max(...all3.map((p) => p[2])), Math.min(...all3.map((p) => p[2])) - thick];
+  const middle = [(X0 + X1) / 2, (Y0 + Y1) / 2, (Z0 + Z1) / 2];
+  const [cx, cy] = square.back(middle[0], middle[1]);
+  const local = ([X2, Y, Z]) => {
+    const [x, y] = square.back(X2, Y);
+    return [x - cx, y - cy, Z - middle[2]];
+  };
+  const bodies = tops.map((half) => {
+    const points = [...half.map(local), ...half.map(([X2, Y, Z]) => local([X2, Y, Z - thick]))];
+    const low = [0, 1, 2].map((k) => Math.min(...points.map((p) => p[k])));
+    const high = [0, 1, 2].map((k) => Math.max(...points.map((p) => p[k])));
+    const at = low.map((v, k) => mm4((v + high[k]) / 2));
+    const size = high.map((v, k) => mm4(v - low[k] + 0.001));
+    return { add: "hull", at, size, points: packPoints(points.map((p) => p.map((v, k) => v - at[k])), size), spots: [[0, 0, 0.5, 1]] };
+  });
+  const span = (points) => [0, 1, 2].map((k) => Math.max(...points.map((p) => p[k])) - Math.min(...points.map((p) => p[k])));
+  const extent = span(tops.flat().flatMap((p) => [local(p), local([p[0], p[1], p[2] - thick])]));
+  return { at: middle.map(mm4), turn: [0, 0, mm4(square.yaw)], size: extent.map((v) => mm4(v + 0.002)), bodies };
+}, nearestOf2 = (list, x, y) => list.reduce((best, body) => {
+  const [mx, my] = [0, 1].map((k) => body.corners.reduce((sum, corner2) => sum + corner2[k], 0) / 4);
+  const d = Math.hypot(mx - x, my - y);
+  return !best || d < best.d ? { body, d } : best;
+}, null)?.body ?? null, FULL2 = 65535, packPoints = (points, size) => {
+  let text = "";
+  for (const point of points)
+    for (let k = 0;k < size.length; k++) {
+      const v = Math.round(Math.min(Math.max(point[k] / size[k] + 0.5, 0), 1) * FULL2);
+      text += String.fromCharCode(v & 255, v >> 8);
+    }
+  return btoa(text);
+}, unpackPoints2 = (packed, size) => {
+  const text = atob(packed);
+  const points = [];
+  for (let i = 0;i + 2 * size.length <= text.length; i += 2 * size.length)
+    points.push(size.map((v, k) => ((text.charCodeAt(i + 2 * k) | text.charCodeAt(i + 2 * k + 1) << 8) / FULL2 - 0.5) * v));
+  return points;
+}, offsetOf = ({ rotation, scale: [sU, sV], low, at, mid: mid5 }, least2) => {
+  const r = rotation * Math.PI / 180;
+  const [c, s] = [Math.cos(r), Math.sin(r)];
+  const [A2, B2] = [low[0] - least2[0] - 0.5, low[1] - least2[1] - 0.5];
+  const [C2, D2] = [mid5[0] - least2[0] - 0.5, mid5[1] - least2[1] - 0.5];
+  const wrap2 = (v) => Math.round((v % 1 + 1) % 1 * 1e4) / 1e4;
+  return [wrap2(at - (c * A2 + s * B2) / sU - 0.5), wrap2((s * C2 - c * D2) / sV)];
+}, cornerFace = (K, M4, A2, B2) => {
+  const turned4 = ([ox, oy]) => (K[0] - ox) * (M4[1] - oy) - (K[1] - oy) * (M4[0] - ox) < 0;
+  const O = turned4(A2) ? A2 : B2;
+  const [u, v] = [[K[0] - O[0], K[1] - O[1]], [M4[0] - O[0], M4[1] - O[1]]];
+  const rotation = deg(Math.atan2(u[1], u[0]));
+  const skew = ((deg(Math.atan2(v[1], v[0])) - (rotation - 90)) % 360 + 540) % 360 - 180;
+  return { look: "corner", rotation: mm4(rotation), skew: mm4(skew), scale: [mm4(Math.hypot(...u)), mm4(Math.hypot(...v))], origin: [mm4(O[0]), mm4(O[1])] };
+}, cornerOffsetOf = ({ rotation, skew, scale: [sU, sV], origin }, least2) => {
+  const [r, k] = [rotation * Math.PI / 180, skew * Math.PI / 180];
+  const [c, s, cU, sUu, lean] = [Math.cos(r), Math.sin(r), Math.cos(r + k), Math.sin(r + k), Math.cos(k)];
+  const [X2, Y] = [origin[0] - least2[0] - 0.5, origin[1] - least2[1] - 0.5];
+  const wrap2 = (v) => Math.round((v % 1 + 1) % 1 * 1e4) / 1e4;
+  return [wrap2(-(cU * X2 + sUu * Y) / (sU * lean) - 0.5), wrap2((s * X2 - c * Y) / (sV * lean) + 0.5)];
+}, streetsOf = (bodies, { map, bottom, looks }) => {
+  const parts = new Map;
+  for (const body of bodies) {
+    if (!parts.has(body.part))
+      parts.set(body.part, []);
+    parts.get(body.part).push(body);
+  }
+  const objects = [];
+  for (const [key, own] of parts) {
+    const island = own[0].face.island;
+    const name = (arm) => `${island ? key : `crossing ${key.replace(":", "-")}`}${arm ? ` ${arm}` : ""}`;
+    const pending = [{ arm: null, bodies: own }];
+    while (pending.length) {
+      const piece = pending.shift();
+      const object = partOf(name(piece.arm), piece.bodies, { map, bottom, looks, island });
+      const prim = object.prims[0];
+      const over = prim.colours + 1 > COLOURS3 || prim.bodies.length > BODIES3 || JSON.stringify(prim.bodies).length > CHARACTERS;
+      const shed = !island && armOf(piece.bodies, over);
+      if (shed) {
+        pending.unshift({ arm: piece.arm, bodies: piece.bodies.filter((body) => !shed.bodies.includes(body)) }, shed);
+        continue;
+      }
+      objects.push(object);
+    }
+  }
+  return objects;
+}, COLOURS3, BODIES3, CHARACTERS, armOf = (bodies, over) => {
+  const square = bodies.find((body) => body.region.startsWith("x"));
+  if (!square)
+    return null;
+  const centre = (body, k2) => body.corners.reduce((sum, corner2) => sum + corner2[k2], 0) / 4;
+  const middle = [centre(square, 0), centre(square, 1)];
+  const arms = { west: [], east: [], south: [], north: [] };
+  for (const body of bodies) {
+    if (body.region === square.region)
+      continue;
+    const [dx, dy] = [centre(body, 0) - middle[0], centre(body, 1) - middle[1]];
+    arms[Math.abs(dx) >= Math.abs(dy) ? dx < 0 ? "west" : "east" : dy < 0 ? "south" : "north"].push(body);
+  }
+  const span = (k2) => Math.max(...bodies.flatMap((body) => body.corners.map((corner2) => corner2[k2]))) - Math.min(...bodies.flatMap((body) => body.corners.map((corner2) => corner2[k2])));
+  const reach = (list, k2) => Math.max(0, ...list.flatMap((body) => body.corners.map((corner2) => Math.abs(corner2[k2] - middle[k2]))));
+  const k = [0, 1].find((axis) => span(axis) > MOST2 - 0.01);
+  const pick3 = k === undefined ? over ? Object.entries(arms).filter(([, list]) => list.length).sort((a, b) => b[1].length - a[1].length)[0] : null : Object.entries(arms).filter(([arm, list]) => list.length && (k === 0 ? arm === "west" || arm === "east" : arm === "south" || arm === "north")).sort((a, b) => reach(b[1], k) - reach(a[1], k))[0];
+  return pick3 ? { arm: pick3[0], bodies: pick3[1] } : null;
+}, partOf = (name, bodies, { map, bottom, looks, island }) => {
+  const xs = bodies.flatMap((body) => body.corners.map((corner2) => corner2[0]));
+  const ys = bodies.flatMap((body) => body.corners.map((corner2) => corner2[1]));
+  const top = Math.max(...bodies.flatMap((body) => body.corners.map((corner2) => corner2[2])));
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const [cx, cy, cz] = [(x0 + x1) / 2, (y0 + y1) / 2, (top + bottom) / 2];
+  const size = [mm4(x1 - x0 + 0.002), mm4(y1 - y0 + 0.002), mm4(top - bottom + 0.002)];
+  const least2 = [cx - size[0] / 2, cy - size[1] / 2];
+  const keys2 = [island ? "kerb" : "plain"];
+  const faceOf3 = (face3) => {
+    const key = island ? face3.look : face3.look === "lanes" || face3.look === "mouth" ? `${face3.look} ${face3.kind ?? ""} ${face3.rotation} ${face3.scale} ${face3.low} ${face3.at} ${face3.mid}` : face3.look === "corner" ? `corner ${face3.rotation} ${face3.skew} ${face3.scale} ${face3.origin}` : face3.look;
+    if (!keys2.includes(key))
+      keys2.push(key);
+    return keys2.indexOf(key);
+  };
+  const faces = [];
+  const made4 = bodies.map((body) => {
+    const colour2 = faceOf3(body.face);
+    if (!faces[colour2])
+      faces[colour2] = body.face;
+    const corners = body.corners.map(([x, y, z]) => [x - cx, y - cy, z - cz]);
+    const floor = bottom - cz;
+    const flat2 = Math.max(...corners.map((corner2) => corner2[2])) - Math.min(...corners.map((corner2) => corner2[2])) < LEVEL2;
+    const square = flat2 && [0, 1, 2, 3].every((k) => {
+      const [a, b] = [corners[k], corners[(k + 1) % 4]];
+      return Math.abs(a[0] - b[0]) < 0.000001 || Math.abs(a[1] - b[1]) < 0.000001;
+    });
+    const tops = island ? { faces: [0, 0, 0, 0, 0, colour2] } : {};
+    if (square) {
+      const [bx0, bx1] = [Math.min(...corners.map((c) => c[0])), Math.max(...corners.map((c) => c[0]))];
+      const [by0, by1] = [Math.min(...corners.map((c) => c[1])), Math.max(...corners.map((c) => c[1]))];
+      const z = corners[0][2];
+      return { add: "box", at: [mm4((bx0 + bx1) / 2), mm4((by0 + by1) / 2), mm4((z + floor) / 2)], size: [mm4(bx1 - bx0), mm4(by1 - by0), mm4(z - floor)], ...island ? { faces: tops.faces } : colour2 && { colour: colour2 } };
+    }
+    const points = [...corners, ...corners.map(([x, y]) => [x, y, floor])];
+    const low = [0, 1, 2].map((k) => Math.min(...points.map((p) => p[k])));
+    const high = [0, 1, 2].map((k) => Math.max(...points.map((p) => p[k])));
+    const at = low.map((v, k) => mm4((v + high[k]) / 2));
+    const own = high.map((v, k) => mm4(v - low[k] + 0.001));
+    return { add: "hull", at, size: own, points: packPoints(points.map((p) => p.map((v, k) => v - at[k])), own), ...island ? { spots: [[0, 0, 0.5, colour2]] } : colour2 && { colour: colour2 } };
+  });
+  const lookOf2 = (face3, k) => {
+    if (k === 0)
+      return null;
+    const look8 = looks[face3.look] ?? looks.plain;
+    if (face3.look === "mouth")
+      return { texture: looks.mouths[face3.kind], rotation: face3.rotation, scale: face3.scale, offset: offsetOf(face3, least2) };
+    if (face3.look === "corner")
+      return { texture: looks.corner, rotation: face3.rotation, skew: face3.skew, scale: face3.scale, offset: cornerOffsetOf(face3, least2) };
+    if (face3.look !== "lanes")
+      return { ...look8, ...look8.scale && { offset: offsetOf({ rotation: 0, scale: look8.scale, low: [0, 0], at: 0, mid: [0, 0] }, least2) } };
+    return { texture: looks.lanes.texture, rotation: face3.rotation, scale: face3.scale, offset: offsetOf(face3, least2) };
+  };
+  const base = looks[island ? "kerb" : "plain"];
+  const surface = {
+    ...base.scale && { offset: offsetOf({ rotation: 0, scale: base.scale, low: [0, 0], at: 0, mid: [0, 0] }, least2) },
+    ...faces.length > 1 && { faces: Object.fromEntries(faces.map((face3, k) => [k, lookOf2(face3, k)]).filter(([, look8]) => look8)) }
+  };
+  const [X2, Y] = map.at(cx, cy);
+  return {
+    name,
+    framed: true,
+    at: [mm4(X2), mm4(Y), mm4(cz)],
+    turn: [0, 0, map.xYaw(0)],
+    prims: [{
+      name: island ? "island" : "crossing",
+      kind: "solid",
+      join: "none",
+      colours: keys2.length - 1,
+      at: [0, 0, 0],
+      size,
+      material: base.texture,
+      ...base.tint && { color: base.tint },
+      surface,
+      bodies: made4
+    }]
+  };
+};
+var init_land_streets = __esm(() => {
+  init_land_border();
+  [COLOURS3, BODIES3, CHARACTERS] = [8, 32, 2900];
+});
+
+// src/build/land-station.js
+var exports_land_station = {};
+__export(exports_land_station, {
+  bridgePieces: () => bridgePieces,
+  bridgeAt: () => bridgeAt,
+  STEEL: () => STEEL12,
+  STAIR: () => STAIR2,
+  BRIDGE: () => BRIDGE2
+});
+var mm5 = (value) => Math.round(value * 1000) / 1000 + 0, deg2 = (radians) => radians * 180 / Math.PI, STAIR2, STEEL12 = "metal/painted/metal-029", BRIDGE2, bridgeAt = ({ place, onPavement, ground, way, top, rails, roof: roof2, back, half, lift: lift2 }) => {
+  const w = BRIDGE2.wide / 2;
+  const [median, kerb] = [AVENUE.median - back, AVENUE.kerb - back];
+  const [c1, c2] = [kerb + BRIDGE2.in + STAIR2.width / 2, kerb + BRIDGE2.in + 1.5 * STAIR2.width + BRIDGE2.gap];
+  const [cIn, cOut] = [c1 - STAIR2.width / 2, c2 + STAIR2.width / 2];
+  const cDown = -back + 0.1 + STAIR2.width / 2;
+  const liftHalf = lift2?.half ?? 0;
+  for (const along4 of BRIDGE2.along)
+    for (const s of [1, -1]) {
+      const street2 = ground(...place(along4, (median + kerb) / 2));
+      const walk = Math.max(rails + roof2 + BRIDGE2.clear, street2 + RAILS3.clear) + BRIDGE2.beam;
+      const downSteps = Math.max(3, Math.round((walk - top) / STAIR2.riser));
+      const downRun = downSteps * STAIR2.tread;
+      if (Math.abs(along4 + s * (w + downRun)) > half - 0.3 || Math.abs(along4) + w > half)
+        continue;
+      const base = ground(...place(along4 + s * w, c1)) + BORDER2.kerb;
+      const k = Math.ceil((walk - base) / STAIR2.riser / BRIDGE2.flights - 0.000000001);
+      const run = k * STAIR2.tread;
+      const far = along4 + s * (w + run + BRIDGE2.landing);
+      const liftAt = along4 - s * (w + (lift2?.reach ?? 0));
+      const spots = [along4 + s * w, along4 + s * (w + run / 2), far, along4 - s * w, ...lift2 ? [liftAt, liftAt - s * liftHalf] : []].flatMap((a) => [cIn + 0.1, (c1 + c2) / 2, cOut - 0.1].map((c) => [a, c]));
+      if (!spots.every(([a, c]) => onPavement(a, c)))
+        continue;
+      const rise = (walk - base) / BRIDGE2.flights;
+      const flights = Array.from({ length: BRIDGE2.flights }, (_, n) => ({ n, c: n % 2 ? c2 : c1, up: n % 2 ? -s : s, middle: along4 + s * (w + run / 2), from: base + n * rise, rise, steps: k }));
+      const landings = Array.from({ length: BRIDGE2.flights - 1 }, (_, n) => ({ n, a: n % 2 ? along4 + s * (w - BRIDGE2.landing / 2) : along4 + s * (w + run + BRIDGE2.landing / 2), z: base + (n + 1) * rise }));
+      const liftBase = ground(...place(liftAt, (c1 + c2) / 2)) + BORDER2.kerb;
+      const ends = [far, liftAt - s * liftHalf].sort((p, q) => p - q);
+      return {
+        along: along4,
+        side: s,
+        walk,
+        base,
+        run,
+        c1,
+        c2,
+        cIn,
+        cOut,
+        span: [-back + 0.05, cOut],
+        flights,
+        landings,
+        down: { c: cDown, middle: along4 + s * (w + downRun / 2), up: -s, steps: downSteps, run: downRun, rise: walk - top, from: top },
+        lift: lift2 ? { at: place(liftAt, (c1 + c2) / 2), along: liftAt, across: (c1 + c2) / 2, facing: [s * way[0], s * way[1]], base: liftBase, rise: walk - liftBase } : null,
+        keeps: [{ kind: "tower", a: (ends[0] + ends[1]) / 2, c: (cIn + cOut) / 2, long: ends[1] - ends[0], wide: cOut - cIn }]
+      };
+    }
+  return null;
+}, bridgePieces = (bridge2, { name, at, way, left, concrete }) => {
+  const place = (a, c) => [at[0] + way[0] * a + left[0] * c, at[1] + way[1] * a + left[1] * c];
+  const yaw = (dir) => mm5(deg2(Math.atan2(-dir[0], dir[1])));
+  const along4 = yaw(way);
+  const [w, s] = [BRIDGE2.wide / 2, bridge2.side];
+  const GLASS20 = "glass/clear/float";
+  const objects = [];
+  const flight = (label, { a, c, up, from, rise, steps }) => objects.push({
+    name: `${name} ${label}`,
+    at: [...place(a, c).map(mm5), mm5(from)],
+    turn: [0, 0, mm5(along4 + (up > 0 ? 0 : 180))],
+    prims: [{ name: "stair", kind: "stairs", steps, height: mm5(rise), tread: STAIR2.tread, width: STAIR2.width, structure: "stringers", railing: "both", at: [0, 0, mm5(rise / 2)], material: concrete }]
+  });
+  for (const each of bridge2.flights)
+    flight(`stair ${each.n + 1}`, { a: each.middle, c: each.c, up: each.up, from: each.from, rise: each.rise, steps: each.steps });
+  const across = bridge2.cOut - bridge2.cIn;
+  for (const each of bridge2.landings)
+    objects.push({
+      name: `${name} landing ${each.n + 1}`,
+      at: [...place(each.a, (bridge2.cIn + bridge2.cOut) / 2).map(mm5), mm5(each.z)],
+      turn: [0, 0, along4],
+      prims: [
+        { name: "landing", shape: "cube", at: [0, 0, -0.1], size: [mm5(across), BRIDGE2.landing, 0.2], material: concrete },
+        ...[-1, 1].map((side2) => ({ name: `rail ${side2 < 0 ? "out" : "in"}`, shape: "cube", at: [mm5(side2 * (across / 2 - 0.04)), 0, 0.55], size: [0.08, BRIDGE2.landing, 1.1], material: STEEL12 })),
+        { name: "rail end", shape: "cube", at: [0, mm5((each.n % 2 ? -s : s) * (BRIDGE2.landing / 2 - 0.04)), 0.55], size: [mm5(across), 0.08, 1.1], material: STEEL12 }
+      ]
+    });
+  const [c0, c1] = bridge2.span;
+  const long = c1 - c0;
+  const mid5 = (c0 + c1) / 2;
+  const top = bridge2.walk;
+  const x = (c) => mm5(-(c - mid5));
+  const opens = { [s]: [[bridge2.down.c - STAIR2.width / 2 - 0.05, bridge2.down.c + STAIR2.width / 2 + 0.05], [bridge2.c2 - STAIR2.width / 2 - 0.05, bridge2.c2 + STAIR2.width / 2 + 0.05]], [-s]: bridge2.lift ? [[bridge2.lift.across - 1.2, bridge2.lift.across + 1.2]] : [] };
+  const glass = [1, -1].flatMap((side2) => {
+    const gaps = (opens[side2] ?? []).sort((p, q) => p[0] - q[0]);
+    const stretches = [];
+    let from = c0;
+    for (const [g0, g1] of gaps) {
+      if (g0 - from > 0.2)
+        stretches.push([from, g0]);
+      from = Math.max(from, g1);
+    }
+    if (c1 - from > 0.2)
+      stretches.push([from, c1]);
+    return stretches.map(([p, q], k) => ({ name: `glass ${side2 > 0 ? "ahead" : "behind"} ${k + 1}`, shape: "cube", at: [x((p + q) / 2), mm5(side2 * (w + BRIDGE2.wall / 2)), mm5(BRIDGE2.high / 2)], size: [mm5(q - p), BRIDGE2.wall, BRIDGE2.high], material: GLASS20 }));
+  });
+  objects.push({
+    name: `${name} footbridge`,
+    at: [...place(bridge2.along, mid5).map(mm5), mm5(top)],
+    turn: [0, 0, along4],
+    prims: [
+      { name: "floor", shape: "cube", at: [0, 0, mm5(-BRIDGE2.slab / 2)], size: [mm5(long), mm5(BRIDGE2.wide + 2 * BRIDGE2.wall), BRIDGE2.slab], material: concrete },
+      ...[-1, 1].map((side2) => ({ name: `beam ${side2 > 0 ? "ahead" : "behind"}`, shape: "cube", at: [0, mm5(side2 * (w + BRIDGE2.wall - 0.1)), mm5(-BRIDGE2.beam / 2)], size: [mm5(long), 0.2, BRIDGE2.beam], material: STEEL12 })),
+      ...glass,
+      ...[c0, c1].map((c, k) => ({ name: `glass ${k ? "tower" : "island"} end`, shape: "cube", at: [x(c + (k ? -1 : 1) * BRIDGE2.wall / 2), 0, mm5(BRIDGE2.high / 2)], size: [BRIDGE2.wall, BRIDGE2.wide, BRIDGE2.high], material: GLASS20 })),
+      { name: "roof", shape: "cube", at: [0, 0, mm5(BRIDGE2.high + BRIDGE2.roof / 2)], size: [mm5(long + 0.3), mm5(BRIDGE2.wide + 0.4), BRIDGE2.roof], material: STEEL12 },
+      ...[c0 + 0.15, bridge2.down.c + STAIR2.width / 2 + 0.15].map((c, k) => ({ name: `post ${k + 1}`, shape: "cube", at: [x(c), mm5(-s * (w - 0.1)), mm5(-(top - bridge2.down.from + BRIDGE2.beam) / 2)], size: [0.2, 0.2, mm5(top - bridge2.down.from - BRIDGE2.beam)], material: STEEL12 }))
+    ]
+  });
+  flight("stair down", { a: bridge2.down.middle, c: bridge2.down.c, up: bridge2.down.up, from: bridge2.down.from, rise: bridge2.down.rise, steps: bridge2.down.steps });
+  return objects;
+};
+var init_land_station = __esm(() => {
+  init_land_border();
+  STAIR2 = Object.freeze({ tread: 0.3, landing: 1.6, riser: 0.19, most: 40, width: 1.8 });
+  BRIDGE2 = Object.freeze({ clear: 0.5, slab: 0.3, beam: 0.6, wide: 2.4, high: 2.6, roof: 0.12, wall: 0.05, flights: 4, landing: 1.6, in: 0.5, gap: 0.2, along: Object.freeze([0, 4, -4, 8, -8]), pavement: 5 });
+});
+
+// src/build/city-land.js
+var exports_city_land = {};
+__export(exports_city_land, {
+  tilesOf: () => tilesOf,
+  surfaceOf: () => surfaceOf2,
+  stripAlong: () => stripAlong,
+  stationLayout: () => stationLayout,
+  squareMapOf: () => squareMapOf,
+  planesOf: () => planesOf,
+  pitchedOn: () => pitchedOn,
+  onSurfaceOf: () => onSurfaceOf,
+  mapOf: () => mapOf,
+  linePieces: () => linePieces,
+  flatsOf: () => flatsOf,
+  fitPiece: () => fitPiece,
+  borderHalf: () => borderHalf,
+  bandTiles: () => bandTiles,
+  MEDIAN_WALK: () => MEDIAN_WALK
+});
+var mm6 = (value) => Math.round(value * 1000) / 1000 + 0, deg3 = (radians) => radians * 180 / Math.PI, clamp31 = (value, low, high) => Math.min(high, Math.max(low, value)), mapOf = (land2, origin) => {
+  const at = (x, y) => land2.place(x - origin[0], y - origin[1]);
+  const back = (X2, Y) => {
+    const [x, y] = land2.where(X2, Y);
+    return [x + origin[0], y + origin[1]];
+  };
+  const [cx, cy] = [origin[0] + land2.size[0] / 2, origin[1] + land2.size[1] / 2];
+  const [p, px, py] = [at(cx, cy), at(cx + 1, cy), at(cx, cy + 1)];
+  const [a, b] = [[px[0] - p[0], px[1] - p[1]], [py[0] - p[0], py[1] - p[1]]];
+  const linear2 = ([x, y]) => [a[0] * x + b[0] * y, a[1] * x + b[1] * y];
+  const xYaw = (turn3) => {
+    const r = (turn3 ?? 0) * Math.PI / 180;
+    const [X2, Y] = linear2([Math.cos(r), Math.sin(r)]);
+    return mm6(deg3(Math.atan2(Y, X2)));
+  };
+  const yYaw = (turn3) => {
+    const r = (turn3 ?? 0) * Math.PI / 180;
+    const [X2, Y] = linear2([-Math.sin(r), Math.cos(r)]);
+    return mm6(deg3(Math.atan2(-X2, Y)));
+  };
+  return { at, back, linear: linear2, xYaw, yYaw };
+}, squareMapOf = (land2) => {
+  const { at, back, way, yaw } = land2.square;
+  const linear2 = ([x, y]) => [way[0] * x - way[1] * y, way[1] * x + way[0] * y];
+  const turned4 = (turn3) => mm6((turn3 ?? 0) + yaw);
+  return { at, back, linear: linear2, xYaw: turned4, yYaw: turned4 };
+}, surfaceOf2 = (land2, ground, { over = BORDER2.over, row = 50, step = 4, band = BORDER2.band } = {}) => {
+  const [W2, D2] = land2.size;
+  const sides2 = land2.sides;
+  const [sw, se, ne, nw] = land2.corners.map((corner2) => corner2[2]);
+  const coons = (x, y) => {
+    const [u, v] = [clamp31(x / W2, 0, 1), clamp31(y / D2, 0, 1)];
+    const [south, north] = [sides2.south.heightAt(u * sides2.south.long), sides2.north.heightAt(u * sides2.north.long)];
+    const [west, east] = [sides2.west.heightAt(v * sides2.west.long), sides2.east.heightAt(v * sides2.east.long)];
+    return (1 - v) * south + v * north + (1 - u) * west + u * east - ((1 - u) * (1 - v) * sw + u * (1 - v) * se + u * v * ne + (1 - u) * v * nw);
+  };
+  const from = (x, y) => Math.min(x, W2 - x, y, D2 - y);
+  const share = (x, y) => clamp31((from(x, y) - band) / (row - band), 0, 1);
+  let [lift2, low] = [0, Infinity];
+  for (let x = 0;x <= W2 + 0.000001; x += W2 / Math.ceil(W2 / step)) {
+    for (let y = 0;y <= D2 + 0.000001; y += D2 / Math.ceil(D2 / step)) {
+      const here = ground(...land2.place(x, y)).ground;
+      low = Math.min(low, here);
+      const w = share(x, y);
+      if (w > 0.05)
+        lift2 = Math.max(lift2, (here + over - coons(x, y)) / w);
+    }
+  }
+  const at = (X2, Y) => {
+    const [x, y] = land2.where(X2, Y);
+    return coons(x, y) + lift2 * share(x, y);
+  };
+  return { at, bare: (X2, Y) => coons(...land2.where(X2, Y)), lift: mm6(lift2), low: mm6(low) };
+}, planesOf = (blended, grid, land2, ground = null) => {
+  const { xs, ys, nx, ny } = grid;
+  const sq = land2.square;
+  const lean = (i) => xs[i].slope ?? 0;
+  const column3 = (i, y) => [xs[i].from + lean(i) * y, xs[i].to + lean(i) * y, xs[i].mid + lean(i) * y];
+  const groundAt4 = (x, y) => ground(...sq.at(x, y)).ground;
+  const highAbout = (x, y, r) => Math.max(...[-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b) => groundAt4(x + a * r, y + b * r))));
+  const Z = xs.map((_, i) => ys.map((__, j) => {
+    const [x, y] = [column3(i, ys[j].mid)[2], ys[j].mid];
+    const P = sq.at(x, y);
+    if (i === 0 || i === nx || j === 0 || j === ny)
+      return blended.at(...P);
+    return ground ? Math.max(blended.bare(...P), highAbout(x, y, 6) + BORDER2.over) : blended.bare(...P) + blended.lift;
+  }));
+  const planes = Array.from({ length: nx }, (_, i) => Array.from({ length: ny }, (__, j) => {
+    const [y0, y1] = [ys[j].to, ys[j + 1].from];
+    const onBorder = [j === 0 || i === 0, j === 0 || i === nx - 1, j === ny - 1 || i === nx - 1, j === ny - 1 || i === 0];
+    const bordered = (x, y, k) => {
+      if (!onBorder[k])
+        return null;
+      if (j === 0 && k < 2)
+        return blended.at(...sq.at(x, ys[0].mid));
+      if (j === ny - 1 && k >= 2)
+        return blended.at(...sq.at(x, ys[ny].mid));
+      return blended.at(...sq.at(column3(i === 0 ? 0 : nx, y)[2], y));
+    };
+    const corners = [[column3(i, y0)[1], y0, Z[i][j]], [column3(i + 1, y0)[0], y0, Z[i + 1][j]], [column3(i + 1, y1)[0], y1, Z[i + 1][j + 1]], [column3(i, y1)[1], y1, Z[i][j + 1]]].map(([x, y, z], k) => [x, y, bordered(x, y, k) ?? z]);
+    const samples = [];
+    if (ground)
+      for (let v = 0;v <= 1 + 0.000000001; v += 1 / Math.max(1, Math.ceil((y1 - y0) / 4))) {
+        const y = y0 + (y1 - y0) * v;
+        const [xa, xb] = [column3(i, y)[1], column3(i + 1, y)[0]];
+        for (let u = 0;u <= 1 + 0.000000001; u += 1 / Math.max(1, Math.ceil((xb - xa) / 4)))
+          samples.push([xa + (xb - xa) * u, y, groundAt4(xa + (xb - xa) * u, y) + BORDER2.over]);
+      }
+    const fixed = corners.filter((_2, k) => onBorder[k]);
+    if (fixed.length === 2) {
+      const [P, Q] = fixed;
+      const long = Math.hypot(Q[0] - P[0], Q[1] - P[1]);
+      const u = [(Q[0] - P[0]) / long, (Q[1] - P[1]) / long];
+      const rest = corners.filter((_2, k) => !onBorder[k]);
+      const sign2 = Math.sign((rest[0][0] - P[0]) * -u[1] + (rest[0][1] - P[1]) * u[0]) || 1;
+      const w = [-u[1] * sign2, u[0] * sign2];
+      const lineAt2 = (x, y) => P[2] + (Q[2] - P[2]) * ((x - P[0]) * u[0] + (y - P[1]) * u[1]) / long;
+      const away = (x, y) => (x - P[0]) * w[0] + (y - P[1]) * w[1];
+      let rise = rest.reduce((sum, [x, y, z]) => sum + away(x, y) * (z - lineAt2(x, y)), 0) / rest.reduce((sum, [x, y]) => sum + away(x, y) ** 2, 0);
+      for (const [x, y, z] of samples)
+        if (away(x, y) > 0.5)
+          rise = Math.max(rise, (z - lineAt2(x, y)) / away(x, y));
+      return (x, y) => lineAt2(x, y) + rise * away(x, y);
+    }
+    if (fixed.length === 3) {
+      const [p, q, r] = fixed;
+      const [a, b] = [[q[0] - p[0], q[1] - p[1], q[2] - p[2]], [r[0] - p[0], r[1] - p[1], r[2] - p[2]]];
+      const n = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+      const through = (x, y) => p[2] - (n[0] * (x - p[0]) + n[1] * (y - p[1])) / n[2];
+      if (samples.every(([x, y, z]) => through(x, y) >= z - 0.000001))
+        return through;
+    }
+    const [cx, cy, m] = [0, 1, 2].map((k) => corners.reduce((sum, corner2) => sum + corner2[k], 0) / 4);
+    let [xx, xy, yy, xz, yz] = [0, 0, 0, 0, 0];
+    for (const [x, y, z] of corners) {
+      const [du, dv, dw] = [x - cx, y - cy, z - m];
+      xx += du * du;
+      xy += du * dv;
+      yy += dv * dv;
+      xz += du * dw;
+      yz += dv * dw;
+    }
+    const det = xx * yy - xy * xy;
+    const [gx, gy] = Math.abs(det) < 0.000000001 ? [0, 0] : [(xz * yy - yz * xy) / det, (yz * xx - xz * xy) / det];
+    const raise = Math.max(0, ...samples.map(([x, y, z]) => z - (m + gx * (x - cx) + gy * (y - cy))));
+    return (x, y) => m + raise + gx * (x - cx) + gy * (y - cy);
+  }));
+  const block3 = (i, j) => planes[clamp31(i, 0, nx - 1)][clamp31(j, 0, ny - 1)];
+  const findOn = (v, spans) => {
+    for (let k = 0;k < spans.length; k++) {
+      if (v >= spans[k][0] && v <= spans[k][1])
+        return { k, on: true };
+      if (k + 1 < spans.length && v > spans[k][1] && v < spans[k + 1][0])
+        return { k, on: false };
+    }
+    return null;
+  };
+  const rowSpans = ys.map((line) => [line.from, line.to]);
+  const lerp4 = (a, b, t) => a + (b - a) * t;
+  const kerbOf = (v, spans, side2) => {
+    const where = findOn(v, spans);
+    if (!where)
+      return side2(v < spans[0][0] ? 0 : spans.length - 2, v < spans[0][0] ? spans[0][0] : spans.at(-1)[1]);
+    if (!where.on)
+      return side2(where.k, v);
+    const [a, b] = spans[where.k];
+    if (where.k === 0)
+      return side2(0, b);
+    if (where.k === spans.length - 1)
+      return side2(where.k - 1, a);
+    return lerp4(side2(where.k - 1, a), side2(where.k, b), (v - a) / (b - a));
+  };
+  const cornerAt = (x, y) => {
+    for (const [j, inwardY, row] of [[0, 1, 0], [ny, -1, ny - 1]]) {
+      const [edgeY, kerbY] = [ys[j].mid, inwardY > 0 ? ys[j].to : ys[j].from];
+      if ((y - kerbY) * inwardY > 0)
+        continue;
+      for (const [i, inwardX, col] of [[0, 1, 0], [nx, -1, nx - 1]]) {
+        const sideOf = (v) => {
+          const [from, to, mid6] = column3(i, v);
+          return [mid6, inwardX > 0 ? to : from];
+        };
+        const [mid5, kerbX] = sideOf(y);
+        if ((x - kerbX) * inwardX > 0)
+          continue;
+        const tx = clamp31((x - mid5) / (kerbX - mid5), 0, 1);
+        const ty = clamp31((y - edgeY) / (kerbY - edgeY), 0, 1);
+        const [[midE, kerbE], [midK, kerbK]] = [sideOf(edgeY), sideOf(kerbY)];
+        const [a, b, c, d] = [blended.at(...sq.at(midE, edgeY)), blended.at(...sq.at(kerbE, edgeY)), blended.at(...sq.at(midK, kerbY)), block3(col, row)(kerbK, kerbY)];
+        return lerp4(lerp4(a, b, tx), lerp4(c, d, tx), ty);
+      }
+    }
+    return null;
+  };
+  const at = (X2, Y) => {
+    const [x, y] = sq.back(X2, Y);
+    const corner2 = cornerAt(x, y);
+    if (corner2 !== null)
+      return corner2;
+    for (const [j2, inward, row] of [[0, 1, 0], [ny, -1, ny - 1]]) {
+      const [edge, kerb] = [ys[j2].mid, inward > 0 ? ys[j2].to : ys[j2].from];
+      if ((y - kerb) * inward > 0)
+        continue;
+      const own = blended.at(...sq.at(x, edge));
+      const t = clamp31((y - edge) / (kerb - edge), 0, 1);
+      return lerp4(own, kerbOf(x, xs.map((_, i2) => column3(i2, kerb).slice(0, 2)), (i2, v2) => block3(i2, row)(v2, kerb)), t);
+    }
+    for (const [i2, inward, col] of [[0, 1, 0], [nx, -1, nx - 1]]) {
+      const [from, to, mid5] = column3(i2, y);
+      const kerb = inward > 0 ? to : from;
+      if ((x - kerb) * inward > 0)
+        continue;
+      const own = blended.at(...sq.at(mid5, y));
+      const t = clamp31((x - mid5) / (kerb - mid5), 0, 1);
+      return lerp4(own, kerbOf(y, rowSpans, (j2, v2) => block3(col, j2)(column3(i2, v2)[inward > 0 ? 1 : 0], v2)), t);
+    }
+    const across = findOn(x, xs.map((_, i2) => column3(i2, y).slice(0, 2)));
+    const along4 = findOn(y, rowSpans);
+    if (!across || !along4)
+      return blended.at(X2, Y);
+    const [i, j] = [across.k, along4.k];
+    if (!across.on && !along4.on)
+      return block3(i, j)(x, y);
+    if (along4.on && !across.on) {
+      const [ya2, yb2] = [ys[j].from, ys[j].to];
+      return lerp4(block3(i, j - 1)(x, ya2), block3(i, j)(x, yb2), (y - ya2) / (yb2 - ya2));
+    }
+    if (across.on && !along4.on) {
+      const [xa2, xb2] = column3(i, y);
+      return lerp4(block3(i - 1, j)(xa2, y), block3(i, j)(xb2, y), (x - xa2) / (xb2 - xa2));
+    }
+    const [ya, yb] = [ys[j].from, ys[j].to];
+    const [[sa, sb], [na, nb]] = [column3(i, ya).slice(0, 2), column3(i, yb).slice(0, 2)];
+    const [sw, se, ne, nw] = [block3(i - 1, j - 1)(sa, ya), block3(i, j - 1)(sb, ya), block3(i, j)(nb, yb), block3(i - 1, j)(na, yb)];
+    const v = (y - ya) / (yb - ya);
+    const [xa, xb] = column3(i, y).slice(0, 2);
+    const u = (x - xa) / (xb - xa);
+    return lerp4(lerp4(sw, se, u), lerp4(nw, ne, u), v);
+  };
+  const acrossLines = xs.flatMap((line, i) => [[line.from, lean(i)], [line.to, lean(i)], ...i === 0 || i === nx ? [[line.mid, lean(i)]] : []]);
+  const alongLines = ys.flatMap((line, j) => [line.from, line.to, ...j === 0 || j === ny ? [line.mid] : []]);
+  const knotsAcross = ["south", "north"].flatMap((side2) => land2.sides[side2].border.knots.map(([t]) => {
+    const [x] = sq.back(...land2.sides[side2].at(land2.sides[side2].own(t), 0));
+    const j = side2 === "south" ? 0 : ny;
+    return { x, y0: Math.min(ys[j].mid, side2 === "south" ? ys[j].to : ys[j].from) - 0.5, y1: Math.max(ys[j].mid, side2 === "south" ? ys[j].to : ys[j].from) + 0.5 };
+  }));
+  const knotsAlong = ["west", "east"].flatMap((side2) => land2.sides[side2].border.knots.map(([t]) => {
+    const [, y] = sq.back(...land2.sides[side2].at(land2.sides[side2].own(t), 0));
+    const i = side2 === "west" ? 0 : nx;
+    const [from, to, mid5] = column3(i, y);
+    return { y, x0: Math.min(mid5, side2 === "west" ? to : from) - 0.5, x1: Math.max(mid5, side2 === "west" ? to : from) + 0.5 };
+  }));
+  const creases = (P, Q) => {
+    const [[x0, y0], [x1, y1]] = [sq.back(...P), sq.back(...Q)];
+    const [dx, dy] = [x1 - x0, y1 - y0];
+    const shares = [];
+    for (const [c, s] of acrossLines) {
+      const d = dx - s * dy;
+      if (Math.abs(d) > 0.000000001)
+        shares.push((c - x0 + s * y0) / d);
+    }
+    if (Math.abs(dy) > 0.000000001)
+      for (const c of alongLines)
+        shares.push((c - y0) / dy);
+    if (Math.abs(dx) > 0.000000001)
+      for (const knot of knotsAcross) {
+        const t = (knot.x - x0) / dx;
+        const y = y0 + dy * t;
+        if (y >= knot.y0 && y <= knot.y1)
+          shares.push(t);
+      }
+    if (Math.abs(dy) > 0.000000001)
+      for (const knot of knotsAlong) {
+        const t = (knot.y - y0) / dy;
+        const x = x0 + dx * t;
+        if (x >= knot.x0 && x <= knot.x1)
+          shares.push(t);
+      }
+    return [...new Set(shares.filter((t) => t > 0.0001 && t < 1 - 0.0001).map((t) => Math.round(t * 1e6) / 1e6))].sort((a, b) => a - b);
+  };
+  return { at, creases, lift: blended.lift, low: blended.low };
+}, pitchedOn = (gx, gy, yaw, base = 0) => [mm6(deg3(Math.atan(gy)) + base), mm6(-deg3(Math.atan(gx))), mm6(yaw)], slopeOn = (surface) => ([X2, Y], [ux, uy]) => surface.at(X2 + ux / 2, Y + uy / 2) - surface.at(X2 - ux / 2, Y - uy / 2), onSurfaceOf = (surface) => {
+  const slope = slopeOn(surface);
+  return (at, yaw = 0) => {
+    const r = yaw * Math.PI / 180;
+    return pitchedOn(slope(at, [Math.cos(r), Math.sin(r)]), slope(at, [-Math.sin(r), Math.cos(r)]), yaw);
+  };
+}, turnedBy = ([a, b, c], [x, y, z]) => {
+  const [ca, sa, cb, sb, cc, sc] = [Math.cos(a), Math.sin(a), Math.cos(b), Math.sin(b), Math.cos(c), Math.sin(c)];
+  const [y1, z1] = [y * ca - z * sa, y * sa + z * ca];
+  const [x2, z2] = [x * cb + z1 * sb, -x * sb + z1 * cb];
+  return [x2 * cc - y1 * sc, x2 * sc + y1 * cc, z2];
+}, insidePolygon2 = (polygon2, x, y) => {
+  let hit = false;
+  for (let i = 0, j = polygon2.length - 1;i < polygon2.length; j = i++) {
+    const [[xi, yi], [xj, yj]] = [polygon2[i], polygon2[j]];
+    if (yi > y !== yj > y && x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+      hit = !hit;
+  }
+  return hit;
+}, flatsOf = (objects) => objects.flatMap((object) => (object.prims ?? []).filter((prim) => prim.size && prim.material && (!prim.kind || prim.kind === "solid")).flatMap((prim) => {
+  const [own, its] = [object.turn ?? [0, 0, 0], prim.turn ?? [0, 0, 0]].map((turn3) => turn3.map((v) => v * Math.PI / 180));
+  const centre = turnedBy(own, prim.at ?? [0, 0, 0]).map((v, k) => v + object.at[k]);
+  const { material } = prim;
+  if (prim.kind === "solid") {
+    if (own[0] || own[1] || its[0] || its[1])
+      return [];
+    const yaw2 = own[2] + its[2];
+    const [c, s] = [Math.cos(yaw2), Math.sin(yaw2)];
+    const local = ([x, y]) => {
+      const [dx, dy] = [x - centre[0], y - centre[1]];
+      return [dx * c + dy * s, -dx * s + dy * c];
+    };
+    return (prim.bodies ?? []).filter((body) => !body.turn && (body.add === "box" || body.points)).map((body) => {
+      const corners = body.add === "box" ? [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [body.at[0] + u * body.size[0] / 2, body.at[1] + v * body.size[1] / 2, body.at[2] + body.size[2] / 2]) : ((points) => points.slice(0, points.length / 2))(unpackPoints2(body.points, body.size).map((p) => p.map((v, k) => v + body.at[k])));
+      const middle = [0, 1, 2].map((k) => corners.reduce((sum, p) => sum + p[k], 0) / corners.length);
+      const ring4 = corners.sort((p, q) => Math.atan2(p[1] - middle[1], p[0] - middle[0]) - Math.atan2(q[1] - middle[1], q[0] - middle[0]));
+      const n = ring4.reduce((sum, p, i) => {
+        const q = ring4[(i + 1) % ring4.length];
+        return [sum[0] + (p[1] - q[1]) * (p[2] + q[2]), sum[1] + (p[2] - q[2]) * (p[0] + q[0]), sum[2] + (p[0] - q[0]) * (p[1] + q[1])];
+      }, [0, 0, 0]);
+      const long = Math.hypot(...n) || 1;
+      const flat2 = n[2] < 0 ? n.map((v) => -v / long) : n.map((v) => v / long);
+      return {
+        material,
+        up: [flat2[0] * c - flat2[1] * s, flat2[0] * s + flat2[1] * c, flat2[2]],
+        on: (place) => insidePolygon2(ring4, ...local(place)),
+        top: (place) => {
+          const [lx, ly] = local(place);
+          return centre[2] + middle[2] - (flat2[0] * (lx - middle[0]) + flat2[1] * (ly - middle[1])) / flat2[2];
+        }
+      };
+    });
+  }
+  const prism = prim.shape === "prism";
+  const yaw = own[2] + its[2];
+  const axis = turnedBy(own, turnedBy(its, prism ? [0, 1, 0] : [0, 0, 1]));
+  const up = axis[2] < 0 ? axis.map((v) => -v) : axis;
+  const half = (prism ? prim.size[1] : prim.size[2]) / 2;
+  const lid = centre.map((v, k) => v + half * up[k]);
+  const [w, d] = prism ? [prim.size[0], prim.size[2]] : [prim.size[0], prim.size[1]];
+  const side2 = prism ? Math.sign(-Math.sin(its[0])) : 1;
+  return [{
+    material,
+    up,
+    on: ([x, y]) => {
+      const [dx, dy] = [x - centre[0], y - centre[1]];
+      const [s, t] = [(dx * Math.cos(yaw) + dy * Math.sin(yaw)) / w, side2 * (-dx * Math.sin(yaw) + dy * Math.cos(yaw)) / d];
+      return prism ? s >= -0.5 && t >= -0.5 && s + t <= 0 : Math.abs(s) <= 0.5 && Math.abs(t) <= 0.5;
+    },
+    top: ([x, y]) => lid[2] - (up[0] * (x - lid[0]) + up[1] * (y - lid[1])) / up[2]
+  }];
+})), onTop = (prim, surface) => {
+  const [a, b, c] = (prim.turn ?? [0, 0, 0]).map((v) => v * Math.PI / 180);
+  if (!surface.pivot || !a && !b && prim.shape !== "prism")
+    return { ...prim, at: prim.at.map(mm6) };
+  const [ca, sa, cb, sb, cc, sc] = [Math.cos(a), Math.sin(a), Math.cos(b), Math.sin(b), Math.cos(c), Math.sin(c)];
+  const axis = prim.shape === "prism" ? [cc * sb * sa - sc * ca, sc * sb * sa + cc * ca, cb * sa] : [cc * sb * ca + sc * sa, sc * sb * ca - cc * sa, cb * ca];
+  const half = (prim.shape === "prism" ? prim.size[1] : prim.size[2]) / 2;
+  const up = axis[2] < 0 ? axis.map((v) => -v) : axis;
+  const [X2, Y, Z] = prim.at;
+  return { ...prim, at: [mm6(X2 - half * up[0]), mm6(Y - half * up[1]), mm6(Z + half - half * up[2])] };
+}, triangleOf = (rest, { corner: corner2, w1, w2, l1, l2, z, thick }, surface) => {
+  const counter2 = w1[0] * w2[1] - w1[1] * w2[0] > 0;
+  const [xWay, yWay, legA, legB] = counter2 ? [w1, w2, l1, l2] : [w2, w1, l2, l1];
+  const middle = [corner2[0] + xWay[0] * legA / 2 + yWay[0] * legB / 2, corner2[1] + xWay[1] * legA / 2 + yWay[1] * legB / 2];
+  const slope = slopeOn(surface);
+  return onTop({ ...rest, shape: "prism", at: [middle[0], middle[1], z + surface.at(...middle)], size: [mm6(legA), mm6(thick), mm6(legB)], turn: pitchedOn(slope(middle, xWay), slope(middle, yWay), deg3(Math.atan2(xWay[1], xWay[0])), -90) }, surface);
+}, foldedLook = ({ material, surface = {} }) => {
+  const { faces = {}, ...base } = surface;
+  const own = (face3) => ({ texture: face3?.texture ?? base.texture ?? material, ...face3 });
+  return { material, surface: { ...base, faces: { 0: own(faces[1]), 1: own(faces[0]) } } };
+}, foldedPart = (prim, outline2, fold, { surface, lift: lift2 }) => {
+  const thick = prim.size[2];
+  const made4 = foldedOf({ polygon: outline2, top: (X2, Y) => lift2 + surface.at(X2, Y) + thick / 2, thick, fold, square: surface.square });
+  const { at: _, size: __, turn: ___, shape: ____, pin: _____, surface: ______, material: _______, ...kept3 } = prim;
+  return { ...kept3, ...foldedLook(prim), kind: "solid", join: "none", colours: 1, at: made4.at, turn: made4.turn, size: made4.size, bodies: made4.bodies };
+}, bandTiles = (band, fit) => {
+  const { y0, y1, left, right } = band;
+  const { map, surface, sizeOf } = fit;
+  const [xa, xb] = [Math.max(...left), Math.min(...right)];
+  const outline2 = [map.at(left[0], y0), map.at(right[0], y0), map.at(right[1], y1), map.at(left[1], y1)];
+  const fold = !band.cut && surface.foldIn?.(outline2);
+  if (fold) {
+    const part = foldedPart({ ...band.rest, size: [0, 0, band.thick] }, outline2, fold, { surface, lift: band.z ?? 0 });
+    return { name: band.name, at: part.at, framed: true, prims: [{ ...part, at: [0, 0, 0] }] };
+  }
+  if (sizeOf && surface.creases && !band.cut) {
+    const ys = [[left[0], left[1]], [right[0], right[1]]].flatMap(([a, b]) => surface.creases(map.at(a, y0), map.at(b, y1)).map((t) => y0 + (y1 - y0) * t));
+    const cuts = [...new Set(ys.filter((y) => y > y0 + 0.5 && y < y1 - 0.5).map((y) => Math.round(y * 1000) / 1000))].sort((a, b) => a - b);
+    if (cuts.length) {
+      const marks = [y0, ...cuts, y1];
+      const side2 = (pair3, y) => pair3[0] + (pair3[1] - pair3[0]) * (y - y0) / (y1 - y0);
+      const parts = marks.slice(1).map((to, k) => bandTiles({ ...band, cut: true, y0: marks[k], y1: to, left: [side2(left, marks[k]), side2(left, to)], right: [side2(right, marks[k]), side2(right, to)] }, fit)).filter(Boolean);
+      if (!parts.length)
+        return null;
+      const at = parts[0].at;
+      return { ...parts[0], prims: parts.flatMap((part) => part.prims.map((prim) => ({ ...prim, at: [mm6(prim.at[0] + part.at[0] - at[0]), mm6(prim.at[1] + part.at[1] - at[1]), mm6(prim.at[2] + part.at[2] - at[2])] }))) };
+    }
+  }
+  if (sizeOf && surface.creases && y1 - y0 >= 4 && xb - xa > 0.01) {
+    const height = (x, y) => surface.at(...map.at(x, y));
+    const [xm, ym] = [(xa + xb) / 2, (y0 + y1) / 2];
+    const [m, gx, gy] = [height(xm, ym), height(xm + 0.5, ym) - height(xm - 0.5, ym), height(xm, ym + 0.5) - height(xm, ym - 0.5)];
+    const off = Math.max(...[[xa, y0], [xb, y0], [xb, y1], [xa, y1]].map(([x, y]) => Math.abs(height(x, y) - m - gx * (x - xm) - gy * (y - ym))));
+    if (off > ACROSS5) {
+      const [lm, rm] = [(left[0] + left[1]) / 2, (right[0] + right[1]) / 2];
+      const halves = [bandTiles({ ...band, y1: ym, left: [left[0], lm], right: [right[0], rm] }, fit), bandTiles({ ...band, y0: ym, left: [lm, left[1]], right: [rm, right[1]] }, fit)].filter(Boolean);
+      if (!halves.length)
+        return null;
+      const at = halves[0].at;
+      return { ...halves[0], prims: halves.flatMap((half) => half.prims.map((prim) => ({ ...prim, at: [mm6(prim.at[0] + half.at[0] - at[0]), mm6(prim.at[1] + half.at[1] - at[1]), mm6(prim.at[2] + half.at[2] - at[2])] }))) };
+    }
+  }
+  return bandOnce(band, fit);
+}, bandOnce = ({ name, y0, y1, left, right, z = 0, thick, rest, ends = rest }, { map, surface, sizeOf = null }) => {
+  const [xa, xb] = [Math.max(...left), Math.min(...right)];
+  const prims = [];
+  const slope = slopeOn(surface);
+  const [ux, uy] = [map.linear([1, 0]), map.linear([0, 1])];
+  if (xb - xa > 0.01 && y1 - y0 > 0.01) {
+    const [ym, long] = [(y0 + y1) / 2, xb - xa];
+    for (const [a, b] of sizeOf && !drawnWhole(rest) ? lengthsAlong(long, (t) => surface.at(...map.at(xa + t, ym)), 0.01, surface.creases?.(map.at(xa, ym), map.at(xb, ym)) ?? []) : [[0, long]]) {
+      const middle = map.at(xa + (a + b) / 2, ym);
+      const look8 = b - a < long - 0.000001 ? slid(rest, (a + b) / 2 - long / 2, sizeOf) : rest;
+      prims.push(onTop({ ...look8, shape: "cube", at: [middle[0], middle[1], z + surface.at(...middle)], size: [mm6(b - a), mm6(y1 - y0), mm6(thick)], turn: pitchedOn(slope(middle, ux), slope(middle, uy), deg3(Math.atan2(ux[1], ux[0]))) }, surface));
+    }
+  }
+  const flip = ([x, y]) => [-x, -y];
+  const [l, r] = [left[1] - left[0], right[1] - right[0]];
+  if (Math.abs(l) > 0.01)
+    prims.push(triangleOf(ends, { ...l > 0 ? { corner: map.at(left[1], y0), w1: flip(ux), l1: l, w2: uy, l2: y1 - y0 } : { corner: map.at(left[0], y1), w1: flip(ux), l1: -l, w2: flip(uy), l2: y1 - y0 }, z, thick }, surface));
+  if (Math.abs(r) > 0.01)
+    prims.push(triangleOf(ends, { ...r < 0 ? { corner: map.at(right[1], y0), w1: ux, l1: -r, w2: uy, l2: y1 - y0 } : { corner: map.at(right[0], y1), w1: ux, l1: r, w2: flip(uy), l2: y1 - y0 }, z, thick }, surface));
+  if (!prims.length)
+    return null;
+  const at = prims[0].at;
+  return { name, at, framed: true, prims: prims.map((prim) => ({ ...prim, at: [mm6(prim.at[0] - at[0]), mm6(prim.at[1] - at[1]), mm6(prim.at[2] - at[2])] })) };
+}, ACROSS5 = 0.03, lengthsAlong = (long, heightAt, within5 = 0.01, folds = []) => {
+  const off = (a, b) => {
+    const [m, slope] = [heightAt((a + b) / 2), heightAt((a + b) / 2 + 0.5) - heightAt((a + b) / 2 - 0.5)];
+    return Math.max(...[0, 0.25, 0.75, 1].map((f) => Math.abs(heightAt(a + (b - a) * f) - m - slope * (b - a) * (f - 0.5))));
+  };
+  const evenly = (a, b) => {
+    const most2 = Math.max(1, Math.floor((b - a) / 2));
+    for (let count = Math.max(1, Math.ceil((b - a) / 64 - 0.000000001));; count++) {
+      const lengths2 = Array.from({ length: count }, (_, n) => [a + (b - a) * n / count, a + (b - a) * (n + 1) / count]);
+      if (count >= most2 || lengths2.every(([p, q]) => off(p, q) <= within5))
+        return lengths2;
+    }
+  };
+  const marks = [0, ...[...new Set(folds.map((t) => Math.round(t * long * 1000) / 1000))].filter((d) => d > 0.05 && d < long - 0.05).sort((a, b) => a - b), long];
+  const parts = [];
+  for (let first = 0, k = 1;k < marks.length; k++) {
+    if (k + 1 < marks.length && off(marks[first], marks[k + 1]) <= within5)
+      continue;
+    parts.push([marks[first], marks[k]]);
+    first = k;
+  }
+  return parts.flatMap(([a, b]) => evenly(a, b));
+}, drawnWhole = (look8) => [look8.surface, ...Object.values(look8.surface?.faces ?? {})].some((face3) => face3?.pattern || face3?.page || face3?.media), slid = (look8, D2, sizeOf, C2 = 0) => {
+  const surface = look8.surface ?? {};
+  const shift = (own, texture2) => {
+    const size = own?.scale ?? surface.scale ?? (texture2 ? sizeOf(texture2) : null);
+    const [oU, oV] = own?.offset ?? surface.offset ?? [0, 0];
+    if (!size)
+      return own?.offset ?? surface.offset;
+    const [sU, sV] = Array.isArray(size) ? size : [size, size];
+    const r = (own?.rotation ?? surface.rotation ?? 0) * Math.PI / 180;
+    const wrap2 = (v) => Math.round((v % 1 + 1) % 1 * 1e4) / 1e4;
+    return [wrap2(oU + (Math.cos(r) * D2 + Math.sin(r) * C2) / sU), wrap2(oV - (Math.sin(r) * D2 - Math.cos(r) * C2) / sV)];
+  };
+  const texture = surface.texture ?? look8.material;
+  const offset = shift(null, texture);
+  const faces = Object.fromEntries(Object.entries(surface.faces ?? {}).map(([face3, own]) => [face3, { ...own, ...shift(own, own.texture ?? texture) && { offset: shift(own, own.texture ?? texture) } }]));
+  return { ...look8, surface: { ...surface, ...offset && { offset }, ...surface.faces && { faces } } };
+}, fitted2 = (look8, Lx, Ly, sizeOf) => {
+  const surface = look8.surface ?? {};
+  const fit = (own, texture2) => {
+    const size = own?.scale ?? surface.scale ?? (texture2 ? sizeOf(texture2) : null);
+    const turn3 = ((own?.rotation ?? surface.rotation ?? 0) % 360 + 360) % 360;
+    if (!size || turn3 % 90)
+      return null;
+    const [sU, sV] = Array.isArray(size) ? size : [size, size];
+    const [LU, LV] = turn3 % 180 ? [Ly, Lx] : [Lx, Ly];
+    const whole4 = (L, repeat) => L / repeat >= 4 ? L / Math.round(L / repeat) : repeat;
+    return [mm6(whole4(LU, sU)), mm6(whole4(LV, sV))];
+  };
+  const texture = surface.texture ?? look8.material;
+  const scale4 = fit(null, texture);
+  const faces = Object.fromEntries(Object.entries(surface.faces ?? {}).map(([face3, own]) => [face3, { ...own, ...fit(own, own.texture ?? texture) && { scale: fit(own, own.texture ?? texture) } }]));
+  return { ...look8, surface: { ...surface, ...scale4 && { scale: scale4 }, ...surface.faces && { faces } } };
+}, tilesOf = (prim, { map, surface, level, sizeOf = null }) => {
+  const [cx, cy, cz] = prim.at;
+  const [hx, hy] = [prim.size[0] / 2, prim.size[1] / 2];
+  const [A2, B2, D2] = [map.at(cx - hx, cy - hy), map.at(cx + hx, cy - hy), map.at(cx - hx, cy + hy)];
+  const outline2 = [A2, B2, [B2[0] + D2[0] - A2[0], B2[1] + D2[1] - A2[1]], D2];
+  const fold = surface.foldIn?.(outline2);
+  if (fold)
+    return [foldedPart(prim, outline2, fold, { surface, lift: cz - level })];
+  const [ab, ad] = [[B2[0] - A2[0], B2[1] - A2[1]], [D2[0] - A2[0], D2[1] - A2[1]]];
+  const [origin, base, side2] = Math.hypot(...ab) >= Math.hypot(...ad) ? [A2, ab, ad] : [A2, ad, ab];
+  const lx = Math.hypot(...base);
+  const e = [base[0] / lx, base[1] / lx];
+  let n = [-e[1], e[0]];
+  let h = side2[0] * n[0] + side2[1] * n[1];
+  if (h < 0) {
+    n = [-n[0], -n[1]];
+    h = -h;
+  }
+  const s = side2[0] * e[0] + side2[1] * e[1];
+  const place = (u, v) => [origin[0] + e[0] * u + n[0] * v, origin[1] + e[1] * u + n[1] * v];
+  const thick = prim.size[2];
+  const heightAt = ([X2, Y]) => cz - level + surface.at(X2, Y);
+  const slopeAlong = slopeOn(surface);
+  const { at: _, size: __, turn: ___, shape: ____, pin: _____, ...kept3 } = prim;
+  const alongY = base === ad;
+  const rest = alongY && kept3.surface?.faces ? { ...kept3, surface: { ...kept3.surface, faces: Object.fromEntries(Object.entries(kept3.surface.faces).map(([face3, look8]) => [face3, { ...look8, rotation: ((look8.rotation ?? 0) + 90) % 360 }])) } } : kept3;
+  const tiles = [];
+  const wide = lx - Math.abs(s);
+  if (wide > 0.005) {
+    const yaw = deg3(Math.atan2(e[1], e[0]));
+    const start = Math.max(0, s);
+    const ownY = [-e[1], e[0]];
+    const across = n[0] * ownY[0] + n[1] * ownY[1];
+    const split3 = sizeOf && !drawnWhole(rest);
+    const planar = Boolean(surface.creases);
+    const fit = split3 && planar ? fitted2(rest, wide, h, sizeOf) : rest;
+    const twisted = (a, b, c, d) => {
+      const [um, vm] = [start + (a + b) / 2, (c + d) / 2];
+      const middle = place(um, vm);
+      const [zm, gu, gv] = [surface.at(...middle), slopeAlong(middle, e), slopeAlong(middle, n)];
+      return Math.max(...[[a, c], [b, c], [b, d], [a, d]].map(([p, q]) => Math.abs(surface.at(...place(start + p, q)) - zm - gu * (start + p - um) - gv * (q - vm))));
+    };
+    const halved = (a, b, c, d) => !split3 || !planar || Math.max(b - a, d - c) < 1.5 || twisted(a, b, c, d) <= ACROSS5 - 0.002 ? [[a, b, c, d]] : b - a >= d - c ? [...halved(a, (a + b) / 2, c, d), ...halved((a + b) / 2, b, c, d)] : [...halved(a, b, c, (c + d) / 2), ...halved(a, b, (c + d) / 2, d)];
+    const FAR2 = 0.01;
+    const pinned = planar && split3 && prim.pin ? (alongY ? { "x-": 0, "x+": h } : { "y-": 0, "y+": h })[prim.pin] ?? null : null;
+    const edgeOf3 = (a, b) => {
+      const [ua, ub, far] = [start + a, start + b, pinned === 0 ? h : 0];
+      const [ea, eb, fa, fb] = [surface.at(...place(ua, pinned)), surface.at(...place(ub, pinned)), surface.at(...place(ua, far)), surface.at(...place(ub, far))];
+      return { gu: (eb - ea) / (ub - ua), gv: (fa - ea + fb - eb) / 2 / (far - pinned), z: (ea + eb) / 2, off: Math.abs(fa - ea - (fb - eb)) / 2 };
+    };
+    const pinnedPieces = (a, b) => b - a < 1.5 || edgeOf3(a, b).off <= FAR2 ? [[a, b]] : [...pinnedPieces(a, (a + b) / 2), ...pinnedPieces((a + b) / 2, b)];
+    if (pinned !== null) {
+      const far = pinned === 0 ? h : 0;
+      const folds = [...new Set([0, h / 2, h].flatMap((v) => surface.creases?.(place(start, v), place(start + wide, v)) ?? []).map((t) => Math.round(t * wide * 1000) / 1000))].filter((d) => d > 0.05 && d < wide - 0.05).sort((p, q) => p - q);
+      const marks = [0, ...folds, wide];
+      const straight = (a, b) => [pinned, far].every((v) => {
+        const [za, zb] = [surface.at(...place(start + a, v)), surface.at(...place(start + b, v))];
+        return [...marks.filter((m) => m > a && m < b), ...[0.25, 0.5, 0.75].map((f) => a + (b - a) * f)].every((m) => Math.abs(surface.at(...place(start + m, v)) - za - (zb - za) * (m - a) / (b - a)) <= (v === pinned ? 0.01 : FAR2));
+      });
+      const spans = [];
+      for (let first = 0, k = 1;k < marks.length; k++) {
+        if (k + 1 < marks.length && marks[k + 1] - marks[first] <= 64 && straight(marks[first], marks[k + 1]))
+          continue;
+        spans.push([marks[first], marks[k]]);
+        first = k;
+      }
+      for (const [a1, b1] of spans)
+        for (let n2 = Math.ceil((b1 - a1) / 64 - 0.000000001), k = 0;k < n2; k++)
+          for (const [a, b] of pinnedPieces(a1 + (b1 - a1) * k / n2, a1 + (b1 - a1) * (k + 1) / n2)) {
+            const { gu, gv, z } = edgeOf3(a, b);
+            const middle = place(start + (a + b) / 2, h / 2);
+            const look8 = b - a >= wide - 0.000001 ? fit : slid(fit, (a + b) / 2 - wide / 2, sizeOf);
+            tiles.push(onTop({ ...look8, shape: "cube", at: [middle[0], middle[1], cz - level + z + gv * (h / 2 - pinned)], size: [mm6(b - a), mm6(h), mm6(thick)], turn: pitchedOn(gu, gv * across, yaw) }, surface));
+          }
+    } else
+      for (const [a0, b0] of split3 ? lengthsAlong(wide, (t) => surface.at(...place(start + t, h / 2)), 0.01, [0, h / 2, h].flatMap((v) => surface.creases?.(place(start, v), place(start + wide, v)) ?? [])) : [[0, wide]]) {
+        const along0 = start + (a0 + b0) / 2;
+        for (const [c0, d0] of split3 ? lengthsAlong(h, (t) => surface.at(...place(along0, t)), ACROSS5, [start + a0, along0, start + b0].flatMap((u) => surface.creases?.(place(u, 0), place(u, h)) ?? [])) : [[0, h]])
+          for (const [a, b, c, d] of halved(a0, b0, c0, d0)) {
+            const along4 = start + (a + b) / 2;
+            const middle = place(along4, (c + d) / 2);
+            const whole4 = b - a >= wide - 0.000001 && d - c >= h - 0.000001;
+            const look8 = whole4 ? fit : slid(fit, (a + b) / 2 - wide / 2, sizeOf, ((c + d) / 2 - h / 2) * across);
+            tiles.push(onTop({ ...look8, shape: "cube", at: [middle[0], middle[1], heightAt(middle)], size: [mm6(b - a), mm6(d - c), mm6(thick)], turn: pitchedOn(slopeAlong(middle, e), slopeAlong(middle, ownY), yaw) }, surface));
+          }
+      }
+  }
+  if (Math.abs(s) > 0.005) {
+    const ends = s > 0 ? [{ corner: [s, 0], one: [-1, 0], two: [0, 1] }, { corner: [lx, h], one: [1, 0], two: [0, -1] }] : [{ corner: [0, h], one: [-1, 0], two: [0, -1] }, { corner: [lx + s, 0], one: [1, 0], two: [0, 1] }];
+    for (const { corner: corner2, one, two } of ends) {
+      const [w1, w2] = [[e[0] * one[0] + n[0] * one[1], e[1] * one[0] + n[1] * one[1]], [e[0] * two[0] + n[0] * two[1], e[1] * two[0] + n[1] * two[1]]];
+      const [l1, l2] = [Math.abs(s), h];
+      const counter2 = w1[0] * w2[1] - w1[1] * w2[0] > 0;
+      const [xWay, yWay, legA, legB] = counter2 ? [w1, w2, l1, l2] : [w2, w1, l2, l1];
+      const right = place(...corner2);
+      const middle = [right[0] + xWay[0] * legA / 2 + yWay[0] * legB / 2, right[1] + xWay[1] * legA / 2 + yWay[1] * legB / 2];
+      const yaw = deg3(Math.atan2(xWay[1], xWay[0]));
+      tiles.push(onTop({ ...rest, shape: "prism", at: [middle[0], middle[1], heightAt(middle)], size: [mm6(legA), mm6(thick), mm6(legB)], turn: pitchedOn(slopeAlong(middle, xWay), slopeAlong(middle, yWay), yaw, -90) }, surface));
+    }
+  }
+  return tiles;
+}, stripAlong = (from, to, { name, wide, z, thick, rest }, { map, surface, sizeOf = null }) => {
+  const [a, b] = [map.at(...from), map.at(...to)];
+  const long = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (long < 0.05)
+    return null;
+  const way = [(b[0] - a[0]) / long, (b[1] - a[1]) / long];
+  const slope = slopeOn(surface);
+  const prims = (sizeOf && !drawnWhole(rest) ? lengthsAlong(long, (t) => surface.at(a[0] + way[0] * t, a[1] + way[1] * t), 0.01, surface.creases?.(a, [a[0] + way[0] * long, a[1] + way[1] * long]) ?? []) : [[0, long]]).map(([p, q]) => {
+    const middle = [a[0] + way[0] * (p + q) / 2, a[1] + way[1] * (p + q) / 2];
+    const look8 = q - p < long - 0.000001 ? slid(rest, (p + q) / 2 - long / 2, sizeOf) : rest;
+    return onTop({ ...look8, shape: "cube", at: [middle[0], middle[1], z + surface.at(...middle)], size: [mm6(q - p), mm6(wide), mm6(thick)], turn: pitchedOn(slope(middle, way), slope(middle, [-way[1], way[0]]), deg3(Math.atan2(way[1], way[0]))) }, surface);
+  });
+  const at = prims[0].at;
+  return { name, at, framed: true, prims: prims.map((prim) => ({ ...prim, at: [mm6(prim.at[0] - at[0]), mm6(prim.at[1] - at[1]), mm6(prim.at[2] - at[2])] })) };
+}, liesFlat = (object) => !object.framed && !object.turn?.some((v) => v) && !object.vehicle && !object.behaviour && Boolean(object.prims?.length) && object.prims.every((prim) => (prim.shape ?? "cube") === "cube" && !prim.kind && !prim.turn?.some((v) => v) && !prim.behaviour && !prim.light) && object.prims.some((prim) => Math.max(prim.size[0], prim.size[1]) >= 3), goes = (object) => Boolean(object.vehicle || object.behaviour?.type === "route"), PAINTED2, painted = (object) => !object.framed && object.prims?.length === 1 && object.prims.every((prim) => prim.kind === "street" && PAINTED2.has(prim.piece)), PIECES_WIDE, lengthsOf2 = (piece, whole4) => {
+  if (piece === "arrow" || !(whole4 > LINE2.knot))
+    return [{ width: whole4, middle: 0 }];
+  const span = piece === "zebra" ? Math.floor(whole4 + 0.000000001) : whole4;
+  const count = Math.ceil(span / LINE2.knot - 0.000000001);
+  const widths = piece === "zebra" ? Array.from({ length: count }, (_, k) => Math.floor(span / count) + (k < span % count ? 1 : 0)) : Array.from({ length: count }, () => span / count);
+  let from = -span / 2;
+  return widths.map((width) => {
+    const middle = from + width / 2;
+    from += width;
+    return { width, middle };
+  });
+}, fitPiece = (made4, fit) => {
+  const { map, surface, level } = fit;
+  const raise = ([x, y, z = level]) => {
+    const here = map.at(x, y);
+    return [...here.map(mm6), mm6(z - level + surface.at(...here))];
+  };
+  const turned4 = (turn3, going2) => [turn3?.[0] ?? 0, turn3?.[1] ?? 0, going2 ? map.yYaw(turn3?.[2]) : map.xYaw(turn3?.[2])];
+  const going = new Map(made4.objects.map((object) => [object.name, goes(object)]));
+  const flat2 = new Set(made4.objects.filter(liesFlat).map((object) => object.name));
+  const lying2 = new Map(made4.objects.filter(painted).map((object) => [object.name, object]));
+  const onSurface = onSurfaceOf(surface);
+  const [painting, paintedClones, laidPaint] = [[], [], new Set];
+  const paint = (object, where) => {
+    const [prim] = object.prims;
+    const whole4 = prim.width ?? PIECES_WIDE[prim.piece];
+    const lengths2 = lengthsOf2(prim.piece, whole4);
+    const yaw = (where.turn?.[2] ?? 0) * Math.PI / 180;
+    for (const { width, middle } of lengths2) {
+      const name = lengths2.length > 1 ? `${object.name} ${mm6(width)}` : object.name;
+      const at = raise([where.at[0] + Math.cos(yaw) * middle, where.at[1] + Math.sin(yaw) * middle, where.at[2]]);
+      const turn3 = onSurface(at, map.xYaw(where.turn?.[2]));
+      if (laidPaint.has(name)) {
+        paintedClones.push({ of: name, at, turn: turn3 });
+        continue;
+      }
+      laidPaint.add(name);
+      painting.push({ ...object, name, at, turn: turn3, prims: object.prims.map((each) => ({ ...each, ...lengths2.length > 1 && { width: mm6(width) } })) });
+    }
+  };
+  for (const object of lying2.values())
+    paint(object, object);
+  for (const clone of made4.clones ?? [])
+    if (lying2.has(clone.of))
+      paint(lying2.get(clone.of), clone);
+  const objects = made4.objects.filter((object) => !lying2.has(object.name)).map((object) => {
+    if (object.framed) {
+      const { framed: _, ...laid3 } = object;
+      return laid3;
+    }
+    if (liesFlat(object)) {
+      const [ox, oy, oz] = object.at;
+      const here2 = raise(object.at);
+      const tiles = object.prims.flatMap((prim) => tilesOf({ ...prim, at: [ox + prim.at[0], oy + prim.at[1], oz + prim.at[2]] }, fit));
+      return { ...object, at: here2, turn: [0, 0, 0], prims: tiles.map((tile) => ({ ...tile, at: [mm6(tile.at[0] - here2[0]), mm6(tile.at[1] - here2[1]), mm6(tile.at[2] - here2[2])] })) };
+    }
+    const parked = surface.pivot && object.vehicle && object.behaviour?.type !== "route";
+    const here = raise(object.at);
+    const moved = { ...object, at: here, turn: parked ? onSurface(here, map.yYaw(object.turn?.[2] ?? 0)) : turned4(object.turn, goes(object)) };
+    if (object.behaviour?.type === "route" && Array.isArray(object.behaviour.points)) {
+      const r0 = (object.turn?.[2] ?? 0) * Math.PI / 180;
+      const r1 = moved.turn[2] * Math.PI / 180;
+      const into = ([x, y]) => [x * Math.cos(r0) - y * Math.sin(r0), x * Math.sin(r0) + y * Math.cos(r0)];
+      const outOf = ([X2, Y]) => [X2 * Math.cos(r1) + Y * Math.sin(r1), -X2 * Math.sin(r1) + Y * Math.cos(r1)];
+      const points = object.behaviour.points.map(([px, py, pz = 0, hx = 0, hy = 0, hz = 0]) => {
+        const [gx, gy] = into([px, py]);
+        const [X2, Y] = map.at(object.at[0] + gx, object.at[1] + gy);
+        const [lx, ly] = outOf([X2 - moved.at[0], Y - moved.at[1]]);
+        const [hgx, hgy] = into([hx, hy]);
+        const [hX, hY] = outOf(map.linear([hgx, hgy]));
+        const rise = surface.at(...map.at(object.at[0] + gx, object.at[1] + gy)) - surface.at(...map.at(object.at[0], object.at[1]));
+        return [mm6(lx), mm6(ly), mm6(pz + rise), mm6(hX), mm6(hY), mm6(hz)];
+      });
+      moved.behaviour = { ...object.behaviour, points };
+    }
+    return moved;
+  });
+  return {
+    ...made4,
+    objects: [...objects, ...painting],
+    clones: [...(made4.clones ?? []).filter((clone) => !lying2.has(clone.of)).map((clone) => ({ ...clone, at: raise(clone.at), turn: flat2.has(clone.of) ? [0, 0, 0] : turned4(clone.turn, going.get(clone.of)) })), ...paintedClones],
+    trees: (made4.trees ?? []).map((tree2) => ({ ...tree2, at: raise(tree2.at) })),
+    ...made4.animals && { animals: made4.animals.map((animal) => ({ ...animal, at: raise(animal.at) })) }
+  };
+}, borderHalf = (land2, side2, { origin, level, lean, lane, line, stand: stand5, plant: plant2, down = 0, whole: whole4 = false, avenue = false }) => {
+  const own = land2.sides[side2];
+  const [W2, D2] = land2.size;
+  const across = side2 === "south" || side2 === "north";
+  const placeAt = (c2, t) => {
+    const k = t * lean;
+    return {
+      south: [origin[0] + c2, origin[1] + k],
+      north: [origin[0] + c2, origin[1] + D2 - k],
+      west: [origin[0] + k, origin[1] + c2],
+      east: [origin[0] + W2 - k, origin[1] + c2]
+    }[side2];
+  };
+  const out = { south: [0, -1], north: [0, 1], west: [-1, 0], east: [1, 0] }[side2];
+  const objects = [];
+  const deep = BORDER2.road / 2 * lean;
+  const [from, to] = across ? [0, own.long] : [deep, own.long - deep];
+  const long = to - from;
+  const count = !lane ? 0 : whole4 ? 1 : Math.ceil(long / 50);
+  for (let n = 0;n < count; n++) {
+    const [c0, c1] = [from + long * n / count, from + long * (n + 1) / count];
+    const [x0, y0] = placeAt(c0, 0);
+    const [x1, y1] = placeAt(c1, BORDER2.road / 2);
+    objects.push({ name: `lane ${n + 1}`, at: [mm6((x0 + x1) / 2), mm6((y0 + y1) / 2), level], prims: [{ name: "lane", shape: "cube", at: [0, 0, mm6(-down / 2)], size: across ? [mm6(c1 - c0), mm6(deep), mm6(0.04 + down)] : [mm6(deep), mm6(c1 - c0), mm6(0.04 + down)], ...lane, ...whole4 && { pin: { south: "y-", north: "y+", west: "x-", east: "x+" }[side2] } }] });
+  }
+  const runs2 = line?.runs?.find((run) => run.kind === "border" && run.side === side2) ?? null;
+  if (!avenue && runs2 && runs2.rail === "high")
+    return { objects, clones: [], trees: [] };
+  const { lamps, trees } = furnitureOf(own.border);
+  const c = (d) => own.own(d / own.border.long);
+  const kerb = avenue ? AVENUE.kerb : BORDER2.road / 2;
+  const square = (d, t) => {
+    const [X2, Y] = own.at(d, t);
+    const [x, y] = land2.where(X2, Y);
+    return [origin[0] + x, origin[1] + y];
+  };
+  const at = (d, t) => avenue ? square(d, t) : placeAt(c(d), t);
+  const outAt = (d) => {
+    if (!avenue)
+      return out;
+    const [p, q] = [square(d, 0), square(d, 1)];
+    const long2 = Math.hypot(p[0] - q[0], p[1] - q[1]);
+    return [(p[0] - q[0]) / long2, (p[1] - q[1]) / long2];
+  };
+  for (const d of lamps)
+    stand5(`border lamp ${side2}`, "arm", at(d, kerb + BORDER2.lamp), outAt(d));
+  for (const d of trees)
+    plant2(...at(d, kerb + BORDER2.tree));
+  if (avenue && runs2?.rail === "high") {
+    for (const d of lamps)
+      stand5(`median lamp ${side2}`, "lamp", at(d, MEDIAN_WALK.in), outAt(d));
+    for (const d of trees)
+      plant2(...at(d, MEDIAN_WALK.in), { median: true, scale: MEDIAN_WALK.scale });
+  }
+  return { objects, clones: [], trees: [] };
+}, MEDIAN_WALK, LIFT_ALONG, stationLayout = (line, station, { ground, inStreet, lift: lift2 = null, exact = false, roof: roof2 = 3.6 }) => {
+  const here = line.at(station.d);
+  const high = station.rail === "high";
+  const way = here.way;
+  const left = [-way[1], way[0]];
+  const off = (exact ? -1 : 1) * (RAILS3.body / 2 + RAILS3.gap + RAILS3.platform.wide / 2);
+  const at = [here.x + left[0] * off, here.y + left[1] * off];
+  const top = station.at[2] + RAILS3.platform.over;
+  const [half, back] = [RAILS3.platform.long / 2, RAILS3.platform.wide / 2];
+  const place = (a, c = 0) => [at[0] + way[0] * a + left[0] * c, at[1] + way[1] * a + left[1] * c];
+  const onPavement = (a, c = 0) => !inStreet(...place(a, c));
+  if (exact) {
+    const bridge2 = bridgeAt({ place, onPavement, ground, way, top, rails: station.at[2] + TOP, roof: roof2, back, half, lift: lift2 });
+    const box7 = (kind, a, c, long, wide) => ({ kind, at: place(a, c), way, long: long + 2, wide: wide + 2 });
+    const keeps3 = [box7("platform", 0, 0, 2 * half, 2 * back), ...bridge2 ? bridge2.keeps.map(({ kind, a, c, long, wide }) => box7(kind, a, c, long, wide)) : []];
+    return { high, at, top, way, left, ways: [], lift: bridge2?.lift ?? null, keeps: keeps3, bridge: bridge2 };
+  }
+  const stairEnd = high ? [1, -1].find((end) => [0.5, 1].every((k) => onPavement((half + RAILS3.stair * k) * end))) ?? null : null;
+  const ways = (high ? stairEnd ? [stairEnd] : [] : [-1, 1]).map((end) => {
+    const climb = (run2) => top - (ground(...place(end * (half + run2 / 2))) + BORDER2.kerb);
+    const steps = clamp31(Math.round(climb(high ? RAILS3.stair : RAILS3.steps) / STAIR2.riser), 3, STAIR2.most);
+    const [tread, landing] = high ? [STAIR2.tread, STAIR2.landing] : [Math.max(0.1, RAILS3.steps / steps), 0];
+    const run = high ? steps * tread + landing - tread : RAILS3.steps;
+    const middle = place(end * (half + run / 2));
+    const from = ground(...middle) + BORDER2.kerb;
+    return { end, at: middle, from, rise: top - from, steps, tread, landing, run };
+  });
+  const across = lift2 && !exact ? back + 0.05 + lift2.reach : 0;
+  const reach = lift2 ? half + 0.05 + lift2.reach : 0;
+  const along4 = !(high && lift2) ? null : exact ? (stairEnd ? [-stairEnd] : [1, -1]).map((end) => end * reach).find((a) => [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1], [-Math.sign(a) * 2.6, 0]].every(([k, c]) => onPavement(a + k * lift2.half, c))) ?? null : LIFT_ALONG.find((a) => [[0, across], [1, across + 1], [1, across - 1], [-1, across + 1], [-1, across - 1], [1, back - 3], [-1, back - 3]].every(([k, c]) => onPavement(a + k * lift2.half, c))) ?? null;
+  const lifted = along4 === null ? null : (() => {
+    const foot = place(along4, across);
+    const base = ground(...foot) + BORDER2.kerb;
+    const facing = exact ? [-Math.sign(along4) * way[0], -Math.sign(along4) * way[1]] : [-left[0], -left[1]];
+    return { at: foot, along: along4, across, facing, base, rise: top - base };
+  })();
+  const box6 = (kind, a, c, long, wide) => ({ kind, at: place(a, c), way, long: long + 2, wide: wide + 2 });
+  const keeps2 = [
+    box6("platform", 0, 0, 2 * half, 2 * back),
+    ...ways.map(({ end, run }) => high ? box6("stair", end * (half + run / 2), 0, run, STAIR2.width) : box6("steps", end * (half + run / 2), 0, run, 2 * back)),
+    ...lifted ? [box6("lift", along4, across, 2 * lift2.half, 2 * lift2.half), exact ? box6("out", along4 - Math.sign(along4) * (lift2.half + 1.5), 0, 3, 2 * lift2.half) : box6("out", along4, back - 1.5, 2 * lift2.half, 3)] : []
+  ];
+  return { high, at, top, way, left, ways, lift: lifted, keeps: keeps2 };
+}, linePieces = (line, { ground, inStreet, concrete, coachOf: coachOf2, behaviourOf: behaviourOf2, routeTimes: routeTimes2, routeRest: routeRest2, coach: coach2, lift: lift2 = null, exact = false }) => {
+  const [deck, plain] = [{ ...trackDressing("concrete", concrete), surface: { faces: { ...trackDressing("concrete", concrete).surface.faces, 3: { texture: concrete, ...!exact && { emissive: 0.5 } } } }, ...!exact && { light: { on: "night", range: 0 } } }, trackDressing()];
+  const yawOf = ([wx, wy]) => mm6(deg3(Math.atan2(-wx, wy)));
+  const objects = [];
+  const knots = line.heights.knots.map(([d]) => d);
+  const lap = line.length;
+  const platforms = line.stations.filter((station) => station.rail === "high").map((station) => station.d);
+  const alongPlatform = (d) => platforms.some((at) => Math.abs(((d - at) % lap + lap * 1.5) % lap - lap / 2) < RAILS3.platform.long / 2);
+  const platformEnds = platforms.flatMap((at) => [-1, 1].map((end) => ((at + end * RAILS3.platform.long / 2) % lap + lap) % lap));
+  for (const [k, each] of line.stretches.entries()) {
+    const ends = [each.start, each.start + each.long];
+    const bends = knots.filter((d) => d > ends[0] + 0.5 && d < ends[1] - 0.5);
+    const atPlatforms = platformEnds.filter((d) => d > ends[0] + 0.5 && d < ends[1] - 0.5 && bends.every((knot) => Math.abs(knot - d) > 0.5));
+    const cuts = [ends[0], ...[...bends, ...atPlatforms].sort((a, b) => a - b), ends[1]];
+    const pieces = cuts.slice(1).flatMap((to, n) => {
+      const from = cuts[n];
+      const most2 = exact ? 64 : each.kind === "straight" ? 48 : Math.PI / 6 * each.radius;
+      const count = Math.max(1, Math.ceil((to - from) / most2 - 0.000000001));
+      return Array.from({ length: count }, (_, m) => [from + (to - from) * m / count, from + (to - from) * (m + 1) / count]);
+    });
+    for (const [n, [d0, d1]] of pieces.entries()) {
+      const middle = line.at((d0 + d1) / 2);
+      const [z0, z1] = [line.heights.at(d0), line.heights.at(d1)];
+      const level = line.levelAt((d0 + d1) / 2);
+      const high = level !== "ground";
+      const bend = each.kind === "turn" ? mm6(deg3(Math.sign(each.sweep) * (d1 - d0) / each.radius)) : 0;
+      const params = { length: mm6(d1 - d0), ...bend && { bend }, ...Math.abs(z1 - z0) > 0.002 && { rise: mm6(z1 - z0) }, ...high && { bed: 2, left: RAILS3.band / 2, right: RAILS3.band / 2, ...alongPlatform((d0 + d1) / 2) && { walls: exact ? 1 : 2 } } };
+      objects.push({ name: `line ${k + 1}-${n + 1}`, at: [mm6(middle.x), mm6(middle.y), mm6((z0 + z1) / 2)], prims: [trackPart(params, [0, 0, 0], yawOf(middle.way), high ? deck : plain)] });
+    }
+  }
+  let column3 = 0;
+  for (let d = 12;d < line.length; d += 24) {
+    if (line.levelAt(d) === "ground")
+      continue;
+    const here = line.at(d);
+    const top = line.heights.at(d) - 0.8;
+    const foot = ground(here.x, here.y);
+    if (top - foot < 1.2 || inStreet(here.x, here.y) || line.mouths.some((mouth) => d > mouth.from - 1.5 && d < mouth.to + 1.5))
+      continue;
+    column3++;
+    objects.push({ name: `column ${column3}`, at: [mm6(here.x), mm6(here.y), mm6(foot - 0.05)], turn: [0, 0, yawOf(here.way)], prims: [{ name: "column", shape: "cube", at: [0, 0, mm6((top - foot + 0.05) / 2)], size: [0.9, 0.9, mm6(top - foot + 0.05)], material: concrete }] });
+  }
+  for (const [n, station] of line.stations.entries()) {
+    const { high, at: [X2, Y], way, left, top, ways, lift: lifted, bridge: bridge2 } = stationLayout(line, station, { ground, inStreet, lift: lift2, exact, roof: coach2.roof });
+    const foot = ground(X2, Y);
+    const thick = high ? 0.4 : top - foot;
+    const [back, half] = [(exact ? 1 : -1) * (RAILS3.platform.wide / 2), RAILS3.platform.long / 2];
+    const rails = lifted && !exact ? [[-half, lifted.along - (lift2.half - 0.05), "behind"], [lifted.along + (lift2.half - 0.05), half, "ahead"]].map(([from, to, name]) => ({ name: `rail ${name}`, at: (from + to) / 2, long: to - from })) : [{ name: "rail", at: 0, long: 2 * half }];
+    objects.push({
+      name: `station ${n + 1} ${station.side}`,
+      at: [mm6(X2), mm6(Y), mm6(top)],
+      turn: [0, 0, yawOf(way)],
+      prims: [
+        { name: "platform", shape: "cube", at: [0, 0, mm6(-thick / 2)], size: [RAILS3.platform.wide, RAILS3.platform.long, mm6(thick)], material: concrete },
+        ...high ? [
+          ...[-1, 1].map((end) => ({ name: `pier ${end < 0 ? "back" : "front"}`, shape: "cube", at: [0, end * (half - 2), mm6(-(top - foot) / 2)], size: [0.8, 0.8, mm6(top - foot)], material: concrete })),
+          ...rails.map((rail4) => ({ name: rail4.name, shape: "cube", at: [mm6(back - Math.sign(back) * 0.05), mm6(rail4.at), 0.55], size: [0.08, mm6(rail4.long), 1.1], material: exact ? STEEL12 : concrete })),
+          ...exact ? [-1, 1].map((end) => ({ name: `rail ${end < 0 ? "back" : "front"} end`, shape: "cube", at: [0, mm6(end * (half - 0.04)), 0.55], size: [RAILS3.platform.wide, 0.08, 1.1], material: STEEL12 })) : []
+        ] : []
+      ]
+    });
+    for (const { end, at, from, rise, steps, tread, landing } of ways) {
+      objects.push({
+        name: `station ${n + 1} ${station.side} ${high ? "stair" : `steps ${end < 0 ? "behind" : "ahead"}`}`,
+        at: [mm6(at[0]), mm6(at[1]), mm6(from)],
+        turn: [0, 0, mm6(yawOf(way) + (end > 0 ? 180 : 0))],
+        prims: [{ name: "stair", kind: "stairs", steps, height: mm6(Math.min(12, rise)), tread: mm6(tread), ...landing && { landing }, width: high ? STAIR2.width : mm6(RAILS3.platform.wide - 0.2), structure: high ? "stringers" : "solid", railing: high ? "both" : "none", at: [0, 0, mm6(rise / 2)], material: concrete }]
+      });
+    }
+    if (lifted)
+      objects.push(lift2.make(`station ${n + 1} ${station.side} lift`, lifted.at.map(mm6), lifted.facing, mm6(lifted.rise), mm6(lifted.base)));
+    if (bridge2)
+      objects.push(...bridgePieces(bridge2, { name: `station ${n + 1} ${station.side}`, at: [X2, Y], way, left, concrete }));
+  }
+  const trains = [];
+  if (line.stations.length && coachOf2) {
+    const { length: length2 } = line;
+    const first = line.stations[0];
+    const kept3 = first.d + coach2.long * (coach2.count - 1) / 2;
+    const here = line.at(kept3);
+    const yaw = Math.atan2(-here.way[0], here.way[1]);
+    const [cos, sin] = [Math.cos(yaw), Math.sin(yaw)];
+    const cm = (v) => Math.round(v * 100) / 100 + 0;
+    const own = ([x, y, z]) => [cm(x * cos + y * sin), cm(-x * sin + y * cos), cm(z)];
+    const z0 = line.heights.at(kept3);
+    const wrap2 = (d) => (d % length2 + length2) % length2;
+    const marks = [];
+    const mark = (d, reach, call = false, curve = false) => {
+      const w = wrap2(d), same4 = marks.findIndex((each) => Math.min(wrap2(each.d - w), wrap2(w - each.d)) < 0.05);
+      if (same4 < 0)
+        marks.push({ d: w, reach, call, curve });
+      else if (call)
+        marks[same4] = { ...marks[same4], call };
+    };
+    for (const each of line.stretches) {
+      if (each.kind !== "turn")
+        continue;
+      const spans = each.spans ?? spansOf(each);
+      const reach = 4 / 3 * Math.tan(Math.abs(each.sweep) / spans / 4) * each.radius;
+      for (let k = 0;k <= spans; k++)
+        mark(each.start + each.long * k / spans, reach, false, true);
+    }
+    for (const [d] of line.heights.knots)
+      mark(d, 2);
+    for (const station of line.stations.slice(1))
+      mark(station.d + coach2.long * (coach2.count - 1) / 2, 2, true);
+    const ahead = (d) => ((d - kept3) % length2 + length2) % length2;
+    const through = marks.filter((each) => ahead(each.d) > 0.05 && length2 - ahead(each.d) > 0.05).sort((p, q) => ahead(p.d) - ahead(q.d));
+    const calls = through.flatMap((each, n) => each.call ? [n + 1] : []);
+    const onCurve = (d) => (line.stretches.findLast((stretch) => stretch.start <= wrap2(d) + 0.000000001) ?? line.stretches[0]).kind === "turn";
+    const ends = [{ there: 0, kept: true }, ...through.map((each) => ({ there: ahead(each.d), curve: each.curve })), { there: length2, kept: true }];
+    const reaches2 = through.map((each) => each.reach);
+    const shorten = (k, most2) => {
+      if (k > 0 && k <= through.length)
+        reaches2[k - 1] = Math.min(reaches2[k - 1], most2);
+    };
+    for (let k = 0;k + 1 < ends.length; k++) {
+      const [a, b, g] = [ends[k], ends[k + 1], ends[k + 1].there - ends[k].there];
+      if (onCurve(kept3 + (a.there + b.there) / 2)) {
+        if (!(a.curve || a.kept) || !(b.curve || b.kept)) {
+          const r = line.stretches.findLast((stretch) => stretch.start <= wrap2(kept3 + (a.there + b.there) / 2) + 0.000000001).radius;
+          const circle = 4 / 3 * r * Math.tan(g / (4 * r));
+          shorten(k, circle), shorten(k + 1, circle);
+        }
+        continue;
+      }
+      const [ha, hb] = [a.kept ? g / 3 : reaches2[k - 1], b.kept ? g / 3 : reaches2[k]];
+      if (ha + hb <= g)
+        continue;
+      const [fa, fb] = [!a.kept && !a.curve, !b.kept && !b.curve];
+      if (fa && fb)
+        shorten(k, g / 2), shorten(k + 1, g / 2);
+      else if (fa && g - hb >= 0.05)
+        shorten(k, g - hb);
+      else if (fb && g - ha >= 0.05)
+        shorten(k + 1, g - ha);
+      else
+        shorten(k, a.kept ? 2 * g / 3 : g / 2), shorten(k + 1, b.kept ? 2 * g / 3 : g / 2);
+    }
+    const points = through.map((each, n) => {
+      const reach = reaches2[n];
+      const at = line.at(each.d);
+      const climb = line.heights.grade(each.d);
+      return [...own([at.x - here.x, at.y - here.y, line.heights.at(each.d) - z0]), ...own([at.way[0] * reach, at.way[1] * reach, climb * reach])];
+    });
+    const route = { type: "route", speed: line.speed, accel: 0.8, stop: LINE2.stop, mode: "round", face: "yes", points, ...calls.length ? { calls } : { at: "ends" } };
+    const { period } = routeTimes2(behaviourOf2(route, "object", "train"));
+    const every = Math.ceil(period / 60) * 60;
+    const wheelbase = coach2.long - 2 * coach2.bogie.in + coach2.bogie.axles;
+    for (let t = 0;t < line.trains; t++) {
+      for (let n = 0;n < coach2.count; n++) {
+        const behaviour = { ...route, every, ...n && { behind: mm6(n * coach2.long) }, ...t && { since: Math.round(every / line.trains * t * 1000) } };
+        const [rx, ry, rz] = n ? routeRest2(behaviourOf2(behaviour, "object", "train"), wheelbase, true) : [0, 0, 0];
+        trains.push({
+          name: `train ${t + 1} coach ${n + 1}`,
+          at: [mm6(here.x + rx * cos - ry * sin), mm6(here.y + rx * sin + ry * cos), mm6(z0 + 0.27 + rz)],
+          turn: [0, 0, mm6(deg3(yaw))],
+          ...coachOf2({ ends: n === 0 ? "lead" : n === coach2.count - 1 ? "tail" : "middle", doors: exact ? "right" : "left", length: coach2.long }),
+          behaviour
+        });
+      }
+    }
+  }
+  return { line: { objects, clones: [], trees: [] }, train: { objects: trains, clones: [], trees: [] } };
+};
+var init_city_land = __esm(() => {
+  init_land_border();
+  init_track();
+  init_land_line();
+  init_land_streets();
+  init_land_station();
+  PAINTED2 = new Set(["zebra", "line", "arrow"]);
+  PIECES_WIDE = Object.freeze({ zebra: 7.5, line: 3.4, arrow: 1 });
+  MEDIAN_WALK = Object.freeze({ in: 1, scale: 0.75, walk: 2 });
+  LIFT_ALONG = Object.freeze([0, -4, 4, -8, 8, -12, 12]);
+});
+
+// src/build/land-platform.js
+var exports_land_platform = {};
+__export(exports_land_platform, {
+  platformOf: () => platformOf,
+  groupFor: () => groupFor,
+  groundUnder: () => groundUnder,
+  edgesOf: () => edgesOf,
+  PLATFORM: () => PLATFORM3
+});
+var mm7 = (value) => Math.round(value * 1000) / 1000 + 0, deg4 = (radians) => radians * 180 / Math.PI, PLATFORM3, SIDE4, dirOf = ({ normal, u, v }, a, b) => {
+  const point = [0, 1, 2].map((k) => normal[k] + u[k] * a + v[k] * b);
+  const long = Math.hypot(...point);
+  return point.map((c) => c / long);
+}, groundUnder = ({ face: face3, x, y }, elevationAt = bareElevation) => {
+  const n = Math.ceil(SIDE4 * RADIUS / PLATFORM3.every);
+  let [high, low, wet] = [-Infinity, Infinity, 0];
+  for (let i = 0;i <= n; i++)
+    for (let j = 0;j <= n; j++) {
+      const h = elevationAt(dirOf(FACES24[face3], (x + i / n) * SIDE4 - 1, (y + j / n) * SIDE4 - 1));
+      if (h < SEA)
+        wet++;
+      if (h > high)
+        high = h;
+      if (h < low)
+        low = h;
+    }
+  return { high: mm7(high), low: mm7(low), wet: mm7(wet / (n + 1) ** 2) };
+}, platformOf = (parcel, { level = null, elevationAt = bareElevation } = {}) => {
+  const ground = groundUnder(parcel, elevationAt);
+  const over = level ?? Math.ceil((ground.high - SEA + PLATFORM3.hand) * 100) / 100;
+  const height = mm7(SEA + over);
+  const [past, under] = [ground.high - (height - PLATFORM3.hand), height - ground.low];
+  const refused = ground.wet > PLATFORM3.wet ? `the sea lies under ${Math.round(ground.wet * 100)} % of it: ${Math.round(PLATFORM3.wet * 100)} % at most` : past > 0.0005 ? `its ground stands ${past.toFixed(2)} m over its platform less a hand (${PLATFORM3.hand} m): none of it may` : under > PLATFORM3.under + 0.0005 ? `its ground falls ${under.toFixed(1)} m under its platform: ${PLATFORM3.under} m at most` : null;
+  return { height, level: mm7(over), ...ground, refused };
+}, edgesOf = (lines2, { at, z, yaw, material, look: look8 = "steel", most: most2 = 64 }) => {
+  const [objects, clones] = [[], []];
+  const deep = PLATFORM3.under + PLATFORM3.sunk;
+  const railing = PIECES2.railing.size;
+  for (const { side: side2, from, to, inward } of lines2) {
+    const long = Math.hypot(to[0] - from[0], to[1] - from[1]);
+    const [a, b] = (to[0] - from[0]) * inward[1] - (to[1] - from[1]) * inward[0] > 0 ? [from, to] : [to, from];
+    const turn3 = deg4(Math.atan2(b[1] - a[1], b[0] - a[0]));
+    const lay = (name, count, prims) => {
+      for (let k = 0;k < count; k++) {
+        const s = (k + 0.5) / count;
+        const [X2, Y] = at(a[0] + (b[0] - a[0]) * s + inward[0] * PLATFORM3.inside, a[1] + (b[1] - a[1]) * s + inward[1] * PLATFORM3.inside);
+        const place = [mm7(X2), mm7(Y), mm7(z(X2, Y))];
+        const turned4 = [0, 0, mm7(yaw(turn3))];
+        if (k)
+          clones.push({ of: name, at: place, turn: turned4 });
+        else
+          objects.push({ name, at: place, turn: turned4, prims });
+      }
+    };
+    const walls = Math.ceil(long / most2 - 0.000000001);
+    lay(`edge ${side2} wall`, walls, [{ name: "wall", shape: "cube", at: [0, mm7(-PLATFORM3.wall / 2 - PLATFORM3.inside), mm7((PLATFORM3.top - deep) / 2)], size: [mm7(long / walls), PLATFORM3.wall, mm7(PLATFORM3.top + deep)], material }]);
+    const rails = Math.ceil(long / PLATFORM3.rail - 0.000000001);
+    lay(`edge ${side2} railing`, rails, [{ name: "railing", kind: "street", piece: "railing", width: mm7(long / rails), at: [0, mm7(-PLATFORM3.wall / 2 - PLATFORM3.inside), mm7(PLATFORM3.top + railing[2] / 2)], ...streetDressing("railing", look8, false) }]);
+  }
+  return { objects, clones };
+}, groupFor = (parcel, lands, ownLevel) => {
+  const levelOf2 = (land2) => land2.seed.params.level ?? ownLevel(land2.parcel);
+  const near2 = SIDES10.flatMap((side2) => {
+    const other = neighbourOf(parcel, side2);
+    const land2 = lands.find((each) => sameParcel(each.parcel, other));
+    return land2 ? [{ ...land2, side: side2, back: sideTowards(other, parcel), level: levelOf2(land2) }] : [];
+  });
+  const level = near2[0]?.level ?? null;
+  const beside = near2.filter((each) => each.level === level);
+  const walled = beside.reduce((mask, each) => mask & ~SIDE_BITS[each.side], EVERY_SIDE);
+  return { level, beside, walled };
+};
+var init_land_platform = __esm(() => {
+  init_land_border();
+  init_region();
+  init_region_params();
+  init_parcel();
+  init_planet();
+  init_parcel();
+  init_terrain_height();
+  init_survey();
+  init_street();
+  PLATFORM3 = Object.freeze({ under: 7, hand: BORDER2.over, wet: 0.05, every: 4, sunk: 0.5, wall: 0.3, top: BORDER2.kerb, rail: PIECES2.railing.wide[1], inside: 0.05 });
+  SIDE4 = 2 / 2 ** PARCEL_LEVEL;
+});
+
+// src/build/land-looks.js
+var ASPHALT2 = "paving/asphalt/asphalt-024a", KERB_STONE = "paving/tiles/granite-tile-03", LANES = "paving/roads/asphalt-lanes", MOUTHS, CORNER3 = "paving/roads/asphalt-corner", PAVEMENT = "paving/asphalt/concrete-pavement-02", PLAZA = "paving/stone/granite-tile-04", GRASS = "ground/grass/grass-004", CONCRETE7 = "plaster/concrete/concrete-046", SOIL3 = "ground/soil/brown-mud-02", BIKE_TINT, KERB2 = 0.15, UNDER8 = 0.6, PIT2, LAMP4, ARM2;
+var init_land_looks = __esm(() => {
+  MOUTHS = Object.freeze({ two: "paving/roads/asphalt-mouth", in: "paving/roads/asphalt-mouth-in", out: "paving/roads/asphalt-mouth-out", zebra: "paving/roads/asphalt-zebra" });
+  BIKE_TINT = Object.freeze([0.35, 0.75, 0.45]);
+  PIT2 = Object.freeze({ side: 1.2, deep: 0.1, over: 0.021 });
+  LAMP4 = Object.freeze({ look: "black", lit: true });
+  ARM2 = Object.freeze({ reach: 1.1, sunk: 0.1 });
+});
+
+// src/build/land-frame.js
+var exports_land_frame = {};
+__export(exports_land_frame, {
+  mouthOf: () => mouthOf,
+  groundsOnLand: () => groundsOnLand,
+  frameOf: () => frameOf5,
+  frameGridOf: () => frameGridOf,
+  edgeOf: () => edgeOf3
+});
+var mm8 = (value) => Math.round(value * 1000) / 1000 + 0, frameGridOf = (land2, { xs: inX = [], ys: inY = [], border = 2 * AVENUE.kerb } = {}) => {
+  const sq = land2.square;
+  const [W2, H2] = sq.size;
+  const line = (kind, width, mid5, slope = 0) => ({ kind, width: mm8(width), from: mm8(mid5 - width / 2), to: mm8(mid5 + width / 2), mid: mm8(mid5), ...slope && { slope: Math.round(slope * 1e6) / 1e6 } });
+  const slopes2 = [sq.west(1) - sq.west(0), sq.east(1) - sq.east(0)];
+  const inner = (lines2) => [...lines2].sort((a, b) => a.mid - b.mid).map((each) => line(each.kind ?? "street", each.width, each.mid));
+  const xs = [line("border", border * Math.hypot(1, slopes2[0]), sq.west(0), slopes2[0]), ...inner(inX), line("border", border * Math.hypot(1, slopes2[1]), sq.east(0), slopes2[1])];
+  const ys = [line("border", border, -H2 / 2), ...inner(inY), line("border", border, H2 / 2)];
+  const [nx, ny] = [xs.length - 1, ys.length - 1];
+  const kerbW = (y) => xs[0].to + (xs[0].slope ?? 0) * y;
+  const kerbE = (y) => xs[nx].from + (xs[nx].slope ?? 0) * y;
+  const blocks2 = [];
+  for (let j = 0;j < ny; j++)
+    for (let i = 0;i < nx; i++) {
+      const [y0, y1] = [ys[j].to, ys[j + 1].from];
+      const x0 = mm8(i === 0 ? Math.max(kerbW(y0), kerbW(y1)) : xs[i].to);
+      const x1 = mm8(i === nx - 1 ? Math.min(kerbE(y0), kerbE(y1)) : xs[i + 1].from);
+      const wedges = [
+        ...i === 0 ? [{ side: "west", y0, y1, kerb: [mm8(kerbW(y0)), mm8(kerbW(y1))], edge: x0 }] : [],
+        ...i === nx - 1 ? [{ side: "east", y0, y1, kerb: [mm8(kerbE(y0)), mm8(kerbE(y1))], edge: x1 }] : []
+      ];
+      blocks2.push({ i, j, x0, x1, y0, y1, x: mm8((x0 + x1) / 2), y: mm8((y0 + y1) / 2), ...wedges.length && { wedges } });
+    }
+  const nodes = [];
+  for (let j = 0;j <= ny; j++)
+    for (let i = 0;i <= nx; i++)
+      nodes.push({ i, j, x: mm8(xs[i].mid + (xs[i].slope ?? 0) * ys[j].mid), y: ys[j].mid, inner: i > 0 && i < nx && j > 0 && j < ny });
+  return { width: W2, depth: H2, nx, ny, blocks: blocks2, nodes, xs, ys, square: true, gone: [] };
+}, mouthOf = (grid, side2, { map, shear: shear2 }) => {
+  const across = side2 === "south" || side2 === "north";
+  const stretch = side2 === "south" ? 0 : grid.ny - 1;
+  const half = PIT2.side / 2;
+  return (x, y) => {
+    const [gx, gy] = map.back(...shear2.at(x, y));
+    const ends = across ? [grid.xs[0], grid.xs[grid.nx]].some((line) => gx > line.from + (line.slope ?? 0) * gy - half && gx < line.to + (line.slope ?? 0) * gy + half) : [grid.ys[0], grid.ys[grid.ny]].some((line) => gy > line.from - half && gy < line.to + half);
+    return ends || (across ? grid.xs.slice(1, -1).some((line, k) => !grid.gone?.includes(`${k + 1}:${stretch}`) && gx > line.from - half && gx < line.to + half) : grid.ys.slice(1, -1).some((line) => line.kind !== "walk" && gy > line.from - half && gy < line.to + half));
+  };
+}, edgeOf3 = (grid, side2, { walled, map, surface }) => {
+  const { xs, ys, nx, ny } = grid;
+  const lineAt2 = (k, y) => xs[k].mid + (xs[k].slope ?? 0) * y;
+  const [y0, y1] = [ys[0].mid, ys[ny].mid];
+  const past = (k) => joinsOver(walled, k === 0 ? "west" : "east") ? (PLATFORM3.wall + 0.01) * Math.hypot(1, xs[k].slope ?? 0) : 0;
+  const along4 = (y) => ({ from: [lineAt2(0, y) - past(0), y], to: [lineAt2(nx, y) + past(nx), y] });
+  const leaning = (k) => {
+    const slope = xs[k].slope ?? 0, hyp = Math.hypot(1, slope);
+    return { from: [lineAt2(k, y0), y0], to: [lineAt2(k, y1), y1], inward: k === 0 ? [1 / hyp, -slope / hyp] : [-1 / hyp, slope / hyp] };
+  };
+  const line = { south: { ...along4(y0), inward: [0, 1] }, north: { ...along4(y1), inward: [0, -1] }, west: leaning(0), east: leaning(nx) }[side2];
+  return edgesOf([{ side: side2, ...line }], { at: (x, y) => map.at(x, y), z: (X2, Y) => surface.at(X2, Y), yaw: (turn3) => map.xYaw(turn3), material: CONCRETE7 });
+}, looksOf2 = (sizeOf) => {
+  const look8 = (texture) => ({ texture, scale: sizeOf(texture) });
+  return { plain: look8(ASPHALT2), lanes: { texture: LANES }, bike: { ...look8(ASPHALT2), tint: [...BIKE_TINT] }, kerb: look8(KERB_STONE), median: look8(GRASS), plaza: look8(PLAZA), paving: look8(PAVEMENT), mouths: MOUTHS, corner: CORNER3 };
+}, frameOf5 = (site2, surveyed, { level = null, walled, xs = [], ys = [], plant: plant2 = null, sizeOf = () => null } = {}) => {
+  const platform = platformOf(site2.parcel, { level });
+  if (platform.refused && level === null)
+    return { refused: platform.refused };
+  const plot = landOn(site2.parcel, site2.toLocal, platform.height);
+  const grid = frameGridOf(plot, { xs, ys });
+  const [W2, D2] = plot.size;
+  const map = squareMapOf(plot);
+  const shear2 = mapOf(plot, [-W2 / 2, -D2 / 2]);
+  const sectionOf = (way, k) => {
+    const line = (way === "x" ? grid.ys : grid.xs)[k];
+    return line.kind === "border" ? null : [{ c0: 0, c1: line.width, look: "lanes" }];
+  };
+  const surface = groundOn(plot, grid, surveyed, surfaceOf2(plot, surveyed), sectionOf, { painted: true, level: plot.platform, walled: (side2) => joinsOver(walled, side2) });
+  if (surface.refused)
+    return { refused: surface.refused };
+  const L = surface.level;
+  const deep = mm8(Math.max(...plot.corners.map((corner2) => corner2[2]), surface.at(...map.at(0, 0))) - surface.low + UNDER8 + 0.5);
+  const fit = (along4) => (made4) => fitPiece(made4, { map: along4, surface, level: L, sizeOf });
+  const pitted = (side2) => (made4) => {
+    const yaw = shear2.xYaw(0);
+    const pits = made4.trees.map((tree2) => ({ at: [mm8(tree2.at[0]), mm8(tree2.at[1]), mm8(tree2.at[2] + PIT2.over - PIT2.deep / 2)], turn: pitchedOn(0, 0, yaw) }));
+    const [first, ...rest] = pits;
+    return {
+      ...made4,
+      objects: [...made4.objects, ...first ? [{ name: `tree pit ${side2}`, ...first, prims: [{ name: "soil", shape: "cube", at: [0, 0, 0], size: [PIT2.side, PIT2.side, PIT2.deep], material: SOIL3 }] }] : []],
+      clones: [...made4.clones, ...rest.map((pit) => ({ of: `tree pit ${side2}`, ...pit }))]
+    };
+  };
+  const furnisher = (objects, clones) => {
+    const made4 = new Set;
+    return (name, piece, [x, y], facing) => {
+      const turn3 = [0, 0, mm8(Math.atan2(-facing[0], facing[1]) * 180 / Math.PI)];
+      const [reach, sunk] = piece === "arm" ? [ARM2.reach, ARM2.sunk] : piece === "double" ? [0, ARM2.sunk] : [0, 0];
+      const at = [mm8(x + facing[0] * reach), mm8(y + facing[1] * reach), mm8(L + KERB2 - sunk)];
+      if (made4.has(name))
+        return clones.push({ of: name, at, turn: turn3 });
+      made4.add(name);
+      const size = KINDS.street.fit(constrainKind("street", { piece }).params);
+      objects.push({ name, at, turn: turn3, prims: [{ name: piece, kind: "street", piece, at: [0, 0, mm8(size[2] / 2)], ...streetDressing(piece, LAMP4.look, LAMP4.lit) }] });
+    };
+  };
+  const borderPiece = (side2) => {
+    const [objects, clones, trees] = [[], [], []];
+    const stand5 = furnisher(objects, clones);
+    const inMouth = mouthOf(grid, side2, { map, shear: shear2 });
+    let n = 0;
+    const made4 = borderHalf(plot, side2, {
+      origin: [-W2 / 2, -D2 / 2],
+      level: L,
+      lean: plot.lean,
+      line: null,
+      down: deep,
+      whole: true,
+      avenue: true,
+      lane: null,
+      stand: (name, piece, at, facing) => {
+        if (!inMouth(...at))
+          stand5(name, piece, at, facing);
+      },
+      plant: (x, y, options = {}) => {
+        const tree2 = plant2?.(n++, [x, y], options);
+        if (tree2 && !inMouth(x, y))
+          trees.push({ ...tree2, at: [mm8(x), mm8(y), mm8(L + KERB2)] });
+      }
+    });
+    return { objects: [...made4.objects, ...objects], clones, trees };
+  };
+  const blockPiece = (block3) => {
+    const [z, thick] = [mm8(KERB2 / 2 - deep / 2), mm8(KERB2 + deep)];
+    const [w, d] = [block3.x1 - block3.x0, block3.y1 - block3.y0];
+    const [nx, ny] = [Math.ceil(w / 64 - 0.000000001), Math.ceil(d / 64 - 0.000000001)];
+    const prims = [];
+    for (let a = 0;a < nx; a++)
+      for (let b = 0;b < ny; b++) {
+        prims.push({ name: "pavement", shape: "cube", at: [mm8(-w / 2 + w * (a + 0.5) / nx), mm8(-d / 2 + d * (b + 0.5) / ny), z], size: [mm8(w / nx), mm8(d / ny), thick], material: PAVEMENT, surface: { faces: Object.fromEntries([1, 2, 3, 4].map((face3) => [face3, { texture: KERB_STONE }])) } });
+      }
+    const objects = [{ name: `block ${block3.i + 1}-${block3.j + 1}`, at: [block3.x, block3.y, L], prims }];
+    for (const wedge of block3.wedges ?? []) {
+      const n = Math.ceil((wedge.y1 - wedge.y0) / 64 - 0.000000001);
+      const kerbAt = (y) => wedge.kerb[0] + (wedge.kerb[1] - wedge.kerb[0]) * (y - wedge.y0) / (wedge.y1 - wedge.y0);
+      for (let k = 0;k < n; k++) {
+        const [ya, yb] = [k === 0 ? wedge.y0 : wedge.y0 + (wedge.y1 - wedge.y0) * k / n, k === n - 1 ? wedge.y1 : wedge.y0 + (wedge.y1 - wedge.y0) * (k + 1) / n];
+        const [edge, kerb] = [[wedge.edge, wedge.edge], n === 1 ? wedge.kerb : [kerbAt(ya), kerbAt(yb)]];
+        const made4 = bandTiles({ name: `block ${block3.i + 1}-${block3.j + 1} wedge ${wedge.side}${n > 1 ? ` ${k + 1}` : ""}`, y0: ya, y1: yb, left: wedge.side === "west" ? kerb : edge, right: wedge.side === "west" ? edge : kerb, z, thick, rest: { name: "pavement", material: PAVEMENT } }, { map, surface, level: L, sizeOf });
+        if (made4)
+          objects.push(made4);
+      }
+    }
+    return { objects, clones: [], trees: [] };
+  };
+  const SIDES11 = ["south", "east", "north", "west"];
+  const atSide = { south: [0, -D2 / 2], north: [0, D2 / 2], west: [-W2 / 2, 0], east: [W2 / 2, 0] };
+  const once = (make, along4 = map, post2 = (made4) => made4) => {
+    let made4 = null;
+    return () => made4 ??= post2(fit(along4)(make()));
+  };
+  const pieces = [
+    { key: "ground", at: [0, 0], first: true, make: once(() => ({ objects: streetsOf(surface.bodies, { map, bottom: mm8(surface.low - UNDER8 - 0.5), looks: looksOf2(sizeOf) }), clones: [], trees: [] })) },
+    ...grid.blocks.map((block3) => ({ key: `block-${block3.i + 1}-${block3.j + 1}`, at: [block3.x, block3.y], make: once(() => blockPiece(block3)) })),
+    ...SIDES11.map((side2) => ({ key: `border-${side2}`, at: atSide[side2], make: once(() => borderPiece(side2), shear2, pitted(side2)) })),
+    ...SIDES11.filter((side2) => joinsOver(walled, side2)).map((side2) => {
+      let made4 = null;
+      return { key: `edge-${side2}`, at: atSide[side2], make: () => made4 ??= { ...edgeOf3(grid, side2, { walled, map, surface }), trees: [] } };
+    })
+  ].map((piece) => ({ ...piece, at: map.at(...piece.at).map(mm8) }));
+  return { refused: null, plot, grid, map, shear: shear2, surface, level: L, pieces };
+}, groundsOnLand = (site2, surveyed, { level = null, walled, width, depth, inset, gate, tree: tree2, random, sizeOf = () => null, make }) => {
+  const frame = frameOf5(site2, surveyed, { level, walled, plant: () => tree2(), sizeOf });
+  if (frame.refused)
+    return { refused: frame.refused };
+  const [block3] = frame.grid.blocks;
+  const walk = BORDER2.walk;
+  const [x0, x1, y0, y1] = [block3.x0 + walk, block3.x1 - walk, block3.y0 + walk, block3.y1 - walk];
+  const room2 = [Math.min(x1, -x0) * 2 - 2 * inset, Math.min(y1, -y0) * 2 - 2 * inset];
+  const flat2 = (x, y) => ({ ground: frame.surface.at(x, y) + KERB2, water: null });
+  const made4 = make(Math.min(width, room2[0]), Math.min(depth, room2[1]), flat2);
+  if (made4.reasons.length)
+    return { refused: null, made: made4 };
+  const objects = [...made4.objects], clones = [...made4.clones], trees = [...made4.trees];
+  for (const piece of frame.pieces) {
+    const laid3 = piece.make();
+    objects.push(...laid3.objects);
+    clones.push(...laid3.clones);
+    trees.push(...laid3.trees);
+  }
+  const { x0: px0, x1: px1, y0: py0, y1: py1 } = made4.bounds;
+  const bands = [[x0, -gate, y0, py0], [gate, x1, y0, py0], [x0, x1, py1, y1], [x0, px0, py0, py1], [px1, x1, py0, py1]].filter(([a0, a1, b0, b1]) => a1 - a0 > 0.5 && b1 - b0 > 0.5);
+  const top = made4.level;
+  for (const [n, [a0, a1, b0, b1]] of bands.entries()) {
+    const [nx, ny] = [Math.ceil((a1 - a0) / 64 - 0.000000001), Math.ceil((b1 - b0) / 64 - 0.000000001)];
+    const [cx, cy] = [(a0 + a1) / 2, (b0 + b1) / 2];
+    const under = flat2(cx, cy).ground;
+    const prims = [];
+    for (let a = 0;a < nx; a++)
+      for (let b = 0;b < ny; b++) {
+        const [w, d] = [(a1 - a0) / nx, (b1 - b0) / ny];
+        prims.push({ name: "lawn", shape: "cube", at: [mm8(a0 + w * (a + 0.5) - cx), mm8(b0 + d * (b + 0.5) - cy), mm8((under - top) / 2)], size: [mm8(w), mm8(d), mm8(top - under)], material: GRASS });
+      }
+    objects.push({ name: `lawn ${n + 1}`, at: [mm8(cx), mm8(cy), mm8(top)], prims });
+    const wanted = Math.round((a1 - a0) * (b1 - b0) / 260);
+    for (let tries = 0, planted = 0;planted < wanted && tries < wanted * 12; tries++) {
+      const [x, y] = [a0 + 2 + random() * (a1 - a0 - 4), b0 + 2 + random() * (b1 - b0 - 4)];
+      if (a1 - a0 < 4 || b1 - b0 < 4 || trees.some((each) => Math.hypot(each.at[0] - x, each.at[1] - y) < 6))
+        continue;
+      trees.push({ ...tree2(), at: [mm8(x), mm8(y), mm8(top)] });
+      planted++;
+    }
+  }
+  const [xs, ys] = [frame.plot.square.corners.map((c) => c[0]), frame.plot.square.corners.map((c) => c[1])];
+  return {
+    refused: null,
+    made: {
+      ...made4,
+      objects,
+      clones,
+      trees,
+      stats: { ...made4.stats, trees: trees.length },
+      bounds: { x0: mm8(Math.min(...xs)), x1: mm8(Math.max(...xs)), y0: mm8(Math.min(...ys)), y1: mm8(Math.max(...ys)) },
+      land: { key: frame.plot.key, heightAt: (X2, Y) => frame.surface.at(X2, Y), grid: frame.grid, back: (X2, Y) => frame.map.back(X2, Y) }
+    }
+  };
+};
+var init_land_frame = __esm(async () => {
+  init_land_border();
+  init_land_platform();
+  init_land_streets();
+  init_city_land();
+  init_street();
+  init_region_params();
+  init_land_looks();
+  await init_kinds();
+});
+
+// src/build/bank.js
+var exports_bank = {};
+__export(exports_bank, {
+  withImported: () => withImported,
+  showBankImage: () => showBankImage,
+  importedJSON: () => importedJSON,
+  forgetOrigins: () => forgetOrigins,
+  fetchFirst: () => fetchFirst,
+  bankURLs: () => bankURLs,
+  bankJSON: () => bankJSON,
+  PUBLIC_BANK: () => PUBLIC_BANK,
+  LOCAL_FIRST: () => LOCAL_FIRST,
+  IMPORTED: () => IMPORTED
+});
+var PUBLIC_BANK = "https://assets.ovgrid.com/textures/v2/", LOCAL, TIMEOUT = 4000, PATIENCE = 30000, LOCAL_HOSTS, where, first, LOCAL_FIRST, bankURLs = (file) => LOCAL_FIRST ? [LOCAL + file, PUBLIC_BANK + file] : [PUBLIC_BANK + file, LOCAL + file], answering, fetchFirst = async (urls, { timeout = TIMEOUT, patience = PATIENCE } = {}) => {
+  for (const url of urls) {
+    const { origin } = new URL(url);
+    const known = answering.get(origin);
+    if (known && !await known)
+      continue;
+    let settle2 = null;
+    if (!known)
+      answering.set(origin, new Promise((resolve2) => settle2 = resolve2));
+    const controller = new AbortController;
+    const timer = setTimeout(() => controller.abort(), settle2 ? timeout : patience);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      settle2?.(true);
+      if (response.ok)
+        return response;
+    } catch {
+      settle2?.(false);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw new Error(`${urls[0]}: not in the texture bank`);
+}, forgetOrigins = () => answering.clear(), bankJSON = async (file) => (await fetchFirst(bankURLs(file))).json(), IMPORTED, imported = null, importedJSON = () => imported ??= fetch(`${IMPORTED}index.json`).then((response) => response.ok ? response.json() : { materials: [] }).catch(() => ({ materials: [] })), withImported = async (index) => ({ ...index, materials: [...index.materials, ...(await importedJSON()).materials] }), showBankImage = (image, file) => {
+  const urls = bankURLs(file);
+  let at = 0;
+  image.onerror = () => {
+    if (++at < urls.length)
+      image.src = urls[at];
+    else
+      image.onerror = null;
+  };
+  image.src = urls[0];
+};
+var init_bank = __esm(() => {
+  LOCAL = new URL("../../assets/textures/", import.meta.url).href;
+  LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+  where = globalThis.location;
+  first = new URLSearchParams(where?.search).get("bank") ?? (LOCAL_HOSTS.has(where?.hostname) ? "local" : "public");
+  LOCAL_FIRST = first === "local";
+  answering = new Map;
+  IMPORTED = new URL("../../assets/imported/", import.meta.url).href;
+});
+
+// src/build/land-hook.js
+var kit = null, fetching = null, readyForLand = async (edition, from = 31) => {
+  if (edition < from || kit)
+    return;
+  kit = await (fetching ??= Promise.all([
+    Promise.resolve().then(() => (init_land_border(), exports_land_border)),
+    Promise.resolve().then(() => (init_land_grid(), exports_land_grid)),
+    Promise.resolve().then(() => (init_land_line(), exports_land_line)),
+    Promise.resolve().then(() => (init_city_land(), exports_city_land)),
+    Promise.resolve().then(() => (init_land_streets(), exports_land_streets)),
+    Promise.resolve().then(() => (init_land_station(), exports_land_station)),
+    Promise.resolve().then(() => (init_land_platform(), exports_land_platform)),
+    init_land_frame().then(() => exports_land_frame),
+    Promise.resolve().then(() => (init_bank(), exports_bank)).then(({ bankJSON: bankJSON2 }) => bankJSON2("index.json")).then((index) => {
+      const sizes = new Map((index?.materials ?? []).map((material) => [material.id, material.size]));
+      return { textureSize: (id) => sizes.get(id) ?? null };
+    }).catch(() => ({ textureSize: () => null }))
+  ]).then((modules) => Object.assign({}, ...modules)));
+}, landKit = () => kit;
+
 // src/build/region-rail.js
 var exports_region_rail = {};
 __export(exports_region_rail, {
@@ -26454,7 +29928,7 @@ __export(exports_region_rail, {
   loopCode: () => loopCode,
   LOOP: () => LOOP
 });
-var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphalt/concrete-pavement-02", STEEL12 = "metal/painted/metal-029", round45 = (v) => Math.round(v * 1000) / 1000 + 0, DEG7, OFF = 0.02, CURVE = 100, ROUTE_POINTS, loopCode = (places) => places.reduce((code, place) => code * 10 + place + 1, 0), loopPlaces = (code, lands) => {
+var LOOP, CONCRETE8 = "plaster/concrete/concrete-046", PAVEMENT2 = "paving/asphalt/concrete-pavement-02", STEEL13 = "metal/painted/metal-029", round45 = (v) => Math.round(v * 1000) / 1000 + 0, DEG7, OFF = 0.02, CURVE = 100, ROUTE_POINTS, loopCode = (places) => places.reduce((code, place) => code * 10 + place + 1, 0), loopPlaces = (code, lands) => {
   if (!Number.isInteger(code) || code <= 0)
     return null;
   const places = [...String(code)].map((digit) => Number(digit) - 1);
@@ -26478,7 +29952,7 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
   if (stands2.has(through))
     walk([through]);
   return found.sort((a, b) => b.length - a.length || loopCode(a) - loopCode(b));
-}, ACROSS4, planeOf = (parcel) => {
+}, ACROSS6, planeOf = (parcel) => {
   const middle = middleOf4(parcel);
   const radius = RADIUS + bareElevation(middle);
   const { north, east } = compassAt(middle);
@@ -26536,7 +30010,7 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
     const side2 = sideTowards(parcel, other);
     const { rail: rail4 } = portsOf(parcel, side2);
     const at = plane.flat(rail4.at);
-    const far = plane.flat(portsOf(parcel, ACROSS4[side2]).rail.at);
+    const far = plane.flat(portsOf(parcel, ACROSS6[side2]).rail.at);
     const long = Math.hypot(far[0] - at[0], far[1] - at[1]);
     return { side: side2, direction: rail4.at, at, in: [(far[0] - at[0]) / long, (far[1] - at[1]) / long] };
   });
@@ -26545,7 +30019,7 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
     const t = ((q[0] - p[0]) * b[1] - (q[1] - p[1]) * b[0]) / (a[0] * b[1] - a[1] * b[0]);
     return [p[0] + a[0] * t, p[1] + a[1] * t];
   };
-  const runs2 = turned4(ACROSS4[come.side] === go.side ? [come.at, go.at] : [come.at, corner2(), go.at], LOOP.radius);
+  const runs2 = turned4(ACROSS6[come.side] === go.side ? [come.at, go.at] : [come.at, corner2(), go.at], LOOP.radius);
   const { long: platform, ease: ease2 } = LOOP.platform;
   const calls = runs2.filter((run) => !run.centre && run.long >= platform + 2 * ease2).sort((p, q) => q.long - p.long)[0] ?? null;
   const pieces = (run) => {
@@ -26755,7 +30229,7 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
     return { way, top: mid5[2], at: (s, t) => [mid5[0] + way[0] * s - way[1] * t, mid5[1] + way[1] * s + way[0] * t], turn: round45(Math.atan2(way[1], way[0]) * DEG7) };
   })();
   const decked = (extra, level) => ({ bed: 2, left: half, right: half, walls: level ? 2 : 0, ...extra });
-  const DRESSED = trackDressing("concrete", CONCRETE7);
+  const DRESSED = trackDressing("concrete", CONCRETE8);
   if (curved) {
     let n = 0;
     for (let k = 0;k < mine.length; ) {
@@ -26812,10 +30286,10 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
         at: [round45((from[0] + to[0]) / 2), round45((from[1] + to[1]) / 2), round45((from[2] + to[2]) / 2)],
         turn: [0, pitchOf(rise, flat2), round45(Math.atan2(dy, dx) * DEG7)],
         prims: [
-          box6("deck", [0, 0, -thick / 2], [Math.max(edge(1), edge(-1)), 2 * half, thick], CONCRETE7),
+          box6("deck", [0, 0, -thick / 2], [Math.max(edge(1), edge(-1)), 2 * half, thick], CONCRETE8),
           { name: "track", kind: "track", length: round45(long), at: [0, 0, round45(TOP / 2)], turn: [0, 0, 90], ...trackDressing() },
-          ...length2.level ? [] : [box6("wall left", [0, half - 0.1, 0.5], [edge(1), 0.2, 1], CONCRETE7)],
-          box6("wall right", [0, -half + 0.1, 0.5], [edge(-1), 0.2, 1], CONCRETE7)
+          ...length2.level ? [] : [box6("wall left", [0, half - 0.1, 0.5], [edge(1), 0.2, 1], CONCRETE8)],
+          box6("wall right", [0, -half + 0.1, 0.5], [edge(-1), 0.2, 1], CONCRETE8)
         ]
       });
     });
@@ -26825,7 +30299,7 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
     if (blocked([x, y]))
       return;
     const foot = survey(x, y).ground - 0.4;
-    piers.push(box6(`pier ${piers.length + 1}`, [x, y, (foot + top - thick) / 2], [LOOP.pier, LOOP.pier, top - thick - foot], CONCRETE7));
+    piers.push(box6(`pier ${piers.length + 1}`, [x, y, (foot + top - thick) / 2], [LOOP.pier, LOOP.pier, top - thick - foot], CONCRETE8));
   };
   mine.forEach((length2, n) => {
     if (n > 0 || site2.key < parcelKey(region[places[(land2 - 1 + places.length) % places.length]]))
@@ -26846,9 +30320,9 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
       at: [round45(mx), round45(my), round45(top)],
       turn: [0, 0, turn3],
       prims: [
-        box6("platform", [0, 0, (high - thick - 0.1) / 2], [long, wide, high + thick + 0.1], CONCRETE7, { surface: { faces: { 0: { texture: PAVEMENT } } } }),
-        box6("rail", [LOOP.stair.landing / 2, wide / 2 - 0.04, high + 0.55], [long - LOOP.stair.landing, 0.08, 1.1], STEEL12),
-        ...[-1, 1].map((end) => box6(`pier ${end < 0 ? "behind" : "ahead"}`, [end * (long / 2 - 3), 0, (under - top - thick - 0.1) / 2], [1, 1, top - thick - 0.1 - under], CONCRETE7))
+        box6("platform", [0, 0, (high - thick - 0.1) / 2], [long, wide, high + thick + 0.1], CONCRETE8, { surface: { faces: { 0: { texture: PAVEMENT2 } } } }),
+        box6("rail", [LOOP.stair.landing / 2, wide / 2 - 0.04, high + 0.55], [long - LOOP.stair.landing, 0.08, 1.1], STEEL13),
+        ...[-1, 1].map((end) => box6(`pier ${end < 0 ? "behind" : "ahead"}`, [end * (long / 2 - 3), 0, (under - top - thick - 0.1) / 2], [1, 1, top - thick - 0.1 - under], CONCRETE8))
       ]
     });
     const { rise, tread, width, landing, riser } = LOOP.stair;
@@ -26871,7 +30345,7 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
         name: `stair ${k + 1}`,
         at: [round45(x), round45(y), round45(high0 - (k + 1) * each)],
         turn: [0, 0, round45(turn3 + (k % 2 === 0 ? 90 : -90))],
-        prims: [{ name: "stair", kind: "stairs", steps, height: round45(each), tread, width, structure: "stringers", landing: 0, railing: "both", at: [0, 0, round45(each / 2)], material: CONCRETE7 }]
+        prims: [{ name: "stair", kind: "stairs", steps, height: round45(each), tread, width, structure: "stringers", landing: 0, railing: "both", at: [0, 0, round45(each / 2)], material: CONCRETE8 }]
       });
     }
     const [lx, ly] = at(from + run / 2, out);
@@ -26881,8 +30355,8 @@ var LOOP, CONCRETE7 = "plaster/concrete/concrete-046", PAVEMENT = "paving/asphal
       at: [round45(lx), round45(ly), 0],
       turn: [0, 0, turn3],
       prims: [
-        ...Array.from({ length: flights }, (_, k) => box6(`landing ${k + 1}`, [(k % 2 === 0 ? -1 : 1) * (run / 2 + landing / 2), 0, high0 - k * each - 0.1], [landing, width, 0.2], CONCRETE7, { surface: { faces: { 0: { texture: PAVEMENT } } } })),
-        ...[-1, 1].map((end) => box6(`post ${end < 0 ? "behind" : "ahead"}`, [end * (run / 2 + landing + 0.15), 0, (lowest2 + high0) / 2], [0.3, 0.3, high0 - lowest2], STEEL12))
+        ...Array.from({ length: flights }, (_, k) => box6(`landing ${k + 1}`, [(k % 2 === 0 ? -1 : 1) * (run / 2 + landing / 2), 0, high0 - k * each - 0.1], [landing, width, 0.2], CONCRETE8, { surface: { faces: { 0: { texture: PAVEMENT2 } } } })),
+        ...[-1, 1].map((end) => box6(`post ${end < 0 ? "behind" : "ahead"}`, [end * (run / 2 + landing + 0.15), 0, (lowest2 + high0) / 2], [0.3, 0.3, high0 - lowest2], STEEL13))
       ]
     });
     stood = { at: at(0, edge + wide / 2).map(round45), top: round45(high0), foot: [round45(down[0]), round45(down[1]), round45(survey(...down).ground)], flights };
@@ -26988,18 +30462,18 @@ var init_region_rail = __esm(async () => {
   });
   DEG7 = 180 / Math.PI;
   ROUTE_POINTS = BEHAVIOURS.route.points.line;
-  ACROSS4 = Object.freeze({ west: "east", east: "west", south: "north", north: "south" });
+  ACROSS6 = Object.freeze({ west: "east", east: "west", south: "north", north: "south" });
   lines2 = new Map;
 });
 
 // src/build/region-rail-hook.js
-var rail4 = null, fetching = null, readyForLoop = async (params) => {
+var rail4 = null, fetching2 = null, readyForLoop = async (params) => {
   if (params?.loop && !rail4)
-    rail4 = await (fetching ??= init_region_rail().then(() => exports_region_rail));
+    rail4 = await (fetching2 ??= init_region_rail().then(() => exports_region_rail));
 }, loopPiece = (params, options) => params.loop && rail4 ? rail4.loopPieceOf(params, options) : null;
 
 // src/build/region-roads.js
-var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000, clamp29 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), ROAD_LIFT2, UNDER8 = 0.01, TURN, AROUND = 1, FORK, lineOf3 = (part) => {
+var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000, clamp32 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), ROAD_LIFT2, UNDER9 = 0.01, TURN, AROUND = 1, FORK, lineOf3 = (part) => {
   const { params } = part;
   const samples = samplesOf(params);
   if (!samples)
@@ -27030,7 +30504,7 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
       const f = ((x - a.at[0]) * dir[0] + (y - a.at[1]) * dir[1]) / long;
       if (f < -0.02 || f > 1.02)
         continue;
-      const g = clamp29(f, 0, 1);
+      const g = clamp32(f, 0, 1);
       const off = -(x - a.at[0] - dir[0] * long * g) * dir[1] + (y - a.at[1] - dir[1] * long * g) * dir[0];
       if (Math.abs(off) > part.params.width / 2 + 0.05 || best && Math.abs(off) >= best.off)
         continue;
@@ -27039,27 +30513,27 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
     }
   }
   return best && { z: best.z, slope: best.slope };
-}, startOn = ({ z, slope = [0, 0] }, [wx, wy]) => ({ height: z - UNDER8, grade: slope[0] * wx + slope[1] * wy, lean: -slope[0] * wy + slope[1] * wx }), rowAt = ([x, y], [wx, wy], width, survey) => {
+}, startOn = ({ z, slope = [0, 0] }, [wx, wy]) => ({ height: z - UNDER9, grade: slope[0] * wx + slope[1] * wy, lean: -slope[0] * wy + slope[1] * wx }), rowAt = ([x, y], [wx, wy], width, survey) => {
   const columns = samplesAcross(width);
   return Array.from({ length: columns }, (_, j) => {
     const off = width / 2 * (1 - 2 * j / (columns - 1));
     return { off, ground: survey(x - wy * off, y + wx * off).ground };
   });
-}, mean = (values) => values.reduce((sum, v) => sum + v, 0) / values.length, portPin = (port, first, survey, width) => {
+}, mean = (values) => values.reduce((sum, v) => sum + v, 0) / values.length, portPin = (port, first2, survey, width) => {
   const [px, py] = port.at;
   const [ax, ay] = port.along;
-  const [cx, cy] = first ? port.out : [-port.out[0], -port.out[1]];
+  const [cx, cy] = first2 ? port.out : [-port.out[0], -port.out[1]];
   const columns = samplesAcross(width);
   const offs = Array.from({ length: columns }, (_, j) => width / 2 * (1 - 2 * j / (columns - 1)));
   const read = (d) => offs.map((off) => survey(px + ax * off + cx * d, py + ay * off + cy * d).ground);
   const [here, beyond, before] = [read(0), read(AROUND), read(-AROUND)];
   const middle = mean(here);
-  const lean = clamp29(offs.reduce((sum, off, j) => sum + off * (here[j] - middle), 0) / offs.reduce((sum, off) => sum + off * off, 0), -FALL / 100, FALL / 100);
-  const grade = clamp29((mean(beyond) - mean(before)) / (2 * AROUND), -GENTLE, GENTLE);
+  const lean = clamp32(offs.reduce((sum, off, j) => sum + off * (here[j] - middle), 0) / offs.reduce((sum, off) => sum + off * off, 0), -FALL / 100, FALL / 100);
+  const grade = clamp32((mean(beyond) - mean(before)) / (2 * AROUND), -GENTLE, GENTLE);
   const steep = (row, j) => Math.hypot((row[Math.max(j - 1, 0)] - row[Math.min(j + 1, columns - 1)]) / (offs[Math.max(j - 1, 0)] - offs[Math.min(j + 1, columns - 1)]), (beyond[j] - before[j]) / (2 * AROUND));
   const floor = Math.max(...[[here, 0], [beyond, AROUND], [before, -AROUND]].map(([row, d]) => Math.max(...row.map((ground, j) => ground + ROAD_LIFT2 + reliefOf(steep(row, j)) - lean * offs[j])) - grade * d));
   const left = [-port.out[1], port.out[0]];
-  return [round46(floor - middle), round46(grade * (first ? 1 : -1)), round46(lean * Math.sign(left[0] * ax + left[1] * ay || 1))];
+  return [round46(floor - middle), round46(grade * (first2 ? 1 : -1)), round46(lean * Math.sign(left[0] * ax + left[1] * ay || 1))];
 }, planJoined = (options) => {
   const joins2 = options.joins.map((join) => join && { ...join, pin: [...join.pin] });
   let road2 = planRoad({ ...options, joins: joins2 });
@@ -27086,7 +30560,7 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
     road2 = planRoad({ ...options, joins: joins2 });
   }
   return road2;
-}, roadsOut = ({ site: site2, gates, within: within4, across = within4, survey, width, notes, joined = false, region = null, covered = within4, joins: joins2, composed = false }) => {
+}, roadsOut = ({ site: site2, gates, within: within5, across = within5, survey, width, notes, joined = false, region = null, covered = within5, joins: joins2, composed = false }) => {
   const far = (gate, [px, py]) => Math.hypot(px - gate.foot[0], py - gate.foot[1]);
   const toward = (gate, [px, py]) => ((px - gate.foot[0]) * gate.way[0] + (py - gate.foot[1]) * gate.way[1]) / far(gate, [px, py]);
   const open = SIDES10.filter((side2) => {
@@ -27094,7 +30568,7 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
       notes.push(`its region joins it by no road over its parcel's ${side2} port: none there`);
       return false;
     }
-    if (!within4(site2.sides[side2].road.at))
+    if (!within5(site2.sides[side2].road.at))
       return true;
     notes.push(`its parcel's ${side2} port lies within it: no road there`);
     return false;
@@ -27131,13 +30605,13 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
     const port = site2.sides[side2].road;
     const [px, py] = port.at;
     const lead = Math.min(LEAD, far(gate, port.at) / 4);
-    const first = Math.min(Math.max(lead, gate.lead ?? 0), far(gate, port.at) / 2);
+    const first2 = Math.min(Math.max(lead, gate.lead ?? 0), far(gate, port.at) / 2);
     const turning = joined && region && !inRegion(region, site2.sides[side2].other);
     const reach = TURN.radius + width / 2;
     const centre = [px - port.out[0] * (reach + TURN.clear), py - port.out[1] * (reach + TURN.clear)];
     if (turning && [[0, 0], ...Array.from({ length: 16 }, (_, k) => [Math.cos(k * Math.PI / 8) * (reach + 1), Math.sin(k * Math.PI / 8) * (reach + 1)])].some(([x, y]) => covered([centre[0] + x, centre[1] + y])))
       return { why: `its parcel's ${side2} port lies at its region's edge, and what stands here leaves no room for a turning circle before it: no road there` };
-    const waypoints = (turning ? [gate.foot, [gate.foot[0] + gate.way[0] * first, gate.foot[1] + gate.way[1] * first], [centre[0] - port.out[0] * (reach + TURN.into), centre[1] - port.out[1] * (reach + TURN.into)], centre] : [gate.foot, [gate.foot[0] + gate.way[0] * first, gate.foot[1] + gate.way[1] * first], [px - port.out[0] * lead, py - port.out[1] * lead], [px, py]]).map((point) => point.map(round46));
+    const waypoints = (turning ? [gate.foot, [gate.foot[0] + gate.way[0] * first2, gate.foot[1] + gate.way[1] * first2], [centre[0] - port.out[0] * (reach + TURN.into), centre[1] - port.out[1] * (reach + TURN.into)], centre] : [gate.foot, [gate.foot[0] + gate.way[0] * first2, gate.foot[1] + gate.way[1] * first2], [px - port.out[0] * lead, py - port.out[1] * lead], [px, py]]).map((point) => point.map(round46));
     const crosses = waypoints.slice(1).some((to, k) => Array.from({ length: 9 }, (_, n) => (n + 1) / 10).some((t) => (k > 0 || t > 0.5) && across([waypoints[k][0] + (to[0] - waypoints[k][0]) * t, waypoints[k][1] + (to[1] - waypoints[k][1]) * t])));
     if (crosses)
       return { why: `its road to its parcel's ${side2} port would run through it: none there` };
@@ -27206,7 +30680,7 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
       notes.push(why);
   }
   return outs.sort((a, b) => SIDES10.indexOf(a.side) - SIDES10.indexOf(b.side));
-}, startHeight = (out) => lineOf3(out.road.parts[0])[0].z, rampTo = (out, top, run) => [run + 0.7, (top - startHeight(out) + UNDER8) / (run + 0.4) * (run + 0.7)], gateAtEnd = (part, end) => {
+}, startHeight = (out) => lineOf3(out.road.parts[0])[0].z, rampTo = (out, top, run) => [run + 0.7, (top - startHeight(out) + UNDER9) / (run + 0.4) * (run + 0.7)], gateAtEnd = (part, end) => {
   const info = endOf(part.params, end);
   return info && {
     foot: [round46(part.at[0] + info.at[0]), round46(part.at[1] + info.at[1])],
@@ -27239,11 +30713,11 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
   const [from, [dx, dy]] = [waypoints[k], [to[0] - waypoints[k][0], to[1] - waypoints[k][1]]];
   const t = Math.min(1, Math.max(0, ((x - from[0]) * dx + (y - from[1]) * dy) / (dx * dx + dy * dy || 1)));
   return Math.hypot(x - from[0] - dx * t, y - from[1] - dy * t) < clear;
-})), joinedAtGate = (made4, { site: site2, gate: [ox, oy], top, within: within4, survey, joined = false, region = null, joins: joins2, composed = false, params = null, curved = false }) => {
+})), joinedAtGate = (made4, { site: site2, gate: [ox, oy], top, within: within5, survey, joined = false, region = null, joins: joins2, composed = false, params = null, curved = false }) => {
   const { width, material, walls } = ROAD_OUT;
   const notes = [...made4.notes];
   const drop = top - survey(ox, oy - 2).ground;
-  const run = drop < 0.25 ? 0 : clamp29(drop * 6, 3, 30);
+  const run = drop < 0.25 ? 0 : clamp32(drop * 6, 3, 30);
   const rampOf = (long, fall) => [{
     name: "ramp gate",
     at: [round46(ox), round46(oy - long / 2), round46(top - fall / 2)],
@@ -27251,7 +30725,7 @@ var FILL2 = 1, LEAD = 14, ROAD_OUT, round46 = (v) => Math.round(v * 1000) / 1000
     prims: [{ name: "ramp", shape: "cube", at: [0, 0, -0.15], size: [width, round46(Math.hypot(long, fall) + 0.4), 0.3], material: "paving/asphalt/clean-asphalt" }]
   }];
   const gate = joined && !run ? { name: "gate", foot: [ox, oy + 0.3], way: [0, -1], start: startOn({ z: top }, [0, -1]) } : { name: "gate", foot: [ox, oy - run - 0.4], way: [0, -1] };
-  const outs = roadsOut({ site: site2, gates: [gate], within: within4, survey, width, notes, joined, region, joins: joins2, composed });
+  const outs = roadsOut({ site: site2, gates: [gate], within: within5, survey, width, notes, joined, region, joins: joins2, composed });
   const ramp = !run ? [] : joined && outs.length ? rampOf(...rampTo(outs[0], top, run)) : rampOf(run, top - survey(ox, oy - run).ground + 0.15);
   const surface = { faces: { 0: { texture: material, offset: [(0.5 - width / 2) / width, 0] }, 1: { texture: walls }, 2: { texture: walls } } };
   const line = params ? loopPiece(params, { site: site2, survey, notes, curved, blocked: (point) => onRoads(outs, point, width / 2 + 1.5) }) : null;
@@ -27292,7 +30766,7 @@ var LOT, round47 = (v) => Math.round(v * 1000) / 1000, FURNITURE, furnisher = (o
     const size = KINDS.street.fit(constrainKind("street", own).params);
     objects.push({ name: piece, at, turn: [0, 0, turn3], prims: [{ name: piece, kind: "street", ...own, at: [0, 0, round47(size[2] / 2)], ...streetDressing(piece, FURNITURE.look[piece], lit) }] });
   };
-}, surfaceOf2 = (parts) => {
+}, surfaceOf3 = (parts) => {
   const lift2 = kindOf("road").params.find((param) => param.name === "lift").default;
   const runs2 = parts.flatMap((part) => {
     const { params } = part;
@@ -27355,9 +30829,9 @@ var LOT, round47 = (v) => Math.round(v * 1000) / 1000, FURNITURE, furnisher = (o
     return box7(name2, [a, b], [across, back, up], up / 2, looks.wall);
   };
   const [x0, x1] = [-wide / 2, wide / 2];
-  const within4 = (from, to) => [Math.max(x0 + LOT.wall + 0.3, from), Math.min(x1 - LOT.wall - 0.3, to)];
-  const [g0, g1] = within4(gate - LOT.gate / 2, gate + LOT.gate / 2);
-  const driven = drive && rise <= LOT.kerb ? within4(drive.at - drive.wide / 2, drive.at + drive.wide / 2) : null;
+  const within5 = (from, to) => [Math.max(x0 + LOT.wall + 0.3, from), Math.min(x1 - LOT.wall - 0.3, to)];
+  const [g0, g1] = within5(gate - LOT.gate / 2, gate + LOT.gate / 2);
+  const driven = drive && rise <= LOT.kerb ? within5(drive.at - drive.wide / 2, drive.at + drive.wide / 2) : null;
   const gaps = [[g0, g1], ...driven ? [driven] : []].sort((a, b) => a[0] - b[0]);
   const front2 = pave + LOT.wall / 2;
   prims.push(wallOf2("wall back", [0, deep - LOT.wall / 2], [wide, LOT.wall], drop(0, deep + 0.5)), wallOf2("wall left", [x0 + LOT.wall / 2, (pave + deep) / 2], [LOT.wall, deep - pave], drop(x0 - 0.5, deep / 2)), wallOf2("wall right", [x1 - LOT.wall / 2, (pave + deep) / 2], [LOT.wall, deep - pave], drop(x1 + 0.5, deep / 2)), ...open ? [] : [
@@ -27467,7 +30941,7 @@ var init_neighbourhood_lots = __esm(async () => {
 });
 
 // src/build/neighbourhood-hill.js
-var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), pick3 = (list, chance) => list[Math.min(list.length - 1, Math.floor(chance * list.length))], lieOf = (survey, { x0, x1, y0, y1 }) => {
+var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp33 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), pick3 = (list, chance) => list[Math.min(list.length - 1, Math.floor(chance * list.length))], lieOf = (survey, { x0, x1, y0, y1 }) => {
   const N = 9;
   let [sx, sy, sh, sxx, syy, sxy, sxh, syh] = [0, 0, 0, 0, 0, 0, 0, 0];
   for (let i = 0;i < N; i++)
@@ -27488,8 +30962,8 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
   const det = mxx * myy - mxy * mxy;
   const [a, b] = Math.abs(det) < 0.000000001 ? [0, 0] : [(mxh * myy - myh * mxy) / det, (myh * mxx - mxh * mxy) / det];
   return { slope: Math.hypot(a, b), up: Math.round(Math.atan2(b, a) * 180 / Math.PI) };
-}, hillsideOf = ({ params, survey, bounds, most: most2, site: site2 = null, kit, composed = false, curved = false }) => {
-  const { street: STREET, styles, palette, furnished, species, random, lanes, walls, looks } = kit;
+}, hillsideOf = ({ params, survey, bounds, most: most2, site: site2 = null, kit: kit2, composed = false, curved = false }) => {
+  const { street: STREET, styles, palette, furnished, species, random, lanes, walls, looks } = kit2;
   const lie = lieOf(survey, bounds);
   if (lie.slope < HILL.least)
     return null;
@@ -27504,7 +30978,7 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
   };
   const [objects, clones, trees, notes] = [[], [], [], []];
   const stand5 = furnisher(objects, clones);
-  const within4 = (c) => {
+  const within5 = (c) => {
     let [from, to] = [-Infinity, Infinity];
     for (const [along4, off, least3, top2] of [[u[0], v[0] * c, bounds.x0 + 1, bounds.x1 - 1], [u[1], v[1] * c, bounds.y0 + 1, bounds.y1 - 1]]) {
       if (Math.abs(along4) < 0.000000001) {
@@ -27519,7 +30993,7 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
     return to > from ? [from, to] : null;
   };
   const span = (c) => {
-    const [above, below] = [within4(c + STREET / 2 + 1), within4(c - STREET / 2 - HILL.lot)];
+    const [above, below] = [within5(c + STREET / 2 + 1), within5(c - STREET / 2 - HILL.lot)];
     if (!above || !below)
       return null;
     const [from, to] = [Math.max(above[0], below[0]) + HILL.bend, Math.min(above[1], below[1]) - HILL.bend];
@@ -27538,7 +31012,7 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
     return null;
   const lotsOn = ([from, to]) => Math.floor((to - from - 2 * HILL.end) / params.plot + 0.000000001);
   const each = Math.max(1, lotsOn(span(Math.round((top + foot) / 2)) ?? span(top)));
-  const count = clamp30(Math.ceil(most2 / each), 1, Math.floor((top - foot) / HILL.apart) + 1);
+  const count = clamp33(Math.ceil(most2 / each), 1, Math.floor((top - foot) / HILL.apart) + 1);
   const rows = Array.from({ length: count }, (_, k) => {
     const c = count > 1 ? Math.round(top - (top - foot) * k / (count - 1)) : Math.round((top + foot) / 2);
     const [from, to] = span(c);
@@ -27606,8 +31080,8 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
       const ends = part.params.ends?.length === 2 ? part.params.ends : [null, null];
       const line = levelRoad({ ...samples, width: STREET, lift: part.params.lift ?? lift2, fill: part.params.fill, fall: part.params.fall / 100, ends, grade: part.params.grade / 100, depth: part.params.depth });
       const stand6 = standOf({ ...samples, middle: line.middle, lean: line.lean, lies: line.lies, fill: part.params.fill, depth: part.params.depth, width: STREET, ends });
-      const first = pathOf(part.params)[0];
-      const from = (part.at[0] + first[0] - at(stretch.start, row.c)[0]) * dir[0] + (part.at[1] + first[1] - at(stretch.start, row.c)[1]) * dir[1];
+      const first2 = pathOf(part.params)[0];
+      const from = (part.at[0] + first2[0] - at(stretch.start, row.c)[0]) * dir[0] + (part.at[1] + first2[1] - at(stretch.start, row.c)[1]) * dir[1];
       return { from, to: from + samples.s.at(-1), s: samples.s, line, stand: stand6 };
     });
   }
@@ -27617,9 +31091,9 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
     const run = stretch.runs.find((each2) => along4 >= each2.from - 0.000001 && along4 <= each2.to + 0.000001);
     if (!run)
       return null;
-    const d = clamp30(along4 - run.from, 0, run.s.at(-1));
-    const i = clamp30(run.s.findIndex((each2) => each2 >= d) - 1, 0, run.s.length - 2);
-    const f = clamp30((d - run.s[i]) / (run.s[i + 1] - run.s[i]), 0, 1);
+    const d = clamp33(along4 - run.from, 0, run.s.at(-1));
+    const i = clamp33(run.s.findIndex((each2) => each2 >= d) - 1, 0, run.s.length - 2);
+    const f = clamp33((d - run.s[i]) / (run.s[i + 1] - run.s[i]), 0, 1);
     const [middle, lean] = [run.line.middle[i] * (1 - f) + run.line.middle[i + 1] * f, run.line.lean[i] * (1 - f) + run.line.lean[i + 1] * f];
     const side2 = row.way > 0 ? 1 : 0;
     return { height: middle + lean * (side2 ? -1 : 1) * (STREET / 2), barrier: barrierAt(run.stand, side2, d) };
@@ -27639,7 +31113,7 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
     for (let i = 0;i < lots; i++) {
       number++;
       const t = stretch.from + HILL.end + wide * (i + 0.5);
-      const first = Math.floor(random() * homes.length);
+      const first2 = Math.floor(random() * homes.length);
       const [floors, variant, bedrooms, wider, roofed] = [pick3([2, 2, 1], random()), Math.floor(random() * 1e4), 2 + Math.floor(random() * 2), random(), random()];
       const widths = HILL.widths.filter((each2) => each2 <= wide - 2 * LOT.side);
       let made4 = null, why = `no house fits its ${wide} m of street`;
@@ -27650,17 +31124,17 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
       search:
         for (const width of from < 0 ? [] : widths.slice(from))
           for (const depth of HILL.depths) {
-            const planned6 = homes.map((_, k) => homes[(first + k) % homes.length]).map((style3) => {
+            const planned6 = homes.map((_, k) => homes[(first2 + k) % homes.length]).map((style3) => {
               const asked4 = { style: style3, width, depth, floors, roof: pick3(STYLES2[style3].roofs, roofed), variant, forms: "varied", rooms: "rooms", scale: "game", entrance: "suited", bedrooms, furnished };
-              const fitted4 = constrainKind("house", asked4).params;
-              return { style: style3, asked: asked4, fitted: fitted4, plan: planOf2(fitted4) };
+              const fitted5 = constrainKind("house", asked4).params;
+              return { style: style3, asked: asked4, fitted: fitted5, plan: planOf2(fitted5) };
             }).find((each2) => !each2.plan.reasons.length);
             if (!planned6) {
               why = `no house of ${width} × ${depth} m can be planned`;
               continue;
             }
-            const { style: style2, asked: asked3, fitted: fitted3, plan: plan3 } = planned6;
-            const { min: min2, max: max2 } = KINDS.house.footprint(fitted3);
+            const { style: style2, asked: asked3, fitted: fitted4, plan: plan3 } = planned6;
+            const { min: min2, max: max2 } = KINDS.house.footprint(fitted4);
             const [s0, s1] = plan3.porch.across ?? [plan3.porch.x0, plan3.porch.x1];
             const snug = round48(max2[0] - min2[0] + 2 * LOT.side);
             const room2 = round48((wide - snug) / 2);
@@ -27685,7 +31159,7 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
                   why = kept3.why;
                   continue;
                 }
-                made4 = { lot: kept3, asked: asked3, fitted: fitted3, style: style2, min: min2, max: max2, centre: centre2, gate: gate2, deep: deep2, across: across2 };
+                made4 = { lot: kept3, asked: asked3, fitted: fitted4, style: style2, min: min2, max: max2, centre: centre2, gate: gate2, deep: deep2, across: across2 };
                 break search;
               }
           }
@@ -27701,7 +31175,7 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
         continue;
       }
       stats.houses++;
-      const { lot, asked: asked2, fitted: fitted2, style, min, max, centre, gate, deep, across } = made4;
+      const { lot, asked: asked2, fitted: fitted3, style, min, max, centre, gate, deep, across } = made4;
       objects.push(lot.object);
       if (number % 2) {
         stand5("lamp", [...lot.place(-across / 2 + 0.8, FURNITURE.in), lot.level + 0.06], 0, FURNITURE.lit);
@@ -27709,7 +31183,7 @@ var HILL, round48 = (v) => Math.round(v * 1000) / 1000, clamp30 = (v, least2, mo
       }
       const behind = HILL.pave + HILL.lawn + max[1];
       const [hx, hy] = lot.local(centre, behind);
-      lot.object.prims.push({ name: "house", kind: "house", ...asked2, look: palette[style][used[style]++ % 2], plinth: fitted2.plinth, stoop: fitted2.stoop, at: [round48(hx + (min[0] + max[0]) / 2), round48(hy + (min[1] + max[1]) / 2), round48(fitted2.stoop + (min[2] + max[2]) / 2)] });
+      lot.object.prims.push({ name: "house", kind: "house", ...asked2, look: palette[style][used[style]++ % 2], plinth: fitted3.plinth, stoop: fitted3.stoop, at: [round48(hx + (min[0] + max[0]) / 2), round48(hy + (min[1] + max[1]) / 2), round48(fitted3.stoop + (min[2] + max[2]) / 2)] });
       for (let tries = 0, planted = 0;planted < params.trees && tries < params.trees * 12; tries++) {
         const [a, b] = [(random() - 0.5) * (across - 3), HILL.pave + 1.2 + random() * (deep - HILL.pave - 2.4)];
         if (a > centre + min[0] - 2 && a < centre + max[0] + 2 && b > behind - max[1] - 0.5 && b < behind - min[1] + 2)
@@ -27826,8 +31300,8 @@ var init_neighbourhood_hill = __esm(async () => {
 });
 
 // src/build/neighbourhood-village.js
-var VILLAGE, round49 = (v) => Math.round(v * 1000) / 1000, villageOf = ({ params, survey, bounds, most: most2, least: least2, site: site2 = null, kit, composed = false, curved = false }) => {
-  const { street: STREET, furnished, species, random, lanes: laneMaterial, walls, looks } = kit;
+var VILLAGE, round49 = (v) => Math.round(v * 1000) / 1000, villageOf = ({ params, survey, bounds, most: most2, least: least2, site: site2 = null, kit: kit2, composed = false, curved = false }) => {
+  const { street: STREET, furnished, species, random, lanes: laneMaterial, walls, looks } = kit2;
   const lie = lieOf(survey, bounds);
   if (lie.slope < least2)
     return null;
@@ -27847,8 +31321,8 @@ var VILLAGE, round49 = (v) => Math.round(v * 1000) / 1000, villageOf = ({ params
   const stats = { houses: 0, mansions: 0, pools: 0, trees: 0, street: 0, lanes: 0, flights: 0, slope: Math.round(lie.slope * 1000) / 10 };
   const sized = (floors, depth = VILLAGE.house.depth, given = VILLAGE.house) => {
     const asked2 = { forms: "plain", rooms: "rooms", scale: "game", entrance: "single", bedrooms: 2, furnished, ...given, depth, floors };
-    const fitted2 = constrainKind("house", asked2).params;
-    return { asked: asked2, fitted: fitted2, plan: planOf2(fitted2), box: KINDS.house.footprint(fitted2) };
+    const fitted3 = constrainKind("house", asked2).params;
+    return { asked: asked2, fitted: fitted3, plan: planOf2(fitted3), box: KINDS.house.footprint(fitted3) };
   };
   const model = sized(2);
   if (model.plan.reasons.length)
@@ -27865,7 +31339,7 @@ var VILLAGE, round49 = (v) => Math.round(v * 1000) / 1000, villageOf = ({ params
     material,
     ...tint && { surface: { faces: Object.fromEntries([0, 1, 2, 3, 4, 5].map((face3) => [face3, { texture: material, tint: [...tint] }])) } }
   });
-  const within4 = (c) => {
+  const within5 = (c) => {
     let [from, to] = [-Infinity, Infinity];
     for (const [along4, off, low, top] of [[u[0], v[0] * c, bounds.x0 + 1, bounds.x1 - 1], [u[1], v[1] * c, bounds.y0 + 1, bounds.y1 - 1]]) {
       if (Math.abs(along4) < 0.000000001) {
@@ -27882,7 +31356,7 @@ var VILLAGE, round49 = (v) => Math.round(v * 1000) / 1000, villageOf = ({ params
   const cluster = (blocks3, rows2) => {
     const [span2, rise2] = [blocks3 * VILLAGE.block * across + (blocks3 + 1) * VILLAGE.stair, rows2 * pitch + VILLAGE.parking[1]];
     const holds = [rise2 / 2, -rise2 / 2].every((c) => {
-      const room2 = within4(c);
+      const room2 = within5(c);
       return room2 && room2[0] <= -span2 / 2 && room2[1] >= span2 / 2;
     });
     return { blocks: blocks3, rows: rows2, span: span2, rise: rise2, holds };
@@ -27981,10 +31455,10 @@ var VILLAGE, round49 = (v) => Math.round(v * 1000) / 1000, villageOf = ({ params
           continue;
         }
         stats.houses++;
-        const { asked: asked2, fitted: fitted2, lot, centre, box: { min, max } } = made4;
+        const { asked: asked2, fitted: fitted3, lot, centre, box: { min, max } } = made4;
         const behind = VILLAGE.lane + made4.patio + max[1];
         const [hx, hy] = lot.local(centre, behind);
-        lot.object.prims.push({ name: "house", kind: "house", ...asked2, variant, plinth: fitted2.plinth, stoop: fitted2.stoop, at: [round49(hx + (min[0] + max[0]) / 2), round49(hy + (min[1] + max[1]) / 2), round49(fitted2.stoop + (min[2] + max[2]) / 2)] });
+        lot.object.prims.push({ name: "house", kind: "house", ...asked2, variant, plinth: fitted3.plinth, stoop: fitted3.stoop, at: [round49(hx + (min[0] + max[0]) / 2), round49(hy + (min[1] + max[1]) / 2), round49(fitted3.stoop + (min[2] + max[2]) / 2)] });
         objects.push(lot.object);
         if (number % 2)
           stand5("planter", [...lot.place(across / 2 - 1.4, lot.object.prims[0].size[1] + VILLAGE.lane - 0.7), lot.level], turn3);
@@ -28164,7 +31638,7 @@ var init_neighbourhood_village = __esm(async () => {
 });
 
 // src/build/neighbourhood.js
-var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, CORNER3 = 18, INNER2 = 8, SETBACK = 5, BESIDE2 = 3, BEHIND = 3, LOT2 = 34, BACK2 = 4, GARDEN = 6, FILL3 = 0.5, PATH2 = 1.6, INSET = 0.7, MIXES, GRAND, FURNISHED3, SIZES8, SPECIES3, LANES = "paving/roads/road-007", PAVING2 = "plaster/concrete/concrete-046", LOT_LOOKS, ASPHALT2 = "paving/asphalt/clean-asphalt", POOL_LOOKS, PAVEMENT2 = "paving/asphalt/concrete-pavement-02", PAVED = 2.5, STONEWORK = "masonry/stone-blocks/sandstone-blocks-08", WHITEWASH = "plaster/plaster/plaster-001", FLAGS = "paving/stone/granite-tile-04", VILLAGE_SPECIES, POOLED, round50 = (v) => Math.round(v * 1000) / 1000, clamp31 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), randomOf7 = (seed) => {
+var PARAMS, EDITION = 4, LANDED = 5, MAKES, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, CORNER4 = 18, INNER2 = 8, SETBACK = 5, BESIDE2 = 3, BEHIND = 3, LOT2 = 34, BACK2 = 4, GARDEN = 6, FILL3 = 0.5, PATH2 = 1.6, INSET = 0.7, MIXES, GRAND, FURNISHED3, SIZES8, SPECIES3, LANES2 = "paving/roads/road-007", PAVING2 = "plaster/concrete/concrete-046", LOT_LOOKS, ASPHALT3 = "paving/asphalt/clean-asphalt", POOL_LOOKS, PAVEMENT3 = "paving/asphalt/concrete-pavement-02", PAVED = 2.5, STONEWORK = "masonry/stone-blocks/sandstone-blocks-08", WHITEWASH = "plaster/plaster/plaster-001", FLAGS = "paving/stone/granite-tile-04", VILLAGE_SPECIES, POOLED, round50 = (v) => Math.round(v * 1000) / 1000, clamp34 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), randomOf7 = (seed) => {
   let state = seed * 2654435761 >>> 0;
   return () => {
     state = state + 1831565813 >>> 0;
@@ -28177,16 +31651,17 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
   ...Object.fromEntries(PARAMS.map((param) => {
     const asked2 = param.options && typeof given[param.name] === "string" ? param.options.indexOf(given[param.name]) : given[param.name];
     const value = Number.isFinite(asked2) && asked2 >= 0 ? asked2 : param.default;
-    return [param.name, clamp31(Math.round(value / param.step) * param.step, param.min, param.max)];
+    return [param.name, clamp34(Math.round(value / param.step) * param.step, param.min, param.max)];
   })),
-  ...regionOf(given)
+  ...regionOf(given),
+  ...platformParamsOf(given)
 }), lotsOf = ({ width: W2, depth: D2, plot }) => {
   const front2 = STREET / 2 + VERGE2;
   const sides2 = [
-    { side: "south", from: [-W2 / 2 + CORNER3, -D2 / 2 - front2], along: [1, 0], n: [0, -1], length: W2 - 2 * CORNER3, deep: LOT2, outer: true },
-    { side: "east", from: [W2 / 2 + front2, -D2 / 2 + CORNER3], along: [0, 1], n: [1, 0], length: D2 - 2 * CORNER3, deep: LOT2, outer: true },
-    { side: "north", from: [W2 / 2 - CORNER3, D2 / 2 + front2], along: [-1, 0], n: [0, 1], length: W2 - 2 * CORNER3, deep: LOT2, outer: true },
-    { side: "west", from: [-W2 / 2 - front2, D2 / 2 - CORNER3], along: [0, -1], n: [-1, 0], length: D2 - 2 * CORNER3, deep: LOT2, outer: true }
+    { side: "south", from: [-W2 / 2 + CORNER4, -D2 / 2 - front2], along: [1, 0], n: [0, -1], length: W2 - 2 * CORNER4, deep: LOT2, outer: true },
+    { side: "east", from: [W2 / 2 + front2, -D2 / 2 + CORNER4], along: [0, 1], n: [1, 0], length: D2 - 2 * CORNER4, deep: LOT2, outer: true },
+    { side: "north", from: [W2 / 2 - CORNER4, D2 / 2 + front2], along: [-1, 0], n: [0, 1], length: W2 - 2 * CORNER4, deep: LOT2, outer: true },
+    { side: "west", from: [-W2 / 2 - front2, D2 / 2 - CORNER4], along: [0, -1], n: [-1, 0], length: D2 - 2 * CORNER4, deep: LOT2, outer: true }
   ];
   const inside = (D2 - 2 * front2 - BACK2) / 2;
   if (inside >= LOT2 - 4)
@@ -28206,6 +31681,44 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       at: [round50(from[0] + along4[0] * wide * (i + 0.5)), round50(from[1] + along4[1] * wide * (i + 0.5))]
     }));
   });
+}, landBounds = ({ plot }) => {
+  const [xs, ys] = [plot.square.corners.map((c) => c[0]), plot.square.corners.map((c) => c[1])];
+  return { x0: round50(Math.min(...xs)), x1: round50(Math.max(...xs)), y0: round50(Math.min(...ys)), y1: round50(Math.max(...ys)) };
+}, linesOnLand = (square, { AVENUE: AVENUE2, BORDER: BORDER3 }) => {
+  const H2 = square.size[1];
+  const row = BORDER3.walk + LOT2 + BORDER3.walk;
+  const reach = H2 / 2 - AVENUE2.kerb;
+  const kerbs = [[square.west(0), square.west(1) - square.west(0)], [square.east(0), square.east(1) - square.east(0)]].map(([mid5, slope]) => Math.abs(mid5) - AVENUE2.kerb * Math.hypot(1, slope) - Math.abs(slope) * reach);
+  const [a, b] = [Math.min(...kerbs) - row - STREET / 2, reach - row - STREET / 2];
+  return { xs: [{ mid: round50(-a), width: STREET }, { mid: round50(a), width: STREET }], ys: [{ mid: round50(-b), width: STREET }, { mid: round50(b), width: STREET }] };
+}, lotsOnLand = ({ xs, ys }, { plot }, walk) => {
+  const [w0, w1, s0, s1] = [xs[1], xs[2], ys[1], ys[2]];
+  const [long, deep] = [w1.from - w0.to, s1.from - s0.to];
+  const sides2 = [
+    { side: "south", from: [w0.to, s0.from - walk], along: [1, 0], n: [0, -1], length: long, deep: LOT2, outer: true, closed: true },
+    { side: "east", from: [w1.to + walk, s0.to], along: [0, 1], n: [1, 0], length: deep, deep: LOT2, outer: true, closed: true },
+    { side: "north", from: [w1.from, s1.to + walk], along: [-1, 0], n: [0, 1], length: long, deep: LOT2, outer: true, closed: true },
+    { side: "west", from: [w0.from - walk, s1.from], along: [0, -1], n: [-1, 0], length: deep, deep: LOT2, outer: true, closed: true }
+  ];
+  const corner2 = walk + LOT2;
+  if (Math.min(long, deep) >= 2 * corner2 + INNER2)
+    sides2.push({ side: "inner south", from: [w0.to + corner2, s0.to + walk], along: [1, 0], n: [0, 1], length: long - 2 * corner2, deep: LOT2, outer: false }, { side: "inner east", from: [w1.from - walk, s0.to + corner2], along: [0, 1], n: [-1, 0], length: deep - 2 * corner2, deep: LOT2, outer: false }, { side: "inner north", from: [w1.from - corner2, s1.from - walk], along: [-1, 0], n: [0, -1], length: long - 2 * corner2, deep: LOT2, outer: false }, { side: "inner west", from: [w0.to + walk, s1.from - corner2], along: [0, -1], n: [1, 0], length: deep - 2 * corner2, deep: LOT2, outer: false });
+  return sides2.flatMap(({ side: side2, from, along: along4, n, length: length2, deep: lotDeep, outer, closed = false }) => {
+    const count = Math.floor(length2 / plot + 0.000000001);
+    const wide = count ? length2 / count : 0;
+    return Array.from({ length: count }, (_, i) => ({
+      side: side2,
+      outer,
+      i,
+      count,
+      n,
+      wide: round50(wide),
+      deep: lotDeep,
+      ...closed && { closed },
+      u: [-n[1], n[0]],
+      at: [round50(from[0] + along4[0] * wide * (i + 0.5)), round50(from[1] + along4[1] * wide * (i + 0.5))]
+    }));
+  });
 }, boundsOf2 = (given) => {
   const { width: W2, depth: D2 } = constrainNeighbourhood(given);
   const out = STREET / 2 + VERGE2 + LOT2;
@@ -28216,8 +31729,15 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
   const mix2 = PARAMS.find((param) => param.name === "mix").options[params.mix];
   const pools = PARAMS.find((param) => param.name === "pools").options[params.pools];
   const random = randomOf7(seed + 1);
-  const heightAt = (x, y) => survey(x, y).ground;
-  const wetAt = (x, y) => {
+  const kit2 = edition >= LANDED && site2 && !(ofRegion(params) && params.lands > 1) ? landKit() : null;
+  const frame = kit2 ? (() => {
+    const here = site2();
+    return kit2.frameOf(here, survey, { level: params.level ?? null, walled: params.walled, ...linesOnLand(kit2.landOn(here.parcel, here.toLocal).square, kit2), plant: (n, at, options) => borderTreeOf(options), sizeOf: kit2.textureSize });
+  })() : null;
+  if (frame?.refused)
+    return { params, objects: [], trees: [], reasons: [frame.refused], notes: [], stats: { houses: 0, mansions: 0, pools: 0, trees: 0, street: 0 }, bounds: boundsOf2(params) };
+  const heightAt = frame ? (x, y) => frame.surface.at(x, y) + KERB2 : (x, y) => survey(x, y).ground;
+  const wetAt = frame ? () => false : (x, y) => {
     const here = survey(x, y);
     return here.water !== null && here.water > here.ground + 0.01;
   };
@@ -28231,21 +31751,21 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
     const styles2 = MIXES[mix2];
     const palette2 = Object.fromEntries(styles2.map((style) => {
       const names = Object.keys(LOOKS2[style]);
-      const first = Math.floor(own() * names.length);
-      return [style, [names[first], names[(first + 1 + Math.floor(own() * (names.length - 1))) % names.length]]];
+      const first2 = Math.floor(own() * names.length);
+      return [style, [names[first2], names[(first2 + 1 + Math.floor(own() * (names.length - 1))) % names.length]]];
     }));
     const pool3 = [...SPECIES3];
-    const kit = { street: STREET, styles: styles2, palette: palette2, furnished: FURNISHED3[seed % FURNISHED3.length], species: Array.from({ length: 4 }, () => pool3.splice(Math.floor(own() * pool3.length), 1)[0]), random: own, lanes: LANES, walls, looks: lotLooks };
-    return hillsideOf({ params, survey, bounds, most: lotsOf(params).length, site: site2, kit, composed: edition >= COMPOSED, curved: edition >= CURVED });
+    const kit3 = { street: STREET, styles: styles2, palette: palette2, furnished: FURNISHED3[seed % FURNISHED3.length], species: Array.from({ length: 4 }, () => pool3.splice(Math.floor(own() * pool3.length), 1)[0]), random: own, lanes: LANES2, walls, looks: lotLooks };
+    return hillsideOf({ params, survey, bounds, most: lotsOf(params).length, site: site2, kit: kit3, composed: edition >= COMPOSED, curved: edition >= CURVED });
   };
   const village = () => {
     const own = randomOf7(seed + 5);
     const pool3 = [...VILLAGE_SPECIES];
     const looks = { ...lotLooks, wall: STONEWORK, cap: WHITEWASH, lawn: FLAGS, pavement: FLAGS, paving: FLAGS };
-    return villageOf({ params, survey, bounds, most: lotsOf(params).length, least: HILL.least, site: site2, composed: edition >= COMPOSED, curved: edition >= CURVED, kit: { street: STREET, furnished: FURNISHED3[seed % FURNISHED3.length], species: Array.from({ length: 2 }, () => pool3.splice(Math.floor(own() * pool3.length), 1)[0]), random: own, lanes: LANES, walls, looks } });
+    return villageOf({ params, survey, bounds, most: lotsOf(params).length, least: HILL.least, site: site2, composed: edition >= COMPOSED, curved: edition >= CURVED, kit: { street: STREET, furnished: FURNISHED3[seed % FURNISHED3.length], species: Array.from({ length: 2 }, () => pool3.splice(Math.floor(own() * pool3.length), 1)[0]), random: own, lanes: LANES2, walls, looks } });
   };
   const best = (...made4) => made4.filter((each) => each && !each.reasons.length).reduce((most2, each) => most2 && most2.stats.houses >= each.stats.houses ? most2 : each, null);
-  const steep = lotted && lieOf(survey, bounds).slope >= HILL.from;
+  const steep = !frame && lotted && lieOf(survey, bounds).slope >= HILL.from;
   const full = (made4) => made4 && !made4.reasons.length && made4.stats.houses >= 0.5 * made4.stats.lots;
   if (steep) {
     const streets = hillside();
@@ -28254,14 +31774,14 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       return { params, ...chosen, bounds };
   }
   const orHillside = (made4) => {
-    if (!lotted || steep || made4.stats.houses * 2 >= lotsOf(params).length)
+    if (!lotted || steep || frame || made4.stats.houses * 2 >= lotsOf(params).length)
       return made4;
     const chosen = best(made4, hillside(), village());
     return chosen && chosen !== made4 ? { params, ...chosen, bounds } : made4;
   };
   const corners = [[-W2 / 2, -D2 / 2], [W2 / 2, -D2 / 2], [W2 / 2, D2 / 2], [-W2 / 2, D2 / 2]];
-  const road2 = planRoad({ waypoints: [...corners, corners[0]], survey, width: STREET, level: { fill: FILL3, fall: FALL } });
-  if (road2.reasons.length || !road2.parts.length)
+  const road2 = frame ? { reasons: [], parts: [] } : planRoad({ waypoints: [...corners, corners[0]], survey, width: STREET, level: { fill: FILL3, fall: FALL } });
+  if (!frame && (road2.reasons.length || !road2.parts.length))
     return orHillside({ params, objects: [], trees: [], reasons: [`its street cannot be laid here: ${road2.reasons[0] ?? "no road"}`], notes, stats: { houses: 0, mansions: 0, pools: 0, trees: 0, street: 0 }, bounds });
   road2.parts.forEach((part, k) => {
     const heights = [...part.params.points.map((point) => point[2]), ...part.params.ground];
@@ -28274,17 +31794,17 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
         kind: "road",
         at: [0, 0, 0],
         params: { ...part.params, points: part.params.points.map(([x, y, z]) => [x, y, round50(z - base)]), ground: part.params.ground.map((v) => round50(v - base)) },
-        material: LANES,
-        surface: { faces: { 0: { texture: LANES, offset: [(0.5 - STREET / 2) / STREET, 0] }, 1: { texture: walls }, 2: { texture: walls } } }
+        material: LANES2,
+        surface: { faces: { 0: { texture: LANES2, offset: [(0.5 - STREET / 2) / STREET, 0] }, 1: { texture: walls }, 2: { texture: walls } } }
       }]
     });
   });
-  const lots = lotsOf(params);
+  const lots = frame ? lotsOnLand(frame.grid, params, kit2.BORDER.walk).map((lot) => ({ ...lot, at: frame.map.at(...lot.at).map(round50), u: frame.map.linear(lot.u), n: frame.map.linear(lot.n) })) : lotsOf(params);
   const styles = MIXES[mix2];
   const palette = Object.fromEntries([...styles, ...GRAND[mix2]].map((style) => {
     const names = Object.keys(LOOKS2[style]);
-    const first = Math.floor(random() * names.length);
-    return [style, [names[first], names[(first + 1 + Math.floor(random() * (names.length - 1))) % names.length]]];
+    const first2 = Math.floor(random() * names.length);
+    return [style, [names[first2], names[(first2 + 1 + Math.floor(random() * (names.length - 1))) % names.length]]];
   }));
   const used = Object.fromEntries(Object.keys(palette).map((style) => [style, 0]));
   const taken = new Map;
@@ -28310,11 +31830,11 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
     let why = `no ${style} house fits its ${place.wide} m of street${place.outer ? "" : ` and ${place.deep} m of depth`}`;
     for (const width of widths) {
       const asked2 = { style, width, depth, floors: storeys, roof: roof2, variant, forms: "varied", rooms: "rooms", scale: "game", entrance: "suited", bedrooms, furnished: FURNISHED3[seed % FURNISHED3.length] };
-      let fitted2 = constrainKind("house", asked2).params;
+      let fitted3 = constrainKind("house", asked2).params;
       let site3 = null, floor = 0, reasons = [];
       const siteOf2 = ({ min: min2, max: max2 }) => [place.at[0] + place.n[0] * (SETBACK + max2[1]) - x[0] * (min2[0] + max2[0]) / 2, place.at[1] + place.n[1] * (SETBACK + max2[1]) - x[1] * (min2[0] + max2[0]) / 2];
       for (let pass = 0;pass < 3; pass++) {
-        const box7 = KINDS.house.footprint(fitted2);
+        const box7 = KINDS.house.footprint(fitted3);
         if (box7.max[0] - box7.min[0] > place.wide - 2 * BESIDE2 || !place.outer && SETBACK + box7.max[1] - box7.min[1] + BEHIND > place.deep) {
           site3 = null;
           break;
@@ -28325,31 +31845,31 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
         site3 = here;
         const local2 = (hx, hy) => [site3[0] + x[0] * hx + y[0] * hy, site3[1] + x[1] * hx + y[1] * hy];
         const fit = groundFit2(constrainKind("house", asked2).params, (hx, hy) => heightAt(...local2(hx, hy)), (hx, hy) => wetAt(...local2(hx, hy)));
-        fitted2 = constrainKind("house", fit.params).params;
+        fitted3 = constrainKind("house", fit.params).params;
         ({ floor, reasons } = fit);
       }
       if (!site3)
         continue;
-      site3 = siteOf2(KINDS.house.footprint(fitted2));
-      const plan3 = planOf2(fitted2);
+      site3 = siteOf2(KINDS.house.footprint(fitted3));
+      const plan3 = planOf2(fitted3);
       if (reasons.length || plan3.reasons.length) {
         why = reasons[0] ?? plan3.reasons[0];
         continue;
       }
-      const { min, max } = KINDS.house.footprint(fitted2);
+      const { min, max } = KINDS.house.footprint(fitted3);
       const local = (hx, hy) => [round50(site3[0] + x[0] * hx + y[0] * hy), round50(site3[1] + x[1] * hx + y[1] * hy)];
       const turn3 = Math.round(Math.atan2(x[1], x[0]) * 180 / Math.PI + 360) % 360;
       objects.push({
         name: `house ${number}`,
         at: [round50(site3[0]), round50(site3[1]), round50(floor)],
         turn: [0, 0, turn3],
-        prims: [{ name: "house", kind: "house", ...asked2, look: look8, plinth: fitted2.plinth, stoop: fitted2.stoop, ...STYLES2[style].wing && { drive: fitted2.drive }, at: min.map((v, k) => round50((v + max[k]) / 2)) }]
+        prims: [{ name: "house", kind: "house", ...asked2, look: look8, plinth: fitted3.plinth, stoop: fitted3.stoop, ...STYLES2[style].wing && { drive: fitted3.drive }, at: min.map((v, k) => round50((v + max[k]) / 2)) }]
       });
       const [s0, s1] = plan3.porch.across ?? [plan3.porch.x0, plan3.porch.x1];
       const reach = max[1] + SETBACK + VERGE2 - 0.2;
       const ways = [
         { name: "path", x: (s0 + s1) / 2, from: (plan3.porch.steps.at(-1)?.y1 ?? plan3.porch.y1) - 0.1, width: PATH2, material: PAVING2 },
-        ...plan3.wing?.ramp ? [{ name: "drive", x: (plan3.wing.ramp.x0 + plan3.wing.ramp.x1) / 2, from: plan3.wing.ramp.y1 - 0.1, width: round50(plan3.wing.ramp.x1 - plan3.wing.ramp.x0), material: ASPHALT2 }] : []
+        ...plan3.wing?.ramp ? [{ name: "drive", x: (plan3.wing.ramp.x0 + plan3.wing.ramp.x1) / 2, from: plan3.wing.ramp.y1 - 0.1, width: round50(plan3.wing.ramp.x1 - plan3.wing.ramp.x0), material: ASPHALT3 }] : []
       ];
       for (const way of ways) {
         if (reach - way.from < 1)
@@ -28358,43 +31878,109 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
         const middle = [round50((a[0] + b[0]) / 2), round50((a[1] + b[1]) / 2)];
         objects.push({ name: `${way.name} ${number}`, at: middle, prims: [{ name: way.name, kind: "road", at: [0, 0, 0], width: way.width, depth: 0.2, lift: 0.04, points: [a, b].map((p) => [round50(p[0] - middle[0]), round50(p[1] - middle[1])]), material: way.material }] });
       }
-      return { style, site: site3, x, y, min, max, local, turn: turn3, plan: plan3, fitted: fitted2 };
+      return { style, site: site3, x, y, min, max, local, turn: turn3, plan: plan3, fitted: fitted3 };
     }
     return { why };
   };
   const poolBehind = (house3, asked2, number) => {
-    let fitted2 = constrainKind("pool", asked2).params;
+    let fitted3 = constrainKind("pool", asked2).params;
     let site3 = null, rim = 0, reasons = [];
     const siteOf2 = (box8) => [(house3.min[0] + house3.max[0]) / 2 - (box8.min[0] + box8.max[0]) / 2, house3.min[1] - GARDEN - box8.max[1]];
     for (let pass = 0;pass < 3; pass++) {
-      site3 = siteOf2(KINDS.pool.footprint(fitted2));
+      site3 = siteOf2(KINDS.pool.footprint(fitted3));
       const fit = poolFit(constrainKind("pool", asked2).params, (px, py) => heightAt(...house3.local(site3[0] + px, site3[1] + py)), (px, py) => wetAt(...house3.local(site3[0] + px, site3[1] + py)));
-      fitted2 = constrainKind("pool", fit.params).params;
+      fitted3 = constrainKind("pool", fit.params).params;
       ({ rim, reasons } = fit);
     }
-    site3 = siteOf2(KINDS.pool.footprint(fitted2));
+    site3 = siteOf2(KINDS.pool.footprint(fitted3));
     if (reasons.length) {
       notes.push(`lot ${number}: no pool — ${reasons[0]}`);
       return null;
     }
-    const box7 = KINDS.pool.footprint(fitted2);
+    const box7 = KINDS.pool.footprint(fitted3);
     const { look: look8, ...own } = asked2;
     objects.push({
       name: `pool ${number}`,
       at: [...house3.local(site3[0], site3[1]), round50(rim)],
       turn: [0, 0, house3.turn],
-      prims: [{ name: "pool", kind: "pool", ...own, look: look8, plinth: fitted2.plinth, stoop: fitted2.stoop, at: box7.min.map((v, k) => round50((v + box7.max[k]) / 2)) }]
+      prims: [{ name: "pool", kind: "pool", ...own, look: look8, plinth: fitted3.plinth, stoop: fitted3.stoop, at: box7.min.map((v, k) => round50((v + box7.max[k]) / 2)) }]
     });
     return { min: [site3[0] + box7.min[0], site3[1] + box7.min[1]], max: [site3[0] + box7.max[0], site3[1] + box7.max[1]] };
   };
   const pool2 = [...SPECIES3];
   const species = Array.from({ length: 4 }, () => pool2.splice(Math.floor(random() * pool2.length), 1)[0]);
-  const plant2 = ([x, y]) => trees.push({ species: pick4(species, random()), at: [round50(x), round50(y)], scale: round50(0.8 + 0.4 * random()), seed: Math.floor(random() * 1000), turn: Math.floor(random() * 360) });
+  const plant2 = ([x, y]) => trees.push({ species: pick4(species, random()), at: frame ? [round50(x), round50(y), round50(heightAt(x, y))] : [round50(x), round50(y)], scale: round50(0.8 + 0.4 * random()), seed: Math.floor(random() * 1000), turn: Math.floor(random() * 360) });
   const plantable = ([x, y]) => !wetAt(x, y) && Math.abs(heightAt(x + 1, y) - heightAt(x - 1, y)) < 0.9 && Math.abs(heightAt(x, y + 1) - heightAt(x, y - 1)) < 0.9 && !trees.some((tree2) => Math.hypot(tree2.at[0] - x, tree2.at[1] - y) < 5);
+  const [borderRandom, greenRandom] = [randomOf7(seed + 9), randomOf7(seed + 11)];
+  const borderTreeOf = ({ scale: scale4 = 1 } = {}) => ({ species: pick4(species, borderRandom()), scale: round50(scale4 * (0.8 + 0.4 * borderRandom())), seed: Math.floor(borderRandom() * 1000), turn: Math.floor(borderRandom() * 360) });
+  const greensOnLand = () => {
+    const { grid, map } = frame;
+    const walk = kit2.BORDER.walk;
+    const [w0, w1, s0, s1] = [grid.xs[1], grid.xs[2], grid.ys[1], grid.ys[2]];
+    const corner2 = walk + LOT2;
+    const inner = lots.some((lot) => !lot.outer);
+    const greens = [
+      ...grid.blocks.filter((block3) => block3.i !== 1 && block3.j !== 1).map((block3) => [block3.x0 + walk, block3.x1 - walk, block3.y0 + walk, block3.y1 - walk]),
+      ...inner ? [[w0.to + corner2, w1.from - corner2, s0.to + corner2, s1.from - corner2], ...[[w0.to, s0.to], [w1.from - corner2, s0.to], [w1.from - corner2, s1.from - corner2], [w0.to, s1.from - corner2]].map(([x, y]) => [x + walk, x + corner2, y + walk, y + corner2])] : [[w0.to + walk, w1.from - walk, s0.to + walk, s1.from - walk]]
+    ].filter(([x0, x1, y0, y1]) => x1 - x0 > 2 && y1 - y0 > 2);
+    for (const [n, [x0, x1, y0, y1]] of greens.entries()) {
+      const [nx, ny] = [Math.ceil((x1 - x0) / 64 - 0.000000001), Math.ceil((y1 - y0) / 64 - 0.000000001)];
+      const [cx, cy] = [(x0 + x1) / 2, (y0 + y1) / 2];
+      const [X2, Y] = map.at(cx, cy);
+      const top = heightAt(X2, Y);
+      const prims = [];
+      for (let a = 0;a < nx; a++)
+        for (let b = 0;b < ny; b++) {
+          const [wide, deep] = [(x1 - x0) / nx, (y1 - y0) / ny];
+          prims.push({ name: "lawn", shape: "cube", at: [round50(x0 + wide * (a + 0.5) - cx), round50(y0 + deep * (b + 0.5) - cy), 0.03], size: [round50(wide), round50(deep), 0.06], material: GRASS });
+        }
+      objects.push({ name: `green ${n + 1}`, at: [round50(X2), round50(Y), round50(top)], turn: [0, 0, map.xYaw(0)], prims });
+      if (!params.trees)
+        continue;
+      const wanted = clamp34(Math.round((x1 - x0) * (y1 - y0) / 260), 1, 24);
+      for (let tries = 0, planted = 0;planted < wanted && tries < wanted * 12; tries++) {
+        const [x, y] = [x0 + 2 + greenRandom() * (x1 - x0 - 4), y0 + 2 + greenRandom() * (y1 - y0 - 4)];
+        const [tx, ty] = map.at(x, y);
+        if (trees.some((tree2) => Math.hypot(tree2.at[0] - tx, tree2.at[1] - ty) < 5))
+          continue;
+        trees.push({ species: pick4(species, greenRandom()), at: [round50(tx), round50(ty), round50(heightAt(tx, ty) + 0.06)], scale: round50(0.8 + 0.4 * greenRandom()), seed: Math.floor(greenRandom() * 1000), turn: Math.floor(greenRandom() * 360) });
+        planted++;
+      }
+    }
+  };
+  const furnitureOnLand = () => {
+    const stand5 = furnisher(objects, clones);
+    const { grid, map } = frame;
+    const walk = kit2.BORDER.walk;
+    const [w0, w1, s0, s1] = [grid.xs[1], grid.xs[2], grid.ys[1], grid.ys[2]];
+    const kerbs = [
+      { from: [w0.to, s0.from], to: [w1.from, s0.from], out: [0, -1], turn: 180 },
+      { from: [w1.to, s0.to], to: [w1.to, s1.from], out: [1, 0], turn: 270 },
+      { from: [w1.from, s1.to], to: [w0.to, s1.to], out: [0, 1], turn: 0 },
+      { from: [w0.from, s1.from], to: [w0.from, s0.to], out: [-1, 0], turn: 90 }
+    ];
+    for (const { from, to, out, turn: turn3 } of kerbs) {
+      const long = Math.hypot(to[0] - from[0], to[1] - from[1]);
+      const way = [(to[0] - from[0]) / long, (to[1] - from[1]) / long];
+      const count = Math.max(1, Math.round(long / FURNITURE.lamp));
+      for (let k = 0;k < count; k++) {
+        const d = long * (k + 0.5) / count;
+        const [X2, Y] = map.at(from[0] + way[0] * d + out[0] * FURNITURE.in, from[1] + way[1] * d + out[1] * FURNITURE.in);
+        stand5("lamp", [X2, Y, walkAt([X2, Y])], map.xYaw(0), FURNITURE.lit);
+        stats.lamps = (stats.lamps ?? 0) + 1;
+      }
+      const middle = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+      const far = walk - 0.6;
+      for (const [piece, aside] of [["bench", -1.6], ["bin", 0.4]]) {
+        const [X2, Y] = map.at(middle[0] + out[0] * far + way[0] * aside, middle[1] + out[1] * far + way[1] * aside);
+        stand5(piece, [X2, Y, walkAt([X2, Y])], map.xYaw(turn3));
+      }
+    }
+  };
   const stats = { houses: 0, mansions: 0, pools: 0, trees: 0, street: road2.parts.length };
   const done = new Set;
-  const surface = lotted ? surfaceOf2(road2.parts) : null;
-  const walkAt = (point) => {
+  const surface = lotted && !frame ? surfaceOf3(road2.parts) : null;
+  const walkAt = frame ? (point) => frame.surface.at(point[0], point[1]) + KERB2 : (point) => {
     const here = surface(point);
     return here.height + here.lean * Math.sign(here.left) * (STREET / 2) + LOT.kerb;
   };
@@ -28404,9 +31990,9 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
     let why = `no ${style} house fits its ${place.wide} m of street${place.outer ? "" : ` and ${place.deep} m of depth`}`;
     for (const width of widths) {
       const asked2 = { style, width, depth, floors: storeys, roof: roof2, variant, forms: "varied", rooms: "rooms", scale: "game", entrance: "suited", bedrooms, furnished: FURNISHED3[seed % FURNISHED3.length] };
-      const fitted2 = constrainKind("house", asked2).params;
-      const plan3 = planOf2(fitted2);
-      const { min, max } = KINDS.house.footprint(fitted2);
+      const fitted3 = constrainKind("house", asked2).params;
+      const plan3 = planOf2(fitted3);
+      const { min, max } = KINDS.house.footprint(fitted3);
       if (plan3.reasons.length || max[0] - min[0] > place.wide - 2 * BESIDE2) {
         why = plan3.reasons[0] ?? why;
         continue;
@@ -28428,7 +32014,7 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       for (const layout of layouts2) {
         const behind = layout.front + max[1];
         const [across, deep] = [round50(Math.min(place.wide - 1, layout.across)), round50(layout.deep)];
-        if (deep > place.deep + (place.outer && layout.pool === "behind" ? POOLED.over : 0) || layout.across > place.wide - 1)
+        if (deep > place.deep + (place.outer && !place.closed && layout.pool === "behind" ? POOLED.over : 0) || layout.across > place.wide - 1)
           continue;
         const centre = layout.shift - (min[0] + max[0]) / 2;
         const gate = centre + (s0 + s1) / 2;
@@ -28440,7 +32026,7 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
         }
         objects.push(lot.object);
         const [hx, hy] = lot.local(centre, behind);
-        lot.object.prims.push({ name: "house", kind: "house", ...asked2, look: palette[style][used[style] % 2], plinth: fitted2.plinth, stoop: fitted2.stoop, ...STYLES2[style].wing && { drive: fitted2.drive }, at: [round50(hx + (min[0] + max[0]) / 2), round50(hy + (min[1] + max[1]) / 2), round50(fitted2.stoop + (min[2] + max[2]) / 2)] });
+        lot.object.prims.push({ name: "house", kind: "house", ...asked2, look: palette[style][used[style] % 2], plinth: fitted3.plinth, stoop: fitted3.stoop, ...STYLES2[style].wing && { drive: fitted3.drive }, at: [round50(hx + (min[0] + max[0]) / 2), round50(hy + (min[1] + max[1]) / 2), round50(fitted3.stoop + (min[2] + max[2]) / 2)] });
         const kept3 = [[centre + min[0] - 2, centre + max[0] + 2, behind - max[1] - 0.5, behind - min[1] + 2], [gate - 1.5, gate + 1.5, 0, behind], ...drive ? [[drive.at - drive.wide / 2 - 0.5, drive.at + drive.wide / 2 + 0.5, 0, behind]] : []];
         if (layout.pool) {
           const [a, b] = layout.pool === "behind" ? [layout.shift - (pool3.box.min[0] + pool3.box.max[0]) / 2, behind - min[1] + POOLED.garden + pool3.box.max[1]] : [layout.shift + wide / 2 + POOLED.beside + poolWide / 2 - (pool3.box.min[0] + pool3.box.max[0]) / 2, behind - (min[1] + max[1]) / 2 + (pool3.box.min[1] + pool3.box.max[1]) / 2];
@@ -28465,10 +32051,10 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       const [a, b] = [mansion.lots[0], mansion.lots.at(-1)];
       return { ...lot, at: [(a.at[0] + b.at[0]) / 2, (a.at[1] + b.at[1]) / 2], wide: round50(lot.wide * mansion.lots.length) };
     })() : lot;
-    const first = mansion ? 0 : Math.floor(random() * styles.length);
+    const first2 = mansion ? 0 : Math.floor(random() * styles.length);
     const wanted = pools !== "none" && (mansion ? true : pools === "some" && lot.outer && random() < 1 / 3);
     let [made4, why] = [null, "no house fits it"];
-    for (const style of mansion ? [mansion.style] : styles.map((_, k) => styles[(first + k) % styles.length])) {
+    for (const style of mansion ? [mansion.style] : styles.map((_, k) => styles[(first2 + k) % styles.length])) {
       const pooled = !wanted ? null : mansion ? { style: "stone", look: POOL_LOOKS[style], length: 12, width: 5, depth: 1.5, steps: "side" } : { style: "stone", look: "white", length: 8, width: 4, depth: 1.4, deck: 1.2, steps: "side" };
       const tried = lotWith(place, style, number, pooled);
       if (!tried.why) {
@@ -28519,9 +32105,9 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       const [a, b] = [mansion.lots[0], mansion.lots.at(-1)];
       return { ...lot, at: [(a.at[0] + b.at[0]) / 2, (a.at[1] + b.at[1]) / 2], wide: round50(lot.wide * mansion.lots.length) };
     })() : lot;
-    const first = mansion ? 0 : Math.floor(random() * styles.length);
+    const first2 = mansion ? 0 : Math.floor(random() * styles.length);
     let house3 = null;
-    for (const style2 of mansion ? [mansion.style] : styles.map((_, k) => styles[(first + k) % styles.length])) {
+    for (const style2 of mansion ? [mansion.style] : styles.map((_, k) => styles[(first2 + k) % styles.length])) {
       const made4 = houseOn(place, style2, palette[style2][used[style2] % 2], number);
       if (!made4.why) {
         used[style2]++;
@@ -28566,9 +32152,11 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       planted++;
     }
   });
-  if (!lots.some((lot) => !lot.outer)) {
+  if (frame)
+    greensOnLand();
+  if (!frame && !lots.some((lot) => !lot.outer)) {
     const [gx, gy] = [W2 / 2 - STREET / 2 - VERGE2 - 3, D2 / 2 - STREET / 2 - VERGE2 - 3];
-    const wanted = params.trees ? clamp31(Math.round(4 * gx * gy / 260), 4, 24) : 0;
+    const wanted = params.trees ? clamp34(Math.round(4 * gx * gy / 260), 4, 24) : 0;
     for (let tries = 0, planted = 0;planted < wanted && tries < wanted * 12; tries++) {
       const at = [(random() * 2 - 1) * gx, (random() * 2 - 1) * gy];
       if (!plantable(at))
@@ -28577,7 +32165,7 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       planted++;
     }
   }
-  if (params.trees)
+  if (!frame && params.trees)
     for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       const at = [sx * (W2 / 2 + STREET / 2 + VERGE2 + 6), sy * (D2 / 2 + STREET / 2 + VERGE2 + 6)];
       if (plantable(at))
@@ -28592,7 +32180,7 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       const [name, lead] = [`corner ${k + 1}${n ? " y" : " x"}`, (n ? bounds.y1 - D2 / 2 : bounds.x1 - W2 / 2) + 2];
       if (!joinedOut)
         return { name, way, foot: [x + way[0] * STREET / 2, y + way[1] * STREET / 2], lead };
-      const [back, out] = [CORNER3 - STREET / 2, STREET / 2 - INSET];
+      const [back, out] = [CORNER4 - STREET / 2, STREET / 2 - INSET];
       const foot = n ? [x - Math.sign(x) * back, y + way[1] * out] : [x + way[0] * out, y - Math.sign(y) * back];
       const under = surfaceUnder(road2.parts, foot);
       return { name, way, foot, lead, ...under && { start: startOn(under, way) } };
@@ -28612,9 +32200,9 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       within: ([x, y]) => x > bounds.x0 - STREET && x < bounds.x1 + STREET && y > bounds.y0 - STREET && y < bounds.y1 + STREET,
       across: ([x, y]) => Math.abs(x) < W2 / 2 - STREET && Math.abs(y) < D2 / 2 - STREET
     });
-    const surface2 = { faces: { 0: { texture: LANES, offset: [(0.5 - STREET / 2) / STREET, 0] }, 1: { texture: walls }, 2: { texture: walls } } };
+    const surface2 = { faces: { 0: { texture: LANES2, offset: [(0.5 - STREET / 2) / STREET, 0] }, 1: { texture: walls }, 2: { texture: walls } } };
     for (const out of outs)
-      objects.push(...roadObjects(out, { material: LANES, surface: surface2 }));
+      objects.push(...roadObjects(out, { material: LANES2, surface: surface2 }));
     for (let k = trees.length - 1;k >= 0; k--)
       if (onRoads(outs, trees[k].at, STREET / 2 + 2))
         trees.splice(k, 1);
@@ -28631,7 +32219,9 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       looped = { station: line.station, ...line.stats };
     }
   }
-  if (lotted) {
+  if (frame)
+    furnitureOnLand();
+  if (lotted && !frame) {
     const stand5 = furnisher(objects, clones);
     const leaving = ([x, y]) => outs.some(({ waypoints: [foot, on] }) => {
       const [dx, dy] = [on[0] - foot[0], on[1] - foot[1]];
@@ -28670,7 +32260,7 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
         for (const ribbon of runs2) {
           const [xs, ys, zs] = [0, 1, 2].map((axis) => ribbon.map((point) => point[axis]));
           const middle = [round50((Math.min(...xs) + Math.max(...xs)) / 2), round50((Math.min(...ys) + Math.max(...ys)) / 2), round50((Math.min(...zs) + Math.max(...zs)) / 2)];
-          objects.push({ name: `pavement ${++ribbons}`, at: middle, prims: [{ name: "pavement", kind: "road", at: [0, 0, 0], width: VERGE2, depth: 0.8, lift: LOT.kerb, points: ribbon.map((point) => point.map((v, axis) => round50(v - middle[axis]))), material: PAVEMENT2 }] });
+          objects.push({ name: `pavement ${++ribbons}`, at: middle, prims: [{ name: "pavement", kind: "road", at: [0, 0, 0], width: VERGE2, depth: 0.8, lift: LOT.kerb, points: ribbon.map((point) => point.map((v, axis) => round50(v - middle[axis]))), material: PAVEMENT3 }] });
         }
       }
       for (let i = 1;i < line.length; i++) {
@@ -28698,10 +32288,17 @@ var PARAMS, EDITION = 4, COMPOSED = 3, CURVED = 4, STREET = 7.5, VERGE2 = 2.5, C
       }
     }
   }
+  if (frame)
+    for (const piece of frame.pieces) {
+      const made4 = piece.make();
+      objects.push(...made4.objects);
+      clones.push(...made4.clones);
+      trees.push(...made4.trees);
+    }
   stats.trees = trees.length;
   if (stats.houses < 2)
     return orHillside({ params, objects: [], trees: [], reasons: [`the ground takes ${stats.houses ? "one house" : "no house"} of its ${lots.length} lots: ${notes[0] ?? "a flatter place"}`], notes, stats, bounds });
-  return orHillside({ params, objects, ...lotted && { clones }, trees, reasons: [], notes, stats, bounds, ...joined && { roads: joined }, ...looped && { loop: looped } });
+  return orHillside({ params, objects, ...lotted && { clones }, trees, reasons: [], notes, stats, bounds: frame ? landBounds(frame) : bounds, ...frame && { land: { key: frame.plot.key, heightAt: (X2, Y) => frame.surface.at(X2, Y), grid: frame.grid, back: (X2, Y) => frame.map.back(X2, Y) } }, ...joined && { roads: joined }, ...looped && { loop: looped } });
 };
 var init_neighbourhood = __esm(async () => {
   init_house();
@@ -28709,6 +32306,7 @@ var init_neighbourhood = __esm(async () => {
   init_house_site();
   init_pool_gen();
   init_region_params();
+  init_land_looks();
   init_region();
   await __promiseAll([
     init_kinds(),
@@ -28729,6 +32327,7 @@ var init_neighbourhood = __esm(async () => {
     { name: "trees", label: "Trees a lot", min: 0, max: 6, default: 3, step: 1, description: "How many trees stand in each garden." },
     { name: "seed", label: "Variation", min: 0, max: 9999, default: 1, step: 1, description: "Which of its neighbourhoods it is: one number, one neighbourhood." }
   ]);
+  MAKES = LANDED;
   MIXES = Object.freeze({ all: ["box", "wood", "glass", "stack", "chalet", "lodge", "barn", "cabin"], modern: ["box", "glass", "stack", "barn"], timber: ["wood", "chalet", "lodge", "cabin"] });
   GRAND = Object.freeze({ all: ["villa", "manor"], modern: ["villa", "villa"], timber: ["manor", "manor"] });
   FURNISHED3 = Object.freeze(["oak", "walnut", "white"]);
@@ -28766,15 +32365,18 @@ var init_neighbourhood2 = __esm(async () => {
   neighbourhood_default = Object.freeze({
     kinds: Object.freeze(["house", "pool", "street"]),
     edition: EDITION,
+    makes: MAKES,
     constrain: constrainNeighbourhood,
     bounds: boundsOf2,
-    ready: (params) => readyForLoop(params),
+    ready: async (params, edition = EDITION) => {
+      await Promise.all([readyForLoop(params), readyForLand(edition, LANDED)]);
+    },
     make: (params, survey, edition = EDITION, site2 = null) => neighbourhoodOf(params, survey, { edition, site: site2 })
   });
 });
 
 // src/build/kinds/building-site.js
-var OVER6 = 0.15, UNDER9 = 0.3, DROP4 = 2.5, SPAN9 = 2.5, groundFit3 = (params, heightAt, wetAt = () => false) => {
+var OVER6 = 0.15, UNDER10 = 0.3, DROP4 = 2.5, SPAN9 = 2.5, groundFit3 = (params, heightAt, wetAt = () => false) => {
   const { rect: rect5, porch, mid: mid5, wings } = planOf4(params);
   const along4 = (from, to) => {
     const steps = 2 * Math.max(1, Math.ceil((to - from) / (2 * SPAN9)));
@@ -28790,7 +32392,7 @@ var OVER6 = 0.15, UNDER9 = 0.3, DROP4 = 2.5, SPAN9 = 2.5, groundFit3 = (params, 
     ...high - low > DROP4 ? [`the ground falls ${(high - low).toFixed(1)} m under it: ${DROP4} m at most`] : [],
     ...[...sites, door3].some(([x, y]) => wetAt(x, y)) ? ["it would stand in water"] : []
   ];
-  return { floor, drop: high - low, reasons, params: { ...params, plinth: round51(Math.min(Math.max(floor - low + UNDER9, 0.1), 3)), stoop: round51(Math.min(Math.max(floor - heightAt(...door3), 0), 1.5)) } };
+  return { floor, drop: high - low, reasons, params: { ...params, plinth: round51(Math.min(Math.max(floor - low + UNDER10, 0.1), 3)), stoop: round51(Math.min(Math.max(floor - heightAt(...door3), 0), 1.5)) } };
 };
 var init_building_site = __esm(() => {
   init_building();
@@ -29177,9 +32779,9 @@ var TRAFFIC, ARC2 = 0.5523, HEADINGS, FROM, round51 = (value) => Math.round(valu
       return round51(way > 0 ? line.from + 0.75 * road2 : line.from + road2 + median + 0.25 * road2);
     return round51(way > 0 ? line.from + 0.25 * road2 : line.from + 0.75 * road2);
   }
-}), loopsOf = (grid, { avenueAt, overpass, buses, within: within4 = null }) => {
+}), loopsOf = (grid, { avenueAt, overpass, buses, within: within5 = null }) => {
   const loops = [];
-  const { i0, i1, m0, m1 } = within4 ?? { i0: 0, i1: grid.nx, m0: 0, m1: grid.ny };
+  const { i0, i1, m0, m1 } = within5 ?? { i0: 0, i1: grid.nx, m0: 0, m1: grid.ny };
   for (let i = i0;i < i1; i++) {
     const bridged2 = Boolean(overpass) && (i === overpass.k - 1 || i === overpass.k);
     const rows = grid.ys.map((_, m) => m).filter((m) => m >= m0 && m <= m1 && grid.ys[m].kind !== "walk" && !(bridged2 && m === avenueAt));
@@ -29209,16 +32811,16 @@ var TRAFFIC, ARC2 = 0.5523, HEADINGS, FROM, round51 = (value) => Math.round(valu
   const before = TRAFFIC.line + TRAFFIC.nose;
   for (const [c, corner2] of corners.entries()) {
     const { k, m, into, out, at } = corner2;
-    const [inside, outside] = [inFrom(k, m, into, at), outTo(k, m, out, at)];
-    const radius = Math.min(inside, outside);
+    const [inside, outside2] = [inFrom(k, m, into, at), outTo(k, m, out, at)];
+    const radius = Math.min(inside, outside2);
     points.push({ at: [...along4(at, into, -(inside + before)), z], handle: handle(into, 2), halt: { key: `${k}:${m}`, from: FROM[into], straight: false } });
     points.push({ at: [...along4(at, into, -radius), z], handle: handle(into, ARC2 * radius) });
     points.push({ at: [...along4(at, out, radius), z], handle: handle(out, ARC2 * radius) });
     const next = corners[(c + 1) % 4];
     if (out !== "N" && out !== "S")
       continue;
-    const [first, last] = out === "N" ? [m, next.m] : [next.m, m];
-    if (!(avenueAt > first && avenueAt < last))
+    const [first2, last] = out === "N" ? [m, next.m] : [next.m, m];
+    if (!(avenueAt > first2 && avenueAt < last))
       continue;
     const avenue = grid.ys[avenueAt];
     const x = at[0];
@@ -29239,6 +32841,48 @@ var TRAFFIC, ARC2 = 0.5523, HEADINGS, FROM, round51 = (value) => Math.round(valu
     }
   }
   return relief ? onRelief(points, relief) : points;
+}, ringOf4 = (grid, { road: road2, level, radius = 9, most: most2 = 63 }) => {
+  const [west, east, south, north] = [grid.xs[0], grid.xs.at(-1), grid.ys[0], grid.ys.at(-1)];
+  const z = round51(level + 0.02);
+  const lane = 0.75 * road2;
+  const ys = [south.to - lane, north.from + lane];
+  const xAt = (line, y, off) => line.from + (line.slope ?? 0) * y + off;
+  const unit11 = ([x, y]) => {
+    const long = Math.hypot(x, y);
+    return [x / long, y / long];
+  };
+  const sides2 = [
+    { from: [xAt(west, ys[0], west.to - west.from - lane), ys[0]], way: [1, 0] },
+    { from: [xAt(east, ys[0], lane), ys[0]], way: unit11([east.slope ?? 0, 1]) },
+    { from: [xAt(east, ys[1], lane), ys[1]], way: [-1, 0] },
+    { from: [xAt(west, ys[1], west.to - west.from - lane), ys[1]], way: unit11([-(west.slope ?? 0), -1]) }
+  ];
+  const corners = [sides2[1].from, sides2[2].from, sides2[3].from, sides2[0].from];
+  const ends = corners.map((corner2, k) => {
+    const [into, out] = [sides2[k].way, sides2[(k + 1) % 4].way];
+    return { into: [corner2[0] - into[0] * radius, corner2[1] - into[1] * radius], out: [corner2[0] + out[0] * radius, corner2[1] + out[1] * radius], inWay: into, outWay: out };
+  });
+  const start = [(ends[3].out[0] + ends[0].into[0]) / 2, ys[0]];
+  const straights = [[start, ends[0].into], ...ends.slice(0, 3).map((end, k) => [end.out, ends[k + 1].into]), [ends[3].out, start]];
+  const lengths2 = straights.map(([p, q]) => Math.hypot(q[0] - p[0], q[1] - p[1]));
+  const spare = most2 - 1 - 8 - 1;
+  const total = lengths2.reduce((sum, v) => sum + v, 0);
+  const counts = lengths2.map((long) => Math.max(1, Math.floor(spare * long / total) + 1));
+  const along4 = (p, q, dir, count) => {
+    const long = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    return Array.from({ length: count - 1 }, (_, n) => ({ at: [round51(p[0] + (q[0] - p[0]) * (n + 1) / count), round51(p[1] + (q[1] - p[1]) * (n + 1) / count), z], handle: [round51(dir[0] * long / count / 3), round51(dir[1] * long / count / 3), 0] }));
+  };
+  const way = [{ at: [round51(start[0]), round51(start[1]), z], handle: [round51(lengths2[0] / counts[0] / 3), 0, 0] }];
+  let from = start;
+  for (const [k, end] of ends.entries()) {
+    way.push(...along4(from, end.into, end.inWay, counts[k]));
+    way.push({ at: [round51(end.into[0]), round51(end.into[1]), z], handle: [round51(end.inWay[0] * ARC2 * radius), round51(end.inWay[1] * ARC2 * radius), 0] });
+    way.push({ at: [round51(end.out[0]), round51(end.out[1]), z], handle: [round51(end.outWay[0] * ARC2 * radius), round51(end.outWay[1] * ARC2 * radius), 0] });
+    from = end.out;
+    if (k === 3)
+      way.push(...along4(from, start, [1, 0], counts[4]));
+  }
+  return way;
 }, BREAK = 0.2, onRelief = (points, relief) => {
   const climb = (x, y, way) => (relief.grade(x, y - way * (BREAK + 0.01)) + relief.grade(x, y + way * (BREAK + 0.01))) / 2;
   const shaped = ({ at: [x, y], handle: [hx, hy], ...own }) => ({ ...own, at: [x, y, round51(relief.at(x, y) + 0.02)], handle: [hx, hy, round51(hy ? climb(x, y, Math.sign(hy)) * hy : 0)] });
@@ -29324,9 +32968,9 @@ var TRAFFIC, ARC2 = 0.5523, HEADINGS, FROM, round51 = (value) => Math.round(valu
     facing: [fx, fy],
     points: way.slice(1).map(({ at, handle: own }) => [...into([at[0] - start[0], at[1] - start[1], at[2] - start[2]]), ...into(own)])
   };
-}, trafficOf = (grid, { sections, avenueAt, overpass = null, level, each = () => 1, bus = null, relief = null, within: within4 = null }) => {
+}, trafficOf = (grid, { sections, avenueAt, overpass = null, level, each = () => 1, bus = null, relief = null, within: within5 = null, ring: ring4 = null }) => {
   const lanes = lanesOf3(grid, sections);
-  const loops = loopsOf(grid, { avenueAt, overpass, buses: Boolean(bus), within: within4 }).map((loop) => ({ ...loop, way: wayOfLoop(loop, grid, lanes, { avenueAt, overpass, level, relief }) }));
+  const loops = loopsOf(grid, { avenueAt, overpass, buses: Boolean(bus), within: within5 }).map((loop) => ({ ...loop, way: wayOfLoop(loop, grid, lanes, { avenueAt, overpass, level, relief }) }));
   const used = new Map;
   for (const { halt } of [...loops.flatMap((loop) => loop.way), ...bus?.way ?? []]) {
     if (!halt)
@@ -29336,22 +32980,22 @@ var TRAFFIC, ARC2 = 0.5523, HEADINGS, FROM, round51 = (value) => Math.round(valu
     here.straight &&= halt.straight === true;
     used.set(halt.key, here);
   }
-  const shows = (key) => {
+  const shows2 = (key) => {
     const [k, m] = key.split(":").map(Number);
     return k > 0 && k < grid.nx && m > 0 && m < grid.ny && grid.ys[m].kind !== "walk" && !(overpass && k === overpass.k && m === avenueAt);
   };
-  const junctions = new Map([...used].map(([key, { ways, straight }]) => [key, turnsOf(ways, { fixed: shows(key) ? ["W", "S", "E", "N"] : null, straight })]));
-  const signalled = [...junctions.keys()].filter((key) => shows(key) && junctions.get(key));
+  const junctions = new Map([...used].map(([key, { ways, straight }]) => [key, turnsOf(ways, { fixed: shows2(key) ? ["W", "S", "E", "N"] : null, straight })]));
+  const signalled = [...junctions.keys()].filter((key) => shows2(key) && junctions.get(key));
   const route = { type: "route", speed: TRAFFIC.speed, accel: TRAFFIC.accel, mode: "round", face: "yes", built: true };
   const cars = [];
   for (const [index, loop] of loops.entries()) {
-    const first = loop.way.findIndex((point) => point.halt && junctions.get(point.halt.key));
-    const way = [...loop.way.slice(Math.max(first, 0)), ...loop.way.slice(0, Math.max(first, 0))];
+    const first2 = loop.way.findIndex((point) => point.halt && junctions.get(point.halt.key));
+    const way = [...loop.way.slice(Math.max(first2, 0)), ...loop.way.slice(0, Math.max(first2, 0))];
     const { start, facing, points } = ownOf2(way);
     const rising = relief ? relief.grade(start[0] - 2 * facing[0], start[1] - 2 * facing[1]) * facing[1] : 0;
     points.push([0, -2, round51(-2 * rising), 0, 1, round51(rising)]);
     const halts = way.slice(1).flatMap(({ halt }, n) => halt && junctions.get(halt.key) ? [{ n: n + 1, turns: junctions.get(halt.key), from: halt.from }] : []);
-    if (first < 0) {
+    if (first2 < 0) {
       cars.push({ loop: index, at: start, facing, route: behaviourOf({ ...route, points, stop: 0 }, "object", "car"), period: null });
       continue;
     }
@@ -29364,6 +33008,11 @@ var TRAFFIC, ARC2 = 0.5523, HEADINGS, FROM, round51 = (value) => Math.round(valu
     const apart3 = Math.floor(period / TRAFFIC.cycle / count) * TRAFFIC.cycle;
     for (let n = 0;n < count; n++)
       cars.push({ loop: index, at: start, facing, route: { ...behaviour, since: Math.round(mod(phase + n * apart3 - behaviour.stop, period) * 1000) }, period });
+  }
+  if (ring4) {
+    const { start, facing, points } = ownOf2(ring4);
+    points.push([0, -2, 0, 0, 1, 0]);
+    cars.push({ loop: loops.length, ring: true, at: start, facing, route: behaviourOf({ ...route, points, stop: 0 }, "object", "car"), period: null });
   }
   let buses = null;
   if (bus) {
@@ -29688,7 +33337,7 @@ var init_city_ads = __esm(() => {
 var PLANET, SEA_RINGS, BEARINGS = 16, SLOPE_STEP = 20, LIMITS2, TREES, FLOWERS, frameAt4 = (up) => {
   const east = normalize(cross(Math.abs(up[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1], up));
   return { east, north: cross(up, east) };
-}, groundAt3 = (direction, world = {}) => {
+}, groundAt4 = (direction, world = {}) => {
   const { radius = PLANET.radius, sea = PLANET.sea, elevation = bareElevation, band = bandAt, snowy = snowyAt } = world;
   const up = normalize(direction);
   const ground = elevation(up);
@@ -29710,7 +33359,7 @@ var PLANET, SEA_RINGS, BEARINGS = 16, SLOPE_STEP = 20, LIMITS2, TREES, FLOWERS, 
   }
   const reading = { height: ground - sea, band: band(up, ground), snow: snowy(up, ground), slope, seaNear };
   return { ...reading, kind: kindOf2(reading) };
-}, kindOf2 = ({ height, band, snow, seaNear }) => height < 0 ? "sea" : snow >= LIMITS2.snow ? "snow" : seaNear <= LIMITS2.shore && height <= LIMITS2.low ? "shore" : band >= LIMITS2.heights || height >= LIMITS2.high ? "heights" : "temperate", groundOfParcel = (parcel, world = {}) => groundAt3(parcelCentre(parcel, () => 1), world);
+}, kindOf2 = ({ height, band, snow, seaNear }) => height < 0 ? "sea" : snow >= LIMITS2.snow ? "snow" : seaNear <= LIMITS2.shore && height <= LIMITS2.low ? "shore" : band >= LIMITS2.heights || height >= LIMITS2.high ? "heights" : "temperate", groundOfParcel = (parcel, world = {}) => groundAt4(parcelCentre(parcel, () => 1), world);
 var init_site_ground = __esm(() => {
   init_terrain_height();
   init_parcel();
@@ -29733,2481 +33382,15 @@ var init_site_ground = __esm(() => {
   });
 });
 
-// src/build/land-border.js
-var exports_land_border = {};
-__export(exports_land_border, {
-  tramOf: () => tramOf,
-  squareOf: () => squareOf2,
-  railOf: () => railOf,
-  railAt: () => railAt,
-  linkOf: () => linkOf,
-  landOn: () => landOn,
-  landOf: () => landOf,
-  halfOf: () => halfOf2,
-  furnitureOf: () => furnitureOf,
-  deepOf: () => deepOf,
-  curveEnd: () => curveEnd,
-  cornerHeight: () => cornerHeight,
-  cornerAngles: () => cornerAngles,
-  borderOf: () => borderOf,
-  STATION: () => STATION2,
-  ROUND: () => ROUND8,
-  RAILS: () => RAILS3,
-  PORT: () => PORT,
-  LANDS: () => LANDS,
-  BORDER: () => BORDER2,
-  ACROSS: () => ACROSS5
-});
-var BORDER2, STATION2, PORT = 0.2, RAILS3, LANDS, railOf = (kind) => LANDS[kind] ?? null, mm = (value) => Math.round(value * 1000) / 1000 + 0, clamp32 = (value, low, high) => Math.min(high, Math.max(low, value)), groundAt4 = (direction) => Math.max(bareElevation(direction), SEA), besideAt = (direction, east, north, radius) => {
-  const { north: n, east: e } = compassAt(direction);
-  return normalize(add(direction, add(scale(e, east / radius), scale(n, north / radius))));
-}, ACROSS5, cornerHeight = (corner2) => {
-  const radius = RADIUS + bareElevation(corner2);
-  let high = -Infinity;
-  for (const i of ACROSS5)
-    for (const j of ACROSS5)
-      high = Math.max(high, groundAt4(besideAt(corner2, i * BORDER2.band, j * BORDER2.band, radius)));
-  return mm(high + BORDER2.over);
-}, tautOver = (points) => {
-  const hull3 = [];
-  for (const point of points) {
-    while (hull3.length >= 2) {
-      const [[ax, ay], [bx, by2]] = [hull3.at(-2), hull3.at(-1)];
-      if ((bx - ax) * (point[1] - ay) - (by2 - ay) * (point[0] - ax) >= -0.000000000001)
-        hull3.pop();
-      else
-        break;
-    }
-    hull3.push(point);
-  }
-  return hull3;
-}, borderOf = (parcel, side2) => {
-  const other = neighbourOf(parcel, side2);
-  const first = parcelKey(parcel) < parcelKey(other);
-  const key = first ? `${parcelKey(parcel)}|${parcelKey(other)}` : `${parcelKey(other)}|${parcelKey(parcel)}`;
-  const had2 = BORDERS.get(key);
-  if (had2)
-    return { ...had2, other, first };
-  const made4 = borderMade(parcel, side2, other, first);
-  if (BORDERS.size >= 256)
-    BORDERS.delete(BORDERS.keys().next().value);
-  BORDERS.set(key, made4);
-  return made4;
-}, BORDERS, borderMade = (parcel, side2, other, first) => {
-  const [low, high] = first ? [parcel, other] : [other, parcel];
-  const [from, to] = edgeOf2(low, first ? side2 : sideTowards(other, parcel));
-  const keys2 = [parcelKey(low), parcelKey(high)];
-  const radius = RADIUS + (bareElevation(from) + bareElevation(to)) / 2;
-  const long = mm(Math.acos(clamp32(dot(from, to), -1, 1)) * radius);
-  const at = (t) => normalize(add(scale(from, 1 - t), scale(to, t)));
-  const out = normalize(sub(cornersOf4(high).reduce((sum, corner2) => add(sum, corner2)), cornersOf4(low).reduce((sum, corner2) => add(sum, corner2))));
-  const across = (t) => {
-    const here = at(t);
-    const along5 = normalize(sub(sub(to, from), scale(here, dot(sub(to, from), here))));
-    const square = cross(here, along5);
-    return dot(square, out) >= 0 ? square : scale(square, -1);
-  };
-  const count = Math.max(2, Math.ceil(long / BORDER2.step));
-  const floor = Array.from({ length: count + 1 }, (_, k) => {
-    const t = k / count;
-    if (k === 0)
-      return [0, cornerHeight(from)];
-    if (k === count)
-      return [1, cornerHeight(to)];
-    const [here, way] = [at(t), across(t)];
-    let top = -Infinity;
-    for (const off of ACROSS5)
-      top = Math.max(top, groundAt4(normalize(add(here, scale(way, off * BORDER2.band / radius)))));
-    return [t, top + BORDER2.over];
-  });
-  const knots = tautOver(floor).map(([t, height]) => [t, mm(height)]);
-  const heightAt = (t) => {
-    const w = clamp32(t, 0, 1);
-    const k = Math.max(1, knots.findIndex((knot) => knot[0] >= w - 0.000000000001));
-    const [[t0, h0], [t1, h1]] = [knots[k - 1], knots[k]];
-    return t1 - t0 > 0.000000000001 ? h0 + (h1 - h0) * (w - t0) / (t1 - t0) : h1;
-  };
-  const lengths2 = knots.slice(1).map(([t, height], k) => ({ from: mm(knots[k][0] * long), to: mm(t * long), rise: mm(height - knots[k][1]) }));
-  const gradeOf = (each) => Math.abs(each.rise) / Math.max(each.to - each.from, 0.000000001);
-  const steepest = lengths2.reduce((most2, each) => Math.max(most2, gradeOf(each)), 0);
-  const kind = steepest > BORDER2.grade + 0.000000001 ? "steps" : "street";
-  const flights = kind === "steps" ? lengths2.map((each) => ({ ...each, steps: gradeOf(each) > BORDER2.grade + 0.000000001 ? Math.ceil(Math.abs(each.rise) / BORDER2.riser) : 0 })) : [];
-  const share = (word, [least2, most2]) => least2 + (most2 - least2) * shareOf3("port", keys2[0], keys2[1], word);
-  const place = share("station", STATION2);
-  const half = RAILS3.platform.long / 2 / long;
-  const along4 = [place - half, place, place + half, ...knots.map((knot) => knot[0]).filter((t) => t > place - half && t < place + half)].map(heightAt);
-  const level = Math.max(...along4) - Math.min(...along4) <= RAILS3.level;
-  return {
-    other,
-    keys: keys2,
-    first,
-    from,
-    to,
-    long,
-    at,
-    across,
-    knots,
-    heightAt,
-    steepest,
-    kind,
-    flights,
-    port: kind === "street" ? PORT : null,
-    station: kind === "street" && level ? { at: place, level: mm(heightAt(place)) } : null,
-    tram: kind === "street" && level && shareOf3("port", keys2[0], keys2[1], "tram") < RAILS3.tram
-  };
-}, cornerAngles = (parcel) => {
-  const corners = cornersOf4(parcel);
-  return corners.map((here, k) => {
-    const [before, after] = [corners[(k + 3) % 4], corners[(k + 1) % 4]];
-    const level = (way) => normalize(sub(way, scale(here, dot(way, here))));
-    return Math.acos(clamp32(dot(level(sub(before, here)), level(sub(after, here))), -1, 1));
-  });
-}, curveEnd = (angle, own, other) => (other + own * Math.cos(angle)) / Math.sin(angle) + RAILS3.radius * Math.tan((Math.PI - angle) / 2), ROUND8, tramOf = (parcel) => {
-  const corners = cornersOf4(parcel);
-  const borders = Object.fromEntries(SIDES10.map((side2) => [side2, borderOf(parcel, side2)]));
-  const runs3 = (side2) => borders[side2].kind === "street" && borders[side2].steepest <= RAILS3.grade + 0.000000001;
-  const cornerAfter = { south: 1, east: 2, north: 3, west: 0 };
-  const angles = cornerAngles(parcel);
-  const [angleAt, curveAt] = [(k) => angles[k], curveEnd];
-  const from = (side2, corner2) => {
-    const border = borders[side2];
-    const flipped = dot(corner2, border.from) < dot(corner2, border.to);
-    const far = (d) => flipped ? 1 - d / border.long : d / border.long;
-    return {
-      long: border.long,
-      height: (d) => border.heightAt(far(d)),
-      port: border.port === null ? null : (flipped ? 1 - border.port : border.port) * border.long,
-      station: border.station ? (flipped ? 1 - border.station.at : border.station.at) * border.long : null
-    };
-  };
-  const rampOn = (street2, near2) => {
-    const fall = RAILS3.over - (BORDER2.kerb + RAILS3.flush);
-    let long = fall / RAILS3.grade;
-    for (let pass = 0;pass < 4; pass++)
-      long = Math.max(40, (fall + street2.height(near2 + long) - street2.height(near2)) / RAILS3.grade);
-    return { from: mm(near2), to: mm(near2 + long + 0.01), low: near2 + long * (RAILS3.clear + RAILS3.deck - (BORDER2.kerb + RAILS3.flush)) / fall };
-  };
-  for (const [k, { side: side2 }] of ROUND8.entries()) {
-    const border = borders[side2];
-    const [before, after] = [ROUND8[(k + 3) % 4].side, ROUND8[(k + 1) % 4].side];
-    if (!border.tram || !runs3(before) || !runs3(after))
-      continue;
-    const [first, last] = [cornerAfter[before], cornerAfter[side2]];
-    const [down, up] = [from(before, corners[first]), from(after, corners[last])];
-    const fits = (street2, angle, far, keep2) => {
-      const ramp = rampOn(street2, curveAt(angle, RAILS3.high.track, RAILS3.low.track) + RAILS3.ease);
-      if (ramp.to > street2.long - curveAt(far, RAILS3.high.track, RAILS3.high.track) - RAILS3.ease)
-        return null;
-      if (street2.station !== null && ramp.to > street2.station - keep2 - RAILS3.ease)
-        return null;
-      if (street2.station !== null && street2.station < ramp.to)
-        return null;
-      if (street2.port !== null && street2.port + BORDER2.road / 2 > ramp.from - 0.000000001 && street2.port - BORDER2.road / 2 < ramp.low)
-        return null;
-      return [ramp.from, ramp.to];
-    };
-    const [low, high] = [fits(down, angleAt(first), angleAt((first + 3) % 4), RAILS3.lead), fits(up, angleAt(last), angleAt((last + 1) % 4), RAILS3.tail)];
-    if (low && high)
-      return { side: side2, before, after, down: low, up: high };
-  }
-  return null;
-}, railAt = (kind, parcel, side2) => {
-  const rail5 = railOf(kind);
-  return rail5 === "high" && tramOf(parcel)?.side === side2 ? "low" : rail5;
-}, furnitureOf = (border) => {
-  const { long, port, station } = border;
-  const zone = station && [station.at * long - RAILS3.platform.long / 2 - RAILS3.steps, station.at * long + RAILS3.platform.long / 2 + RAILS3.steps + RAILS3.cross + 2];
-  const kept3 = (d) => d < BORDER2.keep || d > long - BORDER2.keep || port !== null && Math.abs(d - port * long) < BORDER2.road / 2 + BORDER2.keep || zone !== null && d > zone[0] - BORDER2.keep && d < zone[1] + BORDER2.keep;
-  const [lamps, trees] = [[], []];
-  for (let d = BORDER2.first;d < long; d += BORDER2.lamps) {
-    if (!kept3(d))
-      lamps.push(mm(d));
-    if (d + BORDER2.lamps / 2 < long && !kept3(d + BORDER2.lamps / 2))
-      trees.push(mm(d + BORDER2.lamps / 2));
-  }
-  return { lamps, trees };
-}, deepOf = (rail5) => mm(Math.max(RAILS3.deep, RAILS3[rail5].track + RAILS3.body / 2 + RAILS3.gap + RAILS3.platform.wide + BORDER2.walk)), stationOf = (border, own, other) => {
-  const at = mm(border.station.at * border.long);
-  const { level } = border.station;
-  const [half, low] = [RAILS3.platform.long / 2, own === "low"];
-  const track2 = RAILS3[own].track;
-  const clear = RAILS3.body / 2 + RAILS3.gap;
-  const bed2 = mm(level + (low ? BORDER2.kerb + RAILS3.flush : RAILS3.over));
-  const top = mm(bed2 + RAILS3.platform.over);
-  const platform = { from: mm(track2 + clear), to: mm(track2 + clear + RAILS3.platform.wide), top };
-  const island = other === own && !low ? { from: 0, to: mm(track2 - clear), top } : null;
-  const closed = false;
-  return {
-    at,
-    from: mm(at - half),
-    to: mm(at + half),
-    level,
-    rail: own,
-    track: track2,
-    bed: bed2,
-    platform,
-    island,
-    access: low ? "steps" : "stair",
-    run: low ? RAILS3.steps : RAILS3.stair,
-    cross: closed ? null : mm(at + half + RAILS3.steps + RAILS3.cross),
-    zone: [mm(at - half - RAILS3.steps), mm(at + half + RAILS3.steps + RAILS3.cross + 2)],
-    deep: deepOf(own),
-    closed
-  };
-}, halfOf2 = (parcel, side2, mine = null, theirs = null) => {
-  const border = borderOf(parcel, side2);
-  const [own, other] = [railAt(mine, parcel, side2), railAt(theirs, border.other, sideTowards(border.other, parcel))];
-  const street2 = border.kind === "street";
-  const bands = street2 ? [{ name: "lane", from: 0, to: BORDER2.road / 2, over: 0 }, { name: "walk", from: BORDER2.road / 2, to: BORDER2.road / 2 + BORDER2.walk, over: BORDER2.kerb }] : [{ name: "way", from: 0, to: BORDER2.road / 2 + BORDER2.walk, over: 0 }];
-  const at = border.port === null ? null : mm(border.port * border.long);
-  return {
-    kind: border.kind,
-    long: border.long,
-    bands,
-    ...furnitureOf(border),
-    port: at === null ? null : { at, from: mm(at - BORDER2.road / 2), to: mm(at + BORDER2.road / 2) },
-    station: border.station && own ? stationOf(border, own, other) : null,
-    flights: border.flights
-  };
-}, linkOf = (a, b) => {
-  if (!a.station || !b.station)
-    return null;
-  if (a.station.island && b.station.island)
-    return { by: "island", far: 0, climbs: [] };
-  const way = ({ rail: rail5, platform, run, deep }) => ({ far: run + (platform.to + deep) / 2, climb: rail5 === "low" ? "steps" : "stair" });
-  const [from, to] = [way(a.station), way(b.station)];
-  return { by: "crossing", far: mm(from.far + to.far), climbs: [from.climb, to.climb] };
-}, landOn = (parcel, toLocal) => {
-  const directions = cornersOf4(parcel);
-  const corners = directions.map((corner2) => toLocal(corner2, cornerHeight(corner2)).map(mm));
-  const [sw, se, ne, nw] = corners;
-  const far = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
-  const size = [mm((far(sw, se) + far(nw, ne)) / 2), mm((far(sw, nw) + far(se, ne)) / 2)];
-  const place = (x, y) => {
-    const [s, t] = [x / size[0], y / size[1]];
-    return [0, 1].map((k) => (1 - s) * (1 - t) * sw[k] + s * (1 - t) * se[k] + s * t * ne[k] + (1 - s) * t * nw[k]);
-  };
-  const waysAt = (x, y) => {
-    const [s, t] = [x / size[0], y / size[1]];
-    return [
-      [0, 1].map((k) => ((1 - t) * (se[k] - sw[k]) + t * (ne[k] - nw[k])) / size[0]),
-      [0, 1].map((k) => ((1 - s) * (nw[k] - sw[k]) + s * (ne[k] - se[k])) / size[1])
-    ];
-  };
-  const where = (X2, Y) => {
-    let [x, y] = [size[0] / 2, size[1] / 2];
-    for (let pass = 0;pass < 4; pass++) {
-      const [px, py] = place(x, y);
-      const [[ax, ay], [bx, by2]] = waysAt(x, y);
-      const det = ax * by2 - ay * bx;
-      const [dx, dy] = [X2 - px, Y - py];
-      x += (dx * by2 - dy * bx) / det;
-      y += (ax * dy - ay * dx) / det;
-    }
-    return [x, y];
-  };
-  const wayAt = (x, y) => {
-    const [a, b] = waysAt(x, y).map((way) => {
-      const long = Math.hypot(...way);
-      return [way[0] / long, way[1] / long];
-    });
-    const [yaw, turned5] = [Math.atan2(a[1], a[0]), Math.atan2(b[1], b[0])];
-    const degrees = (angle) => angle * 180 / Math.PI;
-    return { along: a, up: b, yaw: degrees(yaw), skew: ((degrees(turned5 - yaw) - 90) % 360 + 540) % 360 - 180 };
-  };
-  const middle = [0, 1].map((k) => (sw[k] + se[k] + ne[k] + nw[k]) / 4);
-  const sides2 = Object.fromEntries(SIDES10.map((side2) => {
-    const border = borderOf(parcel, side2);
-    const [a] = edgeOf2(parcel, side2);
-    const flipped = dot(a, border.from) < dot(a, border.to);
-    const long = side2 === "south" || side2 === "north" ? size[0] : size[1];
-    const share = (c) => flipped ? 1 - c / long : c / long;
-    const own = (t) => flipped ? (1 - t) * long : t * long;
-    const heightAt = (c) => mm(toLocal(border.at(share(c)), border.heightAt(share(c)))[2]);
-    const [e0, e1] = [toLocal(border.from, border.heightAt(0)), toLocal(border.to, border.heightAt(1))];
-    const chord = Math.hypot(e1[0] - e0[0], e1[1] - e0[1]);
-    const way = [(e1[0] - e0[0]) / chord, (e1[1] - e0[1]) / chord];
-    const turned5 = [-way[1], way[0]];
-    const inward = turned5[0] * (middle[0] - e0[0]) + turned5[1] * (middle[1] - e0[1]) >= 0 ? turned5 : [way[1], -way[0]];
-    const at = (d, t) => {
-      const s = d / border.long;
-      return [e0[0] + (e1[0] - e0[0]) * s + inward[0] * t, e0[1] + (e1[1] - e0[1]) * s + inward[1] * t, toLocal(border.at(s), border.heightAt(s))[2]];
-    };
-    return [side2, {
-      border,
-      long,
-      flipped,
-      share,
-      own,
-      heightAt,
-      at,
-      wayAt: { along: way, into: inward },
-      port: border.port === null ? null : mm(own(border.port)),
-      station: border.station ? mm(own(border.station.at)) : null
-    }];
-  }));
-  const lean = 1 / Math.cos(wayAt(size[0] / 2, size[1] / 2).skew * Math.PI / 180);
-  return { parcel, key: parcelKey(parcel), size, lean, corners, place, where, wayAt, sides: sides2, toLocal, tram: tramOf(parcel), square: squareOf2(corners) };
-}, squareOf2 = (corners) => {
-  const [sw, se, ne, nw] = corners;
-  const [ax, ay] = [se[0] - sw[0] + ne[0] - nw[0], se[1] - sw[1] + ne[1] - nw[1]];
-  const long = Math.hypot(ax, ay);
-  const way = [ax / long, ay / long];
-  const up = [-way[1], way[0]];
-  const centre = [0, 1].map((k) => (sw[k] + se[k] + ne[k] + nw[k]) / 4);
-  const at = (x, y) => [centre[0] + way[0] * x + up[0] * y, centre[1] + way[1] * x + up[1] * y];
-  const back = (X2, Y) => {
-    const [dx, dy] = [X2 - centre[0], Y - centre[1]];
-    return [dx * way[0] + dy * way[1], dx * up[0] + dy * up[1]];
-  };
-  const own = corners.map((corner2) => back(corner2[0], corner2[1]));
-  const [s0, s1, n1, n0] = own;
-  const lineThrough = (p, q) => (y) => p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1]);
-  const apart3 = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
-  return {
-    way,
-    up,
-    yaw: Math.atan2(way[1], way[0]) * 180 / Math.PI,
-    centre,
-    at,
-    back,
-    size: [mm((apart3(s0, s1) + apart3(n0, n1)) / 2), mm((n0[1] + n1[1] - s0[1] - s1[1]) / 2)],
-    slope: ((n0[0] - s0[0]) / (n0[1] - s0[1]) + (n1[0] - s1[0]) / (n1[1] - s1[1])) / 2,
-    corners: own.map(([x, y]) => [mm(x), mm(y)]),
-    west: lineThrough(s0, n0),
-    east: lineThrough(s1, n1)
-  };
-}, landOf = (frame) => landOn(parcelOf(frame.origin), (direction, elevation) => {
-  const offset = sub(scale(direction, RADIUS + elevation), frame.origin);
-  return [dot(offset, frame.right), dot(offset, frame.ahead), dot(offset, frame.up)];
-});
-var init_land_border = __esm(() => {
-  init_region();
-  init_parcel();
-  init_parcel_rooms();
-  init_terrain_height();
-  init_survey();
-  BORDER2 = Object.freeze({ road: 7.5, kerb: 0.15, walk: 3.5, lamp: 0.6, tree: 1.2, band: 9, step: 3, across: 3, over: 0.3, grade: 0.12, riser: 0.17, lamps: 24, first: 12, keep: 9 });
-  STATION2 = Object.freeze([0.31, 0.345]);
-  RAILS3 = Object.freeze({
-    band: 4.4,
-    body: 3.4,
-    gap: 0.1,
-    over: 8,
-    flush: -0.25,
-    platform: Object.freeze({ long: 34, wide: 3.25, over: 1.05 }),
-    high: Object.freeze({ track: 5.95 }),
-    low: Object.freeze({ track: 8.9 }),
-    level: 0.35,
-    steps: 1.8,
-    stair: 13.3,
-    cross: 3,
-    deep: 14.6,
-    radius: 26,
-    grade: 0.08,
-    lead: 21,
-    tail: 22,
-    ease: 3,
-    clear: 5.2,
-    deck: 0.8,
-    tram: 1 / 2
-  });
-  LANDS = Object.freeze({ city: "high", neighbourhood: "low", airport: "low", park: "low", garden: "low" });
-  ACROSS5 = Object.freeze(Array.from({ length: 2 * Math.ceil(BORDER2.band / BORDER2.across) + 1 }, (_, i) => -1 + i / Math.ceil(BORDER2.band / BORDER2.across)));
-  BORDERS = new Map;
-  ROUND8 = Object.freeze([Object.freeze({ side: "south", sign: 1 }), Object.freeze({ side: "east", sign: 1 }), Object.freeze({ side: "north", sign: -1 }), Object.freeze({ side: "west", sign: -1 })]);
-});
-
-// src/build/land-grid.js
-var exports_land_grid = {};
-__export(exports_land_grid, {
-  levelsOf: () => levelsOf,
-  leanOf: () => leanOf,
-  gridOn: () => gridOn,
-  clashesOf: () => clashesOf,
-  GRID: () => GRID
-});
-var GRID, mm2 = (value) => Math.round(value * 1000) / 1000 + 0, leanOf = (land2) => Math.hypot(1, land2.square.west(1) - land2.square.west(0)), lineAt = (line, y) => ({ from: line.from + (line.slope ?? 0) * y, to: line.to + (line.slope ?? 0) * y, mid: line.mid + (line.slope ?? 0) * y }), gridOn = (land2, { xs, ys }) => {
-  const [nx, ny] = [xs.length - 1, ys.length - 1];
-  const sq = land2.square;
-  const H2 = sq.size[1];
-  for (const [line, edge, name] of [[xs[0], sq.west(0), "west"], [xs[nx], sq.east(0), "east"], [ys[0], -H2 / 2, "south"], [ys[ny], H2 / 2, "north"]]) {
-    if (Math.abs(line.mid - edge) > 0.01)
-      throw new Error(`land-grid: its ${name} line lies ${(line.mid - edge).toFixed(3)} m off the land's edge — a land's outer streets are its borders`);
-  }
-  const nodes = [];
-  for (let j = 0;j <= ny; j++)
-    for (let i = 0;i <= nx; i++) {
-      const [west, south] = [i === 0 || i === nx, j === 0 || j === ny];
-      nodes.push({ key: `${i}:${j}`, i, j, x: mm2(lineAt(xs[i], ys[j].mid).mid), y: ys[j].mid, edge: west || south, corner: west && south });
-    }
-  const segments = [];
-  for (let j = 0;j <= ny; j++)
-    for (let i = 0;i < nx; i++) {
-      const [from, to] = [lineAt(xs[i], ys[j].mid).to, lineAt(xs[i + 1], ys[j].mid).from];
-      segments.push({ key: `x:${i}:${j}`, way: "x", i, j, line: ys[j], at: ys[j].mid, from: mm2(from), to: mm2(to), long: mm2(to - from), side: j === 0 ? "south" : j === ny ? "north" : null });
-    }
-  for (let i = 0;i <= nx; i++)
-    for (let j = 0;j < ny; j++) {
-      segments.push({ key: `y:${i}:${j}`, way: "y", i, j, line: xs[i], at: xs[i].mid, from: ys[j].to, to: ys[j + 1].from, long: mm2(ys[j + 1].from - ys[j].to), side: i === 0 ? "west" : i === nx ? "east" : null });
-    }
-  const cells = [];
-  for (let j = 0;j < ny; j++)
-    for (let i = 0;i < nx; i++) {
-      const [y0, y1] = [ys[j].to, ys[j + 1].from];
-      const x0 = i === 0 ? Math.max(lineAt(xs[0], y0).to, lineAt(xs[0], y1).to) : xs[i].to;
-      const x1 = i === nx - 1 ? Math.min(lineAt(xs[nx], y0).from, lineAt(xs[nx], y1).from) : xs[i + 1].from;
-      cells.push({ key: `${i}:${j}`, i, j, x0: mm2(x0), x1: mm2(x1), y0, y1 });
-    }
-  const place = (x, y) => sq.at(x, y);
-  const back = (X2, Y) => sq.back(X2, Y);
-  const ownAlong = (name, [X2, Y]) => {
-    const own = land2.sides[name];
-    const [p, q] = [own.at(0, 0), own.at(own.border.long, 0)];
-    const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
-    return own.own(((X2 - p[0]) * dx + (Y - p[1]) * dy) / (dx * dx + dy * dy));
-  };
-  const sideOf = (name) => {
-    const across = name === "south" || name === "north";
-    const line = { south: ys[0], north: ys[ny], west: xs[0], east: xs[nx] }[name];
-    const crossing2 = (across ? xs : ys).slice(1, -1);
-    const { port } = land2.sides[name];
-    const mouths = crossing2.map((each) => {
-      const ends = across ? [each.from, each.to].map((x) => place(x, line.mid)) : [each.from, each.to].map((y) => place(lineAt(line, y).mid, y));
-      const [a, b] = ends.map((end) => ownAlong(name, end)).sort((p, q) => p - q);
-      return { from: mm2(a), to: mm2(b), port: port !== null && a <= port + 0.000001 && b >= port - 0.000001 };
-    });
-    return { name, line, way: across ? "x" : "y", start: 0, mouths: mouths.sort((p, q) => p.from - q.from) };
-  };
-  return { land: land2, xs, ys, nx, ny, nodes, segments, cells, stubs: [], place, back, sideOf };
-}, levelsOf = (grid, { bridges = [], line = null } = {}) => {
-  const { land: land2 } = grid;
-  const roadOf = (segment) => segment.side && land2.sides[segment.side].border.kind === "steps" ? "steps" : segment.line.kind === "walk" ? "walk" : "street";
-  const segments = new Map(grid.segments.map((segment) => [segment.key, { road: roadOf(segment), rail: null }]));
-  const nodes = new Map(grid.nodes.map((node) => [node.key, { road: "junction", rail: null }]));
-  for (const { k, over } of bridges) {
-    nodes.get(`${k}:${over}`).road = "deck";
-    for (const j of [over - 1, over])
-      if (segments.has(`y:${k}:${j}`))
-        segments.get(`y:${k}:${j}`).road = "ramp";
-  }
-  for (const run of line?.runs ?? []) {
-    for (const each of run.segments)
-      segments.get(each.key).rail = each.level;
-    for (const key of run.through)
-      nodes.get(key).rail = "through";
-    nodes.get(run.turn).rail = "turn";
-  }
-  return { segments, nodes };
-}, clashesOf = (levels, line = null) => {
-  const found = [];
-  for (const [key, { road: road2, rail: rail5 }] of levels.segments)
-    if (road2 === "ramp" && rail5)
-      found.push(`${key}: the circuit runs along a stretch a road climbs to its bridge on`);
-  for (const [key, { road: road2, rail: rail5 }] of levels.nodes)
-    if (road2 === "deck" && rail5)
-      found.push(`${key}: the circuit passes the junction a road's bridge is over`);
-  for (const mouth of line?.mouths ?? []) {
-    if (mouth.how === "closed" && mouth.port)
-      found.push(`${mouth.side}: its port's mouth is closed under the circuit's ramp`);
-    if (mouth.how === "under" && mouth.clear < GRID.clear - 0.000001)
-      found.push(`${mouth.side}: a street passes under the circuit with ${mouth.clear.toFixed(2)} m, ${GRID.clear} m at the least`);
-  }
-  return found;
-};
-var init_land_grid = __esm(() => {
-  GRID = Object.freeze({ sliver: 18, clear: 5.2 });
-});
-
-// src/build/land-line.js
-var exports_land_line = {};
-__export(exports_land_line, {
-  spansOf: () => spansOf,
-  lineOn: () => lineOn,
-  checkLine: () => checkLine,
-  SHAPES: () => SHAPES4,
-  LINE: () => LINE2
-});
-var LINE2, mm3 = (value) => Math.round(value * 1000) / 1000 + 0, bentOnly = (knots, long) => {
-  const kept3 = [...knots];
-  const offOf = (k) => {
-    const [a, b, c] = [kept3[(k + kept3.length - 1) % kept3.length], kept3[k], kept3[(k + 1) % kept3.length]];
-    const span = ((c[0] - a[0]) % long + long) % long || long;
-    const t = ((b[0] - a[0]) % long + long) % long / span;
-    return Math.abs(b[1] - (a[1] + (c[1] - a[1]) * t));
-  };
-  while (kept3.length > 3) {
-    let [least2, at] = [Infinity, -1];
-    for (let k = 0;k < kept3.length; k++) {
-      const off = offOf(k);
-      if (off < least2)
-        [least2, at] = [off, k];
-    }
-    if (least2 > 0.005)
-      break;
-    kept3.splice(at, 1);
-  }
-  return kept3;
-}, spansOf = (stretch) => {
-  const spans = Math.max(1, Math.ceil(stretch.long / LINE2.knot - 0.000000001));
-  return stretch.kind === "turn" ? Math.max(2, spans + spans % 2) : spans;
-}, mulberry = (seed) => {
-  let state = seed | 0;
-  return () => {
-    state = state + 1831565813 | 0;
-    let t = Math.imul(state ^ state >>> 15, 1 | state);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}, cross22 = (a, b) => a[0] * b[1] - a[1] * b[0], dot22 = (a, b) => a[0] * b[0] + a[1] * b[1], unit10 = (v) => {
-  const long = Math.hypot(v[0], v[1]);
-  return [v[0] / long, v[1] / long];
-}, SIDES_ROUND, CORNERS, SHAPES4, lineOn = (grid, { kind, seed = 1, inside, cuts = true, force = null, ground = null, exact = false }) => {
-  const rail5 = railOf(kind);
-  if (!rail5)
-    return { rail: null, reasons: [`a land of this kind has no train (${kind})`] };
-  const { land: land2, xs, ys, nx, ny } = grid;
-  const random = mulberry(Math.imul(seed | 0, 2654435761) ^ 1540483477);
-  const reasons = [];
-  const comes = rail5 === "high" ? tramOf(land2.parcel) : null;
-  const sides2 = Object.fromEntries(SIDES_ROUND.map((each) => {
-    const [own, said2] = [land2.sides[each.name], grid.sideOf(each.name)];
-    const runs4 = railAt(kind, land2.parcel, each.name);
-    const along4 = (g) => own.share(g - said2.start) * own.border.long;
-    const going = (own.flipped ? -1 : 1) * each.sign;
-    const steep = own.border.kind !== "street" || own.border.steepest > RAILS3.grade + 0.000000001;
-    return [each.name, { ...each, own, said: said2, along: along4, going, steep, rail: runs4, track: RAILS3[runs4].track }];
-  }));
-  const lineOfBorder = (side2) => {
-    const { own, going, track: track2 } = sides2[side2];
-    const [p, q] = [own.at(0, track2), own.at(own.border.long, track2)];
-    return { p: [p[0], p[1]], u: unit10([(q[0] - p[0]) * going, (q[1] - p[1]) * going]) };
-  };
-  const lineOfStreet = (way, index, sign2) => {
-    const line = (way === "y" ? xs : ys)[index];
-    const left = way === "y" ? -sign2 : sign2;
-    const at2 = left > 0 ? line.to + LINE2.inner : line.from - LINE2.inner;
-    const [a, b] = way === "y" ? [grid.place(at2, ys[0].mid), grid.place(at2, ys[ny].mid)] : [grid.place(xs[0].mid, at2), grid.place(xs[nx].mid, at2)];
-    return { p: a, u: unit10([(b[0] - a[0]) * sign2, (b[1] - a[1]) * sign2]) };
-  };
-  const borderRun = (each) => ({ name: each.name, kind: "border", side: each.name, way: each.way, index: each.way === "x" ? each.name === "south" ? 0 : ny : each.name === "west" ? 0 : nx, sign: each.sign, rail: sides2[each.name].rail, track: sides2[each.name].track, ...lineOfBorder(each.name) });
-  const innerRun = (name, way, index, sign2) => ({ name, kind: "inner", side: null, way, index, sign: sign2, rail: "high", track: LINE2.inner, ...lineOfStreet(way, index, sign2) });
-  const insideOf2 = (each) => innerRun(`inside ${each.name}`, each.way, each.way === "x" ? each.name === "south" ? 1 : ny - 1 : each.name === "west" ? 1 : nx - 1, each.sign);
-  const cutOf = (corner2, [k, m]) => ({
-    se: [innerRun(`cut se up ${k}`, "y", nx - k, 1), innerRun(`cut se along ${m}`, "x", m, 1)],
-    ne: [innerRun(`cut ne back ${k}`, "x", ny - k, -1), innerRun(`cut ne up ${m}`, "y", nx - m, 1)],
-    nw: [innerRun(`cut nw down ${k}`, "y", k, -1), innerRun(`cut nw back ${m}`, "x", ny - m, -1)],
-    sw: [innerRun(`cut sw along ${k}`, "x", k, 1), innerRun(`cut sw down ${m}`, "y", m, -1)]
-  })[corner2];
-  const traced = (runs4) => {
-    const count = runs4.length;
-    const corners = runs4.map((run, k) => {
-      const next = runs4[(k + 1) % count];
-      const det = cross22(run.u, next.u);
-      if (Math.abs(det) < 0.000001)
-        return null;
-      const t = cross22([next.p[0] - run.p[0], next.p[1] - run.p[1]], next.u) / det;
-      const sweep2 = Math.atan2(det, dot22(run.u, next.u));
-      return { vertex: [run.p[0] + run.u[0] * t, run.p[1] + run.u[1] * t], sweep: sweep2, tangent: RAILS3.radius * Math.tan(Math.abs(sweep2) / 2) };
-    });
-    if (corners.some((corner2) => corner2 === null))
-      return { failed: "two of its streets run the same way where it would turn" };
-    const stretches2 = [];
-    let start = 0;
-    for (const [k, run] of runs4.entries()) {
-      const [before, after] = [corners[(k + count - 1) % count], corners[k]];
-      const from = [before.vertex[0] + run.u[0] * before.tangent, before.vertex[1] + run.u[1] * before.tangent];
-      const to = [after.vertex[0] - run.u[0] * after.tangent, after.vertex[1] - run.u[1] * after.tangent];
-      const long = dot22([to[0] - from[0], to[1] - from[1]], run.u);
-      if (long < LINE2.straight)
-        return { failed: `${run.name}: ${long.toFixed(1)} m of straight between two curves of ${RAILS3.radius} m, ${LINE2.straight} m at the least` };
-      stretches2.push({ kind: "straight", run: k, start, long, from, way: run.u });
-      start += long;
-      const left = after.sweep > 0;
-      const normal = left ? [-run.u[1], run.u[0]] : [run.u[1], -run.u[0]];
-      const centre = [to[0] + normal[0] * RAILS3.radius, to[1] + normal[1] * RAILS3.radius];
-      const curve = RAILS3.radius * Math.abs(after.sweep);
-      stretches2.push({ kind: "turn", start, long: curve, centre, radius: RAILS3.radius, begin: Math.atan2(to[1] - centre[1], to[0] - centre[0]), sweep: after.sweep, left });
-      start += curve;
-    }
-    return { stretches: stretches2, length: start, corners };
-  };
-  const borderAt = (run, stretch2, s) => {
-    const side2 = sides2[run.side];
-    const origin = side2.own.at(0, run.track);
-    return (dot22([stretch2.from[0] - origin[0], stretch2.from[1] - origin[1]], run.u) + s) * side2.going;
-  };
-  const alongRun = (run, stretch2, place) => (place - borderAt(run, stretch2, 0)) * sides2[run.side].going;
-  const streetAt = (run, stretch2, s) => run.kind === "border" ? sides2[run.side].own.at(Math.min(Math.max(borderAt(run, stretch2, s), 0), sides2[run.side].own.border.long), 0)[2] : inside;
-  const steepestOf = (runs4, line) => {
-    let most2 = 0;
-    for (const [k, run] of runs4.entries()) {
-      const [stretch2, next] = [line.stretches[2 * k], line.stretches[(2 * k + 2) % line.stretches.length]];
-      const curve = line.stretches[2 * k + 1];
-      most2 = Math.max(most2, Math.abs(streetAt(runs4[next.run], next, 0) - streetAt(run, stretch2, stretch2.long)) / curve.long);
-      if (run.kind === "border")
-        most2 = Math.max(most2, sides2[run.side].own.border.steepest);
-    }
-    return most2;
-  };
-  const stationOn = (run, stretch2) => {
-    const { border } = sides2[run.side].own;
-    if (!border.station)
-      return null;
-    const s = alongRun(run, stretch2, border.station.at * border.long);
-    return { side: run.side, s, fits: s - RAILS3.tail >= 0 && s + RAILS3.lead <= stretch2.long };
-  };
-  const standing2 = (runs4, line) => runs4.reduce((sum, run, k) => sum + (run.kind === "border" && stationOn(run, line.stretches[2 * k])?.fits ? 1 : 0), 0);
-  for (const each of SIDES_ROUND) {
-    const { steep, own } = sides2[each.name];
-    if (steep)
-      reasons.push(`its ${each.name} border ${own.border.kind === "steps" ? "is a way of steps" : `climbs ${(own.border.steepest * 100).toFixed(1)} in 100`}: its line keeps to the first street inside it, and has no station there`);
-  }
-  let runs3 = SIDES_ROUND.map((each) => sides2[each.name].steep ? insideOf2(each) : borderRun(each));
-  let made4 = traced(runs3);
-  if (made4.failed)
-    return { rail: null, reasons: [...reasons, `its line does not close: ${made4.failed}`] };
-  const climbs = steepestOf(runs3, made4);
-  if (climbs > RAILS3.grade + 0.000000001)
-    return { rail: null, reasons: [...reasons, `its line is not laid: between a border's street and the street inside the next it would climb ${(climbs * 100).toFixed(1)} in 100, ${RAILS3.grade * 100} at the most`] };
-  const chosen = [];
-  for (const [k, corner2] of CORNERS.entries()) {
-    const [before, after] = [SIDES_ROUND[k], SIDES_ROUND[(k + 1) % 4]];
-    const [draw3, order] = [random(), random()];
-    const asked2 = force?.[corner2] ?? null;
-    if (force ? !asked2 : !cuts || draw3 >= LINE2.cut)
-      continue;
-    if (sides2[before.name].steep || sides2[after.name].steep)
-      continue;
-    if (comes && (comes.side === before.name || comes.side === after.name)) {
-      if (force)
-        reasons.push(`its ${corner2} corner is not cut: its line comes down to the street beside it`);
-      continue;
-    }
-    const start = Math.floor(order * SHAPES4.length);
-    const shapes = asked2 ? [asked2] : SHAPES4.map((_, n) => SHAPES4[(start + n) % SHAPES4.length]);
-    for (const shape of shapes) {
-      const [inK, inM] = shape;
-      if (nx - Math.max(inK, inM) < 1 || ny - Math.max(inK, inM) < 1)
-        continue;
-      const at2 = runs3.findIndex((run) => run.kind === "border" && run.side === before.name);
-      const tried = [...runs3.slice(0, at2 + 1), ...cutOf(corner2, shape), ...runs3.slice(at2 + 1)];
-      const name = `${corner2}${inK}${inM}`;
-      const line = traced(tried);
-      if (line.failed) {
-        reasons.push(`its ${corner2} corner is not cut ${inK}×${inM}: ${line.failed}`);
-        continue;
-      }
-      if (standing2(tried, line) < standing2(runs3, made4)) {
-        reasons.push(`its ${corner2} corner is not cut ${inK}×${inM}: a station by it would not stand on its straight`);
-        continue;
-      }
-      const steep = steepestOf(tried, line);
-      if (steep > RAILS3.grade + 0.000000001) {
-        reasons.push(`its ${corner2} corner is not cut ${inK}×${inM}: it would climb ${(steep * 100).toFixed(1)} in 100 between its border and its inside`);
-        continue;
-      }
-      runs3 = tried;
-      made4 = line;
-      chosen.push(name);
-      break;
-    }
-  }
-  const { stretches, length: length2 } = made4;
-  const wrapped = (d) => (d % length2 + length2) % length2;
-  const at = (d) => {
-    const w = wrapped(d);
-    const each = stretches.findLast((stretch2) => stretch2.start <= w + 0.000000001) ?? stretches[0];
-    const run = w - each.start;
-    if (each.kind === "straight")
-      return { x: each.from[0] + each.way[0] * run, y: each.from[1] + each.way[1] * run, way: each.way };
-    const turned5 = each.begin + Math.sign(each.sweep) * run / each.radius;
-    const out = [Math.cos(turned5), Math.sin(turned5)];
-    return { x: each.centre[0] + each.radius * out[0], y: each.centre[1] + each.radius * out[1], way: each.left ? [-out[1], out[0]] : [out[1], -out[0]] };
-  };
-  const straightOf = (side2) => stretches[2 * runs3.findIndex((run) => run.kind === "border" && run.side === side2)];
-  const runOf = (side2) => runs3.find((run) => run.kind === "border" && run.side === side2);
-  const streetUnder = (d) => {
-    const w = wrapped(d);
-    const k = Math.max(0, stretches.findLastIndex((stretch2) => stretch2.start <= w + 0.000000001));
-    const each = stretches[k];
-    if (each.kind === "straight")
-      return streetAt(runs3[each.run], each, w - each.start);
-    const [last, next] = [stretches[k - 1], stretches[(k + 1) % stretches.length]];
-    const [z0, z1] = [streetAt(runs3[last.run], last, last.long), streetAt(runs3[next.run], next, 0)];
-    return z0 + (z1 - z0) * (w - each.start) / each.long;
-  };
-  const [high, flat2] = [RAILS3.over, BORDER2.kerb + RAILS3.flush];
-  const bends = [];
-  for (const each of stretches) {
-    if (each.kind !== "straight")
-      continue;
-    const run = runs3[each.run];
-    const marks = [0, each.long];
-    if (run.kind === "border")
-      for (const [t] of sides2[run.side].own.border.knots) {
-        const s = alongRun(run, each, t * sides2[run.side].own.border.long);
-        if (s > 0.5 && s < each.long - 0.5)
-          marks.push(s);
-      }
-    for (const s of marks.sort((p, q) => p - q))
-      bends.push(each.start + s);
-  }
-  if (ground && !exact)
-    for (const each of stretches)
-      for (let k = 1, spans = spansOf(each);k < spans; k++)
-        bends.push(each.start + each.long * k / spans);
-  const fromCorner = (side2, far, leaving) => {
-    const [run, stretch2, { own, going }] = [runOf(side2), straightOf(side2), sides2[side2]];
-    const end = going > 0 === leaving ? own.border.long : 0;
-    return stretch2.start + alongRun(run, stretch2, end === 0 ? far : own.border.long - far);
-  };
-  const stretch = comes && runOf(comes.before) && runOf(comes.after) && runOf(comes.side) ? (() => {
-    const down = [fromCorner(comes.before, comes.down[1], true), fromCorner(comes.before, comes.down[0], true)];
-    let up = [fromCorner(comes.after, comes.up[0], false), fromCorner(comes.after, comes.up[1], false)];
-    if (up[0] < down[1])
-      up = up.map((d) => d + length2);
-    return { side: comes.side, down, ground: [down[1], up[0]], up };
-  })() : null;
-  const inRange = (range, d) => [d, d + length2, d - length2].find((x) => x >= range[0] - 0.000000001 && x <= range[1] + 0.000000001);
-  const railUnder = (d) => {
-    const w = wrapped(d);
-    const k = Math.max(0, stretches.findLastIndex((each2) => each2.start <= w + 0.000000001));
-    const each = stretches[k];
-    return each.kind === "straight" ? runs3[each.run].rail : "high";
-  };
-  const levelAt = (d) => {
-    const w = wrapped(d);
-    if (rail5 === "low")
-      return "ground";
-    if (!stretch)
-      return "viaduct";
-    if (inRange(stretch.ground, w) !== undefined)
-      return "ground";
-    return inRange(stretch.down, w) !== undefined || inRange(stretch.up, w) !== undefined ? "ramp" : "viaduct";
-  };
-  const floorUnder = (d) => {
-    if (!ground)
-      return streetUnder(d);
-    const here = at(d);
-    return ground(here.x, here.y);
-  };
-  const top = (d) => {
-    if (rail5 === "low")
-      return floorUnder(d) + flat2;
-    if (!stretch)
-      return streetUnder(d) + high;
-    if (inRange(stretch.ground, wrapped(d)) !== undefined)
-      return floorUnder(d) + flat2;
-    const [a, b] = [inRange(stretch.down, wrapped(d)), inRange(stretch.up, wrapped(d))];
-    if (a !== undefined) {
-      const [z0, z1] = [streetUnder(stretch.down[0]) + high, floorUnder(stretch.down[1]) + flat2];
-      return z0 + (z1 - z0) * (a - stretch.down[0]) / (stretch.down[1] - stretch.down[0]);
-    }
-    if (b !== undefined) {
-      const [z0, z1] = [floorUnder(stretch.up[0]) + flat2, streetUnder(stretch.up[1]) + high];
-      return z0 + (z1 - z0) * (b - stretch.up[0]) / (stretch.up[1] - stretch.up[0]);
-    }
-    return streetUnder(d) + high;
-  };
-  const stations3 = [];
-  for (const [k, run] of runs3.entries()) {
-    if (run.kind !== "border")
-      continue;
-    const found = stationOn(run, stretches[2 * k]);
-    if (!found) {
-      if (!sides2[run.side].steep)
-        reasons.push(`its ${run.side} border has no interchange: its street climbs more than ${RAILS3.level} m along a platform there`);
-      continue;
-    }
-    if (!found.fits) {
-      reasons.push(`its ${run.side} border's interchange is left out: a train would not stand whole on the straight there`);
-      continue;
-    }
-    stations3.push({ side: run.side, rail: run.rail, d: stretches[2 * k].start + found.s, along: mm3(sides2[run.side].own.border.station.at * sides2[run.side].own.border.long) });
-  }
-  stations3.sort((p, q) => p.d - q.d);
-  const mouths = runs3.flatMap((run, k) => {
-    if (run.kind !== "border")
-      return [];
-    const [each, side2] = [stretches[2 * k], sides2[run.side]];
-    return side2.said.mouths.flatMap((mouth) => {
-      const [a, b] = [alongRun(run, each, side2.along(mouth.from)), alongRun(run, each, side2.along(mouth.to))].sort((p, q) => p - q);
-      if (a < 0 || b > each.long)
-        return [];
-      const [from, to] = [each.start + a, each.start + b];
-      if (levelAt((from + to) / 2) === "ground")
-        return [{ side: run.side, port: mouth.port, from: mm3(from), to: mm3(to), how: "level", clear: 0 }];
-      const clear = mm3(Math.min(...[from, (from + to) / 2, to].map((d) => top(d) - streetUnder(d))) - RAILS3.deck);
-      return [{ side: run.side, port: mouth.port, from: mm3(from), to: mm3(to), how: clear >= GRID.clear - 0.000001 ? "under" : "closed", clear }];
-    });
-  });
-  const lows = mouths.filter((each) => each.how === "level").map((mouth) => [mouth.from - 0.5, mouth.to + 0.5]).sort((p, q) => p[0] - q[0]).reduce((runs4, [from, to]) => {
-    const last = runs4.at(-1);
-    if (last && from - 2 * LINE2.dip <= last[1] + 2 * LINE2.dip)
-      last[1] = Math.max(last[1], to);
-    else
-      runs4.push([from, to]);
-    return runs4;
-  }, []);
-  const dipOf = (d, way) => {
-    const grade = Math.abs(top(d + way * LINE2.dip) - top(d)) / LINE2.dip;
-    return Math.max(LINE2.dip, LINE2.low / Math.max(RAILS3.grade - grade - 0.005, 0.01));
-  };
-  const knots = (() => {
-    const dips = lows.map(([a, b]) => [a - dipOf(a, -1), b + dipOf(b, 1)]);
-    const list = bends.filter((d) => levelAt(d) !== "ramp" && !dips.some((dip) => inRange(dip, wrapped(d)) !== undefined)).map((d) => [d, top(d)]);
-    if (stretch)
-      for (const d of [...stretch.down, ...stretch.up])
-        list.push([d, top(d)]);
-    for (const [a, b] of lows) {
-      const [into, out] = [dipOf(a, -1), dipOf(b, 1)];
-      list.push([a - into, top(a - into)], [a, top(a) - LINE2.low], [b, top(b) - LINE2.low], [b + out, top(b + out)]);
-    }
-    if (exact && ground && stretch)
-      for (const each of stretches)
-        for (let k = 1, spans = spansOf(each);k < spans; k++) {
-          const d = each.start + each.long * k / spans;
-          if (inRange(stretch.ground, d) !== undefined && !dips.some((dip) => inRange(dip, wrapped(d)) !== undefined))
-            list.push([d, top(d)]);
-        }
-    const sorted = list.map(([d, z]) => [mm3(wrapped(d)), mm3(z)]).sort((p, q) => p[0] - q[0]).filter((knot, k, all3) => k === 0 || knot[0] - all3[k - 1][0] > 0.001);
-    return exact ? bentOnly(sorted, length2) : sorted;
-  })();
-  const heightAt = (d) => {
-    const w = wrapped(d);
-    const k = knots.findIndex((knot) => knot[0] >= w - 0.000000001);
-    const [a, b] = k <= 0 ? [knots.at(-1), knots[0]] : [knots[k - 1], knots[k]];
-    const span = wrapped(b[0] - a[0]) || length2;
-    return a[1] + (b[1] - a[1]) * wrapped(w - a[0]) / span;
-  };
-  const steepest = knots.reduce((most2, knot, k) => {
-    const before = knots[(k + knots.length - 1) % knots.length];
-    return Math.max(most2, Math.abs(knot[1] - before[1]) / Math.max(wrapped(knot[0] - before[0]) || length2, 0.000000001));
-  }, 0);
-  const said = runs3.map((run, k) => {
-    const each = stretches[2 * k];
-    const lines3 = run.way === "x" ? xs : ys;
-    const along4 = (point) => {
-      const [x, y] = grid.back(point[0], point[1]);
-      return run.way === "x" ? x : y;
-    };
-    const nearest = (point) => lines3.reduce((best, line, i) => Math.abs(line.mid - along4(point)) < Math.abs(lines3[best].mid - along4(point)) ? i : best, 0);
-    const [i0, i1] = [nearest(made4.corners[(k + runs3.length - 1) % runs3.length].vertex), nearest(made4.corners[k].vertex)];
-    const keyOf = (i) => run.way === "x" ? `${i}:${run.index}` : `${run.index}:${i}`;
-    const step = i1 >= i0 ? 1 : -1;
-    const passes = Array.from({ length: Math.abs(i1 - i0) + 1 }, (_, n) => i0 + n * step);
-    const first = along4(each.from);
-    const segments = passes.slice(0, -1).map((i, n) => {
-      const s = Math.min(Math.max(((lines3[i].mid + lines3[passes[n + 1]].mid) / 2 - first) * run.sign, 0), each.long);
-      const low = Math.min(i, passes[n + 1]);
-      return { key: run.way === "x" ? `x:${low}:${run.index}` : `y:${run.index}:${low}`, level: levelAt(each.start + s) };
-    });
-    return { name: run.name, kind: run.kind, side: run.side, way: run.way, index: run.index, sign: run.sign, rail: run.rail, track: run.track, segments, through: passes.slice(1, -1).map(keyOf), turn: keyOf(i1) };
-  });
-  const chamfers = stretches.filter((each) => each.kind === "turn" && each.left).map((each) => {
-    const [gx, gy] = grid.back(each.centre[0], each.centre[1]);
-    const apart3 = (one) => Math.hypot(Math.max(one.x0 - gx, 0, gx - one.x1), Math.max(one.y0 - gy, 0, gy - one.y1));
-    const row = grid.cells.filter((one) => gy > one.y0 && gy < one.y1);
-    const cell = row.find((one) => gx > one.x0 && gx < one.x1) ?? (row.length && gx <= row[0].x0 ? row[0] : row.length && gx >= row.at(-1).x1 ? row.at(-1) : null) ?? grid.cells.reduce((best, one) => apart3(one) < apart3(best) ? one : best, grid.cells[0]);
-    return { cell: cell?.key ?? null, centre: each.centre.map(mm3), radius: mm3(RAILS3.radius - RAILS3.band / 2 - LINE2.chamfer) };
-  });
-  const speed = rail5 === "low" ? LINE2.speed.low : stretch ? LINE2.speed.tram : LINE2.speed.high;
-  const round53 = length2 / speed + stations3.length * LINE2.stop;
-  const wrap2 = (range) => range.map((d) => mm3(wrapped(d)));
-  return {
-    kind,
-    rail: rail5,
-    seed,
-    reasons,
-    runs: said,
-    stretches: stretches.map((each) => each.kind === "straight" ? { kind: "straight", run: each.run, start: mm3(each.start), long: mm3(each.long), from: each.from.map(mm3), way: each.way } : { kind: "turn", start: mm3(each.start), long: mm3(each.long), centre: each.centre.map(mm3), radius: each.radius, begin: each.begin, sweep: each.sweep, left: each.left }),
-    length: mm3(length2),
-    at,
-    heights: { knots, at: heightAt, grade: (d) => (heightAt(d + 1) - heightAt(d - 1)) / 2, steepest },
-    levelAt,
-    stations: stations3.map((each) => {
-      const here = at(each.d);
-      return { side: each.side, rail: each.rail, d: mm3(each.d), along: each.along, at: [mm3(here.x), mm3(here.y), mm3(heightAt(each.d))] };
-    }),
-    tram: stretch && { side: stretch.side, down: wrap2(stretch.down), ground: wrap2(stretch.ground), up: wrap2(stretch.up) },
-    mouths,
-    chamfers,
-    cuts: chosen,
-    speed,
-    round: mm3(round53),
-    trains: round53 > LINE2.twice ? 2 : 1,
-    signature: `${chosen.join("+") || "whole"}|${stretch ? `tram ${stretch.side}` : rail5 === "low" ? "ground" : "viaduct"}`
-  };
-}, checkLine = (line) => {
-  if (!line.rail)
-    return [];
-  const found = [];
-  const { stretches, length: length2 } = line;
-  const apart3 = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
-  for (const [k, each] of stretches.entries()) {
-    const next = stretches[(k + 1) % stretches.length];
-    const [end, begin] = [line.at(each.start + each.long - 0.000001), line.at(next.start + 0.000001)];
-    if (apart3(end, begin) > 0.002)
-      found.push(`it does not join ${(each.start + each.long).toFixed(1)} m along it: ${apart3(end, begin).toFixed(3)} m apart`);
-    if (Math.abs(cross22(end.way, begin.way)) > 0.001 || dot22(end.way, begin.way) < 0.999)
-      found.push(`it kinks ${(each.start + each.long).toFixed(1)} m along it`);
-    if (each.kind === "turn" && Math.abs(each.radius - RAILS3.radius) > 0.000000001)
-      found.push(`a curve of ${each.radius} m`);
-    if (each.kind === "straight" && each.long < LINE2.straight - 0.000001)
-      found.push(`a straight of ${each.long} m`);
-  }
-  if (Math.abs(stretches.reduce((sum, each) => sum + each.long, 0) - length2) > 0.02)
-    found.push("its stretches do not add up to its length");
-  if (Math.abs(stretches.filter((each) => each.kind === "turn").reduce((sum, each) => sum + each.sweep, 0) - 2 * Math.PI) > 0.000001)
-    found.push("it does not go once round against the clock");
-  if (line.heights.steepest > RAILS3.grade + 0.0001)
-    found.push(`it climbs ${(line.heights.steepest * 100).toFixed(2)} in 100`);
-  const straightAt = (d) => stretches.find((each) => each.kind === "straight" && d >= each.start - 0.000001 && d <= each.start + each.long + 0.000001);
-  if (line.tram)
-    for (const [name, [from, to]] of [["down", line.tram.down], ["up", line.tram.up]]) {
-      const on = straightAt(from);
-      if (!on || to < from || to > on.start + on.long + 0.000001)
-        found.push(`its ramp ${name} does not lie on one straight`);
-    }
-  for (const station of line.stations) {
-    const on = straightAt(station.d);
-    if (!on || station.d - RAILS3.tail < on.start - 0.000001 || station.d + RAILS3.lead > on.start + on.long + 0.000001)
-      found.push(`its ${station.side} station does not stand on its straight`);
-    if (line.levelAt(station.d) !== (station.rail === "high" ? "viaduct" : "ground"))
-      found.push(`its ${station.side} station is not at the height its rails run at there`);
-    const along4 = [-17, -8, 0, 8, 17].map((off) => line.heights.at(station.d + off));
-    if (Math.max(...along4) - Math.min(...along4) > RAILS3.level + 0.01)
-      found.push(`its ${station.side} station is not level: ${(Math.max(...along4) - Math.min(...along4)).toFixed(2)} m along its platform`);
-  }
-  for (const mouth of line.mouths) {
-    if (mouth.how === "closed" && mouth.port)
-      found.push(`its ${mouth.side} port's mouth is closed`);
-    if (mouth.how === "under" && mouth.clear < GRID.clear - 0.000001)
-      found.push(`a street passes under it with ${mouth.clear} m`);
-  }
-  return found;
-};
-var init_land_line = __esm(() => {
-  init_land_border();
-  init_land_grid();
-  LINE2 = Object.freeze({
-    inner: 2.2,
-    dip: 3.5,
-    low: 0.14,
-    chamfer: 2,
-    cut: 0.4,
-    speed: Object.freeze({ high: 12, tram: 10, low: 8 }),
-    stop: 20,
-    twice: 180,
-    straight: 2,
-    knot: 8
-  });
-  SIDES_ROUND = Object.freeze([
-    Object.freeze({ name: "south", way: "x", sign: 1 }),
-    Object.freeze({ name: "east", way: "y", sign: 1 }),
-    Object.freeze({ name: "north", way: "x", sign: -1 }),
-    Object.freeze({ name: "west", way: "y", sign: -1 })
-  ]);
-  CORNERS = Object.freeze(["se", "ne", "nw", "sw"]);
-  SHAPES4 = Object.freeze([Object.freeze([1, 1]), Object.freeze([1, 2]), Object.freeze([2, 1]), Object.freeze([2, 2])]);
-});
-
-// src/build/land-streets.js
-var exports_land_streets = {};
-__export(exports_land_streets, {
-  streetsOf: () => streetsOf,
-  packPoints: () => packPoints,
-  offsetOf: () => offsetOf,
-  groundOn: () => groundOn,
-  foldedOf: () => foldedOf,
-  MOST: () => MOST2
-});
-var mm4 = (value) => Math.round(value * 1000) / 1000 + 0, clamp33 = (value, low, high) => Math.min(high, Math.max(low, value)), lerp3 = (a, b, t) => a + (b - a) * t, deg = (radians) => radians * 180 / Math.PI, MOST2 = 64, LEVEL2 = 0.0005, groundOn = (land2, grid, ground, blended, sectionOf, { over = BORDER2.over, kerb = BORDER2.kerb } = {}) => {
-  const { xs, ys, nx, ny } = grid;
-  const sq = land2.square;
-  const lean = (i) => xs[i].slope ?? 0;
-  const column3 = (i, y) => [xs[i].from + lean(i) * y, xs[i].to + lean(i) * y, xs[i].mid + lean(i) * y];
-  const groundAt5 = (x, y) => ground(...sq.at(x, y)).ground;
-  const borderAt = {
-    south: (x) => blended.bare(...sq.at(x, ys[0].mid)),
-    north: (x) => blended.bare(...sq.at(x, ys[ny].mid)),
-    west: (y) => blended.bare(...sq.at(column3(0, y)[2], y)),
-    east: (y) => blended.bare(...sq.at(column3(nx, y)[2], y))
-  };
-  const inner = nx >= 3 && ny >= 3;
-  const [ix0, ix1, iy0, iy1] = inner ? [xs[1].to, xs[nx - 1].from, ys[1].to, ys[ny - 1].from] : [column3(0, 0)[1], column3(nx, 0)[0], ys[0].to, ys[ny].from];
-  const steps = (a, b, every) => {
-    const n = Math.max(1, Math.ceil((b - a) / every));
-    return Array.from({ length: n + 1 }, (_, k) => a + (b - a) * k / n);
-  };
-  let high = -Infinity;
-  for (const x of steps(ix0, ix1, 2))
-    for (const y of steps(iy0, iy1, 2))
-      high = Math.max(high, groundAt5(x, y));
-  const level = mm4(high + over);
-  const folds = [];
-  const planes = Array.from({ length: nx }, (_, i) => Array.from({ length: ny }, (__, j) => {
-    const [y0, y1] = [ys[j].to, ys[j + 1].from];
-    const onBorder = [j === 0 || i === 0, j === 0 || i === nx - 1, j === ny - 1 || i === nx - 1, j === ny - 1 || i === 0];
-    const bordered = (x, y, k) => j === 0 && k < 2 ? borderAt.south(x) : j === ny - 1 && k >= 2 ? borderAt.north(x) : i === 0 && (k === 0 || k === 3) ? borderAt.west(y) : borderAt.east(y);
-    const corners = [[column3(i, y0)[1], y0], [column3(i + 1, y0)[0], y0], [column3(i + 1, y1)[0], y1], [column3(i, y1)[1], y1]].map(([x, y], k) => [x, y, onBorder[k] ? bordered(x, y, k) : level]);
-    const samples = [];
-    for (const y of steps(y0, y1, 4)) {
-      const [xa, xb] = [column3(i, y)[1], column3(i + 1, y)[0]];
-      for (const x of steps(xa, xb, 4))
-        samples.push([x, y, groundAt5(x, y) + over]);
-    }
-    const fixed = corners.filter((_2, k) => onBorder[k]);
-    if (!fixed.length) {
-      const raise2 = Math.max(0, ...samples.map(([, , z]) => z - level));
-      return () => level + raise2;
-    }
-    if (fixed.length === 2) {
-      const [P2, Q] = fixed;
-      const long = Math.hypot(Q[0] - P2[0], Q[1] - P2[1]);
-      const u = [(Q[0] - P2[0]) / long, (Q[1] - P2[1]) / long];
-      const rest = corners.filter((_2, k) => !onBorder[k]);
-      const sign2 = Math.sign((rest[0][0] - P2[0]) * -u[1] + (rest[0][1] - P2[1]) * u[0]) || 1;
-      const w = [-u[1] * sign2, u[0] * sign2];
-      const lineAt2 = (x, y) => P2[2] + (Q[2] - P2[2]) * ((x - P2[0]) * u[0] + (y - P2[1]) * u[1]) / long;
-      const away = (x, y) => (x - P2[0]) * w[0] + (y - P2[1]) * w[1];
-      let rise = rest.reduce((sum, [x, y, z]) => sum + away(x, y) * (z - lineAt2(x, y)), 0) / rest.reduce((sum, [x, y]) => sum + away(x, y) ** 2, 0);
-      for (const [x, y, z] of samples)
-        if (away(x, y) > 0.5)
-          rise = Math.max(rise, (z - lineAt2(x, y)) / away(x, y));
-      return (x, y) => lineAt2(x, y) + rise * away(x, y);
-    }
-    if (fixed.length === 3) {
-      const inner2 = onBorder.indexOf(false);
-      const [k0, kA, kB] = [(inner2 + 2) % 4, (inner2 + 3) % 4, (inner2 + 1) % 4];
-      const tri = (a, b, c) => {
-        const [u, v] = [[b[0] - a[0], b[1] - a[1], b[2] - a[2]], [c[0] - a[0], c[1] - a[1], c[2] - a[2]]];
-        const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
-        return (x, y) => a[2] - (n[0] * (x - a[0]) + n[1] * (y - a[1])) / n[2];
-      };
-      const [K, A2, B2] = [corners[k0], corners[kA], corners[kB]];
-      const sideOf = (x, y) => Math.sign((corners[inner2][0] - K[0]) * (y - K[1]) - (corners[inner2][1] - K[1]) * (x - K[0]));
-      const sideA = sideOf(A2[0], A2[1]);
-      const cross23 = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
-      const weight = (a, b, c, place) => cross23(a, b, place) / cross23(a, b, c);
-      let top = level;
-      for (const [x, y, z] of samples) {
-        const [a, b] = sideOf(x, y) === sideA ? [K, A2] : [K, B2];
-        const w = weight(a, b, corners[inner2], [x, y]);
-        if (w > 0.05)
-          top = Math.max(top, (z - tri(a, b, [corners[inner2][0], corners[inner2][1], 0])(x, y)) / w);
-      }
-      const I = [corners[inner2][0], corners[inner2][1], top];
-      const [onA, onB] = [tri(K, A2, I), tri(K, B2, I)];
-      const folded = (x, y) => sideOf(x, y) === sideA ? onA(x, y) : onB(x, y);
-      folds.push({ i, j, from: K.slice(0, 2), to: I.slice(0, 2) });
-      return folded;
-    }
-    const [cx, cy, m] = [0, 1, 2].map((k) => corners.reduce((sum, corner2) => sum + corner2[k], 0) / 4);
-    let [xx, xy, yy, xz, yz] = [0, 0, 0, 0, 0];
-    for (const [x, y, z] of corners) {
-      const [du, dv, dw] = [x - cx, y - cy, z - m];
-      xx += du * du;
-      xy += du * dv;
-      yy += dv * dv;
-      xz += du * dw;
-      yz += dv * dw;
-    }
-    const det = xx * yy - xy * xy;
-    const [gx, gy] = Math.abs(det) < 0.000000001 ? [0, 0] : [(xz * yy - yz * xy) / det, (yz * xx - xz * xy) / det];
-    const raise = Math.max(0, ...samples.map(([x, y, z]) => z - (m + gx * (x - cx) + gy * (y - cy))));
-    return (x, y) => m + raise + gx * (x - cx) + gy * (y - cy);
-  }));
-  const plane = (i, j) => planes[clamp33(i, 0, nx - 1)][clamp33(j, 0, ny - 1)];
-  const knotsOf = (side2) => land2.sides[side2].border.knots.map(([t]) => sq.back(...land2.sides[side2].at(land2.sides[side2].own(t), 0))[side2 === "south" || side2 === "north" ? 0 : 1]);
-  const knots = { south: knotsOf("south"), north: knotsOf("north"), west: knotsOf("west"), east: knotsOf("east") };
-  const bodies = [];
-  const regions = new Map;
-  const add2 = (part, region, corners, face3, over2 = 0) => {
-    const body = { part, region, corners: corners.map(([x, y, z]) => [x, y, z + over2]), face: face3, over: over2 };
-    bodies.push(body);
-    if (!regions.has(region))
-      regions.set(region, []);
-    regions.get(region).push(body);
-  };
-  const between2 = (a, b, cuts) => {
-    const marks = [a, ...cuts.filter((c) => c > Math.min(a, b) + 0.05 && c < Math.max(a, b) - 0.05).sort((p, q) => a < b ? p - q : q - p), b];
-    return marks.slice(1).map((q, k) => [marks[k], q]);
-  };
-  const ROAD = BORDER2.road;
-  const whole4 = (long) => long / ROAD >= 4 ? long / Math.round(long / ROAD) : ROAD;
-  const lanesFace = (rotation, low, mid5, long, at2 = 0) => ({ look: "lanes", rotation, scale: [ROAD, mm4(whole4(long))], low, at: at2, mid: mid5 });
-  for (let i = 1;i < nx; i++)
-    for (let j = 1;j < ny; j++) {
-      const [ya, yb] = [ys[j].from, ys[j].to];
-      const [[sa, sb], [na, nb]] = [column3(i, ya), column3(i, yb)];
-      add2(`${i}:${j}`, `x${i}:${j}`, [[sa, ya, plane(i - 1, j - 1)(sa, ya)], [sb, ya, plane(i, j - 1)(sb, ya)], [nb, yb, plane(i, j)(nb, yb)], [na, yb, plane(i - 1, j)(na, yb)]], { look: "plain" });
-    }
-  const borderFace = (side2) => {
-    const own = land2.sides[side2];
-    const long = own.border.long;
-    const [mx, my] = sq.back(...own.at(own.long / 2, 0));
-    const lane = { south: [90, [0, ys[0].mid]], north: [90, [0, ys[ny].mid]], west: [-deg(Math.atan(lean(0))), [column3(0, my)[2], my]], east: [-deg(Math.atan(lean(nx))), [column3(nx, my)[2], my]] }[side2];
-    return { look: "lanes", rotation: mm4(lane[0]), scale: [ROAD, mm4(long / Math.max(1, Math.round(long / ROAD)))], low: lane[1], at: 0.5, mid: [mx, my] };
-  };
-  const borderFaces = { south: borderFace("south"), north: borderFace("north"), west: borderFace("west"), east: borderFace("east") };
-  for (const [side2, j, line, kerbY, row] of [["south", 0, ys[0].mid, ys[0].to, 0], ["north", ny, ys[ny].mid, ys[ny].from, ny - 1]]) {
-    const H2 = borderAt[side2];
-    const face3 = borderFaces[side2];
-    for (let i = 1;i < nx; i++) {
-      const [x0, x1] = column3(i, kerbY).slice(0, 2);
-      for (const [p, q] of between2(x0, x1, knots[side2])) {
-        const [k0, k1] = [plane(i - 1, row)(x0, kerbY), plane(i, row)(x1, kerbY)];
-        const kerbOf = (x) => lerp3(k0, k1, (x - x0) / (x1 - x0));
-        const [lp, lq, kp, kq] = [[p, line, H2(p)], [q, line, H2(q)], [p, kerbY, kerbOf(p)], [q, kerbY, kerbOf(q)]];
-        add2(`${i}:${j}`, `x${i}:${j}`, side2 === "south" ? [lp, lq, kq, kp] : [kp, kq, lq, lp], face3);
-      }
-    }
-    for (const [i, c] of [[0, 0], [nx, nx - 1]]) {
-      const other = i === 0 ? "west" : "east";
-      const [lineX, kerbX] = [column3(i, line)[2], column3(i, line)[i === 0 ? 1 : 0]];
-      const [kLine, kKerb] = [column3(i, kerbY)[2], column3(i, kerbY)[i === 0 ? 1 : 0]];
-      const corner2 = [[lineX, line, H2(lineX)], [kerbX, line, H2(kerbX)], [kKerb, kerbY, plane(c, row)(kKerb, kerbY)], [kLine, kerbY, borderAt[other](kerbY)]];
-      const turns = side2 === "south" === (i === 0);
-      add2(`${i}:${j}`, `x${i}:${j}`, turns ? corner2 : [corner2[1], corner2[0], corner2[3], corner2[2]], face3);
-    }
-    for (let i = 0;i < nx; i++) {
-      const west = (y) => column3(i, y)[1];
-      const east = (y) => column3(i + 1, y)[0];
-      const across = (y) => (y - line) / (kerbY - line);
-      const kerbAt = (x) => plane(i, row)(x, kerbY);
-      const ends = [[west(line), west(kerbY)], [east(line), east(kerbY)]];
-      const xm = (west((line + kerbY) / 2) + east((line + kerbY) / 2)) / 2;
-      const at2 = (x, y, end) => end === undefined ? lerp3(H2(x), kerbAt(x), across(y)) : lerp3(H2(ends[end][0]), kerbAt(ends[end][1]), across(y));
-      for (const [half, [a, b]] of [[0, [ends[0][0], xm]], [1, [xm, ends[1][0]]]]) {
-        const node = `${i + half}:${j}`;
-        for (const [p, q] of between2(a, b, knots[side2])) {
-          const [pEnd, qEnd] = [half === 0 && p === a ? 0 : undefined, half === 1 && q === b ? 1 : undefined];
-          const [pk, qk] = [pEnd === 0 ? ends[0][1] : p, qEnd === 1 ? ends[1][1] : q];
-          const lp = [p, line, at2(p, line, pEnd)], lq = [q, line, at2(q, line, qEnd)];
-          const kp = [pk, kerbY, at2(pk, kerbY, pEnd)], kq = [qk, kerbY, at2(qk, kerbY, qEnd)];
-          add2(node, `r${j}:${i}`, side2 === "south" ? [lp, lq, kq, kp] : [kp, kq, lq, lp], face3);
-        }
-      }
-    }
-  }
-  for (const [side2, i, block3] of [["west", 0, 0], ["east", nx, nx - 1]]) {
-    const H2 = borderAt[side2];
-    const face3 = borderFaces[side2];
-    const lineAt2 = (y) => column3(i, y)[2];
-    const kerbAt = (y) => column3(i, y)[i === 0 ? 1 : 0];
-    const ordered = (quad) => side2 === "west" ? quad : [quad[1], quad[0], quad[3], quad[2]];
-    for (let j = 1;j < ny; j++) {
-      const [y0, y1] = [ys[j].from, ys[j].to];
-      for (const [p, q] of between2(y0, y1, knots[side2])) {
-        const [k0, k1] = [plane(block3, j - 1)(kerbAt(y0), y0), plane(block3, j)(kerbAt(y1), y1)];
-        const kerbOf = (y) => lerp3(k0, k1, (y - y0) / (y1 - y0));
-        add2(`${i}:${j}`, `x${i}:${j}`, ordered([[lineAt2(p), p, H2(p)], [kerbAt(p), p, kerbOf(p)], [kerbAt(q), q, kerbOf(q)], [lineAt2(q), q, H2(q)]]), face3);
-      }
-    }
-    for (let j = 0;j < ny; j++) {
-      const [ya, yb] = [ys[j].to, ys[j + 1].from];
-      const ym = (ya + yb) / 2;
-      const zKerb = (y) => plane(block3, j)(kerbAt(y), y);
-      for (const [half, [a, b]] of [[0, [ya, ym]], [1, [ym, yb]]]) {
-        for (const [p, q] of between2(a, b, knots[side2])) {
-          add2(`${i}:${j + half}`, `c${i}:${j}`, ordered([[lineAt2(p), p, H2(p)], [kerbAt(p), p, zKerb(p)], [kerbAt(q), q, zKerb(q)], [lineAt2(q), q, H2(q)]]), face3);
-        }
-      }
-    }
-  }
-  const strips = (way, k, n, { node0, node1, region, low, ends, mid: mid5, ruled, edge, along: along4, long, rotation, name }) => {
-    for (const strip2 of sectionOf(way, k, n) ?? []) {
-      const [c0, c1] = [low + strip2.c0, low + strip2.c1];
-      const place = (s, c) => way === "x" ? [s, c] : [c, s];
-      const along5 = (spec, c) => typeof spec === "number" ? spec : spec.end === 0 ? ends[0](c) + (spec.by ?? 0) : ends[1](c) - (spec.by ?? 0);
-      const height = (spec, c) => typeof spec === "number" || spec.by ? ruled(along5(spec, c), c) : edge(spec.end, c);
-      const quad = (A2, B2) => {
-        const four = [[A2, c0], [B2, c0], [B2, c1], [A2, c1]].map(([spec, c]) => [...place(along5(spec, c), c), height(spec, c)]);
-        return way === "x" ? four : [four[1], four[0], four[3], four[2]];
-      };
-      const [start, end] = [{ end: 0 }, { end: 1 }];
-      if (strip2.island) {
-        const [ta, tb] = strip2.cut ?? [0, 0];
-        if (ta)
-          add2(node0, region, quad(start, { end: 0, by: ta }), { look: "plain" });
-        if (tb)
-          add2(node1, region, quad({ end: 1, by: tb }, end), { look: "plain" });
-        add2(`${name} ${strip2.look} ${strip2.c0}`, region, quad(ta ? { end: 0, by: ta } : start, tb ? { end: 1, by: tb } : end), { look: strip2.look, island: true }, kerb);
-        continue;
-      }
-      const face3 = strip2.look === "lanes" ? lanesFace(rotation, place(0, c0), place(mid5, 0), long) : { look: strip2.look };
-      add2(node0, region, quad(start, mid5), face3);
-      add2(node1, region, quad(mid5, end), face3);
-    }
-  };
-  for (let j = 1;j < ny; j++)
-    for (let i = 0;i < nx; i++) {
-      const line = ys[j];
-      const [yS, yN] = [line.from, line.to];
-      const west = (y) => column3(i, y)[1];
-      const east = (y) => column3(i + 1, y)[0];
-      const [zS, zN] = [(x) => plane(i, j - 1)(x, yS), (x) => plane(i, j)(x, yN)];
-      const t = (y) => (y - yS) / (yN - yS);
-      const ruled = (x, y) => lerp3(zS(x), zN(x), t(y));
-      const edge = (end, y) => end === 0 ? lerp3(zS(west(yS)), zN(west(yN)), t(y)) : lerp3(zS(east(yS)), zN(east(yN)), t(y));
-      const xm = (west(line.mid) + east(line.mid)) / 2;
-      strips("x", j, i, {
-        node0: `${i}:${j}`,
-        node1: `${i + 1}:${j}`,
-        region: `r${j}:${i}`,
-        low: yS,
-        ends: [west, east],
-        mid: xm,
-        ruled,
-        edge,
-        long: east(line.mid) - west(line.mid),
-        rotation: 90,
-        name: `row ${j}-${i}`
-      });
-    }
-  for (let i = 1;i < nx; i++)
-    for (let j = 0;j < ny; j++) {
-      const line = xs[i];
-      const [xW, xE] = [line.from, line.to];
-      const [ya, yb] = [ys[j].to, ys[j + 1].from];
-      const [zW, zE] = [(y) => plane(i - 1, j)(xW, y), (y) => plane(i, j)(xE, y)];
-      const ruled = (y, x) => lerp3(zW(y), zE(y), (x - xW) / (xE - xW));
-      const ym = (ya + yb) / 2;
-      strips("y", i, j, {
-        node0: `${i}:${j}`,
-        node1: `${i}:${j + 1}`,
-        region: `c${i}:${j}`,
-        low: xW,
-        ends: [() => ya, () => yb],
-        mid: ym,
-        ruled,
-        edge: (end, x) => ruled(end === 0 ? ya : yb, x),
-        long: yb - ya,
-        rotation: 0,
-        name: `column ${i}-${j}`
-      });
-    }
-  const inQuad = ([x, y], q, slack = 0.000001) => q.every(([ax, ay], k) => {
-    const [bx, by2] = q[(k + 1) % 4];
-    return (bx - ax) * (y - ay) - (by2 - ay) * (x - ax) >= -slack * Math.hypot(bx - ax, by2 - ay);
-  });
-  const topOf2 = (body, x, y) => {
-    const q = body.corners;
-    const tris = higher(q) ? [[q[0], q[1], q[2]], [q[0], q[2], q[3]]] : [[q[0], q[1], q[3]], [q[1], q[2], q[3]]];
-    for (const tri of tris) {
-      const z = inTriangle2(tri, x, y);
-      if (z !== null)
-        return z - body.over;
-    }
-    return planeOfTriangle(tris[0], x, y) - body.over;
-  };
-  const at = (X2, Y) => {
-    const [x, y] = sq.back(X2, Y);
-    return heightOf2(x, y) ?? blended.bare(X2, Y);
-  };
-  const rowSpan = (j) => j === 0 ? [ys[0].mid, ys[0].to] : j === ny ? [ys[ny].from, ys[ny].mid] : [ys[j].from, ys[j].to];
-  const colSpan = (i, y) => i === 0 ? [column3(0, y)[2], column3(0, y)[1]] : i === nx ? [column3(nx, y)[0], column3(nx, y)[2]] : column3(i, y).slice(0, 2);
-  const findOn = (v, spans) => {
-    for (let k = 0;k < spans.length; k++) {
-      if (v >= spans[k][0] - 0.000000001 && v <= spans[k][1] + 0.000000001)
-        return { k, on: true };
-      if (k + 1 < spans.length && v > spans[k][1] && v < spans[k + 1][0])
-        return { k, on: false };
-    }
-    return null;
-  };
-  const heightOf2 = (x, y) => {
-    const along4 = findOn(y, Array.from({ length: ny + 1 }, (_, j2) => rowSpan(j2)));
-    if (!along4)
-      return null;
-    const across = findOn(x, Array.from({ length: nx + 1 }, (_, i2) => colSpan(i2, y)));
-    if (!across)
-      return null;
-    const [i, j] = [across.k, along4.k];
-    if (!across.on && !along4.on)
-      return plane(i, j)(x, y);
-    const region = across.on && along4.on ? `x${i}:${j}` : along4.on ? `r${j}:${i}` : `c${i}:${j}`;
-    const list = regions.get(region) ?? [];
-    const body = list.find((each) => inQuad([x, y], each.corners)) ?? nearestOf2(list, x, y);
-    return body ? topOf2(body, x, y) : null;
-  };
-  const acrossLines = xs.flatMap((line, i) => [[line.from, lean(i)], [line.to, lean(i)], ...i === 0 || i === nx ? [[line.mid, lean(i)]] : []]);
-  const alongLines = ys.flatMap((line, j) => [line.from, line.to, ...j === 0 || j === ny ? [line.mid] : []]);
-  const creases = (P2, Q) => {
-    const [[x0, y0], [x1, y1]] = [sq.back(...P2), sq.back(...Q)];
-    const [dx, dy] = [x1 - x0, y1 - y0];
-    const shares = [];
-    for (const [c, s] of acrossLines) {
-      const d = dx - s * dy;
-      if (Math.abs(d) > 0.000000001)
-        shares.push((c - x0 + s * y0) / d);
-    }
-    if (Math.abs(dy) > 0.000000001)
-      for (const c of alongLines)
-        shares.push((c - y0) / dy);
-    return [...new Set(shares.filter((t) => t > 0.0001 && t < 1 - 0.0001).map((t) => Math.round(t * 1e6) / 1e6))].sort((a, b) => a - b);
-  };
-  const gradeOf = ([a, b, c]) => {
-    const [u, v] = [[b[0] - a[0], b[1] - a[1], b[2] - a[2]], [c[0] - a[0], c[1] - a[1], c[2] - a[2]]];
-    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
-    return Math.abs(n[2]) > 0.000000000001 ? Math.hypot(n[0], n[1]) / Math.abs(n[2]) : Infinity;
-  };
-  const steepest = Math.max(...bodies.flatMap(({ corners: q }) => [[q[0], q[1], q[2]], [q[0], q[2], q[3]]].map(gradeOf)), ...planes.flat().map((plane2) => Math.hypot(plane2(1, 0) - plane2(0, 0), plane2(0, 1) - plane2(0, 0))));
-  const foldIn = (polygon2) => {
-    const own = polygon2.map(([X2, Y]) => sq.back(X2, Y));
-    for (const { from, to } of folds) {
-      const [dx, dy] = [to[0] - from[0], to[1] - from[1]];
-      const long = Math.hypot(dx, dy);
-      const sides2 = own.map(([x, y]) => (dx * (y - from[1]) - dy * (x - from[0])) / long);
-      if (!(Math.max(...sides2) > 0.002 * long && Math.min(...sides2) < -0.002 * long))
-        continue;
-      const along4 = own.map(([x, y]) => ((x - from[0]) * dx + (y - from[1]) * dy) / long ** 2);
-      if (Math.max(...along4) < 0 || Math.min(...along4) > 1)
-        continue;
-      return { from: sq.at(...from), to: sq.at(...to) };
-    }
-    return null;
-  };
-  return { at, creases, lift: 0, low: blended.low, level, bodies, planes, folds, foldIn, square: sq, steepest: mm4(steepest) };
-}, foldedOf = ({ polygon: polygon2, top, thick, fold, square }) => {
-  const [dx, dy] = [fold.to[0] - fold.from[0], fold.to[1] - fold.from[1]];
-  const side2 = ([X2, Y]) => dx * (Y - fold.from[1]) - dy * (X2 - fold.from[0]);
-  const halves = [1, -1].map((sign2) => {
-    const kept3 = [];
-    for (let k = 0;k < polygon2.length; k++) {
-      const [p, q] = [polygon2[k], polygon2[(k + 1) % polygon2.length]];
-      const [sp, sq] = [side2(p) * sign2, side2(q) * sign2];
-      if (sp >= 0)
-        kept3.push(p);
-      if (sp >= 0 !== sq >= 0) {
-        const t = sp / (sp - sq);
-        kept3.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
-      }
-    }
-    return kept3;
-  }).filter((half) => half.length >= 3);
-  const tops = halves.map((half) => half.map(([X2, Y]) => [X2, Y, top(X2, Y)]));
-  const all3 = tops.flat();
-  const [X0, X1, Y0, Y1] = [Math.min(...all3.map((p) => p[0])), Math.max(...all3.map((p) => p[0])), Math.min(...all3.map((p) => p[1])), Math.max(...all3.map((p) => p[1]))];
-  const [Z1, Z0] = [Math.max(...all3.map((p) => p[2])), Math.min(...all3.map((p) => p[2])) - thick];
-  const middle = [(X0 + X1) / 2, (Y0 + Y1) / 2, (Z0 + Z1) / 2];
-  const [cx, cy] = square.back(middle[0], middle[1]);
-  const local = ([X2, Y, Z]) => {
-    const [x, y] = square.back(X2, Y);
-    return [x - cx, y - cy, Z - middle[2]];
-  };
-  const bodies = tops.map((half) => {
-    const points = [...half.map(local), ...half.map(([X2, Y, Z]) => local([X2, Y, Z - thick]))];
-    const low = [0, 1, 2].map((k) => Math.min(...points.map((p) => p[k])));
-    const high = [0, 1, 2].map((k) => Math.max(...points.map((p) => p[k])));
-    const at = low.map((v, k) => mm4((v + high[k]) / 2));
-    const size = high.map((v, k) => mm4(v - low[k] + 0.001));
-    return { add: "hull", at, size, points: packPoints(points.map((p) => p.map((v, k) => v - at[k])), size), spots: [[0, 0, 0.5, 1]] };
-  });
-  const span = (points) => [0, 1, 2].map((k) => Math.max(...points.map((p) => p[k])) - Math.min(...points.map((p) => p[k])));
-  const extent = span(tops.flat().flatMap((p) => [local(p), local([p[0], p[1], p[2] - thick])]));
-  return { at: middle.map(mm4), turn: [0, 0, mm4(square.yaw)], size: extent.map((v) => mm4(v + 0.002)), bodies };
-}, higher = (q) => {
-  const [[ax, ay, az], [bx, by2, bz], [cx, cy, cz], [dx, dy, dz]] = q;
-  const [ux, uy, vx, vy, wx, wy] = [cx - ax, cy - ay, dx - bx, dy - by2, bx - ax, by2 - ay];
-  const det = ux * -vy - uy * -vx;
-  if (Math.abs(det) < 0.000000000001)
-    return az + cz >= bz + dz;
-  const s = (wx * -vy - wy * -vx) / det;
-  const t = (ux * wy - uy * wx) / det;
-  return az + (cz - az) * s >= bz + (dz - bz) * t;
-}, inTriangle2 = ([a, b, c], x, y) => {
-  const det = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
-  if (Math.abs(det) < 0.000000000001)
-    return null;
-  const l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / det;
-  const l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / det;
-  const l3 = 1 - l1 - l2;
-  return l1 >= -0.000001 && l2 >= -0.000001 && l3 >= -0.000001 ? l1 * a[2] + l2 * b[2] + l3 * c[2] : null;
-}, planeOfTriangle = ([a, b, c], x, y) => {
-  const det = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
-  const l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / det;
-  const l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / det;
-  return l1 * a[2] + l2 * b[2] + (1 - l1 - l2) * c[2];
-}, nearestOf2 = (list, x, y) => list.reduce((best, body) => {
-  const [mx, my] = [0, 1].map((k) => body.corners.reduce((sum, corner2) => sum + corner2[k], 0) / 4);
-  const d = Math.hypot(mx - x, my - y);
-  return !best || d < best.d ? { body, d } : best;
-}, null)?.body ?? null, FULL2 = 65535, packPoints = (points, size) => {
-  let text = "";
-  for (const point of points)
-    for (let k = 0;k < size.length; k++) {
-      const v = Math.round(Math.min(Math.max(point[k] / size[k] + 0.5, 0), 1) * FULL2);
-      text += String.fromCharCode(v & 255, v >> 8);
-    }
-  return btoa(text);
-}, offsetOf = ({ rotation, scale: [sU, sV], low, at, mid: mid5 }, least2) => {
-  const r = rotation * Math.PI / 180;
-  const [c, s] = [Math.cos(r), Math.sin(r)];
-  const [A2, B2] = [low[0] - least2[0] - 0.5, low[1] - least2[1] - 0.5];
-  const [C2, D2] = [mid5[0] - least2[0] - 0.5, mid5[1] - least2[1] - 0.5];
-  const wrap2 = (v) => Math.round((v % 1 + 1) % 1 * 1e4) / 1e4;
-  return [wrap2(at - (c * A2 + s * B2) / sU - 0.5), wrap2((s * C2 - c * D2) / sV)];
-}, streetsOf = (bodies, { map, bottom, looks }) => {
-  const parts = new Map;
-  for (const body of bodies) {
-    if (!parts.has(body.part))
-      parts.set(body.part, []);
-    parts.get(body.part).push(body);
-  }
-  const objects = [];
-  for (const [key, own] of parts) {
-    const island = own[0].face.island;
-    const name = (arm) => `${island ? key : `crossing ${key.replace(":", "-")}`}${arm ? ` ${arm}` : ""}`;
-    const pending = [{ arm: null, bodies: own }];
-    while (pending.length) {
-      const piece = pending.shift();
-      const object = partOf(name(piece.arm), piece.bodies, { map, bottom, looks, island });
-      const prim = object.prims[0];
-      const over = prim.colours + 1 > COLOURS3 || prim.bodies.length > BODIES3 || JSON.stringify(prim.bodies).length > CHARACTERS;
-      const shed = !island && armOf(piece.bodies, over);
-      if (shed) {
-        pending.unshift({ arm: piece.arm, bodies: piece.bodies.filter((body) => !shed.bodies.includes(body)) }, shed);
-        continue;
-      }
-      objects.push(object);
-    }
-  }
-  return objects;
-}, COLOURS3, BODIES3, CHARACTERS, armOf = (bodies, over) => {
-  const square = bodies.find((body) => body.region.startsWith("x"));
-  if (!square)
-    return null;
-  const centre = (body, k2) => body.corners.reduce((sum, corner2) => sum + corner2[k2], 0) / 4;
-  const middle = [centre(square, 0), centre(square, 1)];
-  const arms = { west: [], east: [], south: [], north: [] };
-  for (const body of bodies) {
-    if (body.region === square.region)
-      continue;
-    const [dx, dy] = [centre(body, 0) - middle[0], centre(body, 1) - middle[1]];
-    arms[Math.abs(dx) >= Math.abs(dy) ? dx < 0 ? "west" : "east" : dy < 0 ? "south" : "north"].push(body);
-  }
-  const span = (k2) => Math.max(...bodies.flatMap((body) => body.corners.map((corner2) => corner2[k2]))) - Math.min(...bodies.flatMap((body) => body.corners.map((corner2) => corner2[k2])));
-  const reach = (list, k2) => Math.max(0, ...list.flatMap((body) => body.corners.map((corner2) => Math.abs(corner2[k2] - middle[k2]))));
-  const k = [0, 1].find((axis) => span(axis) > MOST2 - 0.01);
-  const pick5 = k === undefined ? over ? Object.entries(arms).filter(([, list]) => list.length).sort((a, b) => b[1].length - a[1].length)[0] : null : Object.entries(arms).filter(([arm, list]) => list.length && (k === 0 ? arm === "west" || arm === "east" : arm === "south" || arm === "north")).sort((a, b) => reach(b[1], k) - reach(a[1], k))[0];
-  return pick5 ? { arm: pick5[0], bodies: pick5[1] } : null;
-}, partOf = (name, bodies, { map, bottom, looks, island }) => {
-  const xs = bodies.flatMap((body) => body.corners.map((corner2) => corner2[0]));
-  const ys = bodies.flatMap((body) => body.corners.map((corner2) => corner2[1]));
-  const top = Math.max(...bodies.flatMap((body) => body.corners.map((corner2) => corner2[2])));
-  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  const [cx, cy, cz] = [(x0 + x1) / 2, (y0 + y1) / 2, (top + bottom) / 2];
-  const size = [mm4(x1 - x0 + 0.002), mm4(y1 - y0 + 0.002), mm4(top - bottom + 0.002)];
-  const least2 = [cx - size[0] / 2, cy - size[1] / 2];
-  const keys2 = [island ? "kerb" : "plain"];
-  const faceOf3 = (face3) => {
-    const key = island ? face3.look : face3.look === "lanes" ? `lanes ${face3.rotation} ${face3.scale} ${face3.low} ${face3.at} ${face3.mid}` : face3.look;
-    if (!keys2.includes(key))
-      keys2.push(key);
-    return keys2.indexOf(key);
-  };
-  const faces = [];
-  const made4 = bodies.map((body) => {
-    const colour2 = faceOf3(body.face);
-    if (!faces[colour2])
-      faces[colour2] = body.face;
-    const corners = body.corners.map(([x, y, z]) => [x - cx, y - cy, z - cz]);
-    const floor = bottom - cz;
-    const flat2 = Math.max(...corners.map((corner2) => corner2[2])) - Math.min(...corners.map((corner2) => corner2[2])) < LEVEL2;
-    const square = flat2 && [0, 1, 2, 3].every((k) => {
-      const [a, b] = [corners[k], corners[(k + 1) % 4]];
-      return Math.abs(a[0] - b[0]) < 0.000001 || Math.abs(a[1] - b[1]) < 0.000001;
-    });
-    const tops = island ? { faces: [0, 0, 0, 0, 0, colour2] } : {};
-    if (square) {
-      const [bx0, bx1] = [Math.min(...corners.map((c) => c[0])), Math.max(...corners.map((c) => c[0]))];
-      const [by0, by1] = [Math.min(...corners.map((c) => c[1])), Math.max(...corners.map((c) => c[1]))];
-      const z = corners[0][2];
-      return { add: "box", at: [mm4((bx0 + bx1) / 2), mm4((by0 + by1) / 2), mm4((z + floor) / 2)], size: [mm4(bx1 - bx0), mm4(by1 - by0), mm4(z - floor)], ...island ? { faces: tops.faces } : colour2 && { colour: colour2 } };
-    }
-    const points = [...corners, ...corners.map(([x, y]) => [x, y, floor])];
-    const low = [0, 1, 2].map((k) => Math.min(...points.map((p) => p[k])));
-    const high = [0, 1, 2].map((k) => Math.max(...points.map((p) => p[k])));
-    const at = low.map((v, k) => mm4((v + high[k]) / 2));
-    const own = high.map((v, k) => mm4(v - low[k] + 0.001));
-    return { add: "hull", at, size: own, points: packPoints(points.map((p) => p.map((v, k) => v - at[k])), own), ...island ? { spots: [[0, 0, 0.5, colour2]] } : colour2 && { colour: colour2 } };
-  });
-  const lookOf2 = (face3, k) => {
-    if (k === 0)
-      return null;
-    const look8 = looks[face3.look] ?? looks.plain;
-    if (face3.look !== "lanes")
-      return { ...look8, ...look8.scale && { offset: offsetOf({ rotation: 0, scale: look8.scale, low: [0, 0], at: 0, mid: [0, 0] }, least2) } };
-    return { texture: looks.lanes.texture, rotation: face3.rotation, scale: face3.scale, offset: offsetOf(face3, least2) };
-  };
-  const base = looks[island ? "kerb" : "plain"];
-  const surface = {
-    ...base.scale && { offset: offsetOf({ rotation: 0, scale: base.scale, low: [0, 0], at: 0, mid: [0, 0] }, least2) },
-    ...faces.length > 1 && { faces: Object.fromEntries(faces.map((face3, k) => [k, lookOf2(face3, k)]).filter(([, look8]) => look8)) }
-  };
-  const [X2, Y] = map.at(cx, cy);
-  return {
-    name,
-    framed: true,
-    at: [mm4(X2), mm4(Y), mm4(cz)],
-    turn: [0, 0, map.xYaw(0)],
-    prims: [{
-      name: island ? "island" : "crossing",
-      kind: "solid",
-      join: "none",
-      colours: keys2.length - 1,
-      at: [0, 0, 0],
-      size,
-      material: base.texture,
-      ...base.tint && { color: base.tint },
-      surface,
-      bodies: made4
-    }]
-  };
-};
-var init_land_streets = __esm(() => {
-  init_land_border();
-  [COLOURS3, BODIES3, CHARACTERS] = [8, 32, 2900];
-});
-
-// src/build/city-land.js
-var exports_city_land = {};
-__export(exports_city_land, {
-  tilesOf: () => tilesOf,
-  surfaceOf: () => surfaceOf3,
-  stripAlong: () => stripAlong,
-  stationLayout: () => stationLayout,
-  squareMapOf: () => squareMapOf,
-  planesOf: () => planesOf,
-  mapOf: () => mapOf,
-  linePieces: () => linePieces,
-  fitPiece: () => fitPiece,
-  borderHalf: () => borderHalf,
-  bandTiles: () => bandTiles
-});
-var mm5 = (value) => Math.round(value * 1000) / 1000 + 0, deg2 = (radians) => radians * 180 / Math.PI, clamp34 = (value, low, high) => Math.min(high, Math.max(low, value)), mapOf = (land2, origin) => {
-  const at = (x, y) => land2.place(x - origin[0], y - origin[1]);
-  const back = (X2, Y) => {
-    const [x, y] = land2.where(X2, Y);
-    return [x + origin[0], y + origin[1]];
-  };
-  const [cx, cy] = [origin[0] + land2.size[0] / 2, origin[1] + land2.size[1] / 2];
-  const [p, px, py] = [at(cx, cy), at(cx + 1, cy), at(cx, cy + 1)];
-  const [a, b] = [[px[0] - p[0], px[1] - p[1]], [py[0] - p[0], py[1] - p[1]]];
-  const linear2 = ([x, y]) => [a[0] * x + b[0] * y, a[1] * x + b[1] * y];
-  const xYaw = (turn3) => {
-    const r = (turn3 ?? 0) * Math.PI / 180;
-    const [X2, Y] = linear2([Math.cos(r), Math.sin(r)]);
-    return mm5(deg2(Math.atan2(Y, X2)));
-  };
-  const yYaw = (turn3) => {
-    const r = (turn3 ?? 0) * Math.PI / 180;
-    const [X2, Y] = linear2([-Math.sin(r), Math.cos(r)]);
-    return mm5(deg2(Math.atan2(-X2, Y)));
-  };
-  return { at, back, linear: linear2, xYaw, yYaw };
-}, squareMapOf = (land2) => {
-  const { at, back, way, yaw } = land2.square;
-  const linear2 = ([x, y]) => [way[0] * x - way[1] * y, way[1] * x + way[0] * y];
-  const turned5 = (turn3) => mm5((turn3 ?? 0) + yaw);
-  return { at, back, linear: linear2, xYaw: turned5, yYaw: turned5 };
-}, surfaceOf3 = (land2, ground, { over = BORDER2.over, row = 50, step = 4, band = BORDER2.band } = {}) => {
-  const [W2, D2] = land2.size;
-  const sides2 = land2.sides;
-  const [sw, se, ne, nw] = land2.corners.map((corner2) => corner2[2]);
-  const coons = (x, y) => {
-    const [u, v] = [clamp34(x / W2, 0, 1), clamp34(y / D2, 0, 1)];
-    const [south, north] = [sides2.south.heightAt(u * sides2.south.long), sides2.north.heightAt(u * sides2.north.long)];
-    const [west, east] = [sides2.west.heightAt(v * sides2.west.long), sides2.east.heightAt(v * sides2.east.long)];
-    return (1 - v) * south + v * north + (1 - u) * west + u * east - ((1 - u) * (1 - v) * sw + u * (1 - v) * se + u * v * ne + (1 - u) * v * nw);
-  };
-  const from = (x, y) => Math.min(x, W2 - x, y, D2 - y);
-  const share = (x, y) => clamp34((from(x, y) - band) / (row - band), 0, 1);
-  let [lift2, low] = [0, Infinity];
-  for (let x = 0;x <= W2 + 0.000001; x += W2 / Math.ceil(W2 / step)) {
-    for (let y = 0;y <= D2 + 0.000001; y += D2 / Math.ceil(D2 / step)) {
-      const here = ground(...land2.place(x, y)).ground;
-      low = Math.min(low, here);
-      const w = share(x, y);
-      if (w > 0.05)
-        lift2 = Math.max(lift2, (here + over - coons(x, y)) / w);
-    }
-  }
-  const at = (X2, Y) => {
-    const [x, y] = land2.where(X2, Y);
-    return coons(x, y) + lift2 * share(x, y);
-  };
-  return { at, bare: (X2, Y) => coons(...land2.where(X2, Y)), lift: mm5(lift2), low: mm5(low) };
-}, planesOf = (blended, grid, land2, ground = null) => {
-  const { xs, ys, nx, ny } = grid;
-  const sq = land2.square;
-  const lean = (i) => xs[i].slope ?? 0;
-  const column3 = (i, y) => [xs[i].from + lean(i) * y, xs[i].to + lean(i) * y, xs[i].mid + lean(i) * y];
-  const groundAt5 = (x, y) => ground(...sq.at(x, y)).ground;
-  const highAbout = (x, y, r) => Math.max(...[-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b) => groundAt5(x + a * r, y + b * r))));
-  const Z = xs.map((_, i) => ys.map((__, j) => {
-    const [x, y] = [column3(i, ys[j].mid)[2], ys[j].mid];
-    const P2 = sq.at(x, y);
-    if (i === 0 || i === nx || j === 0 || j === ny)
-      return blended.at(...P2);
-    return ground ? Math.max(blended.bare(...P2), highAbout(x, y, 6) + BORDER2.over) : blended.bare(...P2) + blended.lift;
-  }));
-  const planes = Array.from({ length: nx }, (_, i) => Array.from({ length: ny }, (__, j) => {
-    const [y0, y1] = [ys[j].to, ys[j + 1].from];
-    const onBorder = [j === 0 || i === 0, j === 0 || i === nx - 1, j === ny - 1 || i === nx - 1, j === ny - 1 || i === 0];
-    const bordered = (x, y, k) => {
-      if (!onBorder[k])
-        return null;
-      if (j === 0 && k < 2)
-        return blended.at(...sq.at(x, ys[0].mid));
-      if (j === ny - 1 && k >= 2)
-        return blended.at(...sq.at(x, ys[ny].mid));
-      return blended.at(...sq.at(column3(i === 0 ? 0 : nx, y)[2], y));
-    };
-    const corners = [[column3(i, y0)[1], y0, Z[i][j]], [column3(i + 1, y0)[0], y0, Z[i + 1][j]], [column3(i + 1, y1)[0], y1, Z[i + 1][j + 1]], [column3(i, y1)[1], y1, Z[i][j + 1]]].map(([x, y, z], k) => [x, y, bordered(x, y, k) ?? z]);
-    const samples = [];
-    if (ground)
-      for (let v = 0;v <= 1 + 0.000000001; v += 1 / Math.max(1, Math.ceil((y1 - y0) / 4))) {
-        const y = y0 + (y1 - y0) * v;
-        const [xa, xb] = [column3(i, y)[1], column3(i + 1, y)[0]];
-        for (let u = 0;u <= 1 + 0.000000001; u += 1 / Math.max(1, Math.ceil((xb - xa) / 4)))
-          samples.push([xa + (xb - xa) * u, y, groundAt5(xa + (xb - xa) * u, y) + BORDER2.over]);
-      }
-    const fixed = corners.filter((_2, k) => onBorder[k]);
-    if (fixed.length === 2) {
-      const [P2, Q] = fixed;
-      const long = Math.hypot(Q[0] - P2[0], Q[1] - P2[1]);
-      const u = [(Q[0] - P2[0]) / long, (Q[1] - P2[1]) / long];
-      const rest = corners.filter((_2, k) => !onBorder[k]);
-      const sign2 = Math.sign((rest[0][0] - P2[0]) * -u[1] + (rest[0][1] - P2[1]) * u[0]) || 1;
-      const w = [-u[1] * sign2, u[0] * sign2];
-      const lineAt2 = (x, y) => P2[2] + (Q[2] - P2[2]) * ((x - P2[0]) * u[0] + (y - P2[1]) * u[1]) / long;
-      const away = (x, y) => (x - P2[0]) * w[0] + (y - P2[1]) * w[1];
-      let rise = rest.reduce((sum, [x, y, z]) => sum + away(x, y) * (z - lineAt2(x, y)), 0) / rest.reduce((sum, [x, y]) => sum + away(x, y) ** 2, 0);
-      for (const [x, y, z] of samples)
-        if (away(x, y) > 0.5)
-          rise = Math.max(rise, (z - lineAt2(x, y)) / away(x, y));
-      return (x, y) => lineAt2(x, y) + rise * away(x, y);
-    }
-    if (fixed.length === 3) {
-      const [p, q, r] = fixed;
-      const [a, b] = [[q[0] - p[0], q[1] - p[1], q[2] - p[2]], [r[0] - p[0], r[1] - p[1], r[2] - p[2]]];
-      const n = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-      const through = (x, y) => p[2] - (n[0] * (x - p[0]) + n[1] * (y - p[1])) / n[2];
-      if (samples.every(([x, y, z]) => through(x, y) >= z - 0.000001))
-        return through;
-    }
-    const [cx, cy, m] = [0, 1, 2].map((k) => corners.reduce((sum, corner2) => sum + corner2[k], 0) / 4);
-    let [xx, xy, yy, xz, yz] = [0, 0, 0, 0, 0];
-    for (const [x, y, z] of corners) {
-      const [du, dv, dw] = [x - cx, y - cy, z - m];
-      xx += du * du;
-      xy += du * dv;
-      yy += dv * dv;
-      xz += du * dw;
-      yz += dv * dw;
-    }
-    const det = xx * yy - xy * xy;
-    const [gx, gy] = Math.abs(det) < 0.000000001 ? [0, 0] : [(xz * yy - yz * xy) / det, (yz * xx - xz * xy) / det];
-    const raise = Math.max(0, ...samples.map(([x, y, z]) => z - (m + gx * (x - cx) + gy * (y - cy))));
-    return (x, y) => m + raise + gx * (x - cx) + gy * (y - cy);
-  }));
-  const block3 = (i, j) => planes[clamp34(i, 0, nx - 1)][clamp34(j, 0, ny - 1)];
-  const findOn = (v, spans) => {
-    for (let k = 0;k < spans.length; k++) {
-      if (v >= spans[k][0] && v <= spans[k][1])
-        return { k, on: true };
-      if (k + 1 < spans.length && v > spans[k][1] && v < spans[k + 1][0])
-        return { k, on: false };
-    }
-    return null;
-  };
-  const rowSpans = ys.map((line) => [line.from, line.to]);
-  const lerp4 = (a, b, t) => a + (b - a) * t;
-  const kerbOf = (v, spans, side2) => {
-    const where = findOn(v, spans);
-    if (!where)
-      return side2(v < spans[0][0] ? 0 : spans.length - 2, v < spans[0][0] ? spans[0][0] : spans.at(-1)[1]);
-    if (!where.on)
-      return side2(where.k, v);
-    const [a, b] = spans[where.k];
-    if (where.k === 0)
-      return side2(0, b);
-    if (where.k === spans.length - 1)
-      return side2(where.k - 1, a);
-    return lerp4(side2(where.k - 1, a), side2(where.k, b), (v - a) / (b - a));
-  };
-  const cornerAt = (x, y) => {
-    for (const [j, inwardY, row] of [[0, 1, 0], [ny, -1, ny - 1]]) {
-      const [edgeY, kerbY] = [ys[j].mid, inwardY > 0 ? ys[j].to : ys[j].from];
-      if ((y - kerbY) * inwardY > 0)
-        continue;
-      for (const [i, inwardX, col] of [[0, 1, 0], [nx, -1, nx - 1]]) {
-        const sideOf = (v) => {
-          const [from, to, mid6] = column3(i, v);
-          return [mid6, inwardX > 0 ? to : from];
-        };
-        const [mid5, kerbX] = sideOf(y);
-        if ((x - kerbX) * inwardX > 0)
-          continue;
-        const tx = clamp34((x - mid5) / (kerbX - mid5), 0, 1);
-        const ty = clamp34((y - edgeY) / (kerbY - edgeY), 0, 1);
-        const [[midE, kerbE], [midK, kerbK]] = [sideOf(edgeY), sideOf(kerbY)];
-        const [a, b, c, d] = [blended.at(...sq.at(midE, edgeY)), blended.at(...sq.at(kerbE, edgeY)), blended.at(...sq.at(midK, kerbY)), block3(col, row)(kerbK, kerbY)];
-        return lerp4(lerp4(a, b, tx), lerp4(c, d, tx), ty);
-      }
-    }
-    return null;
-  };
-  const at = (X2, Y) => {
-    const [x, y] = sq.back(X2, Y);
-    const corner2 = cornerAt(x, y);
-    if (corner2 !== null)
-      return corner2;
-    for (const [j2, inward, row] of [[0, 1, 0], [ny, -1, ny - 1]]) {
-      const [edge, kerb] = [ys[j2].mid, inward > 0 ? ys[j2].to : ys[j2].from];
-      if ((y - kerb) * inward > 0)
-        continue;
-      const own = blended.at(...sq.at(x, edge));
-      const t = clamp34((y - edge) / (kerb - edge), 0, 1);
-      return lerp4(own, kerbOf(x, xs.map((_, i2) => column3(i2, kerb).slice(0, 2)), (i2, v2) => block3(i2, row)(v2, kerb)), t);
-    }
-    for (const [i2, inward, col] of [[0, 1, 0], [nx, -1, nx - 1]]) {
-      const [from, to, mid5] = column3(i2, y);
-      const kerb = inward > 0 ? to : from;
-      if ((x - kerb) * inward > 0)
-        continue;
-      const own = blended.at(...sq.at(mid5, y));
-      const t = clamp34((x - mid5) / (kerb - mid5), 0, 1);
-      return lerp4(own, kerbOf(y, rowSpans, (j2, v2) => block3(col, j2)(column3(i2, v2)[inward > 0 ? 1 : 0], v2)), t);
-    }
-    const across = findOn(x, xs.map((_, i2) => column3(i2, y).slice(0, 2)));
-    const along4 = findOn(y, rowSpans);
-    if (!across || !along4)
-      return blended.at(X2, Y);
-    const [i, j] = [across.k, along4.k];
-    if (!across.on && !along4.on)
-      return block3(i, j)(x, y);
-    if (along4.on && !across.on) {
-      const [ya2, yb2] = [ys[j].from, ys[j].to];
-      return lerp4(block3(i, j - 1)(x, ya2), block3(i, j)(x, yb2), (y - ya2) / (yb2 - ya2));
-    }
-    if (across.on && !along4.on) {
-      const [xa2, xb2] = column3(i, y);
-      return lerp4(block3(i - 1, j)(xa2, y), block3(i, j)(xb2, y), (x - xa2) / (xb2 - xa2));
-    }
-    const [ya, yb] = [ys[j].from, ys[j].to];
-    const [[sa, sb], [na, nb]] = [column3(i, ya).slice(0, 2), column3(i, yb).slice(0, 2)];
-    const [sw, se, ne, nw] = [block3(i - 1, j - 1)(sa, ya), block3(i, j - 1)(sb, ya), block3(i, j)(nb, yb), block3(i - 1, j)(na, yb)];
-    const v = (y - ya) / (yb - ya);
-    const [xa, xb] = column3(i, y).slice(0, 2);
-    const u = (x - xa) / (xb - xa);
-    return lerp4(lerp4(sw, se, u), lerp4(nw, ne, u), v);
-  };
-  const acrossLines = xs.flatMap((line, i) => [[line.from, lean(i)], [line.to, lean(i)], ...i === 0 || i === nx ? [[line.mid, lean(i)]] : []]);
-  const alongLines = ys.flatMap((line, j) => [line.from, line.to, ...j === 0 || j === ny ? [line.mid] : []]);
-  const knotsAcross = ["south", "north"].flatMap((side2) => land2.sides[side2].border.knots.map(([t]) => {
-    const [x] = sq.back(...land2.sides[side2].at(land2.sides[side2].own(t), 0));
-    const j = side2 === "south" ? 0 : ny;
-    return { x, y0: Math.min(ys[j].mid, side2 === "south" ? ys[j].to : ys[j].from) - 0.5, y1: Math.max(ys[j].mid, side2 === "south" ? ys[j].to : ys[j].from) + 0.5 };
-  }));
-  const knotsAlong = ["west", "east"].flatMap((side2) => land2.sides[side2].border.knots.map(([t]) => {
-    const [, y] = sq.back(...land2.sides[side2].at(land2.sides[side2].own(t), 0));
-    const i = side2 === "west" ? 0 : nx;
-    const [from, to, mid5] = column3(i, y);
-    return { y, x0: Math.min(mid5, side2 === "west" ? to : from) - 0.5, x1: Math.max(mid5, side2 === "west" ? to : from) + 0.5 };
-  }));
-  const creases = (P2, Q) => {
-    const [[x0, y0], [x1, y1]] = [sq.back(...P2), sq.back(...Q)];
-    const [dx, dy] = [x1 - x0, y1 - y0];
-    const shares = [];
-    for (const [c, s] of acrossLines) {
-      const d = dx - s * dy;
-      if (Math.abs(d) > 0.000000001)
-        shares.push((c - x0 + s * y0) / d);
-    }
-    if (Math.abs(dy) > 0.000000001)
-      for (const c of alongLines)
-        shares.push((c - y0) / dy);
-    if (Math.abs(dx) > 0.000000001)
-      for (const knot of knotsAcross) {
-        const t = (knot.x - x0) / dx;
-        const y = y0 + dy * t;
-        if (y >= knot.y0 && y <= knot.y1)
-          shares.push(t);
-      }
-    if (Math.abs(dy) > 0.000000001)
-      for (const knot of knotsAlong) {
-        const t = (knot.y - y0) / dy;
-        const x = x0 + dx * t;
-        if (x >= knot.x0 && x <= knot.x1)
-          shares.push(t);
-      }
-    return [...new Set(shares.filter((t) => t > 0.0001 && t < 1 - 0.0001).map((t) => Math.round(t * 1e6) / 1e6))].sort((a, b) => a - b);
-  };
-  return { at, creases, lift: blended.lift, low: blended.low };
-}, pitchedOn = (gx, gy, yaw, base = 0) => [mm5(deg2(Math.atan(gy)) + base), mm5(-deg2(Math.atan(gx))), mm5(yaw)], slopeOn = (surface) => ([X2, Y], [ux, uy]) => surface.at(X2 + ux / 2, Y + uy / 2) - surface.at(X2 - ux / 2, Y - uy / 2), triangleOf = (rest, { corner: corner2, w1, w2, l1, l2, z, thick }, surface) => {
-  const counter2 = w1[0] * w2[1] - w1[1] * w2[0] > 0;
-  const [xWay, yWay, legA, legB] = counter2 ? [w1, w2, l1, l2] : [w2, w1, l2, l1];
-  const middle = [corner2[0] + xWay[0] * legA / 2 + yWay[0] * legB / 2, corner2[1] + xWay[1] * legA / 2 + yWay[1] * legB / 2];
-  const slope = slopeOn(surface);
-  return { ...rest, shape: "prism", at: [mm5(middle[0]), mm5(middle[1]), mm5(z + surface.at(...middle))], size: [mm5(legA), mm5(thick), mm5(legB)], turn: pitchedOn(slope(middle, xWay), slope(middle, yWay), deg2(Math.atan2(xWay[1], xWay[0])), -90) };
-}, foldedLook = ({ material, surface = {} }) => {
-  const { faces = {}, ...base } = surface;
-  const own = (face3) => ({ texture: face3?.texture ?? base.texture ?? material, ...face3 });
-  return { material, surface: { ...base, faces: { 0: own(faces[1]), 1: own(faces[0]) } } };
-}, foldedPart = (prim, outline2, fold, { surface, lift: lift2 }) => {
-  const thick = prim.size[2];
-  const made4 = foldedOf({ polygon: outline2, top: (X2, Y) => lift2 + surface.at(X2, Y) + thick / 2, thick, fold, square: surface.square });
-  const { at: _, size: __, turn: ___, shape: ____, pin: _____, surface: ______, material: _______, ...kept3 } = prim;
-  return { ...kept3, ...foldedLook(prim), kind: "solid", join: "none", colours: 1, at: made4.at, turn: made4.turn, size: made4.size, bodies: made4.bodies };
-}, bandTiles = (band, fit) => {
-  const { y0, y1, left, right } = band;
-  const { map, surface, sizeOf } = fit;
-  const [xa, xb] = [Math.max(...left), Math.min(...right)];
-  const outline2 = [map.at(left[0], y0), map.at(right[0], y0), map.at(right[1], y1), map.at(left[1], y1)];
-  const fold = !band.cut && surface.foldIn?.(outline2);
-  if (fold) {
-    const part = foldedPart({ ...band.rest, size: [0, 0, band.thick] }, outline2, fold, { surface, lift: band.z ?? 0 });
-    return { name: band.name, at: part.at, framed: true, prims: [{ ...part, at: [0, 0, 0] }] };
-  }
-  if (sizeOf && surface.creases && !band.cut) {
-    const ys = [[left[0], left[1]], [right[0], right[1]]].flatMap(([a, b]) => surface.creases(map.at(a, y0), map.at(b, y1)).map((t) => y0 + (y1 - y0) * t));
-    const cuts = [...new Set(ys.filter((y) => y > y0 + 0.5 && y < y1 - 0.5).map((y) => Math.round(y * 1000) / 1000))].sort((a, b) => a - b);
-    if (cuts.length) {
-      const marks = [y0, ...cuts, y1];
-      const side2 = (pair3, y) => pair3[0] + (pair3[1] - pair3[0]) * (y - y0) / (y1 - y0);
-      const parts = marks.slice(1).map((to, k) => bandTiles({ ...band, cut: true, y0: marks[k], y1: to, left: [side2(left, marks[k]), side2(left, to)], right: [side2(right, marks[k]), side2(right, to)] }, fit)).filter(Boolean);
-      if (!parts.length)
-        return null;
-      const at = parts[0].at;
-      return { ...parts[0], prims: parts.flatMap((part) => part.prims.map((prim) => ({ ...prim, at: [mm5(prim.at[0] + part.at[0] - at[0]), mm5(prim.at[1] + part.at[1] - at[1]), mm5(prim.at[2] + part.at[2] - at[2])] }))) };
-    }
-  }
-  if (sizeOf && surface.creases && y1 - y0 >= 4 && xb - xa > 0.01) {
-    const height = (x, y) => surface.at(...map.at(x, y));
-    const [xm, ym] = [(xa + xb) / 2, (y0 + y1) / 2];
-    const [m, gx, gy] = [height(xm, ym), height(xm + 0.5, ym) - height(xm - 0.5, ym), height(xm, ym + 0.5) - height(xm, ym - 0.5)];
-    const off = Math.max(...[[xa, y0], [xb, y0], [xb, y1], [xa, y1]].map(([x, y]) => Math.abs(height(x, y) - m - gx * (x - xm) - gy * (y - ym))));
-    if (off > ACROSS6) {
-      const [lm, rm] = [(left[0] + left[1]) / 2, (right[0] + right[1]) / 2];
-      const halves = [bandTiles({ ...band, y1: ym, left: [left[0], lm], right: [right[0], rm] }, fit), bandTiles({ ...band, y0: ym, left: [lm, left[1]], right: [rm, right[1]] }, fit)].filter(Boolean);
-      if (!halves.length)
-        return null;
-      const at = halves[0].at;
-      return { ...halves[0], prims: halves.flatMap((half) => half.prims.map((prim) => ({ ...prim, at: [mm5(prim.at[0] + half.at[0] - at[0]), mm5(prim.at[1] + half.at[1] - at[1]), mm5(prim.at[2] + half.at[2] - at[2])] }))) };
-    }
-  }
-  return bandOnce(band, fit);
-}, bandOnce = ({ name, y0, y1, left, right, z = 0, thick, rest, ends = rest }, { map, surface, sizeOf = null }) => {
-  const [xa, xb] = [Math.max(...left), Math.min(...right)];
-  const prims = [];
-  const slope = slopeOn(surface);
-  const [ux, uy] = [map.linear([1, 0]), map.linear([0, 1])];
-  if (xb - xa > 0.01 && y1 - y0 > 0.01) {
-    const [ym, long] = [(y0 + y1) / 2, xb - xa];
-    for (const [a, b] of sizeOf && !drawnWhole(rest) ? lengthsAlong(long, (t) => surface.at(...map.at(xa + t, ym)), 0.01, surface.creases?.(map.at(xa, ym), map.at(xb, ym)) ?? []) : [[0, long]]) {
-      const middle = map.at(xa + (a + b) / 2, ym);
-      const look8 = b - a < long - 0.000001 ? slid(rest, (a + b) / 2 - long / 2, sizeOf) : rest;
-      prims.push({ ...look8, shape: "cube", at: [mm5(middle[0]), mm5(middle[1]), mm5(z + surface.at(...middle))], size: [mm5(b - a), mm5(y1 - y0), mm5(thick)], turn: pitchedOn(slope(middle, ux), slope(middle, uy), deg2(Math.atan2(ux[1], ux[0]))) });
-    }
-  }
-  const flip = ([x, y]) => [-x, -y];
-  const [l, r] = [left[1] - left[0], right[1] - right[0]];
-  if (Math.abs(l) > 0.01)
-    prims.push(triangleOf(ends, { ...l > 0 ? { corner: map.at(left[1], y0), w1: flip(ux), l1: l, w2: uy, l2: y1 - y0 } : { corner: map.at(left[0], y1), w1: flip(ux), l1: -l, w2: flip(uy), l2: y1 - y0 }, z, thick }, surface));
-  if (Math.abs(r) > 0.01)
-    prims.push(triangleOf(ends, { ...r < 0 ? { corner: map.at(right[1], y0), w1: ux, l1: -r, w2: uy, l2: y1 - y0 } : { corner: map.at(right[0], y1), w1: ux, l1: r, w2: flip(uy), l2: y1 - y0 }, z, thick }, surface));
-  if (!prims.length)
-    return null;
-  const at = prims[0].at;
-  return { name, at, framed: true, prims: prims.map((prim) => ({ ...prim, at: [mm5(prim.at[0] - at[0]), mm5(prim.at[1] - at[1]), mm5(prim.at[2] - at[2])] })) };
-}, ACROSS6 = 0.03, lengthsAlong = (long, heightAt, within4 = 0.01, folds = []) => {
-  const off = (a, b) => {
-    const [m, slope] = [heightAt((a + b) / 2), heightAt((a + b) / 2 + 0.5) - heightAt((a + b) / 2 - 0.5)];
-    return Math.max(...[0, 0.25, 0.75, 1].map((f) => Math.abs(heightAt(a + (b - a) * f) - m - slope * (b - a) * (f - 0.5))));
-  };
-  const evenly = (a, b) => {
-    const most2 = Math.max(1, Math.floor((b - a) / 2));
-    for (let count = Math.max(1, Math.ceil((b - a) / 64 - 0.000000001));; count++) {
-      const lengths2 = Array.from({ length: count }, (_, n) => [a + (b - a) * n / count, a + (b - a) * (n + 1) / count]);
-      if (count >= most2 || lengths2.every(([p, q]) => off(p, q) <= within4))
-        return lengths2;
-    }
-  };
-  const marks = [0, ...[...new Set(folds.map((t) => Math.round(t * long * 1000) / 1000))].filter((d) => d > 0.05 && d < long - 0.05).sort((a, b) => a - b), long];
-  const parts = [];
-  for (let first = 0, k = 1;k < marks.length; k++) {
-    if (k + 1 < marks.length && off(marks[first], marks[k + 1]) <= within4)
-      continue;
-    parts.push([marks[first], marks[k]]);
-    first = k;
-  }
-  return parts.flatMap(([a, b]) => evenly(a, b));
-}, drawnWhole = (look8) => [look8.surface, ...Object.values(look8.surface?.faces ?? {})].some((face3) => face3?.pattern || face3?.page || face3?.media), slid = (look8, D2, sizeOf, C2 = 0) => {
-  const surface = look8.surface ?? {};
-  const shift = (own, texture2) => {
-    const size = own?.scale ?? surface.scale ?? (texture2 ? sizeOf(texture2) : null);
-    const [oU, oV] = own?.offset ?? surface.offset ?? [0, 0];
-    if (!size)
-      return own?.offset ?? surface.offset;
-    const [sU, sV] = Array.isArray(size) ? size : [size, size];
-    const r = (own?.rotation ?? surface.rotation ?? 0) * Math.PI / 180;
-    const wrap2 = (v) => Math.round((v % 1 + 1) % 1 * 1e4) / 1e4;
-    return [wrap2(oU + (Math.cos(r) * D2 + Math.sin(r) * C2) / sU), wrap2(oV - (Math.sin(r) * D2 - Math.cos(r) * C2) / sV)];
-  };
-  const texture = surface.texture ?? look8.material;
-  const offset = shift(null, texture);
-  const faces = Object.fromEntries(Object.entries(surface.faces ?? {}).map(([face3, own]) => [face3, { ...own, ...shift(own, own.texture ?? texture) && { offset: shift(own, own.texture ?? texture) } }]));
-  return { ...look8, surface: { ...surface, ...offset && { offset }, ...surface.faces && { faces } } };
-}, fitted2 = (look8, Lx, Ly, sizeOf) => {
-  const surface = look8.surface ?? {};
-  const fit = (own, texture2) => {
-    const size = own?.scale ?? surface.scale ?? (texture2 ? sizeOf(texture2) : null);
-    const turn3 = ((own?.rotation ?? surface.rotation ?? 0) % 360 + 360) % 360;
-    if (!size || turn3 % 90)
-      return null;
-    const [sU, sV] = Array.isArray(size) ? size : [size, size];
-    const [LU, LV] = turn3 % 180 ? [Ly, Lx] : [Lx, Ly];
-    const whole4 = (L, repeat) => L / repeat >= 4 ? L / Math.round(L / repeat) : repeat;
-    return [mm5(whole4(LU, sU)), mm5(whole4(LV, sV))];
-  };
-  const texture = surface.texture ?? look8.material;
-  const scale4 = fit(null, texture);
-  const faces = Object.fromEntries(Object.entries(surface.faces ?? {}).map(([face3, own]) => [face3, { ...own, ...fit(own, own.texture ?? texture) && { scale: fit(own, own.texture ?? texture) } }]));
-  return { ...look8, surface: { ...surface, ...scale4 && { scale: scale4 }, ...surface.faces && { faces } } };
-}, tilesOf = (prim, { map, surface, level, sizeOf = null }) => {
-  const [cx, cy, cz] = prim.at;
-  const [hx, hy] = [prim.size[0] / 2, prim.size[1] / 2];
-  const [A2, B2, D2] = [map.at(cx - hx, cy - hy), map.at(cx + hx, cy - hy), map.at(cx - hx, cy + hy)];
-  const outline2 = [A2, B2, [B2[0] + D2[0] - A2[0], B2[1] + D2[1] - A2[1]], D2];
-  const fold = surface.foldIn?.(outline2);
-  if (fold)
-    return [foldedPart(prim, outline2, fold, { surface, lift: cz - level })];
-  const [ab, ad] = [[B2[0] - A2[0], B2[1] - A2[1]], [D2[0] - A2[0], D2[1] - A2[1]]];
-  const [origin, base, side2] = Math.hypot(...ab) >= Math.hypot(...ad) ? [A2, ab, ad] : [A2, ad, ab];
-  const lx = Math.hypot(...base);
-  const e = [base[0] / lx, base[1] / lx];
-  let n = [-e[1], e[0]];
-  let h = side2[0] * n[0] + side2[1] * n[1];
-  if (h < 0) {
-    n = [-n[0], -n[1]];
-    h = -h;
-  }
-  const s = side2[0] * e[0] + side2[1] * e[1];
-  const place = (u, v) => [origin[0] + e[0] * u + n[0] * v, origin[1] + e[1] * u + n[1] * v];
-  const thick = prim.size[2];
-  const heightAt = ([X2, Y]) => cz - level + surface.at(X2, Y);
-  const slopeAlong = slopeOn(surface);
-  const { at: _, size: __, turn: ___, shape: ____, pin: _____, ...kept3 } = prim;
-  const alongY = base === ad;
-  const rest = alongY && kept3.surface?.faces ? { ...kept3, surface: { ...kept3.surface, faces: Object.fromEntries(Object.entries(kept3.surface.faces).map(([face3, look8]) => [face3, { ...look8, rotation: ((look8.rotation ?? 0) + 90) % 360 }])) } } : kept3;
-  const tiles = [];
-  const wide = lx - Math.abs(s);
-  if (wide > 0.005) {
-    const yaw = deg2(Math.atan2(e[1], e[0]));
-    const start = Math.max(0, s);
-    const ownY = [-e[1], e[0]];
-    const across = n[0] * ownY[0] + n[1] * ownY[1];
-    const split3 = sizeOf && !drawnWhole(rest);
-    const planar = Boolean(surface.creases);
-    const fit = split3 && planar ? fitted2(rest, wide, h, sizeOf) : rest;
-    const twisted = (a, b, c, d) => {
-      const [um, vm] = [start + (a + b) / 2, (c + d) / 2];
-      const middle = place(um, vm);
-      const [zm, gu, gv] = [surface.at(...middle), slopeAlong(middle, e), slopeAlong(middle, n)];
-      return Math.max(...[[a, c], [b, c], [b, d], [a, d]].map(([p, q]) => Math.abs(surface.at(...place(start + p, q)) - zm - gu * (start + p - um) - gv * (q - vm))));
-    };
-    const halved = (a, b, c, d) => !split3 || !planar || Math.max(b - a, d - c) < 1.5 || twisted(a, b, c, d) <= ACROSS6 - 0.002 ? [[a, b, c, d]] : b - a >= d - c ? [...halved(a, (a + b) / 2, c, d), ...halved((a + b) / 2, b, c, d)] : [...halved(a, b, c, (c + d) / 2), ...halved(a, b, (c + d) / 2, d)];
-    const FAR2 = 0.01;
-    const pinned = planar && split3 && prim.pin ? (alongY ? { "x-": 0, "x+": h } : { "y-": 0, "y+": h })[prim.pin] ?? null : null;
-    const edgeOf3 = (a, b) => {
-      const [ua, ub, far] = [start + a, start + b, pinned === 0 ? h : 0];
-      const [ea, eb, fa, fb] = [surface.at(...place(ua, pinned)), surface.at(...place(ub, pinned)), surface.at(...place(ua, far)), surface.at(...place(ub, far))];
-      return { gu: (eb - ea) / (ub - ua), gv: (fa - ea + fb - eb) / 2 / (far - pinned), z: (ea + eb) / 2, off: Math.abs(fa - ea - (fb - eb)) / 2 };
-    };
-    const pinnedPieces = (a, b) => b - a < 1.5 || edgeOf3(a, b).off <= FAR2 ? [[a, b]] : [...pinnedPieces(a, (a + b) / 2), ...pinnedPieces((a + b) / 2, b)];
-    if (pinned !== null) {
-      const far = pinned === 0 ? h : 0;
-      const folds = [...new Set([0, h / 2, h].flatMap((v) => surface.creases?.(place(start, v), place(start + wide, v)) ?? []).map((t) => Math.round(t * wide * 1000) / 1000))].filter((d) => d > 0.05 && d < wide - 0.05).sort((p, q) => p - q);
-      const marks = [0, ...folds, wide];
-      const straight = (a, b) => [pinned, far].every((v) => {
-        const [za, zb] = [surface.at(...place(start + a, v)), surface.at(...place(start + b, v))];
-        return [...marks.filter((m) => m > a && m < b), ...[0.25, 0.5, 0.75].map((f) => a + (b - a) * f)].every((m) => Math.abs(surface.at(...place(start + m, v)) - za - (zb - za) * (m - a) / (b - a)) <= (v === pinned ? 0.01 : FAR2));
-      });
-      const spans = [];
-      for (let first = 0, k = 1;k < marks.length; k++) {
-        if (k + 1 < marks.length && marks[k + 1] - marks[first] <= 64 && straight(marks[first], marks[k + 1]))
-          continue;
-        spans.push([marks[first], marks[k]]);
-        first = k;
-      }
-      for (const [a1, b1] of spans)
-        for (let n2 = Math.ceil((b1 - a1) / 64 - 0.000000001), k = 0;k < n2; k++)
-          for (const [a, b] of pinnedPieces(a1 + (b1 - a1) * k / n2, a1 + (b1 - a1) * (k + 1) / n2)) {
-            const { gu, gv, z } = edgeOf3(a, b);
-            const middle = place(start + (a + b) / 2, h / 2);
-            const look8 = b - a >= wide - 0.000001 ? fit : slid(fit, (a + b) / 2 - wide / 2, sizeOf);
-            tiles.push({ ...look8, shape: "cube", at: [mm5(middle[0]), mm5(middle[1]), mm5(cz - level + z + gv * (h / 2 - pinned))], size: [mm5(b - a), mm5(h), mm5(thick)], turn: pitchedOn(gu, gv * across, yaw) });
-          }
-    } else
-      for (const [a0, b0] of split3 ? lengthsAlong(wide, (t) => surface.at(...place(start + t, h / 2)), 0.01, [0, h / 2, h].flatMap((v) => surface.creases?.(place(start, v), place(start + wide, v)) ?? [])) : [[0, wide]]) {
-        const along0 = start + (a0 + b0) / 2;
-        for (const [c0, d0] of split3 ? lengthsAlong(h, (t) => surface.at(...place(along0, t)), ACROSS6, [start + a0, along0, start + b0].flatMap((u) => surface.creases?.(place(u, 0), place(u, h)) ?? [])) : [[0, h]])
-          for (const [a, b, c, d] of halved(a0, b0, c0, d0)) {
-            const along4 = start + (a + b) / 2;
-            const middle = place(along4, (c + d) / 2);
-            const whole4 = b - a >= wide - 0.000001 && d - c >= h - 0.000001;
-            const look8 = whole4 ? fit : slid(fit, (a + b) / 2 - wide / 2, sizeOf, ((c + d) / 2 - h / 2) * across);
-            tiles.push({ ...look8, shape: "cube", at: [mm5(middle[0]), mm5(middle[1]), mm5(heightAt(middle))], size: [mm5(b - a), mm5(d - c), mm5(thick)], turn: pitchedOn(slopeAlong(middle, e), slopeAlong(middle, ownY), yaw) });
-          }
-      }
-  }
-  if (Math.abs(s) > 0.005) {
-    const ends = s > 0 ? [{ corner: [s, 0], one: [-1, 0], two: [0, 1] }, { corner: [lx, h], one: [1, 0], two: [0, -1] }] : [{ corner: [0, h], one: [-1, 0], two: [0, -1] }, { corner: [lx + s, 0], one: [1, 0], two: [0, 1] }];
-    for (const { corner: corner2, one, two } of ends) {
-      const [w1, w2] = [[e[0] * one[0] + n[0] * one[1], e[1] * one[0] + n[1] * one[1]], [e[0] * two[0] + n[0] * two[1], e[1] * two[0] + n[1] * two[1]]];
-      const [l1, l2] = [Math.abs(s), h];
-      const counter2 = w1[0] * w2[1] - w1[1] * w2[0] > 0;
-      const [xWay, yWay, legA, legB] = counter2 ? [w1, w2, l1, l2] : [w2, w1, l2, l1];
-      const right = place(...corner2);
-      const middle = [right[0] + xWay[0] * legA / 2 + yWay[0] * legB / 2, right[1] + xWay[1] * legA / 2 + yWay[1] * legB / 2];
-      const yaw = deg2(Math.atan2(xWay[1], xWay[0]));
-      tiles.push({ ...rest, shape: "prism", at: [mm5(middle[0]), mm5(middle[1]), mm5(heightAt(middle))], size: [mm5(legA), mm5(thick), mm5(legB)], turn: pitchedOn(slopeAlong(middle, xWay), slopeAlong(middle, yWay), yaw, -90) });
-    }
-  }
-  return tiles;
-}, stripAlong = (from, to, { name, wide, z, thick, rest }, { map, surface, sizeOf = null }) => {
-  const [a, b] = [map.at(...from), map.at(...to)];
-  const long = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  if (long < 0.05)
-    return null;
-  const way = [(b[0] - a[0]) / long, (b[1] - a[1]) / long];
-  const slope = slopeOn(surface);
-  const prims = (sizeOf && !drawnWhole(rest) ? lengthsAlong(long, (t) => surface.at(a[0] + way[0] * t, a[1] + way[1] * t), 0.01, surface.creases?.(a, [a[0] + way[0] * long, a[1] + way[1] * long]) ?? []) : [[0, long]]).map(([p, q]) => {
-    const middle = [a[0] + way[0] * (p + q) / 2, a[1] + way[1] * (p + q) / 2];
-    const look8 = q - p < long - 0.000001 ? slid(rest, (p + q) / 2 - long / 2, sizeOf) : rest;
-    return { ...look8, shape: "cube", at: [mm5(middle[0]), mm5(middle[1]), mm5(z + surface.at(...middle))], size: [mm5(q - p), mm5(wide), mm5(thick)], turn: pitchedOn(slope(middle, way), slope(middle, [-way[1], way[0]]), deg2(Math.atan2(way[1], way[0]))) };
-  });
-  const at = prims[0].at;
-  return { name, at, framed: true, prims: prims.map((prim) => ({ ...prim, at: [mm5(prim.at[0] - at[0]), mm5(prim.at[1] - at[1]), mm5(prim.at[2] - at[2])] })) };
-}, liesFlat = (object) => !object.framed && !object.turn?.some((v) => v) && !object.vehicle && !object.behaviour && Boolean(object.prims?.length) && object.prims.every((prim) => (prim.shape ?? "cube") === "cube" && !prim.kind && !prim.turn?.some((v) => v) && !prim.behaviour && !prim.light) && object.prims.some((prim) => Math.max(prim.size[0], prim.size[1]) >= 3), goes = (object) => Boolean(object.vehicle || object.behaviour?.type === "route"), PAINTED2, painted = (object) => !object.framed && object.prims?.length === 1 && object.prims.every((prim) => prim.kind === "street" && PAINTED2.has(prim.piece)), PIECES_WIDE, lengthsOf2 = (piece, whole4) => {
-  if (piece === "arrow" || !(whole4 > LINE2.knot))
-    return [{ width: whole4, middle: 0 }];
-  const span = piece === "zebra" ? Math.floor(whole4 + 0.000000001) : whole4;
-  const count = Math.ceil(span / LINE2.knot - 0.000000001);
-  const widths = piece === "zebra" ? Array.from({ length: count }, (_, k) => Math.floor(span / count) + (k < span % count ? 1 : 0)) : Array.from({ length: count }, () => span / count);
-  let from = -span / 2;
-  return widths.map((width) => {
-    const middle = from + width / 2;
-    from += width;
-    return { width, middle };
-  });
-}, fitPiece = (made4, fit) => {
-  const { map, surface, level } = fit;
-  const raise = ([x, y, z = level]) => {
-    const here = map.at(x, y);
-    return [...here.map(mm5), mm5(z - level + surface.at(...here))];
-  };
-  const turned5 = (turn3, going2) => [turn3?.[0] ?? 0, turn3?.[1] ?? 0, going2 ? map.yYaw(turn3?.[2]) : map.xYaw(turn3?.[2])];
-  const going = new Map(made4.objects.map((object) => [object.name, goes(object)]));
-  const flat2 = new Set(made4.objects.filter(liesFlat).map((object) => object.name));
-  const slope = slopeOn(surface);
-  const lying2 = new Map(made4.objects.filter(painted).map((object) => [object.name, object]));
-  const onSurface = (at, yaw) => {
-    const r = yaw * Math.PI / 180;
-    return pitchedOn(slope(at, [Math.cos(r), Math.sin(r)]), slope(at, [-Math.sin(r), Math.cos(r)]), yaw);
-  };
-  const [painting, paintedClones, laidPaint] = [[], [], new Set];
-  const paint = (object, where) => {
-    const [prim] = object.prims;
-    const whole4 = prim.width ?? PIECES_WIDE[prim.piece];
-    const lengths2 = lengthsOf2(prim.piece, whole4);
-    const yaw = (where.turn?.[2] ?? 0) * Math.PI / 180;
-    for (const { width, middle } of lengths2) {
-      const name = lengths2.length > 1 ? `${object.name} ${mm5(width)}` : object.name;
-      const at = raise([where.at[0] + Math.cos(yaw) * middle, where.at[1] + Math.sin(yaw) * middle, where.at[2]]);
-      const turn3 = onSurface(at, map.xYaw(where.turn?.[2]));
-      if (laidPaint.has(name)) {
-        paintedClones.push({ of: name, at, turn: turn3 });
-        continue;
-      }
-      laidPaint.add(name);
-      painting.push({ ...object, name, at, turn: turn3, prims: object.prims.map((each) => ({ ...each, ...lengths2.length > 1 && { width: mm5(width) } })) });
-    }
-  };
-  for (const object of lying2.values())
-    paint(object, object);
-  for (const clone of made4.clones ?? [])
-    if (lying2.has(clone.of))
-      paint(lying2.get(clone.of), clone);
-  const objects = made4.objects.filter((object) => !lying2.has(object.name)).map((object) => {
-    if (object.framed) {
-      const { framed: _, ...laid3 } = object;
-      return laid3;
-    }
-    if (liesFlat(object)) {
-      const [ox, oy, oz] = object.at;
-      const here = raise(object.at);
-      const tiles = object.prims.flatMap((prim) => tilesOf({ ...prim, at: [ox + prim.at[0], oy + prim.at[1], oz + prim.at[2]] }, fit));
-      return { ...object, at: here, turn: [0, 0, 0], prims: tiles.map((tile) => ({ ...tile, at: [mm5(tile.at[0] - here[0]), mm5(tile.at[1] - here[1]), mm5(tile.at[2] - here[2])] })) };
-    }
-    const moved = { ...object, at: raise(object.at), turn: turned5(object.turn, goes(object)) };
-    if (object.behaviour?.type === "route" && Array.isArray(object.behaviour.points)) {
-      const r0 = (object.turn?.[2] ?? 0) * Math.PI / 180;
-      const r1 = moved.turn[2] * Math.PI / 180;
-      const into = ([x, y]) => [x * Math.cos(r0) - y * Math.sin(r0), x * Math.sin(r0) + y * Math.cos(r0)];
-      const outOf = ([X2, Y]) => [X2 * Math.cos(r1) + Y * Math.sin(r1), -X2 * Math.sin(r1) + Y * Math.cos(r1)];
-      const points = object.behaviour.points.map(([px, py, pz = 0, hx = 0, hy = 0, hz = 0]) => {
-        const [gx, gy] = into([px, py]);
-        const [X2, Y] = map.at(object.at[0] + gx, object.at[1] + gy);
-        const [lx, ly] = outOf([X2 - moved.at[0], Y - moved.at[1]]);
-        const [hgx, hgy] = into([hx, hy]);
-        const [hX, hY] = outOf(map.linear([hgx, hgy]));
-        const rise = surface.at(...map.at(object.at[0] + gx, object.at[1] + gy)) - surface.at(...map.at(object.at[0], object.at[1]));
-        return [mm5(lx), mm5(ly), mm5(pz + rise), mm5(hX), mm5(hY), mm5(hz)];
-      });
-      moved.behaviour = { ...object.behaviour, points };
-    }
-    return moved;
-  });
-  return {
-    ...made4,
-    objects: [...objects, ...painting],
-    clones: [...(made4.clones ?? []).filter((clone) => !lying2.has(clone.of)).map((clone) => ({ ...clone, at: raise(clone.at), turn: flat2.has(clone.of) ? [0, 0, 0] : turned5(clone.turn, going.get(clone.of)) })), ...paintedClones],
-    trees: (made4.trees ?? []).map((tree2) => ({ ...tree2, at: raise(tree2.at) })),
-    ...made4.animals && { animals: made4.animals.map((animal) => ({ ...animal, at: raise(animal.at) })) }
-  };
-}, borderHalf = (land2, side2, { origin, level, lean, lane, line, stand: stand5, plant: plant2, down = 0, whole: whole4 = false }) => {
-  const own = land2.sides[side2];
-  const [W2, D2] = land2.size;
-  const across = side2 === "south" || side2 === "north";
-  const placeAt = (c2, t) => {
-    const k = t * lean;
-    return {
-      south: [origin[0] + c2, origin[1] + k],
-      north: [origin[0] + c2, origin[1] + D2 - k],
-      west: [origin[0] + k, origin[1] + c2],
-      east: [origin[0] + W2 - k, origin[1] + c2]
-    }[side2];
-  };
-  const out = { south: [0, -1], north: [0, 1], west: [-1, 0], east: [1, 0] }[side2];
-  const objects = [];
-  const deep = BORDER2.road / 2 * lean;
-  const [from, to] = across ? [0, own.long] : [deep, own.long - deep];
-  const long = to - from;
-  const count = !lane ? 0 : whole4 ? 1 : Math.ceil(long / 50);
-  for (let n = 0;n < count; n++) {
-    const [c0, c1] = [from + long * n / count, from + long * (n + 1) / count];
-    const [x0, y0] = placeAt(c0, 0);
-    const [x1, y1] = placeAt(c1, BORDER2.road / 2);
-    objects.push({ name: `lane ${n + 1}`, at: [mm5((x0 + x1) / 2), mm5((y0 + y1) / 2), level], prims: [{ name: "lane", shape: "cube", at: [0, 0, mm5(-down / 2)], size: across ? [mm5(c1 - c0), mm5(deep), mm5(0.04 + down)] : [mm5(deep), mm5(c1 - c0), mm5(0.04 + down)], ...lane, ...whole4 && { pin: { south: "y-", north: "y+", west: "x-", east: "x+" }[side2] } }] });
-  }
-  const runs3 = line?.runs?.find((run) => run.kind === "border" && run.side === side2) ?? null;
-  if (runs3 && runs3.rail === "high")
-    return { objects, clones: [], trees: [] };
-  const { lamps, trees } = furnitureOf(own.border);
-  const c = (d) => own.own(d / own.border.long);
-  for (const d of lamps)
-    stand5(`border lamp ${side2}`, "arm", placeAt(c(d), BORDER2.road / 2 + BORDER2.lamp), out);
-  for (const d of trees)
-    plant2(...placeAt(c(d), BORDER2.road / 2 + BORDER2.tree));
-  return { objects, clones: [], trees: [] };
-}, STAIR2, LIFT_ALONG, stationLayout = (line, station, { ground, inStreet, lift: lift2 = null }) => {
-  const here = line.at(station.d);
-  const high = station.rail === "high";
-  const way = here.way;
-  const left = [-way[1], way[0]];
-  const off = RAILS3.body / 2 + RAILS3.gap + RAILS3.platform.wide / 2;
-  const at = [here.x + left[0] * off, here.y + left[1] * off];
-  const top = station.at[2] + RAILS3.platform.over;
-  const [half, back] = [RAILS3.platform.long / 2, RAILS3.platform.wide / 2];
-  const place = (a, c = 0) => [at[0] + way[0] * a + left[0] * c, at[1] + way[1] * a + left[1] * c];
-  const onPavement = (a, c = 0) => !inStreet(...place(a, c));
-  const stairEnd = high ? [1, -1].find((end) => [0.5, 1].every((k) => onPavement((half + RAILS3.stair * k) * end))) ?? null : null;
-  const ways = (high ? stairEnd ? [stairEnd] : [] : [-1, 1]).map((end) => {
-    const climb = (run2) => top - (ground(...place(end * (half + run2 / 2))) + BORDER2.kerb);
-    const steps = clamp34(Math.round(climb(high ? RAILS3.stair : RAILS3.steps) / STAIR2.riser), 3, STAIR2.most);
-    const [tread, landing] = high ? [STAIR2.tread, STAIR2.landing] : [Math.max(0.1, RAILS3.steps / steps), 0];
-    const run = high ? steps * tread + landing - tread : RAILS3.steps;
-    const middle = place(end * (half + run / 2));
-    const from = ground(...middle) + BORDER2.kerb;
-    return { end, at: middle, from, rise: top - from, steps, tread, landing, run };
-  });
-  const across = lift2 ? back + 0.05 + lift2.reach : 0;
-  const along4 = high && lift2 ? LIFT_ALONG.find((a) => [[0, across], [1, across + 1], [1, across - 1], [-1, across + 1], [-1, across - 1], [1, back - 3], [-1, back - 3]].every(([k, c]) => onPavement(a + k * lift2.half, c))) ?? null : null;
-  const lifted = along4 === null ? null : (() => {
-    const foot = place(along4, across);
-    const base = ground(...foot) + BORDER2.kerb;
-    return { at: foot, along: along4, across, facing: [-left[0], -left[1]], base, rise: top - base };
-  })();
-  const box7 = (kind, a, c, long, wide) => ({ kind, at: place(a, c), way, long: long + 2, wide: wide + 2 });
-  const keeps2 = [
-    box7("platform", 0, 0, 2 * half, 2 * back),
-    ...ways.map(({ end, run }) => high ? box7("stair", end * (half + run / 2), 0, run, STAIR2.width) : box7("steps", end * (half + run / 2), 0, run, 2 * back)),
-    ...lifted ? [box7("lift", along4, across, 2 * lift2.half, 2 * lift2.half), box7("out", along4, back - 1.5, 2 * lift2.half, 3)] : []
-  ];
-  return { high, at, top, way, left, ways, lift: lifted, keeps: keeps2 };
-}, linePieces = (line, { ground, inStreet, concrete, coachOf: coachOf2, behaviourOf: behaviourOf2, routeTimes: routeTimes2, routeRest: routeRest2, coach: coach2, lift: lift2 = null, exact = false }) => {
-  const [deck, plain] = [{ ...trackDressing("concrete", concrete), surface: { faces: { ...trackDressing("concrete", concrete).surface.faces, 3: { texture: concrete, emissive: 0.5 } } }, light: { on: "night", range: 0 } }, trackDressing()];
-  const yawOf = ([wx, wy]) => mm5(deg2(Math.atan2(-wx, wy)));
-  const objects = [];
-  const knots = line.heights.knots.map(([d]) => d);
-  const lap = line.length;
-  const platforms = line.stations.filter((station) => station.rail === "high").map((station) => station.d);
-  const alongPlatform = (d) => platforms.some((at) => Math.abs(((d - at) % lap + lap * 1.5) % lap - lap / 2) < RAILS3.platform.long / 2);
-  const platformEnds = platforms.flatMap((at) => [-1, 1].map((end) => ((at + end * RAILS3.platform.long / 2) % lap + lap) % lap));
-  for (const [k, each] of line.stretches.entries()) {
-    const ends = [each.start, each.start + each.long];
-    const bends = knots.filter((d) => d > ends[0] + 0.5 && d < ends[1] - 0.5);
-    const atPlatforms = platformEnds.filter((d) => d > ends[0] + 0.5 && d < ends[1] - 0.5 && bends.every((knot) => Math.abs(knot - d) > 0.5));
-    const cuts = [ends[0], ...[...bends, ...atPlatforms].sort((a, b) => a - b), ends[1]];
-    const pieces = cuts.slice(1).flatMap((to, n) => {
-      const from = cuts[n];
-      const most2 = exact ? 64 : each.kind === "straight" ? 48 : Math.PI / 6 * each.radius;
-      const count = Math.max(1, Math.ceil((to - from) / most2 - 0.000000001));
-      return Array.from({ length: count }, (_, m) => [from + (to - from) * m / count, from + (to - from) * (m + 1) / count]);
-    });
-    for (const [n, [d0, d1]] of pieces.entries()) {
-      const middle = line.at((d0 + d1) / 2);
-      const [z0, z1] = [line.heights.at(d0), line.heights.at(d1)];
-      const level = line.levelAt((d0 + d1) / 2);
-      const high = level !== "ground";
-      const bend = each.kind === "turn" ? mm5(deg2(Math.sign(each.sweep) * (d1 - d0) / each.radius)) : 0;
-      const params = { length: mm5(d1 - d0), ...bend && { bend }, ...Math.abs(z1 - z0) > 0.002 && { rise: mm5(z1 - z0) }, ...high && { bed: 2, left: RAILS3.band / 2, right: RAILS3.band / 2, ...alongPlatform((d0 + d1) / 2) && { walls: 2 } } };
-      objects.push({ name: `line ${k + 1}-${n + 1}`, at: [mm5(middle.x), mm5(middle.y), mm5((z0 + z1) / 2)], prims: [trackPart(params, [0, 0, 0], yawOf(middle.way), high ? deck : plain)] });
-    }
-  }
-  let column3 = 0;
-  for (let d = 12;d < line.length; d += 24) {
-    if (line.levelAt(d) === "ground")
-      continue;
-    const here = line.at(d);
-    const top = line.heights.at(d) - 0.8;
-    const foot = ground(here.x, here.y);
-    if (top - foot < 1.2 || inStreet(here.x, here.y) || line.mouths.some((mouth) => d > mouth.from - 1.5 && d < mouth.to + 1.5))
-      continue;
-    column3++;
-    objects.push({ name: `column ${column3}`, at: [mm5(here.x), mm5(here.y), mm5(foot - 0.05)], turn: [0, 0, yawOf(here.way)], prims: [{ name: "column", shape: "cube", at: [0, 0, mm5((top - foot + 0.05) / 2)], size: [0.9, 0.9, mm5(top - foot + 0.05)], material: concrete }] });
-  }
-  for (const [n, station] of line.stations.entries()) {
-    const { high, at: [X2, Y], way, top, ways, lift: lifted } = stationLayout(line, station, { ground, inStreet, lift: lift2 });
-    const foot = ground(X2, Y);
-    const thick = high ? 0.4 : top - foot;
-    const [back, half] = [-(RAILS3.platform.wide / 2), RAILS3.platform.long / 2];
-    const rails = lifted ? [[-half, lifted.along - (lift2.half - 0.05), "behind"], [lifted.along + (lift2.half - 0.05), half, "ahead"]].map(([from, to, name]) => ({ name: `rail ${name}`, at: (from + to) / 2, long: to - from })) : [{ name: "rail", at: 0, long: 2 * half }];
-    objects.push({
-      name: `station ${n + 1} ${station.side}`,
-      at: [mm5(X2), mm5(Y), mm5(top)],
-      turn: [0, 0, yawOf(way)],
-      prims: [
-        { name: "platform", shape: "cube", at: [0, 0, mm5(-thick / 2)], size: [RAILS3.platform.wide, RAILS3.platform.long, mm5(thick)], material: concrete },
-        ...high ? [
-          ...[-1, 1].map((end) => ({ name: `pier ${end < 0 ? "back" : "front"}`, shape: "cube", at: [0, end * (half - 2), mm5(-(top - foot) / 2)], size: [0.8, 0.8, mm5(top - foot)], material: concrete })),
-          ...rails.map((rail5) => ({ name: rail5.name, shape: "cube", at: [mm5(back + 0.05), mm5(rail5.at), 0.55], size: [0.08, mm5(rail5.long), 1.1], material: concrete }))
-        ] : []
-      ]
-    });
-    for (const { end, at, from, rise, steps, tread, landing } of ways) {
-      objects.push({
-        name: `station ${n + 1} ${station.side} ${high ? "stair" : `steps ${end < 0 ? "behind" : "ahead"}`}`,
-        at: [mm5(at[0]), mm5(at[1]), mm5(from)],
-        turn: [0, 0, mm5(yawOf(way) + (end > 0 ? 180 : 0))],
-        prims: [{ name: "stair", kind: "stairs", steps, height: mm5(Math.min(12, rise)), tread: mm5(tread), ...landing && { landing }, width: high ? STAIR2.width : mm5(RAILS3.platform.wide - 0.2), structure: high ? "stringers" : "solid", railing: high ? "both" : "none", at: [0, 0, mm5(rise / 2)], material: concrete }]
-      });
-    }
-    if (lifted)
-      objects.push(lift2.make(`station ${n + 1} ${station.side} lift`, lifted.at.map(mm5), lifted.facing, mm5(lifted.rise), mm5(lifted.base)));
-  }
-  const trains = [];
-  if (line.stations.length && coachOf2) {
-    const { length: length2 } = line;
-    const first = line.stations[0];
-    const kept3 = first.d + coach2.long * (coach2.count - 1) / 2;
-    const here = line.at(kept3);
-    const yaw = Math.atan2(-here.way[0], here.way[1]);
-    const [cos, sin] = [Math.cos(yaw), Math.sin(yaw)];
-    const cm = (v) => Math.round(v * 100) / 100 + 0;
-    const own = ([x, y, z]) => [cm(x * cos + y * sin), cm(-x * sin + y * cos), cm(z)];
-    const z0 = line.heights.at(kept3);
-    const wrap2 = (d) => (d % length2 + length2) % length2;
-    const marks = [];
-    const mark = (d, reach, call = false, curve = false) => {
-      const w = wrap2(d), same4 = marks.findIndex((each) => Math.min(wrap2(each.d - w), wrap2(w - each.d)) < 0.05);
-      if (same4 < 0)
-        marks.push({ d: w, reach, call, curve });
-      else if (call)
-        marks[same4] = { ...marks[same4], call };
-    };
-    for (const each of line.stretches) {
-      if (each.kind !== "turn")
-        continue;
-      const spans = spansOf(each);
-      const reach = 4 / 3 * Math.tan(Math.abs(each.sweep) / spans / 4) * each.radius;
-      for (let k = 0;k <= spans; k++)
-        mark(each.start + each.long * k / spans, reach, false, true);
-    }
-    for (const [d] of line.heights.knots)
-      mark(d, 2);
-    for (const station of line.stations.slice(1))
-      mark(station.d + coach2.long * (coach2.count - 1) / 2, 2, true);
-    const ahead = (d) => ((d - kept3) % length2 + length2) % length2;
-    const through = marks.filter((each) => ahead(each.d) > 0.05 && length2 - ahead(each.d) > 0.05).sort((p, q) => ahead(p.d) - ahead(q.d));
-    const calls = through.flatMap((each, n) => each.call ? [n + 1] : []);
-    const onCurve = (d) => (line.stretches.findLast((stretch) => stretch.start <= wrap2(d) + 0.000000001) ?? line.stretches[0]).kind === "turn";
-    const ends = [{ there: 0, kept: true }, ...through.map((each) => ({ there: ahead(each.d), curve: each.curve })), { there: length2, kept: true }];
-    const reaches2 = through.map((each) => each.reach);
-    const shorten = (k, most2) => {
-      if (k > 0 && k <= through.length)
-        reaches2[k - 1] = Math.min(reaches2[k - 1], most2);
-    };
-    for (let k = 0;k + 1 < ends.length; k++) {
-      const [a, b, g] = [ends[k], ends[k + 1], ends[k + 1].there - ends[k].there];
-      if (onCurve(kept3 + (a.there + b.there) / 2)) {
-        if (!(a.curve || a.kept) || !(b.curve || b.kept)) {
-          const r = line.stretches.findLast((stretch) => stretch.start <= wrap2(kept3 + (a.there + b.there) / 2) + 0.000000001).radius;
-          const circle = 4 / 3 * r * Math.tan(g / (4 * r));
-          shorten(k, circle), shorten(k + 1, circle);
-        }
-        continue;
-      }
-      const [ha, hb] = [a.kept ? g / 3 : reaches2[k - 1], b.kept ? g / 3 : reaches2[k]];
-      if (ha + hb <= g)
-        continue;
-      const [fa, fb] = [!a.kept && !a.curve, !b.kept && !b.curve];
-      if (fa && fb)
-        shorten(k, g / 2), shorten(k + 1, g / 2);
-      else if (fa && g - hb >= 0.05)
-        shorten(k, g - hb);
-      else if (fb && g - ha >= 0.05)
-        shorten(k + 1, g - ha);
-      else
-        shorten(k, a.kept ? 2 * g / 3 : g / 2), shorten(k + 1, b.kept ? 2 * g / 3 : g / 2);
-    }
-    const points = through.map((each, n) => {
-      const reach = reaches2[n];
-      const at = line.at(each.d);
-      const climb = line.heights.grade(each.d);
-      return [...own([at.x - here.x, at.y - here.y, line.heights.at(each.d) - z0]), ...own([at.way[0] * reach, at.way[1] * reach, climb * reach])];
-    });
-    const route = { type: "route", speed: line.speed, accel: 0.8, stop: LINE2.stop, mode: "round", face: "yes", points, ...calls.length ? { calls } : { at: "ends" } };
-    const { period } = routeTimes2(behaviourOf2(route, "object", "train"));
-    const every = Math.ceil(period / 60) * 60;
-    const wheelbase = coach2.long - 2 * coach2.bogie.in + coach2.bogie.axles;
-    for (let t = 0;t < line.trains; t++) {
-      for (let n = 0;n < coach2.count; n++) {
-        const behaviour = { ...route, every, ...n && { behind: mm5(n * coach2.long) }, ...t && { since: Math.round(every / line.trains * t * 1000) } };
-        const [rx, ry, rz] = n ? routeRest2(behaviourOf2(behaviour, "object", "train"), wheelbase, true) : [0, 0, 0];
-        trains.push({
-          name: `train ${t + 1} coach ${n + 1}`,
-          at: [mm5(here.x + rx * cos - ry * sin), mm5(here.y + rx * sin + ry * cos), mm5(z0 + 0.27 + rz)],
-          turn: [0, 0, mm5(deg2(yaw))],
-          ...coachOf2({ ends: n === 0 ? "lead" : n === coach2.count - 1 ? "tail" : "middle", doors: "left", length: coach2.long }),
-          behaviour
-        });
-      }
-    }
-  }
-  return { line: { objects, clones: [], trees: [] }, train: { objects: trains, clones: [], trees: [] } };
-};
-var init_city_land = __esm(() => {
-  init_land_border();
-  init_track();
-  init_land_line();
-  init_land_streets();
-  PAINTED2 = new Set(["zebra", "line", "arrow"]);
-  PIECES_WIDE = Object.freeze({ zebra: 7.5, line: 3.4, arrow: 1 });
-  STAIR2 = Object.freeze({ tread: 0.3, landing: 1.6, riser: 0.19, most: 40, width: 1.8 });
-  LIFT_ALONG = Object.freeze([0, -4, 4, -8, 8, -12, 12]);
-});
-
-// src/build/bank.js
-var exports_bank = {};
-__export(exports_bank, {
-  withImported: () => withImported,
-  showBankImage: () => showBankImage,
-  importedJSON: () => importedJSON,
-  forgetOrigins: () => forgetOrigins,
-  fetchFirst: () => fetchFirst,
-  bankURLs: () => bankURLs,
-  bankJSON: () => bankJSON,
-  PUBLIC_BANK: () => PUBLIC_BANK,
-  LOCAL_FIRST: () => LOCAL_FIRST,
-  IMPORTED: () => IMPORTED
-});
-var PUBLIC_BANK = "https://assets.ovgrid.com/textures/v2/", LOCAL, TIMEOUT = 4000, PATIENCE = 30000, LOCAL_HOSTS, where, first, LOCAL_FIRST, bankURLs = (file) => LOCAL_FIRST ? [LOCAL + file, PUBLIC_BANK + file] : [PUBLIC_BANK + file, LOCAL + file], answering, fetchFirst = async (urls, { timeout = TIMEOUT, patience = PATIENCE } = {}) => {
-  for (const url of urls) {
-    const { origin } = new URL(url);
-    const known = answering.get(origin);
-    if (known && !await known)
-      continue;
-    let settle2 = null;
-    if (!known)
-      answering.set(origin, new Promise((resolve2) => settle2 = resolve2));
-    const controller = new AbortController;
-    const timer = setTimeout(() => controller.abort(), settle2 ? timeout : patience);
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      settle2?.(true);
-      if (response.ok)
-        return response;
-    } catch {
-      settle2?.(false);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-  throw new Error(`${urls[0]}: not in the texture bank`);
-}, forgetOrigins = () => answering.clear(), bankJSON = async (file) => (await fetchFirst(bankURLs(file))).json(), IMPORTED, imported = null, importedJSON = () => imported ??= fetch(`${IMPORTED}index.json`).then((response) => response.ok ? response.json() : { materials: [] }).catch(() => ({ materials: [] })), withImported = async (index) => ({ ...index, materials: [...index.materials, ...(await importedJSON()).materials] }), showBankImage = (image, file) => {
-  const urls = bankURLs(file);
-  let at = 0;
-  image.onerror = () => {
-    if (++at < urls.length)
-      image.src = urls[at];
-    else
-      image.onerror = null;
-  };
-  image.src = urls[0];
-};
-var init_bank = __esm(() => {
-  LOCAL = new URL("../../assets/textures/", import.meta.url).href;
-  LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-  where = globalThis.location;
-  first = new URLSearchParams(where?.search).get("bank") ?? (LOCAL_HOSTS.has(where?.hostname) ? "local" : "public");
-  LOCAL_FIRST = first === "local";
-  answering = new Map;
-  IMPORTED = new URL("../../assets/imported/", import.meta.url).href;
-});
-
-// src/build/land-hook.js
-var kit = null, fetching2 = null, readyForLand = async (edition, from = 31) => {
-  if (edition < from || kit)
-    return;
-  kit = await (fetching2 ??= Promise.all([
-    Promise.resolve().then(() => (init_land_border(), exports_land_border)),
-    Promise.resolve().then(() => (init_land_grid(), exports_land_grid)),
-    Promise.resolve().then(() => (init_land_line(), exports_land_line)),
-    Promise.resolve().then(() => (init_city_land(), exports_city_land)),
-    Promise.resolve().then(() => (init_land_streets(), exports_land_streets)),
-    Promise.resolve().then(() => (init_bank(), exports_bank)).then(({ bankJSON: bankJSON2 }) => bankJSON2("index.json")).then((index) => {
-      const sizes = new Map((index?.materials ?? []).map((material) => [material.id, material.size]));
-      return { textureSize: (id) => sizes.get(id) ?? null };
-    }).catch(() => ({ textureSize: () => null }))
-  ]).then((modules) => Object.assign({}, ...modules)));
-}, landKit = () => kit;
-
 // src/build/city.js
-var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = EDITION2, given = null) => {
-  const all3 = [...edition >= 8 ? ["autobus"] : [], ...edition >= 9 ? [...PARKED, "taxi", ...Object.values(SERVES).flat(), LORRY] : [], ...edition >= 11 ? [HELICOPTER] : [], ...edition >= 15 ? [BICYCLE] : [], ...edition >= LANDED ? [VAN] : []].map((name) => [name, oursEdition(name, edition)]);
-  if (!given || edition >= LANDED)
+var EDITION2 = 32, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = EDITION2, given = null) => {
+  const all3 = [...edition >= 8 ? ["autobus"] : [], ...edition >= 9 ? [...PARKED, "taxi", ...Object.values(SERVES).flat(), LORRY] : [], ...edition >= 11 ? [HELICOPTER] : [], ...edition >= 15 ? [BICYCLE] : [], ...edition >= LANDED2 ? [VAN] : []].map((name) => [name, oursEdition(name, edition)]);
+  if (!given || edition >= LANDED2)
     return all3;
   const params = constrainCity(given);
   const stood = new Set([...params.vehicles >= 1 ? ["autobus"] : [], ...parkedOf(params, edition).ours, ...edition >= 10 && params.vehicles >= 3 ? edition >= 17 ? [PATROL[0], ...RUNNING] : PATROL : [], ...edition >= 11 && params.vehicles >= 4 && usesOf(params, edition).some((block3) => block3.role === "plaza" || block3.role === "tower") ? [HELICOPTER] : [], ...edition >= 15 && params.vehicles >= 6 && params.life >= 1 ? [BICYCLE] : []]);
   return all3.filter(([name]) => stood.has(name));
-}, HELICOPTER = "helicoptero-2", BICYCLE = "bicicleta", OURS_EDITIONS, carName = (model, number, edition) => edition >= 17 ? `${model} No. ${number}` : `${model} ${number}`, oursEdition = (name, edition) => OURS_EDITIONS.findLast(([from, table2]) => edition >= from && table2[name])?.[1][name] ?? 1, RACKED, RAILWAY, HELIPORT, PATROL, BODIES_RUN, PARKED, RUNNING, paintedAs = (looks, palette) => ({ ...looks, ...Object.fromEntries(SLOTS.filter((slot) => looks && (slot in looks) && palette[slot] !== undefined).map((slot) => [slot, palette[slot]])) }), SERVES, LORRY = "camion", VAN = "furgoneta", BODIES_PARKED, BAYS_TAKEN = 0.75, BAY_LONG = 6, BAY_FROM = 8, KERB_GAP = 0.1, FIRST2, FIRST_STYLES, SHOP_ROTA, POSTER, BILLBOARD, SHELTER_SIZE, PARK_ROOM = 30, ROUNDABOUT_ON, KINDS_READ, PARAMS2, ROAD = 7.5, WALK5 = 3.5, KERB2 = 0.15, RIM5 = 2, BLOCK2 = 50, BLOCK_MOST = 60, BLOCK_LEAST = 36, BLOCK_SWAY = 0.2, ROW_STOP = 24, EDGE_LEAST = 3, STRIP4 = 22, BALCONIES = 2, WEDGE_WIDE = 12, FALL2 = 5, OVER7 = 0.05, UNDER10 = 0.6, TILE2 = 60, TERRACE, ROCKS, avenuesOver = (grid, bounds, survey) => {
+}, HELICOPTER = "helicoptero-2", BICYCLE = "bicicleta", OURS_EDITIONS, carName = (model, number, edition) => edition >= 17 ? `${model} No. ${number}` : `${model} ${number}`, oursEdition = (name, edition) => OURS_EDITIONS.findLast(([from, table2]) => edition >= from && table2[name])?.[1][name] ?? 1, RACKED, RAILWAY, HELIPORT, PATROL, BODIES_RUN, PARKED, RUNNING, paintedAs = (looks, palette) => ({ ...looks, ...Object.fromEntries(SLOTS.filter((slot) => looks && (slot in looks) && palette[slot] !== undefined).map((slot) => [slot, palette[slot]])) }), SERVES, LORRY = "camion", VAN = "furgoneta", BODIES_PARKED, BAYS_TAKEN = 0.75, BAY_LONG = 6, BAY_FROM = 8, KERB_GAP = 0.1, FIRST2, SHELTER, BENCH2, FIRST_STYLES, SHOP_ROTA, POSTER, BILLBOARD, SHELTER_SIZE, PARK_ROOM = 30, ROUNDABOUT_ON, KINDS_READ, PARAMS2, ROAD = 7.5, WALK5 = 3.5, RIM5 = 2, BLOCK2 = 50, BLOCK_MOST = 60, BLOCK_LEAST = 36, BLOCK_SWAY = 0.2, ROW_STOP = 24, EDGE_LEAST = 3, STRIP4 = 22, BALCONIES = 2, WEDGE_WIDE = 12, FALL2 = 5, OVER7 = 0.05, TILE2 = 60, TERRACE, ROCKS, avenuesOver = (grid, bounds, survey) => {
   const { xs, ys, nx, ny } = grid;
   const middles = Array.from({ length: ny }, (_, j) => round53((ys[j].to + ys[j + 1].from) / 2));
   const from = (a, b, apart3 = TERRACE.read) => {
@@ -32248,7 +33431,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   for (let j = ny - 1;j >= 0; j--)
     kept3[j] = Math.max(kept3[j], kept3[j + 1] - caps[j]);
   return { middles, read, kept: kept3.map((each) => each / 100) };
-}, SET = 0.5, MEDIAN = 3, MEDIAN_CLEAR = 4.2, BIKE = 2.4, BAY3 = 2.2, WALK_WIDE = 5, SECTIONS, CLEAR3 = 5.2, BUS, VIADUCT = 8, STAIR3, LIFT5, PAINTED3, TRAFFIC_PIECES, STATION_LIFT, LIFT_FACES, GLASS20 = "glass/clear/float", CONCRETE8 = "plaster/concrete/concrete-046", STEEL13 = "metal/painted/metal-029", RAILS4 = "paving/roads/rails-001", SOIL3 = "ground/soil/brown-mud-02", RUBBER5 = "paving/tiles/rubber-tiles", SAND2 = "ground/sand/park-sand", STONE4 = "masonry/stone-blocks/sandstone-blocks-08", WATER2 = "effects/water/calm", TIMBER2 = "wood/planks/japanese-cedar-planks", FLOWERS2, REEDS, SHAPES5 = 6, PAVINGS, POND_TINT, ROUND9, overlap4 = (a, b) => a[0] < b[1] - 0.01 && b[0] < a[1] - 0.01 && a[2] < b[3] - 0.01 && b[2] < a[3] - 0.01, around = ([x, y], r) => [x - r, x + r, y - r, y + r], boundsOfPoints = (points) => [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1])), Math.max(...points.map((p) => p[1]))], BIKE_TINT, LANES2 = "paving/roads/road-007", ASPHALT3 = "paving/asphalt/asphalt-024a", KERB_STONE = "paving/tiles/granite-tile-03", PAVEMENT3 = "paving/asphalt/concrete-pavement-02", PLAZA = "paving/stone/granite-tile-04", GRASS = "ground/grass/grass-004", SPECIES4, PALMS, PALM_SPECIES, HALLS, CIVIC, CIVIC_COLOURS, DISTRICTS, round53 = (v) => Math.round(v * 1000) / 1000, clamp35 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), even = (v) => Math.round(v / 2) * 2, randomOf8 = (seed) => {
+}, SET = 0.5, MEDIAN = 3, MEDIAN_CLEAR = 4.2, ZEBRA_IN = 2.2, BIKE = 2.4, BAY3 = 2.2, WALK_WIDE = 5, SECTIONS, CLEAR3 = 5.2, BUS, VIADUCT = 8, STAIR3, LIFT5, PAINTED3, TRAFFIC_PIECES, STATION_LIFT, LIFT_FACES, GLASS20 = "glass/clear/float", STEEL14 = "metal/painted/metal-029", RAILS4 = "paving/roads/rails-001", RUBBER5 = "paving/tiles/rubber-tiles", SAND2 = "ground/sand/park-sand", STONE4 = "masonry/stone-blocks/sandstone-blocks-08", WATER2 = "effects/water/calm", TIMBER2 = "wood/planks/japanese-cedar-planks", FLOWERS2, REEDS, SHAPES5 = 6, PAVINGS, POND_TINT, ROUND9, overlap4 = (a, b) => a[0] < b[1] - 0.01 && b[0] < a[1] - 0.01 && a[2] < b[3] - 0.01 && b[2] < a[3] - 0.01, around = ([x, y], r) => [x - r, x + r, y - r, y + r], boundsOfPoints = (points) => [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[0])), Math.min(...points.map((p) => p[1])), Math.max(...points.map((p) => p[1]))], ROAD_LANES = "paving/roads/road-007", ROAD_MOUTHS, UNPITTED, LAWN = 0.06, SPECIES4, PALMS, PALM_SPECIES, HALLS, MALL_LEAST = 30, CIVIC, CIVIC_COLOURS, DISTRICTS, round53 = (v) => Math.round(v * 1000) / 1000, clamp35 = (v, least2, most2) => Math.min(Math.max(v, least2), most2), even = (v) => Math.round(v / 2) * 2, randomOf8 = (seed) => {
   let state = seed * 2654435761 >>> 0;
   return () => {
     state = state + 1831565813 >>> 0;
@@ -32263,7 +33446,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const value = Number.isFinite(asked2) && asked2 >= 0 ? asked2 : param.default;
     return [param.name, clamp35(Math.round(value / param.step) * param.step, param.min, param.max)];
   })),
-  ...regionOf(given)
+  ...regionOf(given),
+  ...platformParamsOf(given)
 }), blocksAlong = (length2) => {
   const room2 = length2 - 2 * RIM5 - ROAD;
   let count = clamp35(Math.round(room2 / (BLOCK2 + ROAD)), 2, 5);
@@ -32292,12 +33476,12 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     return line;
   });
   return { count, side: round53(side2), lines: lines3 };
-}, LANDED = 31, GROUNDED, PAVED2 = 32, UNLANDED, sownAt = (given) => ofRegion(given ?? {}) ? UNLANDED : EDITION2, landKinds = (count, wide, green) => {
+}, LANDED2 = 31, GROUNDED, PAVED2 = 32, MAKES2, UNLANDED, sownAt = (given) => ofRegion(given ?? {}) && given.lands > 1 ? UNLANDED : EDITION2, landKinds = (count, wide, green) => {
   const avenue = Math.round(count / 2);
   const walk = green && wide && avenue + 1 <= count - 1 ? avenue + 1 : -1;
   return Array.from({ length: count - 1 }, (_, n) => wide ? n + 1 === avenue ? "avenue" : n + 1 === walk ? "walk" : "street" : (n + 1) % 2 ? "parking" : "street");
-}, laidOver = (length2, wide, green, lean, port, chance = null, clear = null) => {
-  const widthOf2 = (kind) => (kind === "border" ? ROAD : SECTIONS[kind]) * lean;
+}, laidOver = (length2, wide, green, lean, port, chance = null, clear = null, border = ROAD) => {
+  const widthOf2 = (kind) => (kind === "border" ? border : SECTIONS[kind]) * lean;
   const half = widthOf2("border") / 2;
   const start = -length2 / 2;
   const first2 = port === null ? null : start + port - ROAD / 2 * lean;
@@ -32376,10 +33560,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       return other;
   }
   return made4;
-}, laidSquare = (sq, ports, chance = null, clear = null) => {
+}, laidSquare = (sq, ports, chance = null, clear = null, border = ROAD) => {
   const H2 = sq.size[1];
   const slopes2 = [sq.west(1) - sq.west(0), sq.east(1) - sq.east(0)];
-  const borders = slopes2.map((slope) => ROAD * Math.hypot(1, slope));
+  const borders = slopes2.map((slope) => border * Math.hypot(1, slope));
   const [innerW, innerE] = [Math.max(sq.west(-H2 / 2), sq.west(H2 / 2)) + borders[0] / 2, Math.min(sq.east(-H2 / 2), sq.east(H2 / 2)) - borders[1] / 2];
   const shift = Math.abs(slopes2[0]) * H2;
   const edgeMost = Math.max(EDGE_LEAST, BLOCK_MOST - shift);
@@ -32407,16 +33591,29 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       for (let km = 0;km <= (fixed.length > 1 ? 2 : 0); km++)
         for (let ke = 0;ke <= 6; ke++) {
           const count = kw + fixed.length + km + ke;
-          const widths = Array.from({ length: count }, (_, n) => SECTIONS[kindAt(n)]);
           const at = fixed.length > 1 ? [kw, kw + 1 + km] : [kw];
+          const kinds2 = Array.from({ length: count }, (_, n) => border > ROAD && at.includes(n) ? "street" : kindAt(n));
+          const widths = kinds2.map((kind) => SECTIONS[kind]);
           const west = gapOf(fixed[0] - widths[at[0]] / 2 - innerW, widths.slice(0, kw), true);
           const middle = fixed.length > 1 ? gapOf(fixed[1] - widths[at[1]] / 2 - (fixed[0] + widths[at[0]] / 2), widths.slice(at[0] + 1, at[1]), false) : { b: 0, k: 0 };
           const east = gapOf(innerE - (fixed.at(-1) + widths[at.at(-1)] / 2), widths.slice(at.at(-1) + 1), true);
           if (!west || !middle || !east)
             continue;
           const score = [west, middle, east].reduce((total, gap) => total + gap.k * Math.abs(gap.b - BLOCK2), 0) + Math.abs(west.e - edgeWant) + Math.abs(east.e - edgeWant) + (fixed.length < ports.filter((port) => port !== null).length ? 25 : 0);
-          options.push({ fixed, at, widths, gaps: [west, middle, east], score });
+          options.push({ fixed, at, widths, kinds: kinds2, gaps: [west, middle, east], score });
         }
+  }
+  if (!options.length && border > ROAD) {
+    const room2 = innerE - innerW;
+    for (let count = 1;count <= 8; count++) {
+      const widths = Array.from({ length: count }, (_, n) => SECTIONS[kindAt(n)]);
+      const used = sum(widths);
+      const b = count > 1 ? clamp35((room2 - used - 2 * edgeWant) / (count - 1), BLOCK_LEAST, BLOCK_MOST) : 0;
+      const e = (room2 - used - b * (count - 1)) / 2;
+      if (e < EDGE_LEAST - 0.000000001 || e > edgeMost + 0.000000001)
+        continue;
+      options.push({ fixed: [], at: [], widths, gaps: [{ b: 0, e, k: 0 }, { b, k: count - 1 }, { b: 0, e, k: 0 }], score: (count - 1) * Math.abs(b - BLOCK2) + 2 * Math.abs(e - edgeWant) });
+    }
   }
   if (!options.length)
     return null;
@@ -32424,28 +33621,35 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   const near2 = options.filter((option) => option.score <= options[0].score + 12);
   const picked = chance ? near2[Math.min(near2.length - 1, Math.floor(chance() * near2.length))] : near2[0];
   const layOption = (chosen) => {
-    const { fixed, at, widths, gaps: [west, middle, east] } = chosen;
+    const { fixed, at, widths, kinds: kinds2 = widths.map((_, n) => kindAt(n)), gaps: [west, middle, east] } = chosen;
     const linesOf2 = (blocks3) => {
       const lines4 = [];
       const line = (kind, width, mid5, slope = 0) => ({ kind, width: round53(width), from: round53(mid5 - width / 2), to: round53(mid5 + width / 2), mid: round53(mid5), ...slope && { slope: round53(slope * 1e6) / 1e6 } });
       let x = innerW + west.e;
+      if (!fixed.length) {
+        for (let n = 0;n < widths.length; n++) {
+          lines4.push(line(kinds2[n], widths[n], x + widths[n] / 2));
+          x += widths[n] + (blocks3.middle[n] ?? 0);
+        }
+        return [line("border", borders[0], sq.west(0), slopes2[0]), ...lines4, line("border", borders[1], sq.east(0), slopes2[1])];
+      }
       for (let n = 0;n < at[0]; n++) {
-        lines4.push(line(kindAt(n), widths[n], x + widths[n] / 2));
+        lines4.push(line(kinds2[n], widths[n], x + widths[n] / 2));
         x += widths[n] + blocks3.west[n];
       }
-      lines4.push(line(kindAt(at[0]), widths[at[0]], fixed[0]));
+      lines4.push(line(kinds2[at[0]], widths[at[0]], fixed[0]));
       if (fixed.length > 1) {
         x = fixed[0] + widths[at[0]] / 2 + blocks3.middle[0];
         for (let n = at[0] + 1;n < at[1]; n++) {
-          lines4.push(line(kindAt(n), widths[n], x + widths[n] / 2));
+          lines4.push(line(kinds2[n], widths[n], x + widths[n] / 2));
           x += widths[n] + blocks3.middle[n - at[0]];
         }
-        lines4.push(line(kindAt(at[1]), widths[at[1]], fixed[1]));
+        lines4.push(line(kinds2[at[1]], widths[at[1]], fixed[1]));
       }
       x = fixed.at(-1) + widths[at.at(-1)] / 2;
       for (let n = at.at(-1) + 1;n < widths.length; n++) {
         x += blocks3.east[n - at.at(-1) - 1];
-        lines4.push(line(kindAt(n), widths[n], x + widths[n] / 2));
+        lines4.push(line(kinds2[n], widths[n], x + widths[n] / 2));
         x += widths[n];
       }
       return [line("border", borders[0], sq.west(0), slopes2[0]), ...lines4, line("border", borders[1], sq.east(0), slopes2[1])];
@@ -32484,7 +33688,151 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       return other;
   }
   return made4;
-}, squareGridOf = (land2, { seed, green }) => {
+}, ROUTE_LEAST = 30, ROUTE_STEP = 2, ROUTE_SPREADS, ROUTE_TRIES = 160, lineFrom = (kind, from) => ({ kind, width: round53(SECTIONS[kind]), from: round53(from), to: round53(from + SECTIONS[kind]), mid: round53(from + SECTIONS[kind] / 2) }), pinnedRows = (rows, [lo, hi], green, inner) => {
+  const [south, port, north] = [rows[0], rows[1], rows.at(-1)];
+  let best = null;
+  for (let count = 3;count <= 8; count++) {
+    const kinds2 = ["border", ...landKinds(count, true, green), "border"];
+    for (let i = 2;i < count; i++)
+      for (let j = i + 1;j < count; j++) {
+        const fixed = new Map([[0, south], [1, port], [i, lineFrom(kinds2[i], lo + inner)], [j, lineFrom(kinds2[j], hi - inner - SECTIONS[kinds2[j]])], [count, north]]);
+        const keys2 = [...fixed.keys()].sort((p, q) => p - q);
+        const lines3 = [];
+        const blocks2 = [];
+        let score = 0;
+        for (let g = 0;g < keys2.length - 1 && score !== null; g++) {
+          const [ka, kb] = [keys2[g], keys2[g + 1]];
+          const [a, b] = [fixed.get(ka), fixed.get(kb)];
+          lines3[ka] = a;
+          if (ka === 0)
+            continue;
+          const between2 = kinds2.slice(ka + 1, kb);
+          const block3 = (b.from - a.to - between2.reduce((sum, kind) => sum + SECTIONS[kind], 0)) / (between2.length + 1);
+          if (block3 < ROUTE_LEAST - 0.000000001 || block3 > BLOCK_MOST + 0.000000001) {
+            score = null;
+            break;
+          }
+          score += (between2.length + 1) * Math.abs(block3 - BLOCK2);
+          blocks2.push(...Array(between2.length + 1).fill(block3));
+          let at = a.to + block3;
+          for (const [n, kind] of between2.entries()) {
+            lines3[ka + 1 + n] = lineFrom(kind, at);
+            at += SECTIONS[kind] + block3;
+          }
+        }
+        if (score === null)
+          continue;
+        lines3[count] = north;
+        if (!best || score < best.score - 0.000000001)
+          best = { score, lines: lines3, i, j, side: round53(blocks2.reduce((sum, b) => sum + b, 0) / blocks2.length) };
+      }
+  }
+  return best && { lines: best.lines, i: best.i, j: best.j, side: best.side };
+}, pinnedColumns = (sq, columns, ports, [lo, hi], inner, border) => {
+  const H2 = sq.size[1];
+  const slopes2 = [sq.west(1) - sq.west(0), sq.east(1) - sq.east(0)];
+  const borders = slopes2.map((slope) => border * Math.hypot(1, slope));
+  const [innerW, innerE] = [Math.max(sq.west(-H2 / 2), sq.west(H2 / 2)) + borders[0] / 2, Math.min(sq.east(-H2 / 2), sq.east(H2 / 2)) - borders[1] / 2];
+  const shift = Math.abs(slopes2[0]) * H2;
+  const edgeMost = Math.max(EDGE_LEAST, BLOCK_MOST - shift);
+  const edgeWant = clamp35(BLOCK2 - shift, EDGE_LEAST, edgeMost);
+  const legs2 = [lineFrom("street", lo + inner), lineFrom("street", hi - inner - ROAD)];
+  const fixed = [...ports.map((mid5) => lineFrom("street", mid5 - ROAD / 2)), ...legs2].sort((p, q) => p.mid - q.mid);
+  const kindsOf = (k) => Array.from({ length: k }, (_, n) => n % 2 ? "street" : "parking");
+  const sum = (list) => list.reduce((total, v) => total + v, 0);
+  const gapOf = (room2, edged) => {
+    let best = null;
+    for (let k = 0;k <= (edged ? 6 : 3); k++) {
+      const used = sum(kindsOf(k).map((kind) => SECTIONS[kind]));
+      let [b, e] = [0, 0];
+      if (!edged) {
+        b = (room2 - used) / (k + 1);
+        if (b < ROUTE_LEAST - 0.000000001 || b > BLOCK_MOST + 0.000000001)
+          continue;
+      } else if (!k) {
+        e = room2;
+        if (e < EDGE_LEAST - 0.000000001 || e > edgeMost + 0.000000001)
+          continue;
+      } else {
+        b = clamp35((room2 - used - edgeWant) / k, ROUTE_LEAST, BLOCK_MOST);
+        e = room2 - used - b * k;
+        if (e < EDGE_LEAST - 0.000000001 || e > edgeMost + 0.000000001)
+          continue;
+      }
+      const score = (edged ? k : k + 1) * Math.abs(b - BLOCK2) + (edged ? Math.abs(e - edgeWant) : 0);
+      if (!best || score < best.score - 0.000000001)
+        best = { k, b, e, score };
+    }
+    return best;
+  };
+  const gaps = [gapOf(fixed[0].from - innerW, true), ...fixed.slice(1).map((line, n) => gapOf(line.from - fixed[n].to, false)), gapOf(innerE - fixed.at(-1).to, true)];
+  if (gaps.some((gap) => !gap))
+    return null;
+  const lines3 = [columns[0]];
+  let at = innerW + gaps[0].e;
+  for (const kind of kindsOf(gaps[0].k)) {
+    lines3.push(lineFrom(kind, at));
+    at += SECTIONS[kind] + gaps[0].b;
+  }
+  for (const [n, line] of fixed.entries()) {
+    lines3.push(line);
+    const gap = gaps[n + 1];
+    at = line.to;
+    for (const kind of kindsOf(gap.k)) {
+      at += gap.b;
+      lines3.push(lineFrom(kind, at));
+      at += SECTIONS[kind];
+    }
+  }
+  lines3.push(columns.at(-1));
+  const inner_ = gaps.flatMap((gap, n) => Array(n === 0 || n === gaps.length - 1 ? gap.k : gap.k + 1).fill(gap.b));
+  return { lines: lines3, i: lines3.indexOf(legs2[0]), j: lines3.indexOf(legs2[1]), side: round53(inner_.length ? sum(inner_) / inner_.length : BLOCK2), edges: [round53(gaps[0].e), round53(gaps.at(-1).e)] };
+}, routedLines = (land2, { xs, ys }, { seed, green, border, ports }) => {
+  const kit2 = landKit();
+  if (!kit2.detourOf(seed).wanted)
+    return null;
+  const inside = Math.max(...land2.corners.map((corner2) => corner2[2])) + kit2.BORDER.over;
+  const lineOf5 = (columns, rows, route = null) => kit2.lineOn(kit2.gridOn(land2, { xs: columns, ys: rows }), { kind: "city", seed, inside, exact: true, route });
+  const whole4 = lineOf5(xs, ys);
+  if (!whole4.rail || whole4.cuts.some((name) => /^[nsew]\d/.test(name)))
+    return null;
+  const random = randomOf8(seed * 7919 + 5);
+  const shuffled2 = (list) => list.map((each) => [random(), each]).sort((p, q) => p[0] - q[0]).map(([, each]) => each);
+  const comes = kit2.tramOf(land2.parcel, [kit2.AVENUE.track, kit2.AVENUE.track], land2.height ?? null);
+  const kept3 = comes ? [comes.side, comes.before, comes.after] : [];
+  const free = (side2) => !kept3.includes(side2) && land2.sides[side2].border.kind === "street" && land2.sides[side2].border.steepest <= kit2.RAILS.grade + 0.000000001;
+  const inner = kit2.LINE.inner;
+  const [nx, ny] = [xs.length - 1, ys.length - 1];
+  let tries = 0;
+  for (const side2 of shuffled2(["south", "east", "north", "west"]).filter(free)) {
+    const rowsWay = side2 === "west" || side2 === "east";
+    const [from, to] = rowsWay ? [ys[1].to + ROUTE_LEAST, ys[ny].from - ROUTE_LEAST] : [xs[0].to + EDGE_LEAST, xs[nx].from - EDGE_LEAST];
+    const places = Array.from({ length: Math.max(0, Math.floor((to - from) / ROUTE_STEP)) + 1 }, (_, n) => from + n * ROUTE_STEP);
+    const turn3 = Math.floor(random() * places.length);
+    const order = [...places.slice(turn3), ...places.slice(0, turn3)];
+    for (const depth of shuffled2([1, 2, 3])) {
+      const r = { west: depth, east: nx - depth, south: depth, north: ny - depth }[side2];
+      if (r <= 0 || r >= (rowsWay ? nx : ny))
+        continue;
+      for (const lo of order)
+        for (const spread of shuffled2(ROUTE_SPREADS)) {
+          if (lo + spread > to)
+            continue;
+          const laid3 = rowsWay ? pinnedRows(ys, [lo, lo + spread], green, inner) : pinnedColumns(land2.square, xs, ports, [lo, lo + spread], inner, border);
+          if (!laid3)
+            continue;
+          const { i, j } = laid3;
+          const name = { west: `w${j}${i}${r}`, east: `e${i}${j}${r}`, south: `s${i}${j}${r}`, north: `n${j}${i}${r}` }[side2];
+          if (++tries > ROUTE_TRIES)
+            return null;
+          const line = rowsWay ? lineOf5(xs, laid3.lines, name) : lineOf5(laid3.lines, ys, name);
+          if (line.cuts?.includes(name))
+            return { name, ...rowsWay ? { xs, ys: laid3.lines, sy: laid3.side } : { xs: laid3.lines, ys, sx: laid3.side, edges: laid3.edges } };
+        }
+    }
+  }
+  return null;
+}, squareGridOf = (land2, { seed, green, border = ROAD, line = false }) => {
   const sq = land2.square;
   const H2 = sq.size[1];
   const placed2 = (side2, share) => {
@@ -32493,19 +33841,20 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     return sq.back(X2, Y);
   };
   const portAt = (side2) => land2.sides[side2].border.port === null ? null : placed2(side2, land2.sides[side2].border.port);
-  const stop = land2.tram && land2.sides[land2.tram.side].border.station ? (() => {
+  const stop = border === ROAD && land2.tram && land2.sides[land2.tram.side].border.station ? (() => {
     const { side: side2 } = land2.tram;
     const [x, y] = placed2(side2, land2.sides[side2].border.station.at);
     const lean = Math.hypot(1, sq.west(1) - sq.west(0));
     return side2 === "south" || side2 === "north" ? { way: "x", range: [x - ROW_STOP, x + ROW_STOP] } : { way: "y", range: [y - ROW_STOP / lean, y + ROW_STOP / lean] };
   })() : null;
   const sideways = portAt("west") ?? portAt("east");
-  const along4 = laidOver(H2, true, green, 1, sideways === null ? null : sideways[1] + H2 / 2, randomOf8(seed * 7919 + 2), stop?.way === "y" ? stop.range.map((v) => v + H2 / 2) : null);
-  const across = laidSquare(sq, [portAt("south")?.[0] ?? null, portAt("north")?.[0] ?? null], randomOf8(seed * 7919 + 1), stop?.way === "x" ? stop.range : null);
+  const along4 = laidOver(H2, true, green, 1, sideways === null ? null : sideways[1] + H2 / 2, randomOf8(seed * 7919 + 2), stop?.way === "y" ? stop.range.map((v) => v + H2 / 2) : null, border);
+  const across = laidSquare(sq, [portAt("south")?.[0] ?? null, portAt("north")?.[0] ?? null], randomOf8(seed * 7919 + 1), stop?.way === "x" ? stop.range : null, border);
   if (!across)
     return null;
-  const [xs, ys] = [across.lines, along4.lines];
-  const [nx, ny] = [across.count, along4.count];
+  const routed = border > ROAD && line ? routedLines(land2, { xs: across.lines, ys: along4.lines }, { seed, green, border, ports: ["south", "north"].map(portAt).filter(Boolean).map(([x]) => x).filter((x) => across.lines.some((each) => Math.abs(each.mid - x) < 0.01)) }) : null;
+  const [xs, ys] = [routed?.xs ?? across.lines, routed?.ys ?? along4.lines];
+  const [nx, ny] = [xs.length - 1, ys.length - 1];
   const kerbW = (y) => xs[0].to + (xs[0].slope ?? 0) * y;
   const kerbE = (y) => xs[nx].from + (xs[nx].slope ?? 0) * y;
   const blocks2 = [];
@@ -32533,17 +33882,17 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   const roomAt = [(y) => xs[1].from - kerbW(y), (y) => kerbE(y) - xs[nx - 1].to];
   if (nx >= 2 && ny >= 2)
     for (const [c, [i, k]] of [[0, 1], [nx - 1, nx - 1]].entries()) {
-      for (const [j, border, before] of [[0, ys[0].to, ys[1].from], [ny - 1, ys[ny].from, ys[ny - 1].to]]) {
+      for (const [j, border2, before] of [[0, ys[0].to, ys[1].from], [ny - 1, ys[ny].from, ys[ny - 1].to]]) {
         const end = blocks2.find((block3) => block3.i === i && block3.j === j);
-        if (end?.strip && roomAt[c](border) < roomAt[c](before) && !gone.includes(`${k}:${j}`))
+        if (end?.strip && roomAt[c](border2) < roomAt[c](before) && !gone.includes(`${k}:${j}`))
           gone.push(`${k}:${j}`);
       }
     }
-  return { width: sq.size[0], depth: H2, nx, ny, sx: across.side, sy: along4.side, blocks: blocks2, nodes, xs, ys, square: true, edges: across.edges, gone };
+  return { width: sq.size[0], depth: H2, nx, ny, sx: routed?.sx ?? across.side, sy: routed?.sy ?? along4.side, blocks: blocks2, nodes, xs, ys, square: true, edges: routed?.edges ?? across.edges, gone, ...routed && { route: routed.name } };
 }, gridOf2 = (given, edition = EDITION2, land2 = null) => {
-  const { width, depth, life, seed } = constrainCity(given);
-  if (edition >= LANDED && land2)
-    return squareGridOf(land2, { seed, green: edition >= 6 && life >= 2 });
+  const { width, depth, life, seed, vehicles } = constrainCity(given);
+  if (edition >= LANDED2 && land2)
+    return squareGridOf(land2, { seed, green: edition >= 6 && life >= 2, ...edition >= PAVED2 && { border: 2 * landKit().AVENUE.kerb, line: vehicles >= 5 } });
   const [W2, D2] = [width, depth];
   if (edition >= 3) {
     const [across2, along5] = [laidAlong(W2, false, true), laidAlong(D2, true, true, edition >= 6 && life >= 2)];
@@ -32685,7 +34034,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       if (each.role === "civic")
         group((SERVES[each.word] ?? []).map((name) => ({ ours: name })));
     if (near2.some((each) => each.role === "park"))
-      group([edition >= LANDED ? { ours: VAN } : { car: { body: "van", livery: "ices" } }]);
+      group([edition >= LANDED2 ? { ours: VAN } : { car: { body: "van", livery: "ices" } }]);
     let count = 0;
     for (let at = next + (stood.length ? 0 : Math.floor(own() * 2));at < open.length; at += 2) {
       if (own() >= BAYS_TAKEN)
@@ -32735,13 +34084,17 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   return Math.round(params.height + (low - params.height) * t);
 }, cityOf = (given, surveyed, { lazy = false, edition = EDITION2, site: site2 = null } = {}) => {
   const params = constrainCity(given);
-  const kit2 = edition >= LANDED && site2 && !(ofRegion(params) && params.lands > 1) ? landKit() : null;
-  const plot = kit2 ? ((here) => kit2.landOn(here.parcel, here.toLocal))(site2()) : null;
+  const [LANES3, MOUTHS2] = edition >= PAVED2 ? [LANES, MOUTHS] : [ROAD_LANES, ROAD_MOUTHS];
+  const kit2 = edition >= LANDED2 && site2 && !(ofRegion(params) && params.lands > 1) ? landKit() : null;
+  const here = kit2 ? site2() : null;
+  const platform = kit2 && edition >= PAVED2 ? kit2.platformOf(here.parcel, { level: params.level ?? null }) : null;
+  const plot = kit2 ? kit2.landOn(here.parcel, here.toLocal, platform?.height ?? null) : null;
   const urban = edition >= 3;
   const lived = edition >= 5 && params.life >= 1;
   const green = edition >= 6 && params.life >= 2;
   const open = edition >= 13 && params.life >= 3;
   const tracked = edition >= 14;
+  const glowsUnder = edition < PAVED2;
   const coupled = edition >= 21;
   const malls = edition >= 22 && open;
   const called = edition >= 23;
@@ -32756,6 +34109,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   const shaped = (n) => SHAPES5 * (Math.abs(Math.round(n)) % 166);
   const grid = gridOf2(params, edition, plot);
   const none3 = (reason, level2 = 0) => ({ params, objects: [], clones: [], trees: [], pieces: [], reasons: [reason], notes: [], stats: { blocks: 0, buildings: 0, towers: 0, halls: 0, parks: 0, sites: 0, lamps: 0, trees: 0 }, bounds: { x0: 0, x1: 0, y0: 0, y1: 0 }, level: level2 });
+  if (platform?.refused && params.level === undefined)
+    return none3(platform.refused);
   if (!grid)
     return none3("its land is too narrow for a street between its leaning borders");
   const { width: W2, depth: D2 } = grid;
@@ -32766,16 +34121,16 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   const heights = [];
   let wet = false;
   const samples = plot ? (([SW, SD]) => Array.from({ length: Math.ceil(SW / 8) + 1 }, (_, a) => Array.from({ length: Math.ceil(SD / 8) + 1 }, (_2, b) => surveyed(...plot.place(a * SW / Math.ceil(SW / 8), b * SD / Math.ceil(SD / 8))))).flat())(plot.size) : null;
-  for (const here of samples ?? []) {
-    heights.push(here.ground);
-    wet ||= here.water !== null && here.water > here.ground + 0.01;
+  for (const here2 of samples ?? []) {
+    heights.push(here2.ground);
+    wet ||= here2.water !== null && here2.water > here2.ground + 0.01;
   }
   if (!plot)
     for (let x = bounds.x0;x <= bounds.x1 + 0.000001; x += W2 / Math.ceil(W2 / 8)) {
       for (let y = bounds.y0;y <= bounds.y1 + 0.000001; y += D2 / Math.ceil(D2 / 8)) {
-        const here = survey(x, y);
-        heights.push(here.ground);
-        wet ||= here.water !== null && here.water > here.ground + 0.01;
+        const here2 = survey(x, y);
+        heights.push(here2.ground);
+        wet ||= here2.water !== null && here2.water > here2.ground + 0.01;
       }
     }
   if (wet)
@@ -32802,10 +34157,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   })() : null;
   if (terraces?.reason)
     return none3(terraces.reason);
-  if (!terraces && high - low > FALL2)
+  if (!terraces && !(plot && edition >= PAVED2) && high - low > FALL2)
     return none3(`the ground falls ${(high - low).toFixed(1)} m under it: ${FALL2} m at most`);
   const level = terraces ? terraces.levels[0] : round53(high + OVER7);
-  const thick = round53(Math.min(level - low + UNDER10, FALL2 + OVER7 + UNDER10));
+  const thick = round53(Math.min(level - low + UNDER8, FALL2 + OVER7 + UNDER8));
   const sectionOf = (way, k, n) => {
     const line = (way === "x" ? grid.ys : grid.xs)[k];
     if (line.kind === "border")
@@ -32816,17 +34171,30 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       return [{ c0: 0, c1: line.width, look: "paving", island: true }];
     const inner = (i, j) => i > 0 && i < grid.nx && j > 0 && j < grid.ny;
     const cut2 = way === "x" ? [inner(n, k), inner(n + 1, k)].map((at) => at ? MEDIAN_CLEAR : 0) : [0, 0];
+    const ends = way === "x" ? [paintedArm(n, k, [1, 0]), paintedArm(n + 1, k, [-1, 0])] : [paintedArm(k, n, [0, 1]), paintedArm(k, n + 1, [0, -1])];
+    const mouths = (kinds2) => kinds2.map((kind, e) => ends[e] ? kind : null);
     return [
-      { c0: 0, c1: ROAD, look: "lanes" },
-      ...line.kind === "avenue" ? [{ c0: ROAD, c1: ROAD + MEDIAN, look: "median", island: true, cut: cut2 }, { c0: ROAD + MEDIAN, c1: 2 * ROAD + MEDIAN, look: "lanes" }, { c0: 2 * ROAD + MEDIAN, c1: line.width, look: "bike" }] : [],
-      ...line.kind === "parking" ? [{ c0: ROAD, c1: ROAD + BAY3, look: "plain" }] : []
+      { c0: 0, c1: ROAD, look: "lanes", mouths: mouths(line.kind === "avenue" ? ["out", "in"] : ["two", "two"]) },
+      ...line.kind === "avenue" ? [{ c0: ROAD, c1: ROAD + MEDIAN, look: "median", island: true, cut: cut2, mouths: mouths(["zebra", "zebra"]) }, { c0: ROAD + MEDIAN, c1: 2 * ROAD + MEDIAN, look: "lanes", mouths: mouths(["in", "out"]) }, { c0: 2 * ROAD + MEDIAN, c1: line.width, look: "bike", mouths: mouths(["zebra", "zebra"]) }] : [],
+      ...line.kind === "parking" ? [{ c0: ROAD, c1: ROAD + BAY3, look: "plain", mouths: mouths(["zebra", "zebra"]) }] : []
     ];
   };
+  const paintedArm = (i, j, [dx, dy]) => {
+    if (!(i > 0 && i < grid.nx && j > 0 && j < grid.ny))
+      return false;
+    const arms = [[0, -1, j > 0], [0, 1, j < grid.ny], [-1, 0, i > 0], [1, 0, i < grid.nx]].filter(([, , has]) => has);
+    if (arms.length < 3)
+      return false;
+    const walked = ([, ay]) => ay ? Boolean(grid.gone?.includes(`${i}:${ay > 0 ? j : j - 1}`)) : grid.ys[j].kind === "walk";
+    if ((dy ? grid.xs[i] : grid.ys[j]).kind === "walk" || dy && walked([dx, dy]))
+      return false;
+    return !arms.every(([ax, ay]) => ax === dx && ay === dy || walked([ax, ay]));
+  };
   const exact = Boolean(plot) && edition >= PAVED2;
-  const surface = plot ? exact ? kit2.groundOn(plot, grid, surveyed, kit2.surfaceOf(plot, surveyed), sectionOf) : edition >= GROUNDED ? kit2.planesOf(kit2.surfaceOf(plot, surveyed), grid, plot, surveyed) : kit2.surfaceOf(plot, surveyed) : null;
-  if (exact && surface.steepest > kit2.BORDER.grade)
-    return none3(`its inside level, its row along its borders would climb ${Math.round(surface.steepest * 100)} %: ${Math.round(kit2.BORDER.grade * 100)} % at most`);
-  const deep = plot ? round53(Math.max(...plot.corners.map((corner2) => corner2[2]), surface.at(...map.at(0, 0))) - surface.low + UNDER10 + 0.5) : 0;
+  const surface = plot ? exact ? kit2.groundOn(plot, grid, surveyed, kit2.surfaceOf(plot, surveyed), sectionOf, { painted: true, level: plot.platform, walled: (side2) => joinsOver(params.walled, side2) }) : edition >= GROUNDED ? kit2.planesOf(kit2.surfaceOf(plot, surveyed), grid, plot, surveyed) : kit2.surfaceOf(plot, surveyed) : null;
+  if (exact && surface.refused)
+    return none3(surface.refused);
+  const deep = plot ? round53(Math.max(...plot.corners.map((corner2) => corner2[2]), surface.at(...map.at(0, 0))) - surface.low + UNDER8 + 0.5) : 0;
   const deepened = (z, thick2) => plot ? [round53(z - deep / 2), round53(thick2 + deep)] : [z, thick2];
   const rampAt = (x, y) => {
     if (!terraces)
@@ -32869,7 +34237,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     if (edition < 28)
       return null;
     const kinds2 = PALMS[site2 ? groundOfParcel(site2().parcel).kind : "temperate"];
-    const palms = kinds2 && edition >= LANDED ? kinds2.map((kind) => kind === "fanPalm" ? "royal" : kind) : kinds2;
+    const palms = kinds2 && edition >= LANDED2 ? kinds2.map((kind) => kind === "fanPalm" ? "royal" : kind) : kinds2;
     return palms ? palms[params.seed % palms.length] : null;
   })();
   const leafy = palm ? species.slice(0, 2) : species;
@@ -32893,7 +34261,24 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   const stats = { blocks: grid.blocks.length, buildings: 0, towers: 0, halls: 0, parks: 0, sites: 0, lamps: 0, trees: 0, ...terraces && { terraces: new Set(terraces.levels).size } };
   const notes = [];
   const landGrid = plot ? kit2.gridOn(plot, grid) : null;
-  const landLine = plot && params.vehicles >= 5 ? kit2.lineOn(landGrid, { kind: "city", seed: params.seed, inside: surface.at(...map.at(0, 0)), ground: (X2, Y) => surface.at(X2, Y), exact }) : null;
+  const landLine = plot && params.vehicles >= 5 ? kit2.lineOn(landGrid, { kind: "city", seed: params.seed, inside: surface.at(...map.at(0, 0)), ground: (X2, Y) => surface.at(X2, Y), exact, route: grid.route ?? null }) : null;
+  const medians = exact && landLine?.rail ? ["south", "north", "west", "east"].flatMap((side2) => {
+    if (landLine.runs.find((each) => each.kind === "border" && each.side === side2)?.rail !== "high")
+      return [];
+    const across = side2 === "south" || side2 === "north";
+    const own = across ? grid.ys[side2 === "south" ? 0 : grid.ny] : grid.xs[side2 === "west" ? 0 : grid.nx];
+    const lean2 = across ? 0 : own.slope ?? 0;
+    const [west, east] = [grid.xs[0], grid.xs[grid.nx]];
+    const [lo, hi] = across ? [west.mid + (west.slope ?? 0) * own.mid, east.mid + (east.slope ?? 0) * own.mid] : [grid.ys[0].mid, grid.ys[grid.ny].mid];
+    const { keep: keep2 } = kit2.BORDER;
+    const reach = kit2.RAILS.platform.long / 2 + kit2.RAILS.steps + kit2.RAILS.cross + 2 + keep2;
+    const stops = landLine.stations.filter((each) => each.side === side2).map((each) => across ? each.at[0] : each.at[1]);
+    const cut2 = surface.cuts?.[side2] ?? null;
+    const [hyp, inward, walk] = [Math.hypot(1, lean2), side2 === "south" || side2 === "west" ? 1 : -1, kit2.MEDIAN_WALK.walk];
+    const placeAt = (v, t) => across ? [v, own.mid + inward * t] : [own.mid + lean2 * v + inward * t * hyp, v];
+    const open2 = (v) => v > lo + keep2 && v < hi - keep2 && stops.every((stop) => Math.abs(v - stop) > reach) && !(cut2 && v > cut2[0] - keep2 && v < cut2[1] + keep2) && !corridor?.onGround(map.at(...placeAt(v, walk)), 1.5);
+    return [{ side: side2, across, line: own.mid, lean: lean2, hyp, inward, walk, median: kit2.AVENUE.median, kerb: kit2.AVENUE.kerb, placeAt, open: open2 }];
+  }) : null;
   if (landLine?.reasons.length)
     notes.push(...landLine.reasons.map((reason) => `its line: ${reason}`));
   if (landLine?.rail) {
@@ -32905,6 +34290,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const edge = { south: [(block3) => block3.j === 0, "s"], north: [(block3) => block3.j === grid.ny - 1, "n"], west: [(block3) => block3.i === 0, "w"], east: [(block3) => block3.i === grid.nx - 1, "e"] };
     for (const run of landLine.runs) {
       if (run.kind === "border") {
+        if (exact)
+          continue;
         const [on, side2] = edge[run.side];
         const wide = (run.rail === "high" ? rails.band + 2 : rails.low.track + rails.body / 2 + 1 - border.road / 2) + BALCONIES;
         for (const block3 of grid.blocks.filter(on))
@@ -32923,7 +34310,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       const c = across ? cx : cy;
       const reach = (rails.platform.long / 2 + rails.stair + 1) / (across ? 1 : lean2);
       for (const block3 of grid.blocks.filter((each) => on(each) && (across ? c + reach > each.x0 && c - reach < each.x1 : c + reach > each.y0 && c - reach < each.y1)))
-        widen(block3, side2, kit2.deepOf(station2.rail) - border.road / 2, !across);
+        widen(block3, side2, exact ? kit2.BRIDGE.pavement : kit2.deepOf(station2.rail) - border.road / 2, !across);
     }
     stats.line = { length: round53(landLine.length), stations: landLine.stations.length, tram: landLine.tram?.side ?? null, cuts: landLine.cuts, trains: landLine.trains };
   }
@@ -33066,8 +34453,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const objects2 = [];
     const own = randomOf8(params.seed * 241 + 17);
     const dry = (x, y) => {
-      const here = survey(x, y);
-      return here.water === null || here.water <= here.ground + 0.01;
+      const here2 = survey(x, y);
+      return here2.water === null || here2.water <= here2.ground + 0.01;
     };
     const way = (x, y) => Math.abs(x) < ROAD / 2 + 3 && Math.abs(Math.abs(y) - D2 / 2) < 34 || onRoads(outs, [x, y], ROAD / 2 + 3) || sideGates && ["west", "east"].some((name) => outs.some((out) => out.gate === name) && Math.abs(y - sideGates[name].oy) < ROAD / 2 + 3 && Math.abs(Math.abs(x) - W2 / 2) < 34);
     const stood = [];
@@ -33156,7 +34543,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   }) : null;
   if (loop)
     stats.loop = loop.stats;
-  const roadPiece = (out) => ({ objects: roadObjects(out, { material: LANES2, surface: { faces: { 0: { texture: LANES2 }, 1: { texture: CONCRETE8 }, 2: { texture: CONCRETE8 } } } }), clones: [], trees: [] });
+  const roadPiece = (out) => ({ objects: roadObjects(out, { material: LANES3, surface: { faces: { 0: { texture: LANES3 }, 1: { texture: CONCRETE7 }, 2: { texture: CONCRETE7 } } } }), clones: [], trees: [] });
   const rocks = terraces ? rocksPiece() : null;
   const slab = (name, at, size, material, lanes = null) => ({
     name,
@@ -33164,9 +34551,9 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     at: at.map(round53),
     size: size.map(round53),
     material,
-    ...lanes && { surface: { faces: { 0: { texture: LANES2, ...lanes === "x" && { rotation: 90 } } } } }
+    ...lanes && { surface: { faces: { 0: { texture: LANES3, ...lanes === "x" && { rotation: 90 } } } } }
   });
-  const WALLED = { faces: Object.fromEntries([1, 2, 3, 4].map((face3) => [face3, { texture: CONCRETE8 }])) };
+  const WALLED = { faces: Object.fromEntries([1, 2, 3, 4].map((face3) => [face3, { texture: CONCRETE7 }])) };
   const terracedGround = () => {
     const [objects2, clones2] = [[], []];
     const stand5 = furnisher2(objects2, clones2);
@@ -33186,16 +34573,16 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       for (let a = 0;a < tx; a++)
         for (let b = 0;b < ty; b++) {
           const [x, y] = [x0 + (a + 0.5) * wide, y0 + (b + 0.5) * deep2];
-          const down = round53(clamp35(top - lowest2(x - wide / 2, x + wide / 2, y - deep2 / 2, y + deep2 / 2) + UNDER10, UNDER10, DEEPEST3));
-          const prims = [{ ...slab("plate", [0, 0, -down / 2], [wide, deep2, down], ASPHALT3), surface: WALLED }];
+          const down = round53(clamp35(top - lowest2(x - wide / 2, x + wide / 2, y - deep2 / 2, y + deep2 / 2) + UNDER8, UNDER8, DEEPEST3));
+          const prims = [{ ...slab("plate", [0, 0, -down / 2], [wide, deep2, down], ASPHALT2), surface: WALLED }];
           if (kerbs.west && a === 0)
-            prims.push(slab("kerb west", [-wide / 2 + RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT3));
+            prims.push(slab("kerb west", [-wide / 2 + RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT));
           if (kerbs.east && a === tx - 1)
-            prims.push(slab("kerb east", [wide / 2 - RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT3));
+            prims.push(slab("kerb east", [wide / 2 - RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT));
           if (kerbs.south && b === 0)
-            prims.push(slab("kerb south", [0, -deep2 / 2 + RIM5 / 2, KERB2 / 2], [wide, RIM5, KERB2], PAVEMENT3));
+            prims.push(slab("kerb south", [0, -deep2 / 2 + RIM5 / 2, KERB2 / 2], [wide, RIM5, KERB2], PAVEMENT));
           if (kerbs.north && b === ty - 1)
-            prims.push(slab("kerb north", [0, deep2 / 2 - RIM5 / 2, KERB2 / 2], [wide, RIM5, KERB2], PAVEMENT3));
+            prims.push(slab("kerb north", [0, deep2 / 2 - RIM5 / 2, KERB2 / 2], [wide, RIM5, KERB2], PAVEMENT));
           objects2.push({ name: `${name}${tx * ty > 1 ? ` ${a + 1}-${b + 1}` : ""}`, at: [round53(x), round53(y), round53(top)], prims });
         }
     };
@@ -33223,13 +34610,13 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         const [long, mid5] = [y1 - y0, (x0 + x1) / 2];
         const steps = Math.max(1, Math.ceil(long / TERRACE.read));
         const under = Math.max(...Array.from({ length: steps + 1 }, (_, n) => from + rise * n / steps - Math.min(...[x0, mid5, x1].map((x) => survey(x, y0 + long * n / steps).ground))));
-        const down = round53(clamp35(Math.max(under, Math.abs(rise) / 2) + UNDER10, UNDER10, DEEPEST3));
+        const down = round53(clamp35(Math.max(under, Math.abs(rise) / 2) + UNDER8, UNDER8, DEEPEST3));
         const slope = Math.hypot(long, rise);
-        const prims = [{ ...slab("ramp", [0, 0, -down / 2], [x1 - x0, slope, down], ASPHALT3), surface: WALLED }];
+        const prims = [{ ...slab("ramp", [0, 0, -down / 2], [x1 - x0, slope, down], ASPHALT2), surface: WALLED }];
         if (i === 0)
-          prims.push(slab("kerb west", [-(x1 - x0) / 2 + RIM5 / 2, 0, KERB2 / 2], [RIM5, slope, KERB2], PAVEMENT3));
+          prims.push(slab("kerb west", [-(x1 - x0) / 2 + RIM5 / 2, 0, KERB2 / 2], [RIM5, slope, KERB2], PAVEMENT));
         if (i === nx)
-          prims.push(slab("kerb east", [(x1 - x0) / 2 - RIM5 / 2, 0, KERB2 / 2], [RIM5, slope, KERB2], PAVEMENT3));
+          prims.push(slab("kerb east", [(x1 - x0) / 2 - RIM5 / 2, 0, KERB2 / 2], [RIM5, slope, KERB2], PAVEMENT));
         objects2.push({ name, at: [round53(mid5), round53((y0 + y1) / 2), round53(from + rise / 2)], turn: [round53(Math.atan2(rise, long) * 180 / Math.PI), 0, 0], prims });
       }
     });
@@ -33244,7 +34631,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         name: `ramp ${name}`,
         at: [round53(ox + dx * (run / 2)), round53(oy + dy * (run / 2)), round53(top + KERB2 - foot / 2)],
         turn: [round53(-(Math.atan2(foot, run) * 180) / Math.PI), 0, turnTo2([dx, dy])],
-        prims: [slab("ramp", [0, 0, -0.15], [ROAD, Math.hypot(run, foot) + 0.4, 0.3], ASPHALT3)]
+        prims: [slab("ramp", [0, 0, -0.15], [ROAD, Math.hypot(run, foot) + 0.4, 0.3], ASPHALT2)]
       });
       const [had2, cloned] = [objects2.length, clones2.length];
       stand5("limit", "roadsign", [ox - dx * (RIM5 / 2) + -dy * (ROAD / 2 + 0.8), oy - dy * (RIM5 / 2) + dx * (ROAD / 2 + 0.8)], [dx, dy], { variant: SIGNS.indexOf("limit") });
@@ -33262,8 +34649,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   const pitched = (turn3, pitch) => {
     const [a, b, c] = (turn3 ?? [0, 0, 0]).map(rad);
     const m = times(about2(0, rad(pitch)), times(about2(2, c), times(about2(1, b), about2(0, a))));
-    const deg3 = (angle) => round53(angle * 180 / Math.PI);
-    return [deg3(Math.atan2(m[2][1], m[2][2])), deg3(-Math.asin(clamp35(m[2][0], -1, 1))), deg3(Math.atan2(m[1][0], m[0][0]))];
+    const deg5 = (angle) => round53(angle * 180 / Math.PI);
+    return [deg5(Math.atan2(m[2][1], m[2][2])), deg5(-Math.asin(clamp35(m[2][0], -1, 1))), deg5(Math.atan2(m[1][0], m[0][0]))];
   };
   const LYING4 = new Set(["zebra", "line", "arrow", "barrier", "cone"]);
   const liesFlat2 = (object) => Boolean(object.vehicle) || LYING4.has(object.prims?.[0]?.piece) || Boolean(object.prims?.length && object.prims.every((prim) => prim.shape === "cube" && !prim.kind));
@@ -33329,8 +34716,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       at: [at[0], at[1], round53(base + KERB2)],
       turn: [0, 0, turn3],
       prims: [
-        { name: "steps", kind: "stairs", steps, height: rise2, tread: 0.3, width, structure: "solid", landing: 0, railing, at: [0, 0, round53(rise2 / 2)], material: CONCRETE8 },
-        ...head ? [{ name: "rail head", shape: "cube", at: [0, round53(run / 2 + 0.04), round53(rise2 + 0.55)], size: [width, 0.08, 1.1], material: STEEL13 }] : []
+        { name: "steps", kind: "stairs", steps, height: rise2, tread: 0.3, width, structure: "solid", landing: 0, railing, at: [0, 0, round53(rise2 / 2)], material: CONCRETE7 },
+        ...head ? [{ name: "rail head", shape: "cube", at: [0, round53(run / 2 + 0.04), round53(rise2 + 0.55)], size: [width, 0.08, 1.1], material: STEEL14 }] : []
       ]
     }));
     if (!step)
@@ -33351,7 +34738,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       }
       if (block3.x1 - from > 0.3)
         spans.push([from, block3.x1]);
-      walls.push(...spans.map(([a, b], n) => ({ name: `parapet ${n + 1}`, shape: "cube", at: [round53((a + b) / 2 - block3.x), 0, 0.5], size: [round53(b - a), 0.2, 1], material: CONCRETE8 })));
+      walls.push(...spans.map(([a, b], n) => ({ name: `parapet ${n + 1}`, shape: "cube", at: [round53((a + b) / 2 - block3.x), 0, 0.5], size: [round53(b - a), 0.2, 1], material: CONCRETE7 })));
     }
     const long = block3.y1 - block3.y0;
     const reach = TERRACE.guard * long / Math.max(rise, 0.000001);
@@ -33365,7 +34752,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         for (let n = 0;n < lengths2; n++) {
           const [from, to] = [y0 + (y1 - y0) * n / lengths2, y0 + (y1 - y0) * (n + 1) / lengths2];
           const tall = round53(over ? 1 : Math.max(street2(from), street2(to)) + 1 - own - KERB2);
-          walls.push({ name: `parapet ${name}${over ? "" : ` step ${n + 1}`}`, shape: "cube", at: [round53(x - block3.x), round53((from + to) / 2 - line), round53(own + KERB2 - top + tall / 2)], size: [0.2, round53(to - from), tall], material: CONCRETE8 });
+          walls.push({ name: `parapet ${name}${over ? "" : ` step ${n + 1}`}`, shape: "cube", at: [round53(x - block3.x), round53((from + to) / 2 - line), round53(own + KERB2 - top + tall / 2)], size: [0.2, round53(to - from), tall], material: CONCRETE7 });
         }
     }
     return [...stairs2, ...walls.length ? [{ name: "parapet", at: [round53(block3.x), round53(line), round53(top)], prims: walls }] : []];
@@ -33395,16 +34782,16 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     for (let a = 0;a < tx; a++) {
       for (let b = 0;b < ty; b++) {
         const [x, y] = [-W2 / 2 + (a + 0.5) * wide, -D2 / 2 + (b + 0.5) * deep2];
-        const prims = [slab("plate", [0, 0, -thick / 2], [wide, deep2, thick], ASPHALT3)];
+        const prims = [slab("plate", [0, 0, -thick / 2], [wide, deep2, thick], ASPHALT2)];
         const [west, east] = [a === 0 ? RIM5 : 0, a === tx - 1 ? RIM5 : 0];
         if (west)
-          prims.push(slab("kerb west", [-wide / 2 + RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT3));
+          prims.push(slab("kerb west", [-wide / 2 + RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT));
         if (east)
-          prims.push(slab("kerb east", [wide / 2 - RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT3));
+          prims.push(slab("kerb east", [wide / 2 - RIM5 / 2, 0, KERB2 / 2], [RIM5, deep2, KERB2], PAVEMENT));
         if (b === 0)
-          prims.push(slab("kerb south", [(west - east) / 2, -deep2 / 2 + RIM5 / 2, KERB2 / 2], [wide - west - east, RIM5, KERB2], PAVEMENT3));
+          prims.push(slab("kerb south", [(west - east) / 2, -deep2 / 2 + RIM5 / 2, KERB2 / 2], [wide - west - east, RIM5, KERB2], PAVEMENT));
         if (b === ty - 1)
-          prims.push(slab("kerb north", [(west - east) / 2, deep2 / 2 - RIM5 / 2, KERB2 / 2], [wide - west - east, RIM5, KERB2], PAVEMENT3));
+          prims.push(slab("kerb north", [(west - east) / 2, deep2 / 2 - RIM5 / 2, KERB2 / 2], [wide - west - east, RIM5, KERB2], PAVEMENT));
         objects2.push({ name: `ground ${a + 1}-${b + 1}`, at: [round53(x), round53(y), level], prims });
       }
     }
@@ -33420,7 +34807,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         name: `ramp ${name}`,
         at: [round53(ox + dx * (run / 2)), round53(oy + dy * (run / 2)), round53(level + KERB2 - foot / 2)],
         turn: [-pitch, 0, turnTo2([dx, dy])],
-        prims: [slab("ramp", [0, 0, -0.15], [ROAD, length2 + 0.4, 0.3], ASPHALT3)]
+        prims: [slab("ramp", [0, 0, -0.15], [ROAD, length2 + 0.4, 0.3], ASPHALT2)]
       });
       stand5("limit", "roadsign", [ox - dx * (RIM5 / 2) + -dy * (ROAD / 2 + 0.8), oy - dy * (RIM5 / 2) + dx * (ROAD / 2 + 0.8)], [dx, dy], { variant: SIGNS.indexOf("limit") });
     }
@@ -33429,13 +34816,13 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   const landGround = () => {
     if (exact) {
       const look8 = (texture) => ({ texture, scale: kit2.textureSize(texture) });
-      const looks = { plain: look8(ASPHALT3), lanes: { texture: LANES2 }, bike: { ...look8(ASPHALT3), tint: [...BIKE_TINT] }, kerb: look8(KERB_STONE), median: look8(GRASS), plaza: look8(PLAZA), paving: look8(PAVEMENT3) };
-      return { objects: kit2.streetsOf(surface.bodies, { map, bottom: round53(surface.low - UNDER10 - 0.5), looks }), clones: [], trees: [] };
+      const looks = { plain: look8(ASPHALT2), lanes: { texture: LANES3 }, bike: { ...look8(ASPHALT2), tint: [...BIKE_TINT] }, kerb: look8(KERB_STONE), median: look8(GRASS), plaza: look8(PLAZA), paving: look8(PAVEMENT), mouths: MOUTHS2, corner: CORNER3 };
+      return { objects: kit2.streetsOf(surface.bodies, { map, bottom: round53(surface.low - UNDER8 - 0.5), looks }), clones: [], trees: [] };
     }
     const objects2 = [];
     for (const node of grid.nodes.filter((each) => each.inner)) {
       const [z, thick2] = deepened(0, 0.04);
-      objects2.push({ name: `crossing ${node.i}-${node.j}`, at: [round53(node.x), round53(node.y), level], prims: [slab("crossing", [0, 0, z], [grid.xs[node.i].width, grid.ys[node.j].width, thick2], ASPHALT3)] });
+      objects2.push({ name: `crossing ${node.i}-${node.j}`, at: [round53(node.x), round53(node.y), level], prims: [slab("crossing", [0, 0, z], [grid.xs[node.i].width, grid.ys[node.j].width, thick2], ASPHALT2)] });
     }
     return { objects: objects2, clones: [], trees: [] };
   };
@@ -33443,6 +34830,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const [objects2, clones2, trees2] = [[], [], []];
     const stand5 = furnisher2(objects2, clones2);
     const own = randomOf8(params.seed * 61 + n * 13 + 5);
+    const inMouth = exact ? kit2.mouthOf(grid, side2, { map, shear: shear2 }) : () => false;
     const made4 = kit2.borderHalf(plot, side2, {
       origin: [-plot.size[0] / 2, -plot.size[1] / 2],
       level,
@@ -33450,22 +34838,64 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       line: landLine,
       down: deep,
       whole: edition >= GROUNDED,
-      lane: exact ? null : { material: ASPHALT3, surface: { faces: { 0: { texture: LANES2, ...(side2 === "south" || side2 === "north") && { rotation: 90 }, ...edition >= GROUNDED && { offset: [side2 === "south" || side2 === "east" ? 0.25 : -0.25, 0] } } } } },
+      avenue: exact,
+      lane: exact ? null : { material: ASPHALT2, surface: { faces: { 0: { texture: LANES3, ...(side2 === "south" || side2 === "north") && { rotation: 90 }, ...edition >= GROUNDED && { offset: [side2 === "south" || side2 === "east" ? 0.25 : -0.25, 0] } } } } },
       stand: (name, piece, at, facing) => {
-        if (stand5(name, piece, at, facing, { look: FIRST2.lamp, lit: true }) !== null)
+        if (!/^median /.test(name) && inMouth(...at))
+          return;
+        if (stand5(name, piece, at, facing, { look: LAMP4.look, lit: LAMP4.lit }) !== null)
           stats.lamps++;
       },
-      plant: (x, y) => {
+      plant: (x, y, { median = false, scale: scale4 = 1 } = {}) => {
         const [chance, size, shape, turned5] = [own(), own(), own(), own()];
+        if (!median && inMouth(x, y))
+          return;
         const [kind, seed] = treeOf(chance, shape, true);
-        trees2.push({ species: kind, at: [round53(x), round53(y), round53(level + KERB2)], scale: round53(0.85 + 0.3 * size), seed, turn: Math.floor(turned5 * 360) });
+        trees2.push({ species: kind, at: [round53(x), round53(y), round53(level + KERB2)], scale: round53(scale4 * (0.85 + 0.3 * size)), seed, turn: Math.floor(turned5 * 360), ...median && { median: true } });
         stats.trees++;
       }
     });
     return { objects: [...made4.objects, ...objects2], clones: clones2, trees: trees2 };
   };
+  const paintPiece = (side2) => {
+    const [objects2, clones2] = [[], []];
+    const furnish = furnisher2(objects2, clones2);
+    const median = medians?.find((each) => each.side === side2);
+    if (median) {
+      const { across } = median;
+      const onRow = { south: (block3) => block3.j === 0, north: (block3) => block3.j === grid.ny - 1, west: (block3) => block3.i === 0, east: (block3) => block3.i === grid.nx - 1 }[side2];
+      const way = across ? [1, 0] : [median.lean / median.hyp, 1 / median.hyp];
+      for (const block3 of grid.blocks.filter(onRow)) {
+        const corner2 = (end) => across ? end === 0 ? block3.i === 0 : block3.i === grid.nx - 1 : end === 0 ? block3.j === 0 : block3.j === grid.ny - 1;
+        for (const [end, v] of (across ? [block3.x0 + ZEBRA_IN, block3.x1 - ZEBRA_IN] : [block3.y0 + ZEBRA_IN, block3.y1 - ZEBRA_IN]).entries()) {
+          if (corner2(end) || !median.open(v))
+            continue;
+          furnish("border zebra", "zebra", median.placeAt(v, (median.median + median.kerb) / 2), way, { on: 0.005 });
+        }
+      }
+    }
+    return { objects: objects2, clones: clones2, trees: [] };
+  };
+  const edgePiece = (side2) => ({ ...kit2.edgeOf(grid, side2, { walled: params.walled, map, surface }), trees: [] });
+  const inMedian = (x, y) => {
+    const { xs, ys, nx, ny } = grid;
+    const reach = kit2.AVENUE.median - 0.3;
+    const cut2 = (side2, v) => Boolean(surface.cuts[side2]) && v > surface.cuts[side2][0] - 0.3 && v < surface.cuts[side2][1] + 0.3;
+    if (Math.abs(y - ys[0].mid) < reach)
+      return !cut2("south", x);
+    if (Math.abs(y - ys[ny].mid) < reach)
+      return !cut2("north", x);
+    const [s0, s1] = [xs[0].slope ?? 0, xs[nx].slope ?? 0];
+    if (Math.abs(x - xs[0].mid - s0 * y) < reach * Math.hypot(1, s0))
+      return !cut2("west", y);
+    if (Math.abs(x - xs[nx].mid - s1 * y) < reach * Math.hypot(1, s1))
+      return !cut2("east", y);
+    return false;
+  };
   const onCarriageway = (X2, Y) => {
     const [x, y] = map.back(X2, Y);
+    if (exact && inMedian(x, y))
+      return false;
     return grid.xs.some((line) => x > line.from + (line.slope ?? 0) * y - 0.3 && x < line.to + (line.slope ?? 0) * y + 0.3) || grid.ys.some((line) => y > line.from - 0.3 && y < line.to + 0.3);
   };
   const corridor = (() => {
@@ -33474,8 +34904,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const points = [];
     const { RAILS: rails } = kit2;
     for (let d = 0;d < landLine.length; d += 1) {
-      const here = landLine.at(d);
-      points.push([here.x, here.y, landLine.levelAt(d) === "ground" ? rails.body / 2 + 0.8 : rails.band / 2 + 1]);
+      const here2 = landLine.at(d);
+      points.push([here2.x, here2.y, landLine.levelAt(d) === "ground" ? rails.body / 2 + 0.8 : rails.band / 2 + 1]);
     }
     const cell = 20;
     const cells = new Map;
@@ -33497,15 +34927,15 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const flat2 = [];
     for (let d = 0;d < landLine.length; d += 0.5)
       if (landLine.levelAt(d) === "ground") {
-        const here = landLine.at(d);
-        flat2.push([here.x, here.y, rails.body / 2 + 0.8]);
+        const here2 = landLine.at(d);
+        flat2.push([here2.x, here2.y, rails.body / 2 + 0.8]);
       }
     const side2 = rails.body / 2 + rails.gap + rails.platform.wide / 2;
     for (const station2 of landLine.stations.filter((each) => each.rail === "low")) {
       const reachOf = rails.platform.long / 2 + rails.steps;
       for (let s = -reachOf;s <= reachOf; s += 0.5) {
-        const here = landLine.at(((station2.d + s) % landLine.length + landLine.length) % landLine.length);
-        flat2.push([here.x - here.way[1] * side2, here.y + here.way[0] * side2, rails.platform.wide / 2 + 0.3]);
+        const here2 = landLine.at(((station2.d + s) % landLine.length + landLine.length) % landLine.length);
+        flat2.push([here2.x - here2.way[1] * side2, here2.y + here2.way[0] * side2, rails.platform.wide / 2 + 0.3]);
       }
     }
     const flatCells = new Map;
@@ -33540,7 +34970,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     if (!landLine?.rail)
       return () => [];
     let laid3 = null;
-    return () => laid3 ??= landLine.stations.map((station2) => kit2.stationLayout(landLine, station2, { ground: (X2, Y) => surface.at(X2, Y), inStreet: onCarriageway, lift: STATION_LIFT }));
+    return () => laid3 ??= landLine.stations.map((station2) => kit2.stationLayout(landLine, station2, { ground: (X2, Y) => surface.at(X2, Y), inStreet: onCarriageway, lift: STATION_LIFT, exact, roof: COACH.height }));
   })();
   const lineKept = (x, y) => Boolean(corridor) && (([X2, Y]) => corridor.near([X2, Y]) || corridor.onGround([X2, Y], 0.3) || stationKept([X2, Y]))(map.at(x, y));
   const stationKept = ([X2, Y], by2 = 0) => landStations().some(({ keeps: keeps2 }) => keeps2.some(({ at, way, long, wide }) => {
@@ -33636,7 +35066,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     }
     if (basins.size && stats.basins)
       stats.basins = Math.max(0, stats.basins - basins.size);
-    const trees2 = made4.trees.filter((tree2) => !corridor.near(tree2.at, 2) && !corridor.onGround(tree2.at, 1) && !stationKept(tree2.at, 1));
+    const trees2 = made4.trees.filter((tree2) => !corridor.near(tree2.at, tree2.median ? 0 : 2) && !corridor.onGround(tree2.at, 1) && !stationKept(tree2.at, 1));
     if (trees2.length < made4.trees.length)
       for (const tree2 of made4.trees.filter((each) => !trees2.includes(each))) {
         const key = FLOWERS2.includes(tree2.species) ? "flowers" : REEDS.includes(tree2.species) ? "reeds" : "trees";
@@ -33648,17 +35078,49 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       ...made4,
       objects: made4.objects.filter((object) => !gone.has(object.name)).map(kept4),
       clones: made4.clones.filter((clone) => !gone.has(clone.of) && !cloneOff(clone) && clone !== moved.get(clone.of)),
-      trees: trees2
+      trees: trees2.map(({ median: _, ...tree2 }) => tree2)
     };
   };
-  const fitted3 = (made4, along4 = map) => clearOf2(kit2.fitPiece(made4, { map: along4, surface, level, sizeOf: kit2.textureSize }));
+  const pittedOf = (made4, along4) => {
+    if (!exact || !made4.trees?.length && !made4.objects.some((object) => object.name === "tree pit"))
+      return made4;
+    const flats = kit2.flatsOf(made4.objects);
+    const soft = flats.filter((flat2) => UNPITTED.has(flat2.material));
+    const standing2 = made4.trees.filter((tree2) => !FLOWERS2.includes(tree2.species) && !REEDS.includes(tree2.species) && !soft.some((flat2) => flat2.on(tree2.at)));
+    const grounds = flats.filter((flat2) => !UNPITTED.has(flat2.material) && flat2.up[2] > 0.95);
+    const yaw = along4.xYaw(0);
+    const r = yaw * Math.PI / 180;
+    const [u, v] = [[Math.cos(r), Math.sin(r)], [-Math.sin(r), Math.cos(r)]];
+    const half = PIT2.side / 2;
+    const pits = standing2.map((tree2) => {
+      const [x, y, foot] = tree2.at;
+      const off = foot - surface.at(x, y);
+      const groundAt5 = (place) => {
+        const level2 = surface.at(...place) + off;
+        return grounds.filter((flat2) => flat2.on(place)).map((flat2) => ({ flat: flat2, z: flat2.top(place) })).filter(({ z }) => z > level2 - 0.04 && z < level2 + LAWN + 0.04).reduce((best, each) => each.z > best.z ? each : best, { flat: null, z: level2 });
+      };
+      const under = groundAt5([x, y]);
+      const slope = (way) => under.flat ? -(under.flat.up[0] * way[0] + under.flat.up[1] * way[1]) / under.flat.up[2] : surface.at(x + way[0] / 2, y + way[1] / 2) - surface.at(x - way[0] / 2, y - way[1] / 2);
+      const [gx, gy] = [slope(u), slope(v)];
+      const rises = [-half, 0, half].flatMap((s) => [-half, 0, half].map((t) => groundAt5([x + u[0] * s + v[0] * t, y + u[1] * s + v[1] * t]).z - under.z - gx * s - gy * t));
+      const lift2 = Math.max(0, ...rises.map((rise) => rise - (PIT2.over - 0.01)));
+      return { at: [round53(x), round53(y), round53(under.z + PIT2.over - PIT2.deep / 2 + lift2)], turn: kit2.pitchedOn(gx, gy, yaw) };
+    });
+    const [first2, ...rest] = pits;
+    return {
+      ...made4,
+      objects: [...made4.objects.filter((object) => object.name !== "tree pit"), ...first2 ? [{ name: "tree pit", ...first2, prims: [{ name: "soil", shape: "cube", at: [0, 0, 0], size: [PIT2.side, PIT2.side, PIT2.deep], material: SOIL3 }] }] : []],
+      clones: [...made4.clones.filter((clone) => clone.of !== "tree pit"), ...rest.map((pit) => ({ of: "tree pit", ...pit }))]
+    };
+  };
+  const fitted3 = (made4, along4 = map) => pittedOf(clearOf2(kit2.fitPiece(made4, { map: along4, surface, level, sizeOf: kit2.textureSize })), along4);
   const furnisher2 = (objects2, clones2, deal2 = 0) => {
     const made4 = new Set;
     return (name, piece, [x, y], facing, { on = KERB2, look: look8 = null, lit = false, ...own } = {}) => {
       const turn3 = [0, 0, turnTo2(facing)];
-      const [reach, sunk] = piece === "arm" ? [1.1, 0.1] : piece === "double" ? [0, 0.1] : [0, 0];
+      const [reach, sunk] = piece === "arm" ? [ARM2.reach, ARM2.sunk] : piece === "double" ? [0, ARM2.sunk] : [0, 0];
       const at = [round53(x + facing[0] * reach), round53(y + facing[1] * reach), round53(level + on - sunk)];
-      if (made4.has(name))
+      if (made4.has(name) && objects2.some((object) => object.name === name))
         return clones2.push({ of: name, at, turn: turn3 });
       made4.add(name);
       const fitted4 = constrainKind("street", { piece, ...own }).params;
@@ -33701,19 +35163,19 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       prims: [
         piece("car", "car", [0, 0, tall / 2], [car6, car6, tall], { door: door3, head }, { button: "next" }),
         ...[0, 1].flatMap((stop) => [-1, 1].map((way) => piece(`leaf ${stop ? "top" : "foot"} ${way < 0 ? "left" : "right"}`, "leaf", [way * (leaf2 / 2 + (stop ? 0 : slide)), -front2, stop * rise + head / 2], [leaf2, 0.05, head], {}, { button: "stop", stop, door: way * slide, landing: stop }))),
-        ...[0, 1].flatMap((stop) => [-1, 1].map((way) => part(`jamb ${stop ? "top" : "foot"} ${way < 0 ? "left" : "right"}`, [way * (door3 / 2 + out - post2 / 2) / 2, -out, stop * rise + head / 2], [out - post2 / 2 - door3 / 2, 0.04, head], STEEL13))),
+        ...[0, 1].flatMap((stop) => [-1, 1].map((way) => part(`jamb ${stop ? "top" : "foot"} ${way < 0 ? "left" : "right"}`, [way * (door3 / 2 + out - post2 / 2) / 2, -out, stop * rise + head / 2], [out - post2 / 2 - door3 / 2, 0.04, head], STEEL14))),
         ...called ? [0, 1].map((stop) => piece(`call ${stop ? "top" : "foot"}`, "button", [(door3 / 2 + out - post2 / 2) / 2, -out - 0.03, stop * rise + 1.1], [0.12, 0.02, 0.2], {}, { button: "stop", stop, landing: stop })) : [],
         ...floored ? [0, 1].flatMap((stop) => {
           const name2 = stop ? "top" : "foot";
           return [
-            part(`lintel ${name2}`, [0, -out, stop * rise + head + 0.16], [2 * out - post2, 0.04, 0.32], STEEL13),
+            part(`lintel ${name2}`, [0, -out, stop * rise + head + 0.16], [2 * out - post2, 0.04, 0.32], STEEL14),
             amber(piece(`display ${name2}`, "display", [0, -out - 0.04, stop * rise + head + 0.16], [0.3, 0.04, 0.12], {}, { button: "none", landing: stop })),
             piece(`plate ${name2}`, "plate", [-(door3 / 2 + out - post2 / 2) / 2, -out - 0.03, stop * rise + 1.55], [0.24, 0.02, 0.3], { label: stop }, { button: "none", landing: stop })
           ];
         }) : [],
         ...floored ? [{ ...amber(piece("display car", "display", [0, -car6 / 2 + 0.105, head + 0.11], [0.3, 0.04, 0.12], {}, { button: "none" })), turn: [0, 0, 180] }] : [],
-        ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], n) => part(`post ${n + 1}`, [sx * out, sy * out, (rise + tall + 0.2) / 2], [post2, post2, rise + tall + 0.2], STEEL13)),
-        part("cap", [0, 0, rise + tall + 0.25], [2 * out + post2, 2 * out + post2, 0.1], STEEL13),
+        ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], n) => part(`post ${n + 1}`, [sx * out, sy * out, (rise + tall + 0.2) / 2], [post2, post2, rise + tall + 0.2], STEEL14)),
+        part("cap", [0, 0, rise + tall + 0.25], [2 * out + post2, 2 * out + post2, 0.1], STEEL14),
         part("glass back", [0, out, 1.2], [2 * out - post2, 0.03, 2.4], GLASS20),
         ...[-1, 1].map((side2) => part(`glass ${side2 < 0 ? "left" : "right"}`, [side2 * out, 0, 1.2], [0.03, 2 * out - post2, 2.4], GLASS20))
       ]
@@ -33775,15 +35237,17 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           if (arms.every((arm) => arm[0] === dx && arm[1] === dy || walked(arm)))
             continue;
           const across = Math.min(line.width, 24);
-          stand5(`crossing ${across}`, "zebra", dy ? [line.mid, node.y + dy * (reach + 2.2)] : [node.x + dx * (reach + 2.2), line.mid], dy ? [0, 1] : [1, 0], { on: 0.005, width: across });
+          if (!exact)
+            stand5(`crossing ${across}`, "zebra", dy ? [line.mid, node.y + dy * (reach + 2.2)] : [node.x + dx * (reach + 2.2), line.mid], dy ? [0, 1] : [1, 0], { on: 0.005, width: across });
           const [rx, ry] = [-dy, dx];
           const avenue2 = line.kind === "avenue";
           const lane = avenue2 ? line.from + (dx < 0 ? ROAD / 2 : ROAD + MEDIAN + ROAD / 2) : line.from + ROAD / 2 + (dy ? rx : ry) * (ROAD / 4);
           const width = avenue2 ? ROAD - 0.6 : ROAD / 2 - 0.5;
           const along4 = (n) => dy ? [lane, node.y + dy * (reach + n)] : [node.x + dx * (reach + n), lane];
-          stand5(`stop ${width}`, "line", along4(4.3), dy ? [0, 1] : [1, 0], { on: 0.012, width });
+          if (!exact)
+            stand5(`stop ${width}`, "line", along4(4.3), dy ? [0, 1] : [1, 0], { on: 0.012, width });
           const ramp = overpass && dy && node.i === overpass.k && node.j === avenueAt - dy;
-          if (!ramp)
+          if (!ramp && !exact)
             stand5("arrow", "arrow", along4(11), [-dx, -dy], { on: 0.012 });
           const turns = traffic?.signalled.includes(`${node.i}:${node.j}`) ? traffic.junctions.get(`${node.i}:${node.j}`) : null;
           if (node.inner && turns)
@@ -33818,18 +35282,18 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     }
     return { objects: objects2, clones: clones2, trees: [] };
   };
-  const groundUnder = (at, turn3) => {
+  const groundUnder2 = (at, turn3) => {
     if (!exact)
       return () => 0;
     const [c, s] = [Math.cos(turn3 * Math.PI / 180), Math.sin(turn3 * Math.PI / 180)];
     const base = surface.at(...map.at(at[0], at[1]));
     return (bx, by2) => surface.at(...map.at(at[0] + bx * c - by2 * s, at[1] + bx * s + by2 * c)) - base;
   };
-  const building2 = (name, [x, y], facing, given2, look8) => {
+  const buildingOf = (name, [x, y], facing, given2, look8) => {
     const own = edition >= 18 && given2.ground === "hotel" && given2.reception === "lobby" ? { ...given2, reception: "lounge" } : given2;
     if (own !== given2)
       stats.lounges = (stats.lounges ?? 0) + 1;
-    const fitted4 = groundFit3(constrainKind("building", own).params, groundUnder([x, y], turnTo2(facing)));
+    const fitted4 = groundFit3(constrainKind("building", own).params, groundUnder2([x, y], turnTo2(facing)));
     const laid3 = exact ? fitted4.params : { ...fitted4.params, plinth: Math.max(0.1, round53(fitted4.floor)) };
     const { min, max } = KINDS.building.footprint(laid3);
     return {
@@ -33845,10 +35309,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const pulled = round53(east + BUS.pull);
     const r = (west - pulled) / 2;
     const [ce, cw] = [round53(grid.xs[endEast].from - BUS.turn), round53(grid.xs[endWest].to + BUS.turn)];
-    const within4 = (x, clear = BUS.clear) => x > cw + clear && x < ce - clear;
+    const within5 = (x, clear = BUS.clear) => x > cw + clear && x < ce - clear;
     const built = (block3) => roles.get(block3).role !== "park";
     const stopAt = (block3, side2, x, had2) => ({ block: block3, side: side2, x: round53(x), y: round53(plot ? side2 === "north" ? block3.y0 + 1.2 : block3.y1 - 1.2 : side2 === "north" ? block3.y - grid.sy / 2 + 1.2 : block3.y + grid.sy / 2 - 1.2), had: had2 });
-    const free = (stop) => within4(stop.x, stop.side === "south" ? BUS.lead : BUS.clear) && !kept3(stop.x, stop.y);
+    const free = (stop) => within5(stop.x, stop.side === "south" ? BUS.lead : BUS.clear) && !kept3(stop.x, stop.y);
     const sheltered = (block3) => (block3.i * 2 + block3.j * 3 + params.seed) % 3 === 0;
     const north = grid.blocks.filter((block3) => block3.j === avenueAt && built(block3));
     const south = grid.blocks.filter((block3) => block3.j === avenueAt - 1 && built(block3));
@@ -33923,6 +35387,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     overpass: overpass && { k: overpass.k, rise: overpass.rise },
     level,
     ...plot && { within: { i0: 1, i1: grid.nx - 1, m0: 1, m1: grid.ny - 1 } },
+    ...exact && { ring: ringOf4(grid, { road: ROAD, level }) },
     ...terraces && {
       relief: {
         at: levelAt,
@@ -33933,16 +35398,16 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         breaks: grid.ys.flatMap((line, j) => [...j > 0 && Math.abs(terraces.levels[j] - terraces.levels[j - 1]) >= 0.005 ? [line.from] : [], ...j < grid.ny && Math.abs(terraces.levels[j + 1] - terraces.levels[j]) >= 0.005 ? [line.to] : []])
       }
     },
-    each: () => 2,
+    each: () => exact ? 1 : 2,
     bus: busLine?.way ? { way: busLine.way, route: { type: "route", speed: BUS.speed, accel: BUS.accel, mode: "round", face: "yes", built: true }, least: BUS.stop, takes: { pass: 4.6, go: 7.5 } } : null
   }) : null;
   const lean = plot ? kit2.leanOf(plot) : 1;
   const wedgeSpaceOf = (block3, wedge) => {
     const west = wedge.side === "west";
     const kerb = (y) => wedge.kerb[0] + (wedge.kerb[1] - wedge.kerb[0]) * (y - wedge.y0) / (wedge.y1 - wedge.y0);
-    const run = landLine?.rail ? landLine.runs.find((each) => each.kind === "border" && each.side === wedge.side) : null;
+    const run = landLine?.rail && !exact ? landLine.runs.find((each) => each.kind === "border" && each.side === wedge.side) : null;
     const keep2 = (run ? run.rail === "high" ? kit2.RAILS.band + 1 : kit2.RAILS.low.track + kit2.RAILS.body / 2 + 1 - kit2.BORDER.road / 2 : 1.2) * lean;
-    const flat2 = run?.rail === "low" ? keep2 : 1.2 * lean;
+    const flat2 = run?.rail === "low" ? keep2 : (exact ? 1.5 : 1.2) * lean;
     const inner = block3.strip ? west ? block3.x1 - WALK5 : block3.x0 + WALK5 : west ? block3.x0 : block3.x1;
     const [ya, yb] = block3.strip ? [wedge.y0 + WALK5, wedge.y1 - WALK5] : [wedge.y0 + 1, wedge.y1 - 1];
     const sideOf = (off) => west ? [(y) => kerb(y) + off, () => inner] : [() => inner, (y) => kerb(y) - off];
@@ -33988,8 +35453,17 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const name = `wedge ${block3.i + 1}-${block3.j + 1}`;
     stats.wedges = { ...stats.wedges, [what]: (stats.wedges?.[what] ?? 0) + 1 };
     const floor = (inset, z, thick2, rest, standing2 = false, ends = inset) => {
-      const [y0, y1] = [ya + ends, yb - ends];
+      let [y0, y1] = [ya + ends, yb - ends];
       const [l, r] = standing2 ? [leftFree, rightFree] : [left, right];
+      if (exact) {
+        const [w0, w1] = [y0, y1].map((y) => r(y) - l(y) - 2 * inset);
+        if (w0 <= 0 && w1 <= 0)
+          return;
+        if (w0 < 0)
+          y0 += (y1 - y0) * -w0 / (w1 - w0);
+        else if (w1 < 0)
+          y1 = y0 + (y1 - y0) * w0 / (w0 - w1);
+      }
       const made4 = y1 - y0 > 0.5 ? kit2.bandTiles({ name: `${name} ${rest.name}`, y0, y1, left: [l(y0) + inset, l(y1) + inset], right: [r(y0) - inset, r(y1) - inset], z, thick: thick2, rest }, fit) : null;
       if (made4)
         objects2.push(made4);
@@ -34092,10 +35566,12 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const furnish = furnisher2(objects2, clones2, Math.imul(params.seed | 0, 31) + block3.i * 97 + block3.j * 193);
     const [taken, grounds] = [[], []];
     const shelters = [];
+    const furnished = new Set;
     const stand5 = (name, piece, at2, ...rest) => {
       if (kept3(at2[0], at2[1]))
         return null;
       taken.push(around(at2, ROUND9[piece] ?? 0.5));
+      furnished.add(name);
       return furnish(name, piece, at2, ...rest);
     };
     const own = randomOf8(params.seed * 131 + block3.i * 17 + block3.j * 53 + 7);
@@ -34121,12 +35597,15 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         return clones2.push({ of: "tree pit", at: at2, turn: [0, 0, 0] });
       objects2.push({ name: "tree pit", at: at2, prims: [{ name: "soil", shape: "cube", at: [0, 0, 0], size: [1.2, 1.2, 0.02], material: SOIL3 }] });
     };
+    const palmed = new WeakSet;
     const plant2 = (x, y, scale4 = 1, pitted = false, lined2 = false) => {
       const [chance, size, shape, turned5] = [own(), own(), own(), own()];
       const [kind, seed] = treeOf(chance, shape, lined2);
       const tree2 = { species: kind, at: [round53(x), round53(y), round53(level + KERB2)], scale: round53(scale4 * (0.85 + 0.3 * size)), seed, turn: Math.floor(turned5 * 360) };
-      if (lined2 && palm && !kept3(x, y) && !cleared(x, y))
+      if (lined2 && palm && !kept3(x, y) && !cleared(x, y)) {
         stats.palms = (stats.palms ?? 0) + 1;
+        palmed.add(tree2);
+      }
       if (kept3(x, y) || cleared(x, y))
         return;
       trees2.push(tree2);
@@ -34135,13 +35614,13 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       if (pitted && urban)
         pit(x, y);
     };
-    const paved = role === "plaza" ? PLAZA : PAVEMENT3;
+    const paved = role === "plaza" ? PLAZA : PAVEMENT;
     const ground = [(([z, thick2]) => slab("pavement", [0, 0, z], [sx, sy, thick2], paved))(deepened(KERB2 / 2, KERB2))];
     if (green && role === "plaza")
       ground[0].surface = { faces: { 0: { texture: PLAZA, pattern: { name: PAVINGS[params.seed % PAVINGS.length], scale: 0.5, width: 0.05, glow: 0, speed: 0, background: 1, colors: ["#4a4640", "#8c8377"] } } } };
     if (exact)
       ground[0].surface = { ...ground[0].surface, faces: { ...ground[0].surface?.faces, ...Object.fromEntries([1, 2, 3, 4].map((face3) => [face3, { texture: KERB_STONE }])) } };
-    const lanes = (side2, at2, size, runs3) => ground.push(slab(`lanes ${side2}`, at2, size, ASPHALT3, runs3));
+    const lanes = (side2, at2, size, runs3) => ground.push(slab(`lanes ${side2}`, at2, size, ASPHALT2, runs3));
     if (!urban) {
       lanes("south", [0, -(sy + ROAD) / 2, 0], [sx, ROAD, 0.04], "x");
       lanes("west", [-(sx + ROAD) / 2, 0, 0], [ROAD, sy, 0.04], "y");
@@ -34152,14 +35631,14 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     }
     if (role === "park") {
       ground.push(slab("lawn", [cx, cy, KERB2 + 0.03], [ix, iy, 0.06], GRASS));
-      ground.push(slab("path along", [cx, cy, KERB2 + 0.07], [ix, 2.4, 0.02], PAVEMENT3), slab("path across", [cx, cy, KERB2 + 0.075], [2.4, iy, 0.02], PAVEMENT3));
+      ground.push(slab("path along", [cx, cy, KERB2 + 0.07], [ix, 2.4, 0.02], PAVEMENT), slab("path across", [cx, cy, KERB2 + 0.075], [2.4, iy, 0.02], PAVEMENT));
     }
     if (block3.strip)
       ground.splice(1, ground.length - 1);
     objects2.push({ name: `block ${block3.i + 1}-${block3.j + 1}`, at: [block3.x, block3.y, level], prims: ground });
     for (const wedge of plot ? block3.wedges ?? [] : []) {
       const [edge, kerb] = [[wedge.edge, wedge.edge], wedge.kerb];
-      const made4 = kit2.bandTiles({ name: `block ${block3.i + 1}-${block3.j + 1} wedge ${wedge.side}`, y0: wedge.y0, y1: wedge.y1, left: wedge.side === "west" ? kerb : edge, right: wedge.side === "west" ? edge : kerb, z: deepened(KERB2 / 2, KERB2)[0], thick: deepened(KERB2 / 2, KERB2)[1], rest: { name: "pavement", material: PAVEMENT3 } }, { map, surface, level, sizeOf: kit2.textureSize });
+      const made4 = kit2.bandTiles({ name: `block ${block3.i + 1}-${block3.j + 1} wedge ${wedge.side}`, y0: wedge.y0, y1: wedge.y1, left: wedge.side === "west" ? kerb : edge, right: wedge.side === "west" ? edge : kerb, z: deepened(KERB2 / 2, KERB2)[0], thick: deepened(KERB2 / 2, KERB2)[1], rest: { name: "pavement", material: PAVEMENT } }, { map, surface, level, sizeOf: kit2.textureSize });
       if (made4)
         objects2.push(made4);
     }
@@ -34255,6 +35734,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       return { at: [round53(made4.at[0] + x * Math.cos(angle) - y * Math.sin(angle)), round53(made4.at[1] + x * Math.sin(angle) + y * Math.cos(angle)), round53(made4.at[2] + top + 0.3)], wide, facing };
     };
     const count = (made4) => {
+      if (!made4) {
+        stats.unbuilt = (stats.unbuilt ?? 0) + 1;
+        return;
+      }
       stats.buildings++;
       if (made4.prims[0].floors >= 12)
         stats.towers++;
@@ -34271,6 +35754,83 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       }
       objects2.push(made4);
       stood.push(made4);
+    };
+    const wayInOf = (made4) => {
+      const { porch } = planOf4(constrainKind("building", made4.prims[0]).params);
+      if (!porch)
+        return null;
+      const turned5 = made4.turn[2] * Math.PI / 180;
+      const [cos, sin] = [Math.round(Math.cos(turned5)), Math.round(Math.sin(turned5))];
+      return boundsOfPoints([[porch.x0, porch.y0], [porch.x1, porch.steps.at(-1)?.y1 ?? porch.y1]].map(([px, py]) => [made4.at[0] + px * cos - py * sin, made4.at[1] + px * sin + py * cos]));
+    };
+    const clearWaysIn = () => {
+      const ways = stood.map(wayInOf).filter(Boolean);
+      if (!ways.length)
+        return;
+      const on = (at2, reach) => ways.some((way) => overlap4(around(at2, reach), way));
+      for (let k = shelters.length - 1;k >= 0; k--)
+        if (on(shelters[k].at, 0.3))
+          shelters.splice(k, 1);
+      for (let k = trees2.length - 1;k >= 0; k--) {
+        if (!on(trees2[k].at, ROUND9.tree))
+          continue;
+        const [tree2] = trees2.splice(k, 1);
+        stats.trees--;
+        if (palmed.has(tree2))
+          stats.palms--;
+      }
+      for (let k = clones2.length - 1;k >= 0; k--)
+        if (furnished.has(clones2[k].of) && on(clones2[k].at, 0.3))
+          clones2.splice(k, 1);
+      for (let k = objects2.length - 1;k >= 0; k--) {
+        const object = objects2[k];
+        if (!furnished.has(object.name) || !on(object.at, 0.3))
+          continue;
+        const next = clones2.findIndex((clone) => clone.of === object.name);
+        if (next < 0) {
+          objects2.splice(k, 1);
+          continue;
+        }
+        const [{ at: at2, turn: turn3 }] = clones2.splice(next, 1);
+        objects2[k] = { ...object, at: at2, turn: turn3 };
+      }
+    };
+    const footprintOf5 = (made4) => {
+      const plan3 = planOf4(constrainKind("building", made4.prims[0]).params);
+      const turned5 = made4.turn[2] * Math.PI / 180;
+      const [cos, sin] = [Math.round(Math.cos(turned5)), Math.round(Math.sin(turned5))];
+      return boundsOfPoints([plan3.rect, ...plan3.wings.map((wing) => wing.rect)].flatMap((rect5) => [[rect5.x0, rect5.y0], [rect5.x1, rect5.y1]]).map(([px, py]) => [made4.at[0] + px * cos - py * sin, made4.at[1] + px * sin + py * cos]));
+    };
+    const building2 = (name, site3, facing, given2, look8, { keep: keep2 = false } = {}) => {
+      let made4 = buildingOf(name, site3, facing, given2, look8);
+      if (!exact || keep2)
+        return made4;
+      const inside = [block3.x + cx - ix / 2, block3.x + cx + ix / 2, block3.y + cy - iy / 2, block3.y + cy + iy / 2];
+      const others = stood.map(footprintOf5);
+      const along4 = facing[0] !== 0 ? 0 : 1;
+      const across = 1 - along4;
+      const back = -Math.sign(facing[along4]);
+      const reaches2 = (box7) => box7[2 * across] < inside[2 * across] - 0.01 || box7[2 * across + 1] > inside[2 * across + 1] + 0.01;
+      if (reaches2(footprintOf5(made4)))
+        return null;
+      let moved = 0;
+      for (let pass = 0;pass < 3; pass++) {
+        const { porch } = planOf4(constrainKind("building", made4.prims[0]).params);
+        const run = porch?.steps.length ? porch.steps.at(-1).y1 - porch.y1 : 0;
+        if (run <= moved + 0.01)
+          return made4;
+        const box7 = footprintOf5(made4);
+        const edge = back > 0 ? box7[2 * along4 + 1] : box7[2 * along4];
+        const behind = others.filter((other) => other[2 * across] < box7[2 * across + 1] && other[2 * across + 1] > box7[2 * across] && (back > 0 ? other[2 * along4] >= edge - 0.01 : other[2 * along4 + 1] <= edge + 0.01));
+        const room2 = Math.min(back > 0 ? inside[2 * along4 + 1] - SET - edge : edge - inside[2 * along4] - SET, ...behind.map((other) => (back > 0 ? other[2 * along4] - edge : edge - other[2 * along4 + 1]) - 2));
+        if (run - moved > room2 + 0.01)
+          return null;
+        moved = run;
+        const shift = [0, 0];
+        shift[along4] = back * moved;
+        made4 = buildingOf(name, [site3[0] + shift[0], site3[1] + shift[1]], facing, given2, look8);
+      }
+      return null;
     };
     const south = [0, -1], north = [0, 1], west = [-1, 0];
     if (role === "row") {
@@ -34312,7 +35872,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         variant: Math.floor(own() * 1000)
       };
       const chance = own();
-      const tower2 = building2(`${role === "plaza" ? "landmark" : "tower"} ${block3.i + 1}-${block3.j + 1}`, at(0, y), south, given2, edition >= 28 && given2.style !== "glass" ? lookOf2[given2.style] : pick5(towerLooks, chance));
+      const tower2 = building2(`${role === "plaza" ? "landmark" : "tower"} ${block3.i + 1}-${block3.j + 1}`, at(0, y), south, given2, edition >= 28 && given2.style !== "glass" ? lookOf2[given2.style] : pick5(towerLooks, chance), { keep: true });
       if (block3 === heliport)
         helipad = padOn(tower2, given2, south);
       count(tower2);
@@ -34334,12 +35894,12 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       }
     } else if (role === "hall") {
       const facing = block3.y > 0 ? south : block3.y < 0 ? north : south;
-      const type = asked2 === "station" && (ix < 34 || iy < 32) ? "supermarket" : asked2;
+      const type = asked2 === "station" && (ix < 34 || iy < 32) ? "supermarket" : exact && asked2 === "mall" && iy < MALL_LEAST ? "supermarket" : asked2;
       const width = type === "station" ? 30 : clamp35(even(ix - 6), 24, 44);
       const depth = type === "station" ? 26 : clamp35(even(iy - 16), 18, 32);
       const given2 = constrainKind("hall", { type, width, depth, height: type === "museum" ? 8 : type === "mall" ? 5 : 6, floors: type === "museum" || type === "supermarket" || type === "mall" ? 2 : 1, variant: Math.floor(own() * 1000) }).params;
       const y = -facing[1] * (iy / 2 - depth / 2 - 2);
-      const fitted4 = groundFit(given2, groundUnder([block3.x, block3.y + y], turnTo2(facing)));
+      const fitted4 = groundFit(given2, groundUnder2([block3.x, block3.y + y], turnTo2(facing)));
       if (!exact)
         fitted4.params = { ...fitted4.params, plinth: Math.max(0.1, round53(fitted4.floor)) };
       const { min, max } = KINDS.hall.footprint(fitted4.params);
@@ -34368,15 +35928,15 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       const height = 0.9;
       const scale4 = Math.min(1, (plan3.entry.recess.x1 - plan3.entry.recess.x0 + 6) / boardOf(word, height).width);
       const board = signPart({ word, height: Math.max(0.4, Math.round(height * scale4 * 20) / 20), colour: CIVIC_COLOURS[word], at: [plan3.mid, plan3.rect.y1 + 0.06, plan3.clear + 0.12] });
-      made4.prims.push({ name: `sign ${word}`, kind: "sign", word, width: 0, height: board.params.height, colour: CIVIC_COLOURS[word], at: [round53(board.at[0]), round53(board.at[1]), round53(board.at[2] + board.size[2] / 2)], color: board.color, surface: board.surface, light: board.light });
-      if (air && word === "hospital")
+      made4?.prims.push({ name: `sign ${word}`, kind: "sign", word, width: 0, height: board.params.height, colour: CIVIC_COLOURS[word], at: [round53(board.at[0]), round53(board.at[1]), round53(board.at[2] + board.size[2] / 2)], color: board.color, surface: board.surface, light: board.light });
+      if (made4 && air && word === "hospital")
         padOn(made4, given2, south);
       count(made4);
       for (const x of [-10, 10])
         plant2(...at(x, iy / 2 - 6));
     } else if (role === "site") {
       const depth = 14;
-      count(building2(`site ${block3.i + 1}-${block3.j + 1}`, at(0, -(iy / 2 - depth / 2 - 6)), south, { style: "block", width: clamp35(even(ix - 16), 16, 30), depth, floors: clamp35(storeys(0.3), 3, Math.min(8, params.height)), stage: "frame", wings: own() < 0.5 && iy - depth - 6 >= 12 ? "left" : "none", reach: clamp35(even(iy - depth - 14), 6, 10), variant: Math.floor(own() * 1000) }, "concrete"));
+      count(building2(`site ${block3.i + 1}-${block3.j + 1}`, at(0, -(iy / 2 - depth / 2 - 6)), south, { style: "block", width: clamp35(even(ix - 16), 16, 30), depth, floors: clamp35(storeys(0.3), 3, Math.min(8, params.height)), stage: "frame", wings: own() < 0.5 && iy - depth - 6 >= 12 ? "left" : "none", reach: clamp35(even(iy - depth - 14), 6, 10), variant: Math.floor(own() * 1000), ...exact && { crane: "still" } }, "concrete"));
       stats.sites++;
       stand5("works", "roadsign", at(-ix / 2 + 2, -iy / 2 + 1), south, { variant: SIGNS.indexOf("works") });
       for (let n = 0;n < 6; n++)
@@ -34433,8 +35993,11 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         const plan3 = planOf4(constrainKind("building", made4.prims[0]).params);
         const turned5 = made4.turn[2] * Math.PI / 180;
         const [cos, sin] = [Math.round(Math.cos(turned5)), Math.round(Math.sin(turned5))];
-        for (const rect5 of [plan3.rect, ...plan3.wings.map((wing) => wing.rect), plan3.porch])
+        for (const rect5 of [plan3.rect, ...plan3.wings.map((wing) => wing.rect)])
           grounds.push(boundsOfPoints([[rect5.x0, rect5.y0], [rect5.x1, rect5.y1]].map(([px, py]) => [made4.at[0] + px * cos - py * sin, made4.at[1] + px * sin + py * cos])));
+        const way = wayInOf(made4);
+        if (way)
+          grounds.push(way);
       }
       const fountain = ([x, y], facing, on = KERB2) => {
         const fitted4 = constrainKind("street", { piece: "fountain", style: district }).params;
@@ -34471,9 +36034,9 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
               continue;
             const middle = (opening.a0 + opening.a1) / 2;
             const width = clamp35(Math.round((opening.a1 - opening.a0 + 0.4) * 20) / 20, 1.2, 12);
-            const [here, facing] = wall.along === 0 ? [[middle, wall.at + wall.out * 0.65], [0, wall.out]] : [[wall.at + wall.out * 0.65, middle], [wall.out, 0]];
+            const [here2, facing] = wall.along === 0 ? [[middle, wall.at + wall.out * 0.65], [0, wall.out]] : [[wall.at + wall.out * 0.65, middle], [wall.out, 0]];
             const variant = ((wall.along === 0 ? middle > plan3.mid : wall.out > 0) ? 1 : 0) ^ (block3.i + block3.j) % 2;
-            made4.prims.push({ name: `awning ${made4.prims.length}`, kind: "street", piece: "awning", width, variant, at: [round53(here[0]), round53(here[1]), round53(raise + 0.45)], turn: [0, 0, turnTo2(facing)], ...streetDressing("awning") });
+            made4.prims.push({ name: `awning ${made4.prims.length}`, kind: "street", piece: "awning", width, variant, at: [round53(here2[0]), round53(here2[1]), round53(raise + 0.45)], turn: [0, 0, turnTo2(facing)], ...streetDressing("awning") });
             more("awnings");
           }
         }
@@ -34510,7 +36073,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         }
       }
       if (role === "park") {
-        objects2.push({ name: "round", at: [round53(block3.x + cx), round53(block3.y + cy), level], prims: [slab("paving", [0, 0, KERB2 + 0.085], [7.4, 7.4, 0.02], PAVEMENT3)] });
+        objects2.push({ name: "round", at: [round53(block3.x + cx), round53(block3.y + cy), level], prims: [slab("paving", [0, 0, KERB2 + 0.085], [7.4, 7.4, 0.02], PAVEMENT)] });
         fountain(at(0, 0), south, KERB2 + 0.095);
         if (pad) {
           const on = KERB2 + 0.1;
@@ -34751,6 +36314,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         objects2.push({ name: "adverts", at: [round53(block3.x), round53(block3.y), round53(level + KERB2)], turn: [0, 0, 0], prims: mine });
       more("adverts", next);
     };
+    if (exact)
+      clearWaysIn();
     if (lived)
       livedIn();
     return { objects: objects2, clones: clones2, trees: trees2, ...animals2.length && { animals: animals2 }, ...helipad && { pad: helipad } };
@@ -34769,7 +36334,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       const from = leans[0] ? Math.max(kerbAt(n, line.from), kerbAt(n, line.to)) : crossed[n].to;
       const to = leans[1] ? Math.min(kerbAt(n + 1, line.from), kerbAt(n + 1, line.to)) : crossed[n + 1].from;
       const [mid5, long] = [(from + to) / 2, to - from];
-      const here = (s, c) => wide ? [mid5 + s, line.from + c] : [line.from + c, mid5 + s];
+      const here2 = (s, c) => wide ? [mid5 + s, line.from + c] : [line.from + c, mid5 + s];
       const prims = [];
       const strip2 = (name, c0, c1, z0, thick0, material, extra = {}, [t0, t1] = [0, 0]) => {
         if (exact)
@@ -34777,7 +36342,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         const [z, thick2] = deepened(z0, thick0);
         if (leans[0] || leans[1]) {
           const [ya, yb] = [line.from + c0, line.from + c1];
-          const plain = extra.surface?.faces?.[0]?.texture === LANES2 ? {} : extra;
+          const plain = extra.surface?.faces?.[0]?.texture === LANES3 ? {} : extra;
           const made4 = kit2.bandTiles({ name: `${name} ${n + 1}`, y0: ya, y1: yb, left: leans[0] ? [kerbAt(n, ya), kerbAt(n, yb)] : [from + t0, from + t0], right: leans[1] ? [kerbAt(n + 1, ya), kerbAt(n + 1, yb)] : [to - t1, to - t1], z, thick: thick2, rest: { name, material, ...extra }, ends: { name, material, ...plain } }, { map, surface, level, sizeOf: kit2.textureSize });
           if (made4)
             objects2.push(made4);
@@ -34786,14 +36351,14 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         const [across, along4, length2] = [(c0 + c1) / 2 - line.width / 2, (t0 - t1) / 2, long - t0 - t1];
         prims.push({ name, shape: "cube", at: (wide ? [along4, across, z] : [across, along4, z]).map(round53), size: (wide ? [length2, c1 - c0, thick2] : [c1 - c0, length2, thick2]).map(round53), material, ...extra });
       };
-      const laned = { surface: { faces: { 0: { texture: LANES2, ...wide && { rotation: 90 } } } } };
+      const laned = { surface: { faces: { 0: { texture: LANES3, ...wide && { rotation: 90 } } } } };
       if (!wide && grid.gone?.includes(`${k}:${n}`)) {
-        strip2("paving", 0, line.width, KERB2 / 2, KERB2, PAVEMENT3);
+        strip2("paving", 0, line.width, KERB2 / 2, KERB2, PAVEMENT);
         const square = randomOf8(params.seed * 211 + k * 31 + n * 7 + 1);
         const count = Math.max(2, Math.floor((long - 10) / 10));
         for (let m = 0;m < count; m++) {
           const s = (m - (count - 1) / 2) * 10;
-          const [x2, y2] = here(s, line.width / 2);
+          const [x2, y2] = here2(s, line.width / 2);
           if (params.trees) {
             const [chance, size, shape, turned5] = [square(), square(), square(), square()];
             const [kind, seed] = treeOf(chance, shape);
@@ -34807,10 +36372,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           }
           if (m + 1 < count) {
             if (m % 2) {
-              stand5("square lamp", "lamp", here(s + 5, line.width / 2), [1, 0], { on: KERB2, look: FIRST2.lamp, lit: true });
+              stand5("square lamp", "lamp", here2(s + 5, line.width / 2), [1, 0], { on: KERB2, look: FIRST2.lamp, lit: true });
               stats.lamps++;
             } else
-              stand5("square bench", "bench", here(s + 5, line.width / 2), [m % 4 ? 1 : -1, 0], { on: KERB2, look: FIRST2.bench, variant: 0 });
+              stand5("square bench", "bench", here2(s + 5, line.width / 2), [m % 4 ? 1 : -1, 0], { on: KERB2, look: FIRST2.bench, variant: 0 });
           }
         }
         stats.squares = (stats.squares ?? 0) + 1;
@@ -34829,7 +36394,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         for (let m = 0;m < count; m++) {
           const s = (m - (count - 1) / 2) * 10;
           if (params.trees) {
-            const [x3, y3] = here(s, middle);
+            const [x3, y3] = here2(s, middle);
             {
               const [chance, size, shape, turned5] = [own(), own(), own(), own()];
               const [kind, seed] = treeOf(chance, shape);
@@ -34844,14 +36409,14 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           }
           if (m + 1 < count) {
             if (m % 2) {
-              stand5("walk lamp", "lamp", here(s + 5, middle), [0, 1], { on: KERB2, look: quarter.lamp, lit: true, ...styled });
+              stand5("walk lamp", "lamp", here2(s + 5, middle), [0, 1], { on: KERB2, look: quarter.lamp, lit: true, ...styled });
               stats.lamps++;
             } else
-              stand5("walk bench", "bench", here(s + 5, middle), [0, m % 4 ? 1 : -1], { on: KERB2, look: quarter.bench, variant: 0, ...styled });
+              stand5("walk bench", "bench", here2(s + 5, middle), [0, m % 4 ? 1 : -1], { on: KERB2, look: quarter.bench, variant: 0, ...styled });
           }
         }
         for (const [e, end] of [-1, 1].entries()) {
-          const [x3, y3] = here(end * (long / 2 - 2.6), middle);
+          const [x3, y3] = here2(end * (long / 2 - 2.6), middle);
           if (stand5("walk planter", "planter", [x3, y3], [0, 1], { on: KERB2, look: "concrete" }) === null)
             continue;
           for (const [f, off] of [-0.5, 0, 0.5].entries())
@@ -34864,21 +36429,21 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           objects2.push({ name: `stretch ${n + 1}`, at: [round53(x2), round53(y2), level], prims });
         continue;
       }
-      strip2("lanes", 0, ROAD, 0, 0.04, ASPHALT3, laned);
+      strip2("lanes", 0, ROAD, 0, 0.04, ASPHALT2, laned);
       if (line.kind === "avenue") {
         const cut2 = wide ? [medianCutAt(n, k), medianCutAt(n + 1, k)].map((at) => at ? MEDIAN_CLEAR : 0) : [0, 0];
         strip2("median", ROAD, ROAD + MEDIAN, KERB2 / 2, KERB2, GRASS, {}, cut2);
         if (cut2[0])
-          strip2("median cut", ROAD, ROAD + MEDIAN, 0, 0.04, ASPHALT3, {}, [0, long - cut2[0]]);
+          strip2("median cut", ROAD, ROAD + MEDIAN, 0, 0.04, ASPHALT2, {}, [0, long - cut2[0]]);
         if (cut2[1])
-          strip2("median cut", ROAD, ROAD + MEDIAN, 0, 0.04, ASPHALT3, {}, [long - cut2[1], 0]);
-        strip2("lanes north", ROAD + MEDIAN, 2 * ROAD + MEDIAN, 0, 0.04, ASPHALT3, laned);
-        strip2("bike lane", 2 * ROAD + MEDIAN, line.width, 0.005, 0.03, ASPHALT3, { surface: { faces: { 0: { texture: ASPHALT3, tint: [...BIKE_TINT] } } } });
+          strip2("median cut", ROAD, ROAD + MEDIAN, 0, 0.04, ASPHALT2, {}, [long - cut2[1], 0]);
+        strip2("lanes north", ROAD + MEDIAN, 2 * ROAD + MEDIAN, 0, 0.04, ASPHALT2, laned);
+        strip2("bike lane", 2 * ROAD + MEDIAN, line.width, 0.005, 0.03, ASPHALT2, { surface: { faces: { 0: { texture: ASPHALT2, tint: [...BIKE_TINT] } } } });
         const beside = grid.blocks.find((block3) => block3.j === Math.min(k, grid.ny - 1) && block3.i === n);
         const district = districted && beside ? districtOf(params, beside, edition, grid) : null;
         const quarter = district ? DISTRICTS[district] : FIRST2;
         for (const s of [-long / 4, long / 4]) {
-          stand5("median lamp", "double", here(s, ROAD + MEDIAN / 2), [0, 1], { look: quarter.lamp, lit: true, ...district && { style: district } });
+          stand5("median lamp", "double", here2(s, ROAD + MEDIAN / 2), [0, 1], { look: quarter.lamp, lit: true, ...district && { style: district } });
           stats.lamps++;
         }
         if (params.trees) {
@@ -34889,7 +36454,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
               continue;
             if (footbridge && footbridge.n === n && Math.abs(mid5 + s - footbridge.x) < 3)
               continue;
-            const [x2, y2] = here(s, ROAD + MEDIAN / 2);
+            const [x2, y2] = here2(s, ROAD + MEDIAN / 2);
             {
               const [chance, size, shape, turned5] = [own(), own(), own(), own()];
               if (s < -long / 2 + cut2[0] + 1 || s > long / 2 - cut2[1] - 1)
@@ -34903,10 +36468,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           }
         }
         for (let s = -long / 2 + 8;s < long / 2 - 4; s += 16)
-          stand5("bike arrow", "arrow", here(s, line.width - BIKE / 2), [-1, 0], { on: 0.04 });
+          stand5("bike arrow", "arrow", here2(s, line.width - BIKE / 2), [-1, 0], { on: 0.04 });
       }
       if (line.kind === "parking" && plot)
-        strip2("bays", ROAD, ROAD + BAY3, 0, 0.04, ASPHALT3, {});
+        strip2("bays", ROAD, ROAD + BAY3, 0, 0.04, ASPHALT2, {});
       if (line.kind === "parking") {
         const works2 = worksAt(k, n);
         const parking = parked?.stretches.get(`${k}:${n}`) ?? null;
@@ -34914,34 +36479,34 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           if (works2 && Math.abs(s - works2.s) < 1)
             continue;
           const taxis = parking?.rank && m >= parking.rank[0] && m <= parking.rank[1] + 1;
-          stand5(taxis ? "rank line" : "bay", "line", here(s, ROAD + BAY3 / 2), [0, 1], { on: 0.012, width: BAY3, variant: taxis ? 3 : 1 });
+          stand5(taxis ? "rank line" : "bay", "line", here2(s, ROAD + BAY3 / 2), [0, 1], { on: 0.012, width: BAY3, variant: taxis ? 3 : 1 });
         }
         for (const each of parking?.stood ?? []) {
           const s = -long / 2 + BAY_FROM + (each.bay + 0.5) * BAY_LONG;
           if (each.ours) {
             const { own: ours, reach } = ourOf(each.ours);
-            const [x2, y2] = here(s - (reach.min[1] + reach.max[1]) / 2, ROAD + BAY3 - KERB_GAP - reach.wheels);
+            const [x2, y2] = here2(s - (reach.min[1] + reach.max[1]) / 2, ROAD + BAY3 - KERB_GAP - reach.wheels);
             objects2.push({ ...ours, ...each.palette !== undefined && { looks: paintedAs(ours.looks, PALETTES2.car[each.palette]) }, name: carName(each.ours, `${n + 1}-${each.bay + 1}`, edition), at: [round53(x2), round53(y2), level], turn: [0, 0, 0] });
           } else {
-            const [x2, y2] = here(s, ROAD + BAY3 - KERB_GAP - BODIES2[each.car.body].size[0] / 2);
+            const [x2, y2] = here2(s, ROAD + BAY3 - KERB_GAP - BODIES2[each.car.body].size[0] / 2);
             objects2.push({ name: `${each.car.livery ?? each.car.body} ${n + 1}-${each.bay + 1}`, at: [round53(x2), round53(y2), level], turn: [0, 0, 0], ...carOf2(each.car, false) });
           }
           stats.parked = (stats.parked ?? 0) + 1;
         }
         if (parking?.rank)
           stats.ranks = (stats.ranks ?? 0) + 1;
-        stand5("parking", "roadsign", here(-long / 2 + 5, line.width + 0.6), [0, -1], { variant: SIGNS.indexOf("parking") });
+        stand5("parking", "roadsign", here2(-long / 2 + 5, line.width + 0.6), [0, -1], { variant: SIGNS.indexOf("parking") });
         if (works2) {
           const [c, half] = [ROAD + BAY3 / 2 + 0.1, works2.long / 2];
           prims.push({ name: "trench", shape: "cube", at: [round53(c - line.width / 2), round53(works2.s), 0.045], size: [BAY3 - 0.7, works2.long, 0.05], material: SOIL3 });
           for (let m = 0;m < 5; m++)
-            stand5(`barrier ${m % 2}`, "barrier", here(works2.s - half + 0.95 + m * ((works2.long - 1.9) / 4), ROAD + 0.3), [-1, 0], { on: 0.02, variant: m % 2 });
+            stand5(`barrier ${m % 2}`, "barrier", here2(works2.s - half + 0.95 + m * ((works2.long - 1.9) / 4), ROAD + 0.3), [-1, 0], { on: 0.02, variant: m % 2 });
           for (const end of [-1, 1]) {
-            stand5(end < 0 ? "barrier south" : "barrier north", "barrier", here(works2.s + end * (half + 0.35), c), [0, end], { on: 0.02, lit: true, variant: end < 0 ? 0 : 1 });
+            stand5(end < 0 ? "barrier south" : "barrier north", "barrier", here2(works2.s + end * (half + 0.35), c), [0, end], { on: 0.02, lit: true, variant: end < 0 ? 0 : 1 });
             for (const across of [ROAD + 0.25, ROAD + BAY3 - 0.1])
-              stand5("cone", "cone", here(works2.s + end * (half + 1), across), [0, 1], { on: 0.02 });
+              stand5("cone", "cone", here2(works2.s + end * (half + 1), across), [0, 1], { on: 0.02 });
           }
-          stand5("works", "roadsign", here(works2.s - half - 3, c), [0, -1], { on: 0.02, variant: SIGNS.indexOf("works") });
+          stand5("works", "roadsign", here2(works2.s - half - 3, c), [0, -1], { on: 0.02, variant: SIGNS.indexOf("works") });
           stats.roadworks = 1;
         }
       }
@@ -34957,22 +36522,22 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     if (which === "footbridge") {
       const { x, top, run } = footbridge;
       const long = avenue.width + 2 * (0.4 + STAIR3.width);
-      const glow = { surface: { faces: { 5: { texture: STEEL13, emissive: 0.6 } } }, light: { on: "night", range: 0 } };
+      const glow = { surface: { faces: { 5: { texture: STEEL14, ...glowsUnder && { emissive: 0.6 } } } }, ...glowsUnder && { light: { on: "night", range: 0 } } };
       objects2.push({
         name: "deck",
         at: [x, avenue.mid, level],
         prims: [
-          part("deck", [0, 0, top - 0.15], [3, long, 0.3], CONCRETE8, glow),
-          ...[-1, 1].map((side2) => part(`rail ${side2 < 0 ? "west" : "east"}`, [side2 * 1.46, footbridge.lifted ? 0 : -side2 * STAIR3.width / 2, top + 0.55], [0.08, long - (footbridge.lifted ? 2 : 1) * STAIR3.width, 1.1], STEEL13)),
-          ...[-1, 1].map((end) => part(`rail ${end < 0 ? "south" : "north"}`, [0, end * (long / 2 - 0.04), top + 0.55], [3, 0.08, 1.1], STEEL13)),
-          ...[avenue.from - 0.5, avenue.from + ROAD + MEDIAN / 2, avenue.to + 0.5].map((y, n) => part(`pier ${n + 1}`, [0, y - avenue.mid, (top - 0.3) / 2], [0.5, 0.5, top - 0.3], CONCRETE8))
+          part("deck", [0, 0, top - 0.15], [3, long, 0.3], CONCRETE7, glow),
+          ...[-1, 1].map((side2) => part(`rail ${side2 < 0 ? "west" : "east"}`, [side2 * 1.46, footbridge.lifted ? 0 : -side2 * STAIR3.width / 2, top + 0.55], [0.08, long - (footbridge.lifted ? 2 : 1) * STAIR3.width, 1.1], STEEL14)),
+          ...[-1, 1].map((end) => part(`rail ${end < 0 ? "south" : "north"}`, [0, end * (long / 2 - 0.04), top + 0.55], [3, 0.08, 1.1], STEEL14)),
+          ...[avenue.from - 0.5, avenue.from + ROAD + MEDIAN / 2, avenue.to + 0.5].map((y, n) => part(`pier ${n + 1}`, [0, y - avenue.mid, (top - 0.3) / 2], [0.5, 0.5, top - 0.3], CONCRETE7))
         ]
       });
       const stair = (name, at, turn3) => objects2.push({
         name,
         at: [round53(at[0]), round53(at[1]), round53(level + KERB2)],
         turn: [0, 0, turn3],
-        prims: [{ name: "stair", kind: "stairs", steps: STAIR3.steps, height: round53(top - KERB2), tread: STAIR3.tread, width: STAIR3.width, structure: "stringers", landing: STAIR3.landing, railing: "both", at: [0, 0, round53((top - KERB2) / 2)], material: CONCRETE8 }]
+        prims: [{ name: "stair", kind: "stairs", steps: STAIR3.steps, height: round53(top - KERB2), tread: STAIR3.tread, width: STAIR3.width, structure: "stringers", landing: STAIR3.landing, railing: "both", at: [0, 0, round53((top - KERB2) / 2)], material: CONCRETE7 }]
       });
       stair("stair south", [x - 1.5 - run / 2, footbridge.south.y], -90);
       stair("stair north", [x + 1.5 + run / 2, footbridge.north.y], 90);
@@ -34992,8 +36557,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           name: `ramp ${name}`,
           at: [line.mid, round53((from + to) / 2), level],
           prims: [
-            { name: "ramp", shape: "prism", at: [0, 0, round53(rise / 2)], size: [round53(run), ROAD, rise], turn: [0, 0, way > 0 ? -90 : 90], material: CONCRETE8, surface: { faces: { 2: { texture: LANES2 } } } },
-            ...[-1, 1].map((side2) => part(`wall ${side2 < 0 ? "west" : "east"}`, [side2 * (ROAD / 2 - 0.15), 0, rise / 2 + 0.45], [0.3, slope, 0.9], CONCRETE8, { turn: [way * pitch, 0, 0] }))
+            { name: "ramp", shape: "prism", at: [0, 0, round53(rise / 2)], size: [round53(run), ROAD, rise], turn: [0, 0, way > 0 ? -90 : 90], material: CONCRETE7, surface: { faces: { 2: { texture: LANES3 } } } },
+            ...[-1, 1].map((side2) => part(`wall ${side2 < 0 ? "west" : "east"}`, [side2 * (ROAD / 2 - 0.15), 0, rise / 2 + 0.45], [0.3, slope, 0.9], CONCRETE7, { turn: [way * pitch, 0, 0] }))
           ]
         });
       }
@@ -35002,9 +36567,9 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         name: "deck",
         at: [line.mid, avenue.mid, level],
         prims: [
-          part("deck", [0, 0, rise - 0.3], [ROAD, long, 0.6], CONCRETE8, { surface: { faces: { 0: { texture: LANES2 } } } }),
-          ...[-1, 1].map((side2) => part(`wall ${side2 < 0 ? "west" : "east"}`, [side2 * (ROAD / 2 - 0.15), 0, rise + 0.45], [0.3, long, 0.9], CONCRETE8)),
-          part("pier", [0, avenue.from + ROAD + MEDIAN / 2 - avenue.mid, (rise - 0.6) / 2], [ROAD - 1.5, 1, rise - 0.6], CONCRETE8)
+          part("deck", [0, 0, rise - 0.3], [ROAD, long, 0.6], CONCRETE7, { surface: { faces: { 0: { texture: LANES3 } } } }),
+          ...[-1, 1].map((side2) => part(`wall ${side2 < 0 ? "west" : "east"}`, [side2 * (ROAD / 2 - 0.15), 0, rise + 0.45], [0.3, long, 0.9], CONCRETE7)),
+          part("pier", [0, avenue.from + ROAD + MEDIAN / 2 - avenue.mid, (rise - 0.6) / 2], [ROAD - 1.5, 1, rise - 0.6], CONCRETE7)
         ]
       });
     }
@@ -35021,13 +36586,13 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
           name: `span ${n + 1}`,
           at: [round53(mid5), line.mid, level],
           prims: [
-            part("deck", [0, 0, VIADUCT - 0.4], [each, 7, 0.8], CONCRETE8, { surface: { faces: { ...!tracked && { 0: { texture: RAILS4, rotation: 90 } }, 5: { texture: CONCRETE8, emissive: 0.5 } } }, light: { on: "night", range: 0 } }),
+            part("deck", [0, 0, VIADUCT - 0.4], [each, 7, 0.8], CONCRETE7, { surface: { faces: { ...!tracked && { 0: { texture: RAILS4, rotation: 90 } }, 5: { texture: CONCRETE7, ...glowsUnder && { emissive: 0.5 } } } }, ...glowsUnder && { light: { on: "night", range: 0 } } }),
             ...tracked ? [{ name: "track", kind: "track", length: round53(each), at: [0, RAILWAY.track, round53(VIADUCT + TOP / 2)], turn: [0, 0, 90], ...trackDressing() }] : [],
-            ...[-1, 1].map((side2) => part(`wall ${side2 < 0 ? "south" : "north"}`, [0, side2 * 3.4, VIADUCT + 0.5], [each, 0.2, 1], CONCRETE8)),
+            ...[-1, 1].map((side2) => part(`wall ${side2 < 0 ? "south" : "north"}`, [0, side2 * 3.4, VIADUCT + 0.5], [each, 0.2, 1], CONCRETE7)),
             ...frames.filter((x) => x >= from && x < from + each).flatMap((x, k) => [
-              part(`column south ${k + 1}`, [x - mid5, line.from - 0.4 - line.mid, 0.05 + column3 / 2], [0.7, 0.7, column3], CONCRETE8),
-              part(`column north ${k + 1}`, [x - mid5, line.to + 0.9 - line.mid, 0.05 + column3 / 2], [0.7, 0.7, column3], CONCRETE8),
-              part(`beam ${k + 1}`, [x - mid5, 0.25, VIADUCT - 1.2], [1, line.width + 2.6, 0.8], CONCRETE8)
+              part(`column south ${k + 1}`, [x - mid5, line.from - 0.4 - line.mid, 0.05 + column3 / 2], [0.7, 0.7, column3], CONCRETE7),
+              part(`column north ${k + 1}`, [x - mid5, line.to + 0.9 - line.mid, 0.05 + column3 / 2], [0.7, 0.7, column3], CONCRETE7),
+              part(`beam ${k + 1}`, [x - mid5, 0.25, VIADUCT - 1.2], [1, line.width + 2.6, 0.8], CONCRETE7)
             ])
           ]
         });
@@ -35104,10 +36669,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       name: "platform",
       at: [x, mid5, level],
       prims: [
-        part("platform", [0, across, VIADUCT + RAILWAY.platform / 2], [long, deep2, RAILWAY.platform], CONCRETE8, { surface: { faces: { 0: { texture: PAVEMENT3 } } } }),
-        part("edge", [0, north - mid5 - 0.25, top + 0.006], [long, 0.3, 0.012], PAVEMENT3, { surface: { faces: { 0: { texture: PAVEMENT3, tint: [0.95, 0.78, 0.08] } } } }),
-        ...rails.map(([from2, to2], n) => part(`rail ${n + 1}`, [(from2 + to2) / 2 - x, south - mid5 + 0.04, top + 0.55], [to2 - from2, 0.08, 1.1], STEEL13)),
-        ...[-1, 1].map((end) => part(`rail ${end < 0 ? "west" : "east"}`, [end * (long / 2 - 0.04), across, top + 0.55], [0.08, deep2, 1.1], STEEL13)),
+        part("platform", [0, across, VIADUCT + RAILWAY.platform / 2], [long, deep2, RAILWAY.platform], CONCRETE7, { surface: { faces: { 0: { texture: PAVEMENT } } } }),
+        part("edge", [0, north - mid5 - 0.25, top + 0.006], [long, 0.3, 0.012], PAVEMENT, { surface: { faces: { 0: { texture: PAVEMENT, tint: [0.95, 0.78, 0.08] } } } }),
+        ...rails.map(([from2, to2], n) => part(`rail ${n + 1}`, [(from2 + to2) / 2 - x, south - mid5 + 0.04, top + 0.55], [to2 - from2, 0.08, 1.1], STEEL14)),
+        ...[-1, 1].map((end) => part(`rail ${end < 0 ? "west" : "east"}`, [end * (long / 2 - 0.04), across, top + 0.55], [0.08, deep2, 1.1], STEEL14)),
         { name: "sign station", kind: "sign", word: "station", width: 0, height: board.params.height, colour: "blue", at: [round53(board.at[0]), round53(board.at[1]), round53(board.at[2] + board.size[2] / 2)], color: board.color, surface: board.surface, light: board.light }
       ]
     });
@@ -35120,7 +36685,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       name: "stair",
       at: [round53((stair.x0 + stair.x1) / 2), stair.y, round53(level + KERB2)],
       turn: [0, 0, 90],
-      prims: [{ name: "stair", kind: "stairs", steps: RAILWAY.stair.steps, height: high2, tread: RAILWAY.stair.tread, width: RAILWAY.stair.width, structure: "stringers", landing: RAILWAY.stair.landing, railing: "both", at: [0, 0, round53(high2 / 2)], material: CONCRETE8 }]
+      prims: [{ name: "stair", kind: "stairs", steps: RAILWAY.stair.steps, height: high2, tread: RAILWAY.stair.tread, width: RAILWAY.stair.width, structure: "stringers", landing: RAILWAY.stair.landing, railing: "both", at: [0, 0, round53(high2 / 2)], material: CONCRETE7 }]
     });
     const [from, to] = [stair.y - RAILWAY.stair.width / 2, south];
     const wide = way[1] - way[0];
@@ -35130,10 +36695,10 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       name: "landing",
       at: [round53((way[0] + way[1]) / 2), round53((from + to) / 2), level],
       prims: [
-        part("landing", [0, 0, top - 0.1], [wide, to - from, 0.2], CONCRETE8),
-        part("rail west", [-(wide / 2 - 0.04), (to - from) / 2 - beside / 2, top + 0.55], [0.08, beside, 1.1], STEEL13),
-        part("rail south", [0, -((to - from) / 2 - 0.04), top + 0.55], [wide, 0.08, 1.1], STEEL13),
-        part("rail east", [wide / 2 - 0.04, RAILWAY.stair.width / 2, top + 0.55], [0.08, 2 * past, 1.1], STEEL13)
+        part("landing", [0, 0, top - 0.1], [wide, to - from, 0.2], CONCRETE7),
+        part("rail west", [-(wide / 2 - 0.04), (to - from) / 2 - beside / 2, top + 0.55], [0.08, beside, 1.1], STEEL14),
+        part("rail south", [0, -((to - from) / 2 - 0.04), top + 0.55], [wide, 0.08, 1.1], STEEL14),
+        part("rail east", [wide / 2 - 0.04, RAILWAY.stair.width / 2, top + 0.55], [0.08, 2 * past, 1.1], STEEL14)
       ]
     });
     objects2.push(liftOf("lift", [st.lift.x, st.lift.y], [1, 0], top - KERB2));
@@ -35170,14 +36735,14 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
   };
   const railPart = (name, at, size, material, extra = {}) => ({ name, shape: "cube", at: at.map(round53), size: size.map(round53), material, ...extra });
   const lengthOf = ({ long, track: track2 = long, walls = [long, long], inner, outer, rail: rail6 }) => [
-    railPart("deck", [0, (outer - inner) / 2, -0.4], [long, inner + outer, 0.8], CONCRETE8, { surface: { faces: { 5: { texture: CONCRETE8, emissive: 0.5 } } }, light: { on: "night", range: 0 } }),
+    railPart("deck", [0, (outer - inner) / 2, -0.4], [long, inner + outer, 0.8], CONCRETE7, { surface: { faces: { 5: { texture: CONCRETE7, ...glowsUnder && { emissive: 0.5 } } } }, ...glowsUnder && { light: { on: "night", range: 0 } } }),
     { name: "track", kind: "track", length: round53(track2), at: [0, rail6, round53(TOP / 2)], turn: [0, 0, 90], ...trackDressing() },
-    railPart("wall inner", [0, -inner + 0.1, 0.5], [walls[0], 0.2, 1], CONCRETE8),
-    railPart("wall outer", [0, outer - 0.1, 0.5], [walls[1], 0.2, 1], CONCRETE8)
+    railPart("wall inner", [0, -inner + 0.1, 0.5], [walls[0], 0.2, 1], CONCRETE7),
+    railPart("wall outer", [0, outer - 0.1, 0.5], [walls[1], 0.2, 1], CONCRETE7)
   ];
   const curvedRail = edition >= CURVED2;
-  const dressed = trackDressing("concrete", CONCRETE8);
-  const RAIL_DRESS = { ...dressed, surface: { faces: { ...dressed.surface.faces, 3: { texture: CONCRETE8, emissive: 0.5 } } }, light: { on: "night", range: 0 } };
+  const dressed = trackDressing("concrete", CONCRETE7);
+  const RAIL_DRESS = { ...dressed, surface: { faces: { ...dressed.surface.faces, 3: { texture: CONCRETE7, ...glowsUnder && { emissive: 0.5 } } } }, ...glowsUnder && { light: { on: "night", range: 0 } } };
   const pitchOf2 = (rise, long) => Math.abs(rise) < 0.0005 ? 0 : round53(-Math.atan2(rise, long) * 180 / Math.PI);
   const overSide = (side2, s) => {
     const { start, long } = circuit.line.stretches.find((each) => each.name === side2.name);
@@ -35217,9 +36782,9 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       const [z0, z1] = [circuit.top(overSide(side2, from)), circuit.top(overSide(side2, to))];
       const long = Math.hypot(to - from, z1 - z0);
       if (curvedRail) {
-        const platform = wide !== null && from >= wide[0] - 0.000001 && to <= wide[1] + 0.000001;
-        const inner = platform ? RAILWAY.track + 3.5 : CIRCUIT.bed.inner;
-        const across = platform ? [[from, wide[0], -1], [to, wide[1], 1]].filter(([s, end]) => Math.abs(s - end) < 0.000001).map(([, , end]) => railPart(`wall end ${end < 0 ? "ahead" : "behind"}`, [end * (long / 2 - 0.1), -(inner + CIRCUIT.bed.inner) / 2, 0.5], [0.2, inner - CIRCUIT.bed.inner, 1], CONCRETE8)) : [];
+        const platform2 = wide !== null && from >= wide[0] - 0.000001 && to <= wide[1] + 0.000001;
+        const inner = platform2 ? RAILWAY.track + 3.5 : CIRCUIT.bed.inner;
+        const across = platform2 ? [[from, wide[0], -1], [to, wide[1], 1]].filter(([s, end]) => Math.abs(s - end) < 0.000001).map(([, , end]) => railPart(`wall end ${end < 0 ? "ahead" : "behind"}`, [end * (long / 2 - 0.1), -(inner + CIRCUIT.bed.inner) / 2, 0.5], [0.2, inner - CIRCUIT.bed.inner, 1], CONCRETE7)) : [];
         objects2.push({
           name: `span ${n + 1}`,
           at: [...placeOn2(side2, (from + to) / 2, track2).map(round53), round53((z0 + z1) / 2)],
@@ -35229,8 +36794,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         continue;
       }
       const ends = [[n === 0, -1], [n === lengths2.length - 1, 1]].filter(([last]) => last).flatMap(([, end]) => [
-        railPart(`wall end ${end < 0 ? "ahead" : "behind"}`, [end * (long / 2 - 0.1), (RAILWAY.track - CIRCUIT.bed.inner - 3.5) / 2, 0.5], [0.2, 3.5 + RAILWAY.track - CIRCUIT.bed.inner, 1], CONCRETE8),
-        railPart(`wall step ${end < 0 ? "ahead" : "behind"}`, [end * (long / 2 - 0.1), (3.3 + RAILWAY.track + CIRCUIT.bed.outer) / 2, 0.5], [0.2, RAILWAY.track + CIRCUIT.bed.outer - 3.3, 1], CONCRETE8)
+        railPart(`wall end ${end < 0 ? "ahead" : "behind"}`, [end * (long / 2 - 0.1), (RAILWAY.track - CIRCUIT.bed.inner - 3.5) / 2, 0.5], [0.2, 3.5 + RAILWAY.track - CIRCUIT.bed.inner, 1], CONCRETE7),
+        railPart(`wall step ${end < 0 ? "ahead" : "behind"}`, [end * (long / 2 - 0.1), (3.3 + RAILWAY.track + CIRCUIT.bed.outer) / 2, 0.5], [0.2, RAILWAY.track + CIRCUIT.bed.outer - 3.3, 1], CONCRETE7)
       ]);
       objects2.push({
         name: `span ${n + 1}`,
@@ -35247,11 +36812,11 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       const under = curvedRail && !(wide && f >= wide[0] && f <= wide[1]);
       const stood = under ? levelAt(...placeOn2(side2, f, track2)) + 0.05 : 0;
       const prims = under ? [
-        railPart("column", [0, track2 - line.mid, (stood + top - 0.8) / 2 - (stood - 0.05)], [0.9, 0.9, top - 0.8 - stood], CONCRETE8),
-        railPart("cap", [0, track2 - line.mid + (CIRCUIT.bed.outer - CIRCUIT.bed.inner) / 2, top - 1.2 - (stood - 0.05)], [1, CIRCUIT.bed.inner + CIRCUIT.bed.outer + 0.4, 0.8], CONCRETE8)
+        railPart("column", [0, track2 - line.mid, (stood + top - 0.8) / 2 - (stood - 0.05)], [0.9, 0.9, top - 0.8 - stood], CONCRETE7),
+        railPart("cap", [0, track2 - line.mid + (CIRCUIT.bed.outer - CIRCUIT.bed.inner) / 2, top - 1.2 - (stood - 0.05)], [1, CIRCUIT.bed.inner + CIRCUIT.bed.outer + 0.4, 0.8], CONCRETE7)
       ] : [
-        ...feet.map((foot, n) => railPart(`column ${n ? "outer" : "inner"}`, [0, (n ? line.to + 0.9 : line.from - 0.4) - line.mid, (foot + top - 0.8) / 2 - base], [0.7, 0.7, top - 0.8 - foot], CONCRETE8)),
-        railPart("beam", [0, 0.25, top - 1.2 - base], [1, line.width + 2.6, 0.8], CONCRETE8)
+        ...feet.map((foot, n) => railPart(`column ${n ? "outer" : "inner"}`, [0, (n ? line.to + 0.9 : line.from - 0.4) - line.mid, (foot + top - 0.8) / 2 - base], [0.7, 0.7, top - 0.8 - foot], CONCRETE7)),
+        railPart("beam", [0, 0.25, top - 1.2 - base], [1, line.width + 2.6, 0.8], CONCRETE7)
       ];
       const [at, turn3] = [[...placeOn2(side2, f, line.mid).map(round53), round53(under ? stood - 0.05 : base)], [0, 0, quarter * 90]];
       const said = JSON.stringify(prims);
@@ -35316,8 +36881,8 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     const { line, heights: heights2, top } = circuit;
     const stops = stations3.map((st) => line.along(st.side.name, st.x - CIRCUIT.coach * (CIRCUIT.coaches - 1) / 2));
     const kept4 = stops[0] ?? line.along("north", 0);
-    const here = line.at(kept4);
-    const yaw = Math.atan2(-here.way[0], here.way[1]);
+    const here2 = line.at(kept4);
+    const yaw = Math.atan2(-here2.way[0], here2.way[1]);
     const [cos, sin] = [Math.cos(yaw), Math.sin(yaw)];
     const cm = (v) => Math.round(v * 100) / 100 + 0;
     const own = ([x, y, z]) => [cm(x * cos + y * sin), cm(-x * sin + y * cos), cm(z)];
@@ -35330,7 +36895,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       stop: RAILWAY.stop,
       mode: "round",
       face: "yes",
-      points: through.map((point) => [...own([point.at[0] - here.x, point.at[1] - here.y, point.at[2] - (heights2 ? top(kept4) : 0)]), ...own(point.handle)]),
+      points: through.map((point) => [...own([point.at[0] - here2.x, point.at[1] - here2.y, point.at[2] - (heights2 ? top(kept4) : 0)]), ...own(point.handle)]),
       ...calls.length ? { calls } : { at: "ends" }
     };
     const { period } = routeTimes(behaviourOf(route, "object", "train"));
@@ -35343,7 +36908,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
         const [rx, ry, rz] = n ? routeRest(behaviourOf(behaviour, "object", "train"), wheelbase, true) : [0, 0, 0];
         return {
           name: `coach ${n + 1}`,
-          at: [round53(here.x + rx * cos - ry * sin), round53(here.y + rx * sin + ry * cos), round53(top(kept4) + TOP + rz)],
+          at: [round53(here2.x + rx * cos - ry * sin), round53(here2.y + rx * sin + ry * cos), round53(top(kept4) + TOP + rz)],
           turn: [0, 0, round53(yaw * 180 / Math.PI)],
           ...coachOf({ ends: n === 0 ? "lead" : n === CIRCUIT.coaches - 1 ? "tail" : "middle", doors: "left", length: CIRCUIT.coach }),
           behaviour
@@ -35362,11 +36927,56 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
       return null;
     let made4 = null;
     return () => made4 ??= (() => {
-      const laid3 = kit2.linePieces(landLine, { ground: (X2, Y) => surface.at(X2, Y), inStreet: onCarriageway, concrete: CONCRETE8, coachOf, behaviourOf, routeTimes, routeRest, coach: { long: CIRCUIT.coach, count: CIRCUIT.coaches, bogie: COACH.bogie }, lift: { ...STATION_LIFT, make: liftOf }, exact });
+      const laid3 = kit2.linePieces(landLine, { ground: (X2, Y) => surface.at(X2, Y), inStreet: onCarriageway, concrete: CONCRETE7, coachOf, behaviourOf, routeTimes, routeRest, coach: { long: CIRCUIT.coach, count: CIRCUIT.coaches, bogie: COACH.bogie, roof: COACH.height }, lift: { ...STATION_LIFT, make: liftOf }, exact });
       stats.lifts = (stats.lifts ?? 0) + laid3.line.objects.filter((object) => object.prims[0]?.kind === "lift").length;
+      if (exact)
+        platformsDressed(laid3.line);
       return laid3;
     })();
   })();
+  const platformsDressed = (made4) => {
+    const stand5 = furnisher2(made4.objects, made4.clones);
+    for (const [n, layout] of landStations().entries()) {
+      if (!layout.bridge)
+        continue;
+      const { at, way, left, top, bridge: bridge2 } = layout;
+      const [half, back] = [kit2.RAILS.platform.long / 2, kit2.RAILS.platform.wide / 2];
+      const place = (a, c) => [at[0] + way[0] * a + left[0] * c, at[1] + way[1] * a + left[1] * c];
+      const on = top - level;
+      const s = bridge2.side;
+      const taken = [bridge2.along - s * (kit2.BRIDGE.wide / 2 + 0.5), bridge2.along + s * (kit2.BRIDGE.wide / 2 + bridge2.down.run + 1.2)].sort((p, q) => p - q);
+      const free = [[-half + 0.6, taken[0] - 0.3], [taken[1] + 0.3, half - 0.6]].filter(([p, q]) => q - p > 1);
+      for (const end of [-1, 1]) {
+        const a = end * (half - 0.8);
+        if (free.some(([p, q]) => a >= p && a <= q))
+          stand5("platform lamp", "lamp", place(a, -back + 0.3), left, { on, look: FIRST2.lamp, lit: true });
+      }
+      const shelter = SHELTER[0];
+      for (const [k, [p, q]] of [...free].sort((m, n2) => n2[1] - n2[0] - (m[1] - m[0])).entries()) {
+        if (q - p < shelter + 0.6)
+          continue;
+        const mid5 = (p + q) / 2;
+        stand5("platform shelter", "shelter", place(mid5, -back + 0.1 + SHELTER[1] / 2), left, { on, look: FIRST2.shelter });
+        if (!k && q - p >= shelter + BENCH2 + 1.4)
+          stand5("platform bench", "bench", place(mid5 + (mid5 < 0 ? 1 : -1) * (shelter / 2 + 0.4 + BENCH2 / 2), -back + 0.45), left, { on, look: FIRST2.bench, variant: 0 });
+      }
+      const edge = place(0, back - 0.25);
+      const board = signPart({ word: "station", height: 0.6, colour: "blue", at: [0, 0, 0] });
+      const named2 = free.reduce((best, each) => each[1] - each[0] > best[1] - best[0] ? each : best, free[0] ?? [0, 0]);
+      const sign2 = place((named2[0] + named2[1]) / 2, -back + 0.1);
+      made4.objects.push({
+        name: `station ${n + 1} edge`,
+        at: [round53(edge[0]), round53(edge[1]), round53(top)],
+        turn: [0, 0, turnTo2(way)],
+        prims: [{ name: "edge", shape: "cube", at: [0, 0, 0.006], size: [0.3, 2 * half, 0.012], material: PAVEMENT, surface: { faces: { 0: { texture: PAVEMENT, tint: [0.95, 0.78, 0.08] } } } }]
+      }, {
+        name: `station ${n + 1} sign`,
+        at: [round53(sign2[0]), round53(sign2[1]), round53(top)],
+        turn: [0, 0, turnTo2(left)],
+        prims: [{ name: "sign station", kind: "sign", word: "station", width: 0, height: board.params.height, colour: "blue", at: [0, 0, round53(1.12 + board.size[2] / 2)], color: board.color, surface: board.surface, light: board.light }]
+      });
+    }
+  };
   const pieces = [
     { key: "ground", at: [0, 0], first: true, make: once(groundPiece, false) },
     ...grid.blocks.map((block3) => ({ key: `block-${block3.i + 1}-${block3.j + 1}`, at: [block3.x, block3.y], make: once(() => terraces ? withSteps(block3, raised(blockPiece(block3), block3)) : blockPiece(block3), false) })),
@@ -35392,12 +37002,17 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     ...outs.map((out) => ({ key: `road-${out.side}`, at: out.at, make: once(() => roadPiece(out), false) })),
     ...rocks?.objects.length ? [{ key: "rocks", at: [0, 0], make: once(() => rocks, false) }] : [],
     ...loop ? [{ key: "loop", at: loop.station?.at.slice(0, 2) ?? [0, 0], make: once(() => ({ objects: loop.objects, clones: [], trees: [] }), false) }] : [],
-    ...plot ? ["south", "east", "north", "west"].map((side2, n) => ({ key: `border-${side2}`, at: { south: [0, -D2 / 2], north: [0, D2 / 2], west: [-W2 / 2, 0], east: [W2 / 2, 0] }[side2], make: once(() => borderPiece(side2, n), true, true) })) : []
+    ...plot ? ["south", "east", "north", "west"].map((side2, n) => ({ key: `border-${side2}`, at: { south: [0, -D2 / 2], north: [0, D2 / 2], west: [-W2 / 2, 0], east: [W2 / 2, 0] }[side2], make: once(() => borderPiece(side2, n), true, true) })) : [],
+    ...plot && exact ? ["south", "east", "north", "west"].filter((side2) => medians?.some((each) => each.side === side2)).map((side2) => ({ key: `paint-${side2}`, at: { south: [0, -D2 / 2], north: [0, D2 / 2], west: [-W2 / 2, 0], east: [W2 / 2, 0] }[side2], make: once(() => paintPiece(side2)) })) : [],
+    ...plot && exact ? ["south", "east", "north", "west"].filter((side2) => joinsOver(params.walled, side2)).map((side2) => {
+      let made4 = null;
+      return { key: `edge-${side2}`, at: { south: [0, -D2 / 2], north: [0, D2 / 2], west: [-W2 / 2, 0], east: [W2 / 2, 0] }[side2], make: () => made4 ??= edgePiece(side2) };
+    }) : []
   ].map((piece) => plot ? { ...piece, at: map.at(...piece.at).map(round53) } : piece);
   if (lineMade) {
     const kept4 = landLine.stations[0]?.d ?? 0;
-    const here = landLine.at(kept4);
-    pieces.push({ key: "line", at: [round53(here.x), round53(here.y)], make: () => lineMade().line }, { key: "train", at: [round53(here.x), round53(here.y)], make: () => lineMade().train });
+    const here2 = landLine.at(kept4);
+    pieces.push({ key: "line", at: [round53(here2.x), round53(here2.y)], make: () => lineMade().line }, { key: "train", at: [round53(here2.x), round53(here2.y)], make: () => lineMade().train });
   }
   const flightWalked = (flight) => {
     const [dx, dy] = [-Math.sin(flight.turn * Math.PI / 180), Math.cos(flight.turn * Math.PI / 180)];
@@ -35410,6 +37025,7 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     medianCutAt,
     roleOf: (block3) => roles.get(block3)?.role ?? null,
     levelAt,
+    ...medians?.length && { medians },
     stepOf: (block3) => terraces?.steps.get(block3) ?? null,
     flightsOver: (block3) => (flights.get(block3) ?? []).map(flightWalked),
     avenueAt,
@@ -35441,14 +37057,14 @@ var EDITION2 = 31, CURVED2 = 30, COMPOSED2 = 29, COACHES, oursOf = (edition = ED
     stations: stations3.map((st) => ({ side: st.side.name, at: placeOn2(st.side, st.x, st.mid - 3.3 + COACHES.wide / 2).map(round53) }))
   };
   if (lazy)
-    return { params, objects: [], clones: [], trees: [], pieces, reasons: [], notes, stats, bounds, level, streets, ...buses && { buses }, ...traffic && { traffic }, ...roads && { roads }, ...rail5 && { rail: rail5 }, ...loop && { loop: { station: loop.station, ...loop.stats } }, ...landLine?.rail && { landLine }, ...plot && { land: { key: plot.key, size: plot.size, square: plot.square, surface: { lift: surface.lift, low: surface.low }, heightAt: (X2, Y) => surface.at(X2, Y) } } };
+    return { params, objects: [], clones: [], trees: [], pieces, reasons: [], notes, stats, bounds, level, streets, ...buses && { buses }, ...traffic && { traffic }, ...roads && { roads }, ...rail5 && { rail: rail5 }, ...loop && { loop: { station: loop.station, ...loop.stats } }, ...landLine?.rail && { landLine }, ...plot && { land: { key: plot.key, size: plot.size, square: plot.square, surface: { lift: surface.lift, low: surface.low, ...surface.cuts && { cuts: surface.cuts }, ...surface.pivot && { pivot: true } }, heightAt: (X2, Y) => surface.at(X2, Y) } } };
   const whole4 = pieces.map((piece) => piece.make());
   const named = (piece, k) => (name) => `${pieces[k].key} · ${name}`;
   const objects = whole4.flatMap((piece, k) => piece.objects.map((object) => ({ ...object, name: named(piece, k)(object.name) })));
   const clones = whole4.flatMap((piece, k) => piece.clones.map((clone) => ({ ...clone, of: named(piece, k)(clone.of) })));
   const trees = whole4.flatMap((piece) => piece.trees);
   const animals = whole4.flatMap((piece) => piece.animals ?? []);
-  return { params, objects, clones, trees, ...animals.length && { animals }, pieces, reasons: [], notes, stats, bounds, level, streets, ...buses && { buses }, ...traffic && { traffic }, ...roads && { roads }, ...rail5 && { rail: rail5 }, ...loop && { loop: { station: loop.station, ...loop.stats } }, ...landLine?.rail && { landLine }, ...plot && { land: { key: plot.key, size: plot.size, square: plot.square, surface: { lift: surface.lift, low: surface.low }, heightAt: (X2, Y) => surface.at(X2, Y) } } };
+  return { params, objects, clones, trees, ...animals.length && { animals }, pieces, reasons: [], notes, stats, bounds, level, streets, ...buses && { buses }, ...traffic && { traffic }, ...roads && { roads }, ...rail5 && { rail: rail5 }, ...loop && { loop: { station: loop.station, ...loop.stats } }, ...landLine?.rail && { landLine }, ...plot && { land: { key: plot.key, size: plot.size, square: plot.square, surface: { lift: surface.lift, low: surface.low, ...surface.cuts && { cuts: surface.cuts }, ...surface.pivot && { pivot: true } }, heightAt: (X2, Y) => surface.at(X2, Y) } } };
 };
 var init_city = __esm(async () => {
   init_building();
@@ -35472,6 +37088,7 @@ var init_city = __esm(async () => {
   init_region_params();
   init_region();
   init_site_ground();
+  init_land_looks();
   await __promiseAll([
     init_kinds(),
     init_behaviours(),
@@ -35489,7 +37106,8 @@ var init_city = __esm(async () => {
   RUNNING = Object.freeze([...PARKED, "taxi"]);
   SERVES = Object.freeze({ hospital: Object.freeze(["ambulancia"]), police: Object.freeze(["policia", "policia-todoterreno"]) });
   BODIES_PARKED = Object.freeze(["compact", "saloon", "compact", "estate", "saloon", "suv", "pickup", "van"]);
-  FIRST2 = Object.freeze({ lamp: "black", bench: "timber", bin: "black", shelter: "black" });
+  FIRST2 = Object.freeze({ lamp: LAMP4.look, bench: "timber", bin: "black", shelter: "black" });
+  [SHELTER, BENCH2] = [[4.2, 1.7], 1.8];
   FIRST_STYLES = Object.freeze(["block", "brick", "concrete", "hipped"]);
   SHOP_ROTA = Object.freeze(["cafe", "fashion", "bakery", "restaurant", "books", "bar", "market", "pharmacy", "news", "office"]);
   [POSTER, BILLBOARD] = [FORMATS.poster, FORMATS.billboard];
@@ -35525,7 +37143,8 @@ var init_city = __esm(async () => {
   PAVINGS = Object.freeze(["hex", "grid", "plaid", "dots"]);
   POND_TINT = Object.freeze([0.6, 0.85, 0.8]);
   ROUND9 = Object.freeze({ arm: 0.4, lamp: 0.4, double: 0.4, signal: 0.3, bench: 1.1, bin: 0.4, hydrant: 0.35, shelter: 2.4, roadsign: 0.3, planter: 0.9, bollard: 0.2, cone: 0.3, tree: 0.9 });
-  BIKE_TINT = Object.freeze([0.35, 0.75, 0.45]);
+  ROAD_MOUTHS = Object.freeze({ two: "paving/roads/road-007-mouth", in: "paving/roads/road-007-mouth-in", out: "paving/roads/road-007-mouth-out", zebra: "paving/roads/asphalt-zebra" });
+  UNPITTED = new Set([SOIL3, SAND2, WATER2, RUBBER5]);
   SPECIES4 = Object.freeze(["plane", "zelkova", "maple", "cherry", "oak", "birch", "beech", "chestnut"]);
   PALMS = Object.freeze({ temperate: Object.freeze(["date", "fanPalm"]), shore: TREES.shore });
   PALM_SPECIES = new Set([...PALMS.temperate, ...PALMS.shore, "royal"]);
@@ -35538,12 +37157,14 @@ var init_city = __esm(async () => {
     modern: Object.freeze({ label: "Modern extension", flats: Object.freeze(["concrete", "glass"]), lamp: "aluminium", bench: "timber", bin: "black", shelter: "black", fountain: "concrete", kiosk: "aluminium", table: "steel", advert: "aluminium", pergola: "black" }),
     industrial: Object.freeze({ label: "Industrial estate", flats: Object.freeze(["concrete", "block"]), lamp: "aluminium", bench: "steel", bin: "aluminium", shelter: "aluminium", fountain: "concrete", kiosk: "steel", table: "steel", advert: "black", pergola: "aluminium" })
   });
-  GROUNDED = LANDED;
-  UNLANDED = LANDED - 1;
+  GROUNDED = LANDED2;
+  MAKES2 = PAVED2;
+  UNLANDED = LANDED2 - 1;
+  ROUTE_SPREADS = Object.freeze([54, 57, 60, 63, 66, 69, 72]);
 });
 
 // src/build/people.js
-var PEOPLE, HOUR, walksOf = ({ blocks: blocks2, doors, crossing: crossing2 = () => ({}) }) => {
+var PEOPLE, HOUR, walksOf = ({ blocks: blocks2, doors, crossing: crossing2 = () => ({}), beyond = null }) => {
   const nodes = [], edges = [];
   const node = (x, y, z) => {
     nodes.push([x, y, z]);
@@ -35685,6 +37306,31 @@ var PEOPLE, HOUR, walksOf = ({ blocks: blocks2, doors, crossing: crossing2 = () 
       }
     }
   }
+  if (beyond) {
+    const reached = new Map;
+    for (const { block: block3, cross: cross10 } of rings.values())
+      for (const side2 of ["south", "north", "west", "east"])
+        for (const end of [0, 1]) {
+          const way = beyond.way(block3, side2, end);
+          if (!way)
+            continue;
+          let from = cross10[side2][end];
+          for (const { at: [x, y, z], busy = null, road: road2 = null } of way.path) {
+            const next = node(x, y, z);
+            join(from, next, busy, road2);
+            from = next;
+          }
+          if (!reached.has(way.key))
+            reached.set(way.key, { side: way.side, v: way.v, n: node(...way.walk) });
+          join(from, reached.get(way.key).n);
+        }
+    for (const side2 of ["south", "north", "west", "east"]) {
+      const along4 = [...reached.values()].filter((each) => each.side === side2).sort((p, q) => p.v - q.v);
+      for (let k = 1;k < along4.length; k++)
+        if (beyond.joins(side2, along4[k - 1].v, along4[k].v))
+          join(along4[k - 1].n, along4[k].n);
+    }
+  }
   return { nodes, edges, doors: stood };
 }, routes, shortestFrom = (walks, from) => {
   {
@@ -35783,7 +37429,7 @@ var ZEBRA, CAR_HALF = 2.4, LATERAL = 0.3, SAMPLE4 = 1, KINDS_OF_USE, placed2 = (
 }, streetsOf2 = (made4) => made4?.streets ?? null, blocksOf = (streets) => {
   const { grid, kerb, levelAt, stepOf, flightsOver, stairs: stairs2 = [] } = streets;
   return grid.blocks.map((block3) => {
-    const { walk } = block3;
+    const walk = block3.walk;
     const inset = { w: walk.w / 2, e: walk.e / 2, s: walk.s / 2, n: walk.n / 2 };
     const step = stepOf(block3);
     const flights = step ? flightsOver(block3) : [];
@@ -35986,6 +37632,42 @@ var ZEBRA, CAR_HALF = 2.4, LATERAL = 0.3, SAMPLE4 = 1, KINDS_OF_USE, placed2 = (
     }
     return { path };
   };
+}, bordersOf = (streets, movers) => {
+  const medians = streets.medians;
+  if (!medians?.length)
+    return null;
+  const { grid, kerb, levelAt } = streets;
+  const onBorder = { south: (block3) => block3.j === 0, north: (block3) => block3.j === grid.ny - 1, west: (block3) => block3.i === 0, east: (block3) => block3.i === grid.nx - 1 };
+  return {
+    way: (block3, side2, end) => {
+      const median = medians.find((each) => each.side === side2);
+      if (!median || !onBorder[side2](block3))
+        return null;
+      const v = median.across ? end === 0 ? block3.x0 + PEOPLE.zebra : block3.x1 - PEOPLE.zebra : end === 0 ? block3.y0 + PEOPLE.zebra : block3.y1 - PEOPLE.zebra;
+      const corner2 = median.across ? end === 0 ? block3.i === 0 : block3.i === grid.nx - 1 : end === 0 ? block3.j === 0 : block3.j === grid.ny - 1;
+      if (corner2 || !median.open(v))
+        return null;
+      const place = (t) => median.placeAt(v, t);
+      const [land2, mid5, walk] = [place(median.kerb), place(median.median), place(median.walk)];
+      const zebra = ZEBRA.deep / 2;
+      const rect5 = median.across ? { x0: v - zebra, x1: v + zebra, y0: Math.min(land2[1], mid5[1]), y1: Math.max(land2[1], mid5[1]) } : { x0: Math.min(land2[0], mid5[0]), x1: Math.max(land2[0], mid5[0]), y0: v - zebra, y1: v + zebra };
+      const busy = movers.flatMap((mover) => timesOn(mover, rect5, median.across ? "x" : "y"));
+      return {
+        key: `${side2}:${v.toFixed(3)}`,
+        side: side2,
+        v,
+        path: [{ at: [...land2, levelAt(...land2) + kerb] }, { at: [...mid5, levelAt(...mid5) + kerb], busy, road: levelAt(...place((median.median + median.kerb) / 2)) + 0.02 }],
+        walk: [...walk, levelAt(...walk) + kerb]
+      };
+    },
+    joins: (side2, v0, v1) => {
+      const median = medians.find((each) => each.side === side2);
+      for (let v = v0;v < v1; v += 2)
+        if (!median.open(v))
+          return false;
+      return median.open(v1);
+    }
+  };
 }, walksOfCity = (made4) => {
   const streets = streetsOf2(made4);
   if (!streets || made4.reasons?.length)
@@ -35997,8 +37679,8 @@ var ZEBRA, CAR_HALF = 2.4, LATERAL = 0.3, SAMPLE4 = 1, KINDS_OF_USE, placed2 = (
   const doors = doorsOf(made4, streets);
   if (!land2)
     return prepareWays(walksOf({ blocks: blocksOf(streets), doors, crossing: crossingOf(streets, movers) }));
-  const walks = walksOf({ blocks: blocksOf(streets), doors: doors.map((door3, d) => ({ ...land2.doorDown(door3), source: d })), crossing: crossingOf(streets, movers) });
-  return prepareWays(land2.up(walks, doors));
+  const walks = walksOf({ blocks: blocksOf(streets), doors: doors.map((door3, d) => ({ ...land2.doorDown(door3), source: d })), crossing: crossingOf(streets, movers), beyond: bordersOf(streets, movers) });
+  return prepareWays(land2.up(walks, doors, streets.kerb));
 }, landOf2 = (made4) => {
   const square = made4.land?.square;
   if (!square || !made4.land.heightAt)
@@ -36008,15 +37690,18 @@ var ZEBRA, CAR_HALF = 2.4, LATERAL = 0.3, SAMPLE4 = 1, KINDS_OF_USE, placed2 = (
   const down = ([X2, Y]) => square.back(X2, Y);
   const upAt = ([x, y]) => square.at(x, y);
   const lower = (z, at) => z === null || z === undefined ? z : z - ground(at) + level;
+  const lowerAt = ([x, y], z) => z - ground(upAt([x, y])) + level;
   return {
     down,
+    lowerAt,
     doorDown: (door3) => door3.fromGrid ? door3 : {
       ...door3,
       at: down(door3.at),
       z: lower(door3.z, door3.at),
       ...door3.way && { way: door3.way.map(([X2, Y, z]) => [...down([X2, Y]), lower(z, [X2, Y])]) }
     },
-    up: (walks, doors) => {
+    up: (given, doors, kerb = 0) => {
+      const walks = made4.land.surface?.pivot ? bentOn(given, level + kerb, ([x, y]) => ground(upAt([x, y]))) : given;
       const nodes = walks.nodes.map(([x, y, z]) => {
         const at = upAt([x, y]);
         return [...at, z - level + ground(at)];
@@ -36033,6 +37718,49 @@ var ZEBRA, CAR_HALF = 2.4, LATERAL = 0.3, SAMPLE4 = 1, KINDS_OF_USE, placed2 = (
       return { ...walks, nodes, edges, doors: placedDoors };
     }
   };
+}, bentOn = (walks, plate2, heightOf2) => {
+  const nodes = walks.nodes.map((node) => [...node]);
+  const edges = walks.edges.map((list) => list.map((edge) => ({ ...edge })));
+  const onGround = (n) => Math.abs(nodes[n][2] - plate2) < 0.000001;
+  const cut2 = (a, b) => {
+    const [[ax, ay], [bx, by2]] = [nodes[a], nodes[b]];
+    const long = Math.hypot(bx - ax, by2 - ay);
+    if (long < 1)
+      return [a, b];
+    const [za, zb, count2] = [heightOf2([ax, ay]), heightOf2([bx, by2]), Math.ceil(long)];
+    let worst = { off: 0.05, t: null };
+    for (let k = 1;k < count2; k++) {
+      const t = k / count2;
+      const off = Math.abs(heightOf2([ax + (bx - ax) * t, ay + (by2 - ay) * t]) - za - (zb - za) * t);
+      if (off > worst.off && long * Math.min(t, 1 - t) >= 0.5)
+        worst = { off, t };
+    }
+    if (worst.t === null)
+      return [a, b];
+    nodes.push([ax + (bx - ax) * worst.t, ay + (by2 - ay) * worst.t, plate2]);
+    edges.push([]);
+    const m = nodes.length - 1;
+    return [...cut2(a, m), ...cut2(m, b).slice(1)];
+  };
+  const count = walks.nodes.length;
+  for (let a = 0;a < count; a++)
+    for (const edge of [...edges[a]]) {
+      const b = edge.to;
+      if (b < a || b >= count || edge.road !== null && edge.road !== undefined || !onGround(a) || !onGround(b))
+        continue;
+      const chain = cut2(a, b);
+      if (chain.length === 2)
+        continue;
+      edges[a] = edges[a].filter((each) => each !== edge);
+      edges[b] = edges[b].filter((each) => each.to !== a);
+      for (let k = 1;k < chain.length; k++) {
+        const [p, q] = [chain[k - 1], chain[k]];
+        const long = Math.hypot(nodes[q][0] - nodes[p][0], nodes[q][1] - nodes[p][1]);
+        edges[p].push({ ...edge, to: q, long });
+        edges[q].push({ ...edge, to: p, long });
+      }
+    }
+  return { ...walks, nodes, edges };
 };
 var init_city_people = __esm(async () => {
   init_building_plan();
@@ -36061,7 +37789,7 @@ var init_city2 = __esm(async () => {
     kinds: KINDS_READ,
     edition: EDITION2,
     newest: sownAt,
-    makes: PAVED2,
+    makes: MAKES2,
     constrain: constrainCity,
     bounds: boundsOf3,
     ready: async (params, edition = EDITION2) => {
@@ -36501,13 +38229,13 @@ var EDITION3 = 16, KINDS_READ2, PARAMS3, MARGIN = 16, MOAT, RAMP3 = 12, DECK6 = 
       const first2 = (name, type, model, places2, facing, more) => places2.some((place) => put(name, type, model, place.map(round54), facing, more));
       const [north, south, east, west] = [[0, 1], [0, -1], [1, 0], [-1, 0]];
       const reach = Math.max(...towers.filter((tower2) => tower2.gate).map((tower2) => tower2.girth)) / 2;
-      const within4 = gate.y + reach + 2.4;
+      const within5 = gate.y + reach + 2.4;
       for (const side2 of [-1, 1]) {
         const x = side2 * (arch2.wide / 2 + 2.6);
         const name = side2 < 0 ? "west" : "east";
-        put(`cannon ${name}`, "cannon", "field", [x, within4], south, { look: "iron" });
-        put(`shot ${name}`, "cannon", "shot", [x + side2 * 1.5, within4 + 0.6], south, { look: "iron", by: 0.2 });
-        put(`lantern ${name}`, "lantern", "stone", [side2 * (arch2.wide / 2 + 1.3), within4 + 4], north, { look: LANTERNS[look8] ?? "stone", by: 0.3 });
+        put(`cannon ${name}`, "cannon", "field", [x, within5], south, { look: "iron" });
+        put(`shot ${name}`, "cannon", "shot", [x + side2 * 1.5, within5 + 0.6], south, { look: "iron", by: 0.2 });
+        put(`lantern ${name}`, "lantern", "stone", [side2 * (arch2.wide / 2 + 1.3), within5 + 4], north, { look: LANTERNS[look8] ?? "stone", by: 0.3 });
       }
       if (stabled) {
         const [x0, y0, x1] = stabled;
@@ -36606,14 +38334,14 @@ var EDITION3 = 16, KINDS_READ2, PARAMS3, MARGIN = 16, MOAT, RAMP3 = 12, DECK6 = 
       return along4 ? make([(a + b) / 2, (y0 + y1) / 2], [b - a, y1 - y0]) : make([(x0 + x1) / 2, (a + b) / 2], [x1 - x0, b - a]);
     });
   };
-  const ringOf4 = (inner, outer, make) => [
+  const ringOf5 = (inner, outer, make) => [
     ...lengths2([-W2 / 2 - outer, W2 / 2 + outer], [-D2 / 2 - outer, -D2 / 2 - inner], make),
     ...lengths2([-W2 / 2 - outer, W2 / 2 + outer], [D2 / 2 + inner, D2 / 2 + outer], make),
     ...lengths2([-W2 / 2 - outer, -W2 / 2 - inner], [-D2 / 2 - inner, D2 / 2 + inner], make),
     ...lengths2([W2 / 2 + inner, W2 / 2 + outer], [-D2 / 2 - inner, D2 / 2 + inner], make)
   ];
-  objects.push({ name: "moat", at: [0, 0, level], prims: ringOf4(0, out, ([x, y], [a, b]) => slab("water", [x, y, (top + bed2) / 2], [a, b, top - bed2], WATER3, { color: [...MOAT_TINT], phantom: true })) });
-  objects.push({ name: "bank", at: [0, 0, level], prims: ringOf4(out, far, ([x, y], [a, b]) => slab("bank", [x, y, foot / 2], [a, b, -foot], stone[2])) });
+  objects.push({ name: "moat", at: [0, 0, level], prims: ringOf5(0, out, ([x, y], [a, b]) => slab("water", [x, y, (top + bed2) / 2], [a, b, top - bed2], WATER3, { color: [...MOAT_TINT], phantom: true })) });
+  objects.push({ name: "bank", at: [0, 0, level], prims: ringOf5(out, far, ([x, y], [a, b]) => slab("bank", [x, y, foot / 2], [a, b, -foot], stone[2])) });
   const span = out - GATEHOUSE.out;
   objects.push({
     name: "drawbridge",
@@ -37936,7 +39664,7 @@ var round57 = (v) => Math.round(v * 1000) / 1000, long2 = (v) => Math.ceil(v * 1
     for (const pass of near2(middle[0], middle[1], 2)) {
       const r = from.map((v, k) => v - pass.p[k]);
       const slopes2 = [dot6(dir, pass.way), dot6(dir, pass.up), dot6(dir, pass.right)], starts = [dot6(r, pass.way), dot6(r, pass.up), dot6(r, pass.right)];
-      const within4 = (low, high, wide) => {
+      const within5 = (low, high, wide) => {
         let lo = 0, hi = long;
         for (const [k, min, max] of [[0, -0.8, 0.8], [1, low, high], [2, -wide, wide]]) {
           if (Math.abs(slopes2[k]) < 0.000000001) {
@@ -37950,12 +39678,12 @@ var round57 = (v) => Math.round(v * 1000) / 1000, long2 = (v) => Math.ceil(v * 1
         }
         return hi > lo;
       };
-      if (within4(-WAY3.under, WAY3.over, WAY3.beside))
+      if (within5(-WAY3.under, WAY3.over, WAY3.beside))
         return true;
       const apart3 = Math.abs(pass.s - own);
       if (Math.min(apart3, line.length - apart3) <= 1.5)
         continue;
-      if (pass.shed ? within4(-WAY3.shed.under, WAY3.shed.over, WAY3.shed.beside) : within4(-WAY3.spine, -WAY3.under, WAY3.wide))
+      if (pass.shed ? within5(-WAY3.shed.under, WAY3.shed.over, WAY3.shed.beside) : within5(-WAY3.spine, -WAY3.under, WAY3.wide))
         return true;
     }
     return false;
@@ -38316,7 +40044,7 @@ var BIG, GHOST2, BUMPERS, RIDES, parOf = (set, par) => RIDES[set] ?? par, rideSt
   turn: [0, 0, turnTo4(facing)],
   figure: { dialogue },
   prims: [{ name: "stool", shape: "cube", at: [0, -0.55, VENDOR.stool[2] / 2], size: [...VENDOR.stool], material: "wood/planks/japanese-cedar-planks" }]
-}), STEP9 = 0.004, EDITION4 = 14, COMPOSED4 = 13, GALLERY2, KINDS_READ3, RANGES3, PARK, SPEEDS, HOPS, COASTER_LINE, COASTER, KIDDIE, GRASS2 = "ground/grass/grass-004", PAVING3 = "paving/tiles/patio-tiles", SPECIES5, round59 = (v) => Math.round(v * 1000) / 1000, clamp39 = (v, lo, hi) => Math.min(Math.max(v, lo), hi), turnTo4 = ([fx, fy]) => round59(Math.atan2(-fx, fy) * 180 / Math.PI) + 0, randomOf9 = (seed) => {
+}), STEP9 = 0.004, EDITION4 = 14, LANDED3 = 15, MAKES3, COMPOSED4 = 13, GALLERY2, KINDS_READ3, RANGES3, PARK, SPEEDS, HOPS, COASTER_LINE, COASTER, KIDDIE, GRASS2 = "ground/grass/grass-004", PAVING3 = "paving/tiles/patio-tiles", SPECIES5, round59 = (v) => Math.round(v * 1000) / 1000, clamp39 = (v, lo, hi) => Math.min(Math.max(v, lo), hi), turnTo4 = ([fx, fy]) => round59(Math.atan2(-fx, fy) * 180 / Math.PI) + 0, randomOf9 = (seed) => {
   let s = seed * 2654435761 >>> 0 || 1;
   return () => (s = (s ^ s << 13) >>> 0, s = (s ^ s >>> 17) >>> 0, s = (s ^ s << 5) >>> 0) / 4294967296;
 }, constrainPark = (given = {}) => ({
@@ -38324,7 +40052,8 @@ var BIG, GHOST2, BUMPERS, RIDES, parOf = (set, par) => RIDES[set] ?? par, rideSt
     const value = Number(given[name]);
     return [name, Number.isFinite(value) ? name === "seed" ? Math.round(clamp39(value, lo, hi)) : round59(clamp39(value, lo, hi)) : fallback];
   })),
-  ...regionOf(given)
+  ...regionOf(given),
+  ...platformParamsOf(given)
 }), boundsOf5 = (params) => {
   const { width, depth } = constrainPark(params);
   return { x0: -width / 2, x1: width / 2, y0: -depth / 2, y1: depth / 2 };
@@ -38358,8 +40087,29 @@ var BIG, GHOST2, BUMPERS, RIDES, parOf = (set, par) => RIDES[set] ?? par, rideSt
         wet++;
     }
   return { level: round59(high + 0.05), drop: round59(high - low), wet };
+}, parkOnLand = (asked2, survey, site2) => {
+  const kit2 = landKit();
+  const random = randomOf9(asked2.seed + 23);
+  const tree2 = () => ({ species: SPECIES5[Math.floor(random() * SPECIES5.length)], scale: round59(0.8 + 0.3 * random()), seed: Math.floor(random() * 1000), turn: Math.floor(random() * 360) });
+  const laid4 = kit2.groundsOnLand(site2(), survey, {
+    level: asked2.level ?? null,
+    walled: asked2.walled,
+    width: asked2.width,
+    depth: asked2.depth,
+    inset: PARK.walk,
+    gate: PARK.avenue / 2 + 1,
+    tree: tree2,
+    random,
+    sizeOf: kit2.textureSize,
+    make: (width, depth, flat2) => parkOf({ ...asked2, width, depth }, flat2, { edition: EDITION4 })
+  });
+  if (laid4.refused)
+    return { params: asked2, objects: [], clones: [], trees: [], reasons: [laid4.refused], notes: [], stats: {}, bounds: boundsOf5(asked2), level: 0 };
+  return { ...laid4.made, params: asked2 };
 }, parkOf = (given, survey, { edition = EDITION4, inner = false, site: site2 = null } = {}) => {
   const asked2 = constrainPark(given);
+  if (edition >= LANDED3 && !inner && site2 && !(ofRegion(asked2) && asked2.lands > 1))
+    return parkOnLand(asked2, survey, site2);
   if (edition >= 12 && !inner && ofRegion(asked2) && site2) {
     const made4 = parkOf(given, survey, { edition, inner, site: null });
     if (made4.reasons.length)
@@ -38718,6 +40468,7 @@ var init_park = __esm(async () => {
   init_bumper();
   init_track2();
   init_region_params();
+  init_land_looks();
   init_region();
   await __promiseAll([
     init_kinds(),
@@ -38734,6 +40485,7 @@ var init_park = __esm(async () => {
   WHITE7 = Object.freeze([0.82, 0.82, 0.79]);
   WHEEL_LIGHTS = Object.freeze([[1, 0.12, 0.1], [1, 0.7, 0.1], [0.2, 1, 0.3], [0.25, 0.45, 1]].map(Object.freeze));
   VENDOR = Object.freeze({ at: Object.freeze([0, 0.15]), stool: Object.freeze([0.36, 0.36, 0.5]) });
+  MAKES3 = LANDED3;
   GALLERY2 = Object.freeze({ set: "Park gallery 1", par: 45, targets: 8, width: 4, depth: 5 });
   KINDS_READ3 = Object.freeze(["ride", "street", "furniture", "bumper", "ghost", "coaster", "fence"]);
   RANGES3 = Object.freeze({ width: [150, 220, 160], depth: [110, 200, 130], seed: [0, 9999, 1] });
@@ -38764,15 +40516,18 @@ var init_park2 = __esm(async () => {
   park_default = Object.freeze({
     kinds: KINDS_READ3,
     edition: EDITION4,
+    makes: MAKES3,
     constrain: constrainPark,
     bounds: boundsOf5,
-    ready: (params) => readyForLoop(params),
+    ready: async (params, edition = EDITION4) => {
+      await Promise.all([readyForLoop(params), readyForLand(edition, LANDED3)]);
+    },
     make: (params, survey, edition, site2 = null) => parkOf(params, survey, { edition, site: site2 })
   });
 });
 
 // src/build/garden.js
-var EDITION5 = 6, COMPOSED5 = 5, KINDS_READ4, RANGES4, GARDEN2, LAWN = "ground/grass/grass-004", GRAVEL2 = "ground/gravel/gravel-floor-02", SOIL4 = "ground/soil/brown-mud-02", TIMBER4 = "wood/planks/planks-brown-10", BRICK3 = "masonry/brick/red-brick", TILES4 = "roofing/tiles/ceramic-roof-01", GLASS21 = "glass/clear/float", WATER4 = "effects/water/calm", STONE5 = "masonry/stone-blocks/rustic-stone-wall-02", CLOTH12 = "fabric/cloth/fabric-pattern-05", BORDER3, EDGE3, round60 = (v) => Math.round(v * 1000) / 1000, clamp40 = (v, lo, hi) => Math.min(Math.max(v, lo), hi), turnTo5 = ([fx, fy]) => round60(Math.atan2(-fx, fy) * 180 / Math.PI) + 0, randomOf10 = (seed) => {
+var EDITION5 = 6, LANDED4 = 7, MAKES4, COMPOSED5 = 5, KINDS_READ4, RANGES4, GARDEN2, LAWN2 = "ground/grass/grass-004", GRAVEL2 = "ground/gravel/gravel-floor-02", SOIL4 = "ground/soil/brown-mud-02", TIMBER4 = "wood/planks/planks-brown-10", BRICK3 = "masonry/brick/red-brick", TILES4 = "roofing/tiles/ceramic-roof-01", GLASS21 = "glass/clear/float", WATER4 = "effects/water/calm", STONE5 = "masonry/stone-blocks/rustic-stone-wall-02", CLOTH12 = "fabric/cloth/fabric-pattern-05", BORDER3, EDGE3, round60 = (v) => Math.round(v * 1000) / 1000, clamp40 = (v, lo, hi) => Math.min(Math.max(v, lo), hi), turnTo5 = ([fx, fy]) => round60(Math.atan2(-fx, fy) * 180 / Math.PI) + 0, randomOf10 = (seed) => {
   let s = seed * 2654435761 >>> 0 || 1;
   return () => (s = (s ^ s << 13) >>> 0, s = (s ^ s >>> 17) >>> 0, s = (s ^ s << 5) >>> 0) / 4294967296;
 }, ROLES, setOf = (params) => `mossbright-${constrainGarden(params).seed}`, constrainGarden = (given = {}) => ({
@@ -38780,7 +40535,8 @@ var EDITION5 = 6, COMPOSED5 = 5, KINDS_READ4, RANGES4, GARDEN2, LAWN = "ground/g
     const value = Number(given[name]);
     return [name, Number.isFinite(value) ? name === "seed" ? Math.round(clamp40(value, lo, hi)) : round60(clamp40(value, lo, hi)) : fallback];
   })),
-  ...regionOf(given)
+  ...regionOf(given),
+  ...platformParamsOf(given)
 }), boundsOf6 = (params) => {
   const { width, depth } = constrainGarden(params);
   return { x0: -width / 2, x1: width / 2, y0: -depth / 2, y1: depth / 2 };
@@ -38823,13 +40579,34 @@ var EDITION5 = 6, COMPOSED5 = 5, KINDS_READ4, RANGES4, GARDEN2, LAWN = "ground/g
     }
   return { level: round60(high + 0.05), drop: round60(high - low), wet };
 }, gardenGroundsOf = (given, survey, { edition = EDITION5, site: site2 = null } = {}) => {
+  const asked2 = constrainGarden(given);
+  if (edition >= LANDED4 && site2 && !(ofRegion(asked2) && asked2.lands > 1)) {
+    const kit2 = landKit();
+    const random2 = randomOf10(asked2.seed + 31);
+    const tree3 = () => ({ species: EDGE3[Math.floor(random2() * EDGE3.length)], scale: round60(0.7 + 0.3 * random2()), seed: Math.floor(random2() * 1000), turn: Math.floor(random2() * 360) });
+    const laid4 = kit2.groundsOnLand(site2(), survey, {
+      level: asked2.level ?? null,
+      walled: asked2.walled,
+      width: asked2.width,
+      depth: asked2.depth,
+      inset: GARDEN2.walk,
+      gate: GARDEN2.walk / 2 + 1,
+      tree: tree3,
+      random: random2,
+      sizeOf: kit2.textureSize,
+      make: (width, depth, flat2) => gardenGroundsOf({ ...asked2, width, depth }, flat2, { edition: EDITION5 })
+    });
+    if (laid4.refused)
+      return { params: asked2, objects: [], clones: [], trees: [], reasons: [laid4.refused], notes: [], stats: {}, bounds: boundsOf6(asked2), level: 0 };
+    return { ...laid4.made, params: asked2 };
+  }
   if (edition >= 4 && site2 && ofRegion(constrainGarden(given))) {
     const made4 = gardenGroundsOf(given, survey, { edition, site: null });
     if (made4.reasons.length)
       return made4;
     const { x0, x1, y0, y1 } = made4.bounds;
-    const [land2, asked2] = [site2(), constrainGarden(given)];
-    return joinedAtGate(made4, { site: land2, gate: [0, y0], top: made4.level + GARDEN2.path, survey, within: ([x, y]) => x > x0 - 5 && x < x1 + 5 && y > y0 - 5 && y < y1 + 5, joined: edition >= 5, curved: edition >= 6, region: edition >= 5 ? regionAbout(land2.parcel, asked2.lands, asked2.place) : null, joins: asked2.joins, composed: edition >= COMPOSED5, params: asked2 });
+    const [land2, asked3] = [site2(), constrainGarden(given)];
+    return joinedAtGate(made4, { site: land2, gate: [0, y0], top: made4.level + GARDEN2.path, survey, within: ([x, y]) => x > x0 - 5 && x < x1 + 5 && y > y0 - 5 && y < y1 + 5, joined: edition >= 5, curved: edition >= 6, region: edition >= 5 ? regionAbout(land2.parcel, asked3.lands, asked3.place) : null, joins: asked3.joins, composed: edition >= COMPOSED5, params: asked3 });
   }
   const plan3 = planOf20(given);
   const { params, W: W2, D: D2 } = plan3;
@@ -38853,7 +40630,7 @@ var EDITION5 = 6, COMPOSED5 = 5, KINDS_READ4, RANGES4, GARDEN2, LAWN = "ground/g
     for (let b = 0;b < ty; b++) {
       const [x0, y0, w, d] = [-W2 / 2 + a * W2 / tx, -D2 / 2 + b * D2 / ty, W2 / tx, D2 / ty];
       const thick = round60(level - lowAt(x0, x0 + w, y0, y0 + d) + GARDEN2.under);
-      objects.push({ name: `lawn ${a + 1}-${b + 1}`, at: [round60(x0 + w / 2), round60(y0 + d / 2), level], prims: [box7("lawn", [0, 0, -thick / 2], [w, d, thick], LAWN)] });
+      objects.push({ name: `lawn ${a + 1}-${b + 1}`, at: [round60(x0 + w / 2), round60(y0 + d / 2), level], prims: [box7("lawn", [0, 0, -thick / 2], [w, d, thick], LAWN2)] });
     }
   const walks = [];
   const strip2 = (name, [x0, y0], [x1, y1], wide) => {
@@ -39018,6 +40795,7 @@ var init_garden = __esm(async () => {
     init_kinds(),
     init_region_roads()
   ]);
+  MAKES4 = LANDED4;
   KINDS_READ4 = Object.freeze(["street"]);
   RANGES4 = Object.freeze({ width: [80, 140, 96], depth: [64, 110, 76], seed: [0, 9999, 1] });
   GARDEN2 = Object.freeze({ plot: [9, 7], bed: [1.3, 2.4, 0.32], beds: 6, walk: 3, path: 0.04, under: 0.4, tile: 48, pond: 9 });
@@ -39037,9 +40815,12 @@ var init_garden2 = __esm(async () => {
   garden_default = Object.freeze({
     kinds: KINDS_READ4,
     edition: EDITION5,
+    makes: MAKES4,
     constrain: constrainGarden,
     bounds: boundsOf6,
-    ready: (params) => readyForLoop(params),
+    ready: async (params, edition = EDITION5) => {
+      await Promise.all([readyForLoop(params), readyForLand(edition, LANDED4)]);
+    },
     make: (params, survey, edition, site2 = null) => gardenGroundsOf(params, survey, { edition, site: site2 })
   });
 });
@@ -40981,8 +42762,8 @@ var held4 = (param, value) => {
   const given = typeof value === "string" && param.options ? param.options.indexOf(value) : value;
   if (!Number.isFinite(given) || param.options && given < 0)
     return param.default;
-  const within4 = Math.min(Math.max(given, param.min), param.max);
-  return Number(Math.min(param.min + Math.round((within4 - param.min) / param.step) * param.step, param.max).toFixed(decimals4(param.step)));
+  const within5 = Math.min(Math.max(given, param.min), param.max);
+  return Number(Math.min(param.min + Math.round((within5 - param.min) / param.step) * param.step, param.max).toFixed(decimals4(param.step)));
 };
 var bouncyOf = (value) => {
   const given = value === true ? {} : value && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -41933,6 +43714,7 @@ var LINKSET = 256;
 var LIGHT_RANGE = 10;
 var LIGHTS_EACH = 8;
 var NEAR2 = 30;
+var OUTDOOR_LIT = 1;
 var DENSE_CAGE = 400;
 var BUDGET23 = Object.freeze({
   parts: { fair: 1500, most: 4000 },
@@ -41977,7 +43759,7 @@ var lightFor = (materials) => {
     const emits = (part.surface?.emissive ?? 0) > 0 || Object.values(part.surface?.faces ?? {}).some((face3) => (face3.emissive ?? 0) > 0) || texturesOf(part).some((texture) => materials.get(texture)?.effects?.emissive);
     if (!emits && !part.light)
       return null;
-    return { range: Math.min(part.light?.range ?? LIGHT_RANGE, LIGHT_RANGE), night: part.light?.on === "night" };
+    return { range: Math.min(part.light?.range ?? LIGHT_RANGE, LIGHT_RANGE), night: part.light?.on === "night", outdoors: part.light?.outdoors === true };
   };
 };
 var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groundRadius, waterRadius = null, landRadius = null, id = "check", zone = null, budget = BUDGET23 }) => {
@@ -42139,14 +43921,14 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
       videoFaces += videos * copies.length;
       pageFaces += pages * copies.length;
     }
-    const lit = own.map(lightOf).filter(Boolean);
+    const lit2 = own.map(lightOf).filter(Boolean);
     const thrown = own.flatMap((part) => part.collisionOnly ? [] : systemsOf(part.particles));
     for (const copy of copies) {
       const at = frame.inFrame(copy.at);
-      lights2.push(...lit.map((light) => ({ ...light, at, object: object.name })));
+      lights2.push(...lit2.map((light) => ({ ...light, at, object: object.name })));
       systems.push(...thrown.map((system) => ({ ...system, at, object: object.name })));
     }
-    objects.push({ id: object.id, name: object.name, parts: own.length, copies: copies.length, triangles: [l3, l1], lights: lit.length, systems: thrown.length });
+    objects.push({ id: object.id, name: object.name, parts: own.length, copies: copies.length, triangles: [l3, l1], lights: lit2.length, systems: thrown.length });
   }
   const objectNames = new Map(objectRecords.map((object) => [object.id, object.name]));
   for (const part of prims) {
@@ -42185,7 +43967,7 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
       notes.push(`${object.name}: its clones are not driven — only the object itself; make each vehicle an object of its own`);
   }
   const runs2 = new Set(objectRecords.filter((object) => object.vehicle || object.behaviour?.type === "route").map((object) => object.id));
-  const idle = new Set(prims.filter((part) => !runs2.has(part.object) && layersOf(part.particles).some((layer2) => layer2?.running === true)).map((part) => part.object ?? null));
+  const idle = new Set(prims.filter((part) => !runs2.has(part.object) && layersOf(part.particles).some((layer3) => layer3?.running === true)).map((part) => part.object ?? null));
   for (const id2 of idle)
     notes.push(`${objectRecords.find((object) => object.id === id2)?.name ?? "a prim"}: particles thrown only while it runs ("running": true), yet it is no vehicle and runs no route — never seen`);
   const trees = records.filter((record) => record.type === "tree");
@@ -42214,7 +43996,9 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
   for (const host of untrusted)
     notes.push(`${host}: not a host the world trusts — each viewer but its owner starts its media with a click (GIPHY's play by themselves)`);
   const most2 = (list) => list.reduce((top, each) => Math.max(top, list.filter((other) => Math.hypot(other.at[0] - each.at[0], other.at[1] - each.at[1]) < NEAR2).length), 0);
-  const crowd = most2(lights2);
+  const outdoors = lights2.filter((light) => light.outdoors);
+  const lit = [...lights2.filter((light) => !light.outdoors), ...outdoors.slice(0, OUTDOOR_LIT)];
+  const crowd = most2(lit);
   const lifts = new Set;
   const moving = records.filter((record) => {
     const { behaviour } = record;
@@ -42240,9 +44024,10 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
     media: mediaFaces,
     videos: videoFaces,
     pages: pageFaces,
-    lights: lights2.length,
-    nightLights: lights2.filter((light) => light.night).length,
+    lights: lit.length,
+    nightLights: lit.filter((light) => light.night).length,
     crowd,
+    glowing: lights2.length - lit.length,
     systems: systems.length,
     blended: systems.filter((system) => !(system.flags & 1)).length,
     particles: systems.reduce((sum, system) => sum + system.alive, 0),
@@ -42283,7 +44068,7 @@ var checkBuild = (spec, { materials, isSpecies, groundRadius, bareRadius = groun
         notes.push(`${said}: past what is fair for a place (${fair.toLocaleString("en")})`);
     }
   }
-  return { records, errors, notes, objects, lights: lights2, systems, totals, frame, zone };
+  return { records, errors, notes, objects, lights: lit, systems, totals, frame, zone };
 };
 
 // tools/build-check.js
@@ -43182,13 +44967,13 @@ if (surveyFile) {
   })(spec.anchor.at) : null;
   if (!anchored)
     throw new Error("--survey: the build says nowhere (no anchor)");
-  const within4 = ([x, y, z]) => Math.hypot(...seen.point(x, y, z).map((v, i) => v - anchored[i])) <= ZONE.radius;
-  const near2 = (survey.builds ?? []).filter((build6) => within4(build6.centre));
+  const within5 = ([x, y, z]) => Math.hypot(...seen.point(x, y, z).map((v, i) => v - anchored[i])) <= ZONE.radius;
+  const near2 = (survey.builds ?? []).filter((build6) => within5(build6.centre));
   zone = {
     parts: near2.reduce((sum, build6) => sum + build6.parts, 0),
     lights: near2.reduce((sum, build6) => sum + (build6.lights ?? 0), 0),
     systems: near2.reduce((sum, build6) => sum + (build6.emitters ?? 0), 0),
-    trees: (survey.trees ?? []).filter((tree2) => within4(tree2.at)).length
+    trees: (survey.trees ?? []).filter((tree2) => within5(tree2.at)).length
   };
 }
 var water = createWater({ field: createLandField({ bare: bareElevation }), bare: bareElevation });
@@ -43197,8 +44982,10 @@ var landRadius = (dir) => RADIUS2 + groundElevation(dir);
 var checked = checkBuild(spec, { materials: bank, isSpecies: (name2) => species.has(name2), groundRadius, bareRadius, waterRadius, landRadius, zone });
 var { records, errors, notes, objects, totals } = checked;
 var { inFrame } = checked.frame;
-var frame = frameOf4(spec.anchor);
-var lift2 = RADIUS2 + groundElevation(frame.up) - Math.hypot(...checked.frame.origin);
+var frame = spec.anchor ? frameOf4(spec.anchor) : null;
+if (!frame)
+  notes.push("it says nowhere (no `anchor`): what stands under it is looked at where it is pasted");
+var lift2 = frame ? RADIUS2 + groundElevation(frame.up) - Math.hypot(...checked.frame.origin) : 0;
 var dot6 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 var along4 = (vector2) => [dot6(vector2, frame.right), dot6(vector2, frame.ahead), dot6(vector2, frame.up)];
 var cornersOf5 = (parts, at, rotation) => parts.flatMap((part4) => [-1, 1].flatMap((sx) => [-1, 1].flatMap((sy) => [-1, 1].map((sz) => {
@@ -43216,7 +45003,7 @@ var boxOf14 = (part4, unit12) => {
 };
 var topOf2 = (box7, x, y) => box7.plane ? box7.plane.top[2] - (box7.plane.up[0] * (x - box7.plane.top[0]) + box7.plane.up[1] * (y - box7.plane.top[1])) / box7.plane.up[2] : box7.max[2];
 var units = records.filter((record) => record.type === "object" || record.type === "instance").map((unit12) => ({ unit: unit12, parts: records.filter((part4) => part4.object === (unit12.of ?? unit12.id)) }));
-var boxes = units.flatMap(({ unit: unit12, parts }) => parts.map((part4) => ({ unit: unit12.id, ...boxOf14(part4, unit12) })));
+var boxes = frame ? units.flatMap(({ unit: unit12, parts }) => parts.map((part4) => ({ unit: unit12.id, ...boxOf14(part4, unit12) }))) : [];
 var support = ([x, y, z], unit12) => Math.max(frame.ground(x, y) + lift2, ...boxes.filter((box7) => box7.unit !== unit12 && x >= box7.min[0] && x <= box7.max[0] && y >= box7.min[1] && y <= box7.max[1] && topOf2(box7, x, y) <= z + 0.05).map((box7) => topOf2(box7, x, y)));
 var undersideAt = (parts, unit12, x, y) => {
   let lowest2 = null;
@@ -43241,7 +45028,7 @@ var undersideAt = (parts, unit12, x, y) => {
   return lowest2;
 };
 var settles = (part4) => part4.kind === "road" || part4.kind === "bridge" || part4.kind === "fence" && Array.isArray(part4.params?.points);
-for (const { unit: unit12, parts } of units) {
+for (const { unit: unit12, parts } of frame ? units : []) {
   if (!parts.length || parts.every(settles) || parts.some((part4) => part4.kind === "bridge") && parts.every((part4) => settles(part4) || part4.kind === "lantern"))
     continue;
   const label = unit12.type === "object" ? unit12.name : `a clone of ${records.find((record) => record.id === unit12.of)?.name}`;
@@ -43281,13 +45068,13 @@ var treeTriangles = trees.filter((tree2) => species.has(tree2.species)).reduce((
   variants.add(`${tree2.species}:${tree2.seed % list.length}`);
   return sum + list[tree2.seed % list.length][2];
 }, 0);
-for (const tree2 of trees) {
+for (const tree2 of frame ? trees : []) {
   const [x, y] = inFrame(tree2.at);
   if (frame.wet(x, y))
     notes.push(`${tree2.id}: in the sea`);
 }
 var herds = records.filter((record) => record.type === "herd");
-for (const herd of herds) {
+for (const herd of frame ? herds : []) {
   const [x, y] = inFrame(herd.at);
   if (frame.wet(x, y))
     notes.push(`${herd.id} (${herd.species}): its home in the sea`);
@@ -43305,7 +45092,7 @@ if (totals.media)
   console.log(`media: ${totals.media} faces show it, ${totals.videos} of them videos (8 shown at once, 4 videos, the nearest)`);
 if (totals.pages)
   console.log(`pages: ${totals.pages} faces show one (the 8 nearest drawn as they change, with media; 32 more still)`);
-console.log(`lights: ${totals.lights} (${totals.nightLights} at night only), at most ${totals.crowd} within 30 m of one another`);
+console.log(`lights: ${totals.lights} (${totals.nightLights} at night only), at most ${totals.crowd} within 30 m of one another${totals.glowing ? `; ${totals.glowing} more lamps out of doors that glow (of them all the nearest lights)` : ""}`);
 console.log(`particles: ${totals.systems} systems (${totals.blended} blended — smoke, steam, fog, water), ${totals.particles} particles in the air, at most ${totals.swarm} systems within 30 m`);
 var valueOf = (key) => key === "triangles" ? totals.triangles[0] : totals[key];
 console.log(`budget (fair / most): ${Object.entries(BUDGET23).map(([key, { fair, most: most2 }]) => `${key} ${valueOf(key).toLocaleString("en")}${valueOf(key) > most2 ? " ✗" : valueOf(key) > fair ? " !" : ""} (${fair.toLocaleString("en")} / ${most2.toLocaleString("en")})`).join(", ")}`);

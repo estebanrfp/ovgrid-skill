@@ -1637,6 +1637,7 @@ to one or two materials a role across a whole build.
 | `texture` | A bank id; `material` is the part's |
 | `scale` | `[u, v]` m a tile spans; leave it out: the bank's real size |
 | `rotation` | ° the texture turns on the face |
+| `skew` | ° its v leans off square to its u: a tile laid as a parallelogram (a corner where two roads meet at 80°); leave it out: square |
 | `offset` | `[u, v]` fraction of a tile it slides: vary it so that alike parts do not repeat (logs, stones, planks) |
 | `opacity` | 0–1: below 1 the face is seen through (expensive: a pass of its own) |
 | `emissive` | 0–1: lights itself, its colour as bright again whatever lights it (≈ Second Life's full bright) |
@@ -1884,7 +1885,8 @@ on('click', ({ target, values }) => { if (target === 'sign' && values?.guest) ke
   lantern for looks. See *Lights on switches, by zone* below.
 - `outdoors`: `true` for a lamp out of doors lighting the ground — a porch's, a lamp by a door —
   on an object with rooms: it keeps its own light; of all of them the one nearest the eye lights the
-  ground, the rest glow, and it never takes the place of one of its rooms' lamps.
+  ground, the rest glow, and it never takes the place of one of its rooms' lamps. A build's lamps out of
+  doors count as one light in its budget, whatever their number (budget.md).
 - Switched on with nothing emitting, a part is a lamp of its own: white, 1, 10 m unless it says.
 - **Walls stop a light when they are parts of its own object**: a lamp in a room is a part of the
   house's object. Glass lets it through. Keep a lamp outside short of other buildings' rooms.
@@ -3157,7 +3159,7 @@ refuses the build. Counted with every clone (a clone's parts draw again).
 | parts | 1,500 | 4,000 | each an instance; the reference village is 65, rethought (535 as prims) |
 | triangles | 150,000 | 600,000 | at the finest level, near the camera; round shapes are the dear ones |
 | materials | 40 | 96 | each ~150 kB for every visitor to fetch, ~700 kB up close; past 16 within 10 m, the nearest blur |
-| lights | 12 | 32 | the renderer lights with the 32 strongest in view |
+| lights | 12 | 32 | the renderer lights with the 32 strongest in view — of lamps out of doors (`"outdoors": true`) the nearest alone, so a build's count once together |
 | crowd | 8 | 16 | lights within 30 m of one another: past 8 each pixel takes the dearer, clustered path |
 | systems | 12 | 48 | particle systems: each a draw of its own; 128 in view at most, the nearest |
 | particles | 1,000 | 3,000 | in the air at once; the world draws 1,500 a frame for everything in view, thinning each alike past it |
@@ -3526,8 +3528,9 @@ A vehicle is looked at up close: boxes and black cylinders read as a toy. What t
 - **A rounded body**: its panels `bevel` boxes — `"kind": "bevel", "base": "box", "edge": "round",
   "radius": 0.12` for a bonnet or a tank; 0.02–0.05 for doors, trim and seats, with
   `"segments": 2` (a small round wants no more steps).
-- **Paint**: its colour with `"surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 }` — the sky
-  and what is round it in it. A boat's gelcoat the same without `metal`.
+- **Paint**: its colour with `"surface": { "gloss": 0.9, "metal": 0.5, "reflect": 0.3 }` — what makes
+  it a vehicle's paint, drawn in its finish: satin, unless its `looks` choose another (below). A boat's
+  gelcoat and a train's livery the same.
 - **Chrome**: `metal/bare/metal-050a` with `"metal": 1, "gloss": 0.95` — bumpers, a grille, a
   windscreen's frame, a bike's fork, bar and exhaust.
 - **Glass** for a windscreen (`glass/clear/float`), the bank's **leather** for seats
@@ -3555,8 +3558,10 @@ Whoever may change a vehicle chooses its colours on its card's **Colours** tab �
 colour of one's own for a paint, and **Random**, one of the palettes whole, colours that go together —, each choice one
 step that everyone sees. Its **Finish** row is its paint's shine — Gloss, Satin or Matte, `"finish": "gloss"` in its
 `looks` —, worn by the faces that wear its paint, its roof and its accent alone, never its glass, its rims or its lamps;
-said nothing, gloss (gloss 0.9, metal 0.5, reflect 0.3), as a car's paint is made. Random gives a finish too, gloss the
-most often; a livery's colours are its own, and it has no finish to change. A build gives it the slots it lets change, `looks` on its object, each a colour (linear RGB) or
+said nothing, satin (gloss 0.25, metal 0.3, reflect 0.1); Gloss is its paint as it is made (gloss 0.9, metal 0.5, reflect
+0.3). Random leaves the finish as it is. Every vehicle's paint is drawn in its finish, a slot naming it or not: a livery's,
+whose colours are its own and which has no Finish row, satin; and so a vehicle with no `looks` at all, each face of it that
+shines as its paint is made — and is not made `matte`. A build gives it the slots it lets change, `looks` on its object, each a colour (linear RGB) or
 a material of the bank; its parts and faces that wear one name it, `"slot"` in their surface (what of a car's object and
 parts a slot needs, its shapes left out):
 
@@ -4606,7 +4611,7 @@ The whole of it, with every material, preset and range: catalog.json, beside thi
   - `shop2` `own` / `cafe` / `bakery` / `books` / `pharmacy` / `bar` / `market` / `restaurant` / `fashion` / `news` / `office` / `club`, default `own`: What its second shop is — its right one —, as its first.
   - `stage` `finished` / `frame`, default `finished`: How far it is built: finished; or frame — its columns, its floors, its core and its stair alone, no wall round it, no glass, no door, no lift in its shaft: a building in construction.
   - `signs` `none` / `signs`, default `signs`: A sign over the way in of a ground storey that is a hotel's — «HOTEL», over its street door — or shops' — a word each, what the shop is: by its variation a café, a bakery, books, a pharmacy, a bar or a market, or the one its `shop` or `shop2` names —, their letters lit by night (the sign kind's). A part each. None on flats or on columns.
-  - `crane` `none` / `tower`, default `tower`: What stands by it while it is in construction: none; or a tower crane (the crane kind's) behind it, its mast eight metres over its frame — fifty-four at the most —, its jib over it. A part of its own, made, moved and taken away with it. Nothing once it is finished.
+  - `crane` `none` / `tower` / `still`, default `tower`: What stands by it while it is in construction: none; a tower crane (the crane kind's) behind it, its mast eight metres over its frame — fifty-four at the most —, its jib over it, at work; or the same standing still, nothing of it moving by itself (what moves by itself counts against a build's budget). A part of its own, made, moved and taken away with it. Nothing once it is finished.
   - `wings` `none` / `left` / `right` / `both`, default `none`: What its plan has besides its bar: none; a wing behind its left end or its right one (seen from the street) — an L, a corner's block —; or one behind each — a U round a court. A wing is in line with the bar's end, as wide as the flat it goes on from at the most and no wider than the bar is deep, as many storeys as the bar, one more room of that flat on every storey, come into through the bar's back wall. Never behind its core: one asked there stands behind the other end.
   - `reach` 6–30, default 12: How far each wing goes back behind the bar (m).
   - `wide` 6–24, default 10: How wide each wing is (m): as wide as the flat it goes on from at the most, and no wider than the bar is deep. Narrower than its flat, the flat keeps windows on the court beside it.
@@ -5006,7 +5011,7 @@ Put as herds (format.md, Animals): `elephant` (2–4 in a herd, walking up to 15
 
 ### Starter materials
 
-Up to three of each subcategory of the bank (3431 in all in the catalog):
+Up to three of each subcategory of the bank (3436 in all in the catalog):
 
 - `masonry/brick/red-brick` — Red Brick, 1.4 × 1.4 m a tile, #8f6852
 - `masonry/brick/red-brick-03` — Red Brick 03, 1 × 1 m a tile, #6b564e

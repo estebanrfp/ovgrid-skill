@@ -1347,6 +1347,7 @@ to one or two materials a role across a whole build.
 | `texture` | A bank id; `material` is the part's |
 | `scale` | `[u, v]` m a tile spans; leave it out: the bank's real size |
 | `rotation` | ° the texture turns on the face |
+| `skew` | ° its v leans off square to its u: a tile laid as a parallelogram (a corner where two roads meet at 80°); leave it out: square |
 | `offset` | `[u, v]` fraction of a tile it slides: vary it so that alike parts do not repeat (logs, stones, planks) |
 | `opacity` | 0–1: below 1 the face is seen through (expensive: a pass of its own) |
 | `emissive` | 0–1: lights itself, its colour as bright again whatever lights it (≈ Second Life's full bright) |
@@ -1594,7 +1595,8 @@ on('click', ({ target, values }) => { if (target === 'sign' && values?.guest) ke
   lantern for looks. See *Lights on switches, by zone* below.
 - `outdoors`: `true` for a lamp out of doors lighting the ground — a porch's, a lamp by a door —
   on an object with rooms: it keeps its own light; of all of them the one nearest the eye lights the
-  ground, the rest glow, and it never takes the place of one of its rooms' lamps.
+  ground, the rest glow, and it never takes the place of one of its rooms' lamps. A build's lamps out of
+  doors count as one light in its budget, whatever their number (budget.md).
 - Switched on with nothing emitting, a part is a lamp of its own: white, 1, 10 m unless it says.
 - **Walls stop a light when they are parts of its own object**: a lamp in a room is a part of the
   house's object. Glass lets it through. Keep a lamp outside short of other buildings' rooms.
