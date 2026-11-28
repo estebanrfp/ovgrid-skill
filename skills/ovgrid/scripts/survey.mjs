@@ -6045,7 +6045,7 @@ var init_vehicle = __esm(() => {
 });
 
 // src/build/kinds/track.js
-var GAUGE = 1.435, RAIL3, SLEEPER, BED, TOP, DECK, FACET, plainTrack = (params) => !(params.bend ?? 0) && !(params.rise ?? 0) && params.bed !== 2, lineOf = (params) => {
+var GAUGE = 1.435, RAIL3, SLEEPER, BED, TOP, DECK, FACET, plainTrack = (params) => !(params.bend ?? 0) && !(params.rise ?? 0) && params.bed !== 2, streetTrack = (params) => Boolean(params.street) && !params.bed, RAILS_HALF, lineOf = (params) => {
   const turn2 = (params.bend ?? 0) * Math.PI / 180;
   const radius = Math.abs(turn2) > 0.000000001 ? params.length / turn2 : 0;
   return (s) => {
@@ -6062,12 +6062,13 @@ var GAUGE = 1.435, RAIL3, SLEEPER, BED, TOP, DECK, FACET, plainTrack = (params) 
   return Array.from({ length: count + 1 }, (_, n) => -params.length / 2 + params.length * n / count);
 }, spanOf = (params) => {
   const decked = params.bed === 2;
-  const [left, right] = decked ? [params.left ?? 2.2, params.right ?? 2.2] : [params.bed ? BED.foot : SLEEPER.long / 2, params.bed ? BED.foot : SLEEPER.long / 2];
+  const reach = params.bed ? BED.foot : streetTrack(params) ? RAILS_HALF : SLEEPER.long / 2;
+  const [left, right] = decked ? [params.left ?? 2.2, params.right ?? 2.2] : [reach, reach];
   const walled = decked && (params.walls ?? 0) !== 3;
   return { left, right, down: decked ? DECK.thick : 0, foot: params.bed === 1 ? BED.thick : 0, up: Math.max(TOP + (params.bed === 1 ? BED.thick : 0), walled ? DECK.wall.high : 0) };
 }, trackFootprint = (params) => {
   if (plainTrack(params)) {
-    const half = (params.bed ? 2 * BED.foot : SLEEPER.long) / 2;
+    const half = params.bed ? BED.foot : streetTrack(params) ? RAILS_HALF : SLEEPER.long / 2;
     return { min: [-half, -params.length / 2, 0], max: [half, params.length / 2, TOP + (params.bed ? BED.thick : 0)] };
   }
   const line = lineOf(params);
@@ -6094,6 +6095,7 @@ var init_track = __esm(() => {
   TOP = Math.round((SLEEPER.high + RAIL3.high) * 1000) / 1000;
   DECK = Object.freeze({ thick: 0.8, wall: Object.freeze({ high: 1, thick: 0.2 }) });
   FACET = Object.freeze([15, 10, 7.5, 5]);
+  RAILS_HALF = GAUGE / 2 + RAIL3.wide;
   BUDGET18 = Object.freeze({ sleeper: 10, sheet: 2, rails: 26, far: 6, facet: 44 });
   LOOKS22 = Object.freeze({
     concrete: Object.freeze([STEEL8, CONCRETE5, BALLAST]),
@@ -6102,7 +6104,7 @@ var init_track = __esm(() => {
   track = Object.freeze({
     name: "track",
     label: "Railway track",
-    description: "A length of railway track in one part: two steel rails a standard gauge apart (1.435 m) on sleepers every 0.65 m, along its y — `length` m of it, its middle at the part's, its rails' tops its box's top, 0.27 m over what it is laid on: a deck, a slab, or the ground under a bed of ballast (`bed`). With `bed` deck it lays its own: a slab 0.8 m thick `left` and `right` m to either side of its middle, a wall 1 m high along each edge (`walls`) — a length of viaduct whole, stood on. `bend`: a curve of a ring, the degrees it turns over its length (to its left where positive), its rails and sleepers turning with it; `rise`: how much its end stands over its start. A train runs on its rails' tops (a `route`'s points there). Faces: 0 rails, 1 sleepers, 2 bed, 3 its deck's underside.",
+    description: "A length of railway track in one part: two steel rails a standard gauge apart (1.435 m) on sleepers every 0.65 m, along its y — `length` m of it, its middle at the part's, its rails' tops its box's top, 0.27 m over what it is laid on: a deck, a slab, or the ground under a bed of ballast (`bed`). With `bed` deck it lays its own: a slab 0.8 m thick `left` and `right` m to either side of its middle, a wall 1 m high along each edge (`walls`) — a length of viaduct whole, stood on. `bend`: a curve of a ring, the degrees it turns over its length (to its left where positive), its rails and sleepers turning with it; `rise`: how much its end stands over its start. `street`, on no bed: a tram's, its rails alone, embedded in the street it is laid in — no sleepers, its rails' tops where they were, its box no wider than they are. A train runs on its rails' tops (a `route`'s points there). Faces: 0 rails, 1 sleepers, 2 bed, 3 its deck's underside.",
     faces: (params) => params.bed === 2 ? ["rails", "sleepers", "bed", "under"] : ["rails", "sleepers", "bed"],
     facesBy: "bed",
     shape: "cube",
@@ -6119,7 +6121,8 @@ var init_track = __esm(() => {
       { name: "rise", optional: true, label: "Rises", min: -16, max: 16, default: 0, step: 0.001, unit: "m", description: "How much higher its end stands than its start (m): it climbs evenly along its line." },
       { name: "left", optional: true, label: "Deck, left", min: 1.3, max: 8, default: 2.2, step: 0.001, unit: "m", when: (params) => params.bed === 2, description: "How far its deck reaches to the left of its middle (m)." },
       { name: "right", optional: true, label: "Deck, right", min: 1.3, max: 8, default: 2.2, step: 0.001, unit: "m", when: (params) => params.bed === 2, description: "How far its deck reaches to the right of its middle (m)." },
-      { name: "walls", optional: true, label: "Walls", min: 0, max: 3, default: 0, step: 1, options: ["both", "left", "right", "none"], when: (params) => params.bed === 2, description: "The low walls along its deck's edges: both, one alone — none along a platform —, or none." }
+      { name: "walls", optional: true, label: "Walls", min: 0, max: 3, default: 0, step: 1, options: ["both", "left", "right", "none"], when: (params) => params.bed === 2, description: "The low walls along its deck's edges: both, one alone — none along a platform —, or none." },
+      { name: "street", optional: true, label: "In a street", min: 0, max: 1, default: 0, step: 1, options: ["no", "yes"], when: (params) => !params.bed, description: "A tram's, on no bed: its rails alone, embedded in the street it is laid in — no sleepers —, their tops where they were (0.27 m over what it is laid on). Lay the street's surface a few centimetres under its rails' tops." }
     ]
   });
 });
@@ -22766,7 +22769,7 @@ var RAILS2, SLEEPERS, BEDDING9, UNDER5, DECKED = 2, sleepersOf = (length2) => {
   }
   if (level < 1)
     return mesh.pack(size, min.map((v, k) => (v + max[k]) / 2));
-  if (level >= 2)
+  if (level >= 2 && !streetTrack(params))
     for (const s of sleepersOf(params.length)) {
       const here = line(s);
       const corner2 = (o2, t2, h2) => [here.at[0] + here.right[0] * o2 + here.on[0] * t2, here.at[1] + here.right[1] * o2 + here.on[1] * t2, here.z + foot + h2];
@@ -22792,7 +22795,7 @@ var init_track_gen = __esm(() => {
   track_gen_default = Object.freeze({
     fit: (params) => {
       if (plainTrack(params))
-        return [params.bed ? 2 * BED.foot : SLEEPER.long, params.length, TOP + (params.bed ? BED.thick : 0)];
+        return [params.bed ? 2 * BED.foot : streetTrack(params) ? 2 * RAILS_HALF : SLEEPER.long, params.length, TOP + (params.bed ? BED.thick : 0)];
       const { min, max } = trackFootprint(params);
       return max.map((v, k) => upToMillimetre10(v - min[k]));
     },
@@ -22832,7 +22835,7 @@ var init_track_gen = __esm(() => {
       }
       if (level < 1)
         return mesh.pack(size, [0, 0, size[2] / 2]);
-      if (level >= 2)
+      if (level >= 2 && !streetTrack(params))
         for (const y of sleepersOf(params.length)) {
           box6(SLEEPERS, [-SLEEPER.long / 2, y - SLEEPER.wide / 2, foot], [SLEEPER.long / 2, y + SLEEPER.wide / 2, foot + SLEEPER.high], (axis, sign2) => axis === 2 ? sign2 > 0 : level >= 3);
         }
